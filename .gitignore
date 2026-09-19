@@ -1,0 +1,27 @@
+node_modules
+dist
+.next
+out
+coverage
+.env
+.env.local
+*.log
+.DS_Store
+.turbo
+.local-data/
+apps/web/tsconfig.tsbuildinfo
+apps/api/tsconfig.tsbuildinfo
+apps/admin/tsconfig.tsbuildinfo
+# Playwright artifacts (Phase A+ browser tests)
+apps/admin/test-results/
+apps/admin/playwright-report/
+apps/admin/blob-report/
+apps/admin/.playwright/
+
+# Docker env file with generated secrets (template lives in .env.docker.example)
+.env.docker
+# Root Playwright artifact dir (admin one is ignored above)
+test-results/
+
+# AI tool session notes (kept local; not part of the product)
+.workbuddy-ai/

@@ -1,0 +1,771 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Phase 2: full MVP core models. Later phases only add columns/tables, never rewrite.
+model SchemaMeta {
+  id        String   @id @default("talkfirst")
+  phase     String   @default("15-moments")
+  updatedAt DateTime @updatedAt
+}
+
+model DiscoverView {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @db.Uuid
+  viewedUserId String   @db.Uuid
+  viewDate     DateTime @db.Date
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, viewedUserId, viewDate])
+  @@index([userId, viewDate])
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+  BANNED
+  // Temporary suspension, distinct from a permanent BANNED. Carries an expiry
+  // so it can be lifted automatically. Added in Phase A (admin RBAC).
+  SUSPENDED
+}
+
+// Phase A: real admin roles. `User.isAdmin` is kept as a compatibility field,
+// but authorization decisions are made from AdminUser.role.
+enum AdminRole {
+  SUPER_ADMIN
+  MODERATOR
+  SUPPORT
+  ANALYST
+  CONTENT_MANAGER
+}
+
+// Admin Audit Infrastructure: who performed an audited action.
+//
+// The pairing with `AdminAuditLog.adminId` is enforced by a database CHECK
+// constraint (see the migration) AND mirrored in `AdminService.recordAudit`:
+//   USER   => adminId IS NOT NULL
+//   SYSTEM => adminId IS NULL
+// So a SYSTEM row can never smuggle in an administrator's id (forgery) and a
+// USER row can never lose its actor (an unattributed human action).
+enum AuditActorType {
+  // A human administrator. `adminId` is always set.
+  USER
+  // An automated task (scheduler, background job). `adminId` is always NULL.
+  // Deliberately NOT modelled as a User row: a fake account would be searchable,
+  // could become loginable if a hash check ever loosened, and would pollute
+  // user counts.
+  SYSTEM
+}
+
+enum Gender {
+  UNKNOWN
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum LanguageType {
+  NATIVE
+  LEARNING
+}
+
+enum LanguageLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  NATIVE
+}
+
+enum SocialPlatform {
+  INSTAGRAM
+  TELEGRAM
+  WHATSAPP
+  DISCORD
+  X
+  TIKTOK
+  WECHAT
+  QQ
+  STEAM
+  YOUTUBE
+  FACEBOOK
+  TALKFIRST
+}
+
+// Provenance of a Moment row. `DEMO` marks placeholder content created because
+// no real platform OAuth/sync integration exists yet; the API and UI must label
+// it as such so users never mistake it for real synced activity.
+enum MomentSource {
+  USER
+  DEMO
+}
+
+enum RequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+enum ConnectionStatus {
+  ACTIVE
+  REMOVED
+}
+
+enum ExchangeStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  SYSTEM
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWING
+  RESOLVED
+  REJECTED
+}
+
+// PC-1.2 Profile Attributes: separates "about me" from "who I want to meet".
+// Both live in one table discriminated by `kind`, so a query that forgets the
+// discriminator cannot silently merge the two concepts.
+enum AttributeKind {
+  ABOUT_ME
+  LOOKING_FOR
+}
+
+// Provenance of a tag. `SYSTEM` = shipped (or promoted) by the product and
+// admin-manageable; `CUSTOM` = typed by a user and owned only by that user.
+enum AttributeSource {
+  SYSTEM
+  CUSTOM
+}
+
+// Shape hint for the definition catalog. `BOOLEAN` means the label is
+// self-contained (e.g. "桌游"); the others expect `UserAttribute.value`.
+enum AttributeValueType {
+  BOOLEAN
+  TEXT
+  SINGLE_SELECT
+  MULTI_SELECT
+}
+
+// Profile field visibility tiers. Governs PROFILE fields only: SocialAccount
+// handles remain authorized exclusively by SharedSocialAccount.
+enum Visibility {
+  PUBLIC
+  CONNECTIONS
+  PRIVATE
+}
+
+// Row-level moderation state for user-authored attributes. `ReportStatus` is
+// report-scoped and cannot express "this single attribute is withdrawn".
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  HIDDEN
+}
+
+model User {
+  id            String     @id @default(uuid()) @db.Uuid
+  // Emails are stored lowercase (normalized in the service layer).
+  email         String     @unique
+  passwordHash  String
+  emailVerified Boolean    @default(false)
+  status        UserStatus @default(ACTIVE)
+
+  nickname    String?
+  avatarUrl   String?
+  birthDate   DateTime? @db.Date
+  countryCode String?   @db.Char(2)
+  city        String?
+  region      String?   @db.VarChar(80)
+  gender      Gender    @default(UNKNOWN)
+  bio         String?   @db.VarChar(500)
+
+  lastActiveAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  languages                UserLanguage[]
+  interests                UserInterest[]
+  purposes                 UserPurpose[]
+  preferredCountries       UserPreferredCountry[]
+  socialAccounts           SocialAccount[]
+  momentBindings           MomentPlatformBinding[]
+  momentSetting            MomentSetting?
+  moments                  Moment[]
+  momentLikes              MomentLike[]
+  momentComments           MomentComment[]
+  refreshTokens            RefreshToken[]
+  exchangeRequestsSent     ExchangeRequest[]       @relation("ExchangeSent")
+  exchangeRequestsReceived ExchangeRequest[]       @relation("ExchangeReceived")
+  sharesGranted            SharedSocialAccount[]   @relation("SharesGranted")
+  sharesReceived           SharedSocialAccount[]   @relation("SharesReceived")
+  adminNotes               AdminNote[]
+  // Phase A RBAC: role record. Optional — a user may be isAdmin without a
+  // profile during the compatibility window.
+  adminUser                AdminUser?
+  auditLogsWritten         AdminAuditLog[]         @relation("AuditByAdmin")
+  adminNotesWritten        AdminNote[]             @relation("NotesByAdmin")
+
+  isAdmin        Boolean   @default(false)
+  bannedAt       DateTime?
+  banReason      String?   @db.VarChar(500)
+  // Temporary suspension expiry (Phase A). Null for permanent bans.
+  suspendedUntil DateTime?
+
+  sentRequests     ConnectionRequest[]  @relation("SentRequests")
+  receivedRequests ConnectionRequest[]  @relation("ReceivedRequests")
+  connectionsA     Connection[]         @relation("ConnectionsA")
+  connectionsB     Connection[]         @relation("ConnectionsB")
+  memberships      ConversationMember[]
+  messages         Message[]            @relation("SentMessages")
+  reportsMade      Report[]             @relation("ReportsMade")
+  reportsReceived  Report[]             @relation("ReportsReceived")
+  blocksMade       Block[]              @relation("BlocksMade")
+  blocksReceived   Block[]              @relation("BlocksReceived")
+  notifications    Notification[]
+  attributes        UserAttribute[]
+  fieldVisibilities ProfileFieldVisibility[]
+
+  @@index([status])
+  @@index([countryCode])
+  @@index([createdAt])
+}
+
+// Phase A RBAC. One row per administrator, attached to an existing User so the
+// admin identity reuses the normal auth/session machinery instead of a parallel
+// user table. `User.isAdmin` is retained for backwards compatibility; role
+// decisions read from here.
+model AdminUser {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @unique @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  role      AdminRole @default(MODERATOR)
+  // Soft-disable instead of deleting, so audit history stays intact.
+  isActive  Boolean   @default(true)
+  // Who granted this role — makes privilege grants themselves auditable.
+  createdBy String?   @db.Uuid
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([role])
+  @@index([isActive])
+}
+
+model VerificationCode {
+  id         String    @id @default(uuid()) @db.Uuid
+  email      String
+  codeHash   String
+  purpose    String    @default("REGISTER") @db.VarChar(16)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  attempts   Int       @default(0)
+  createdAt  DateTime  @default(now())
+
+  @@index([email, purpose, createdAt])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  ip        String?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Interest {
+  id       String         @id @default(uuid()) @db.Uuid
+  slug     String         @unique
+  name     String
+  nameZh   String?
+  category String
+  sort     Int            @default(0)
+  users    UserInterest[]
+}
+
+model UserInterest {
+  userId     String   @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  interestId String   @db.Uuid
+  interest   Interest @relation(fields: [interestId], references: [id], onDelete: Cascade)
+
+  @@id([userId, interestId])
+}
+
+model Purpose {
+  id     String        @id @default(uuid()) @db.Uuid
+  slug   String        @unique
+  name   String
+  nameZh String?
+  sort   Int           @default(0)
+  users  UserPurpose[]
+}
+
+model UserPurpose {
+  userId    String  @db.Uuid
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purposeId String  @db.Uuid
+  purpose   Purpose @relation(fields: [purposeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, purposeId])
+}
+
+model Language {
+  id         String         @id @default(uuid()) @db.Uuid
+  code       String         @unique @db.VarChar(8)
+  name       String
+  nativeName String?
+  users      UserLanguage[]
+}
+
+model UserLanguage {
+  id           String        @id @default(uuid()) @db.Uuid
+  userId       String        @db.Uuid
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  languageCode String        @db.VarChar(8)
+  language     Language      @relation(fields: [languageCode], references: [code], onDelete: Restrict)
+  type         LanguageType
+  level        LanguageLevel @default(INTERMEDIATE)
+
+  @@unique([userId, languageCode, type])
+  @@index([userId])
+}
+
+model Country {
+  id        String                 @id @default(uuid()) @db.Uuid
+  code      String                 @unique @db.Char(2)
+  name      String
+  flag      String?
+  usersWant UserPreferredCountry[]
+}
+
+model UserPreferredCountry {
+  userId      String  @db.Uuid
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  countryCode String  @db.Char(2)
+  country     Country @relation(fields: [countryCode], references: [code], onDelete: Cascade)
+
+  @@id([userId, countryCode])
+}
+
+model SocialAccount {
+  id          String         @id @default(uuid()) @db.Uuid
+  userId      String         @db.Uuid
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform    SocialPlatform
+  handle      String         @db.VarChar(128)
+  syncEnabled Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  shares SharedSocialAccount[]
+
+  @@unique([userId, platform])
+  @@index([userId])
+}
+
+// Per-pair authorization: owner grants viewer the right to see ONE account.
+// This is the single source of truth for "who may see whose handle".
+// Visibility on SocialAccount is only the account's default state and must
+// never be treated as proof that a specific viewer is authorized.
+model SharedSocialAccount {
+  id              String          @id @default(uuid()) @db.Uuid
+  ownerId         String          @db.Uuid
+  owner           User            @relation("SharesGranted", fields: [ownerId], references: [id], onDelete: Cascade)
+  viewerId        String          @db.Uuid
+  viewer          User            @relation("SharesReceived", fields: [viewerId], references: [id], onDelete: Cascade)
+  platform        SocialPlatform
+  socialAccountId String          @db.Uuid
+  socialAccount   SocialAccount   @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+  exchangeId      String          @db.Uuid
+  exchange        ExchangeRequest @relation(fields: [exchangeId], references: [id], onDelete: Cascade)
+  createdAt       DateTime        @default(now())
+
+  @@unique([ownerId, viewerId, platform])
+  @@index([viewerId, ownerId])
+  @@index([ownerId])
+  @@index([exchangeId])
+}
+
+model MomentPlatformBinding {
+  id          String         @id @default(uuid()) @db.Uuid
+  userId      String         @db.Uuid
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform    SocialPlatform
+  handle      String         @db.VarChar(128)
+  displayName String?        @db.VarChar(128)
+  syncEnabled Boolean        @default(true)
+  connectedAt DateTime       @default(now())
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([userId, platform])
+  @@index([userId])
+}
+
+model MomentSetting {
+  userId          String   @db.Uuid
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  syncEnabled     Boolean  @default(false)
+  visibleTo       String   @default("everyone") @db.VarChar(16)
+  filterSensitive Boolean  @default(true)
+  showPhotos      Boolean  @default(true)
+  showVideos      Boolean  @default(true)
+  showTexts       Boolean  @default(true)
+  showReels       Boolean  @default(true)
+  showLives       Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
+
+  @@id([userId])
+}
+
+model Moment {
+  id           String          @id @default(uuid()) @db.Uuid
+  userId       String          @db.Uuid
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform     SocialPlatform
+  platformName String?         @db.VarChar(32)
+  content      String          @db.VarChar(2000)
+  images       String[]        @default([])
+  videoUrl     String?         @db.VarChar(2000)
+  durationSec  Int?
+  tags         String[]        @default([])
+  likeCount    Int             @default(0)
+  commentCount Int             @default(0)
+  // Where this moment came from. `USER` = the user published it in-app.
+  // `DEMO` = placeholder content generated when a platform handle is bound,
+  // because no real OAuth integration exists yet. Demo rows must never be
+  // presented as genuine synced activity.
+  source       MomentSource    @default(USER)
+  syncedAt     DateTime        @default(now())
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  likes        MomentLike[]
+  comments     MomentComment[]
+
+  @@index([userId, createdAt])
+  @@index([platform, createdAt])
+  @@index([createdAt])
+}
+
+model MomentLike {
+  momentId  String   @db.Uuid
+  moment    Moment   @relation(fields: [momentId], references: [id], onDelete: Cascade)
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([momentId, userId])
+  @@index([userId])
+}
+
+model MomentComment {
+  id        String   @id @default(uuid()) @db.Uuid
+  momentId  String   @db.Uuid
+  moment    Moment   @relation(fields: [momentId], references: [id], onDelete: Cascade)
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String   @db.VarChar(500)
+  createdAt DateTime @default(now())
+
+  @@index([momentId, createdAt])
+  @@index([userId])
+}
+
+model ConnectionRequest {
+  id         String        @id @default(uuid()) @db.Uuid
+  senderId   String        @db.Uuid
+  sender     User          @relation("SentRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId String        @db.Uuid
+  receiver   User          @relation("ReceivedRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+  message    String?       @db.VarChar(200)
+  status     RequestStatus @default(PENDING)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([senderId, status])
+  @@index([receiverId, status])
+  @@index([senderId, receiverId, createdAt])
+}
+
+model Connection {
+  id             String           @id @default(uuid()) @db.Uuid
+  userAId        String           @db.Uuid
+  userA          User             @relation("ConnectionsA", fields: [userAId], references: [id], onDelete: Cascade)
+  userBId        String           @db.Uuid
+  userB          User             @relation("ConnectionsB", fields: [userBId], references: [id], onDelete: Cascade)
+  conversationId String?          @unique @db.Uuid
+  conversation   Conversation?    @relation("ConnectionConversation", fields: [conversationId], references: [id], onDelete: SetNull)
+  status         ConnectionStatus @default(ACTIVE)
+  createdAt      DateTime         @default(now())
+
+  @@unique([userAId, userBId])
+  @@index([userAId])
+  @@index([userBId])
+}
+
+model Conversation {
+  id         String               @id @default(uuid()) @db.Uuid
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+  members    ConversationMember[]
+  messages   Message[]
+  connection Connection?          @relation("ConnectionConversation")
+  exchanges  ExchangeRequest[]
+}
+
+model ConversationMember {
+  conversationId String       @db.Uuid
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String       @db.Uuid
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt       DateTime     @default(now())
+
+  @@id([conversationId, userId])
+}
+
+model Message {
+  id             String               @id @default(uuid()) @db.Uuid
+  conversationId String               @db.Uuid
+  conversation   Conversation         @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String               @db.Uuid
+  sender         User                 @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  content        String               @db.VarChar(2000)
+  type           MessageType          @default(TEXT)
+  createdAt      DateTime             @default(now())
+  deletedAt      DateTime?
+  translations   MessageTranslation[]
+
+  @@index([conversationId, createdAt])
+}
+
+model MessageTranslation {
+  id         String   @id @default(uuid()) @db.Uuid
+  messageId  String   @db.Uuid
+  message    Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  sourceLang String   @db.VarChar(8)
+  targetLang String   @db.VarChar(8)
+  text       String   @db.VarChar(2000)
+  provider   String   @db.VarChar(32)
+  createdAt  DateTime @default(now())
+
+  @@unique([messageId, targetLang])
+  @@index([messageId])
+}
+
+model Report {
+  id             String       @id @default(uuid()) @db.Uuid
+  reporterId     String       @db.Uuid
+  reporter       User         @relation("ReportsMade", fields: [reporterId], references: [id], onDelete: Cascade)
+  reportedUserId String       @db.Uuid
+  reportedUser   User         @relation("ReportsReceived", fields: [reportedUserId], references: [id], onDelete: Cascade)
+  messageId      String?      @db.Uuid
+  reason         String       @db.VarChar(64)
+  description    String?      @db.VarChar(1000)
+  status         ReportStatus @default(OPEN)
+  createdAt      DateTime     @default(now())
+
+  @@index([reportedUserId, status])
+  @@index([status, createdAt])
+}
+
+model Block {
+  blockerId String   @db.Uuid
+  blocker   User     @relation("BlocksMade", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedId String   @db.Uuid
+  blocked   User     @relation("BlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([blockerId, blockedId])
+}
+
+model AdminNote {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  adminId   String   @db.Uuid
+  // Phase A: real FK so notes can never point at a deleted admin (audit chain).
+  admin     User     @relation("NotesByAdmin", fields: [adminId], references: [id], onDelete: Restrict)
+  body      String   @db.VarChar(1000)
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([adminId, createdAt])
+}
+
+model AdminAuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+
+  // Admin Audit Infrastructure: who acted. Defaults to USER so every row written
+  // before this change keeps its exact meaning with no data migration.
+  actorType  AuditActorType @default(USER)
+
+  // Nullable since the Admin Audit Infrastructure phase: NULL means the platform
+  // itself performed the action, never a human. The CHECK constraint added in
+  // migration 20260917153000_admin_audit_system_actor enforces the pairing with
+  // `actorType`, so `SYSTEM + adminId` (forgery) and `USER + NULL` (an
+  // unattributed human action) are both unrepresentable at the database level.
+  adminId    String?  @db.Uuid
+  // Phase A: real FK. Restrict (not Cascade) so audit rows survive and an admin
+  // account cannot be deleted out from under its own audit trail. Unchanged by
+  // the nullable widening — Postgres does not apply FK checks to NULLs, so
+  // SYSTEM rows are simply unconstrained while human rows keep the guarantee.
+  admin      User?    @relation("AuditByAdmin", fields: [adminId], references: [id], onDelete: Restrict)
+
+  action     String   @db.VarChar(64)
+  // Phase A: what kind of thing was targeted (USER / REPORT / EXCHANGE / ...),
+  // so targetId is interpretable.
+  targetType String?  @db.VarChar(32)
+  // Phase A: widened from UUID to text so non-UUID targets (e.g. setting keys)
+  // can be recorded. Existing values are all UUIDs and convert losslessly.
+  targetId   String?  @db.VarChar(128)
+  // Phase A: structured reason, no longer buried in free-text `detail`.
+  reason     String?  @db.VarChar(500)
+  // Phase A: before/after snapshots of the mutated fields.
+  before     Json?
+  after      Json?
+  // Phase A: request environment for forensics.
+  ip         String?  @db.VarChar(45)
+  userAgent  String?  @db.VarChar(512)
+  // Retained for backwards compatibility with pre-Phase-A rows.
+  detail     String?  @db.VarChar(2000)
+  createdAt  DateTime @default(now())
+
+  @@index([adminId, createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String    @db.VarChar(32)
+  title     String    @db.VarChar(128)
+  body      String?   @db.VarChar(500)
+  data      String?   @db.VarChar(2000)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model ExchangeRequest {
+  id             String           @id @default(uuid()) @db.Uuid
+  connectionId   String           @db.Uuid
+  conversationId String           @db.Uuid
+  conversation   Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  requesterId    String           @db.Uuid
+  requester      User             @relation("ExchangeSent", fields: [requesterId], references: [id], onDelete: Cascade)
+  receiverId     String           @db.Uuid
+  receiver       User             @relation("ExchangeReceived", fields: [receiverId], references: [id], onDelete: Cascade)
+  platforms      SocialPlatform[]
+  message        String?          @db.VarChar(200)
+  status         ExchangeStatus   @default(PENDING)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  shares SharedSocialAccount[]
+
+  @@index([conversationId, status])
+  @@index([requesterId, status])
+  @@index([receiverId, status])
+}
+
+// PC-1.2 Profile Attributes.
+//
+// Single tag catalog for both product-shipped tags and promoted user tags.
+// `scope` distinguishes the two; `isActive` lets an admin stop offering a tag
+// without deleting it, so existing user selections keep resolving (Q10).
+model AttributeDefinition {
+  id           String             @id @default(uuid()) @db.Uuid
+  key          String             @unique @db.VarChar(64)
+  scope        AttributeSource    @default(SYSTEM)
+  kind         AttributeKind
+  category     String             @db.VarChar(32)
+  label        String             @db.VarChar(32)
+  labelZh      String?            @db.VarChar(32)
+  valueType    AttributeValueType @default(BOOLEAN)
+  sort         Int                @default(0)
+  isActive     Boolean            @default(true)
+  isSearchable Boolean            @default(true)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  userAttributes UserAttribute[]
+
+  @@index([kind, isActive])
+  @@index([category])
+}
+
+// One row per user selection, for both system-backed and user-authored tags.
+//
+// Deletion semantics are deliberate: `definitionId` is `SetNull`, so deleting a
+// definition degrades its rows to custom-style rows instead of destroying user
+// data. Rows are only removed by deleting the owning `User` (Q10).
+model UserAttribute {
+  id           String              @id @default(uuid()) @db.Uuid
+  userId       String              @db.Uuid
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind         AttributeKind
+  // Set for SYSTEM selections and promoted tags; NULL for plain custom labels.
+  definitionId String?             @db.Uuid
+  definition   AttributeDefinition? @relation(fields: [definitionId], references: [id], onDelete: SetNull)
+  label        String?             @db.VarChar(32)
+  // Normalized copy of `label` (NFKC + trim + collapse whitespace + casefold).
+  // Uniqueness is enforced on this key, never on the display casing (Q12).
+  labelKey     String?             @db.VarChar(32)
+  value        String?             @db.VarChar(80)
+  visibility   Visibility          @default(PUBLIC)
+  sortOrder    Int                 @default(0)
+  reviewStatus ReviewStatus        @default(APPROVED)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@unique([userId, definitionId])
+  @@unique([userId, kind, labelKey])
+  @@index([userId, kind])
+  @@index([reviewStatus])
+  @@index([definitionId])
+}
+
+// Per-field profile visibility. One row per (user, field); an absent row means
+// "use the default", so existing accounts need no backfill (Q5, Q9).
+//
+// SocialAccount handles are intentionally NOT listed here: they stay authorized
+// per-pair by SharedSocialAccount and must never be governed by this table.
+//
+// `fieldKey` is a plain string rather than an enum so a new visibility-governed
+// profile field needs no schema change.
+model ProfileFieldVisibility {
+  userId     String     @db.Uuid
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fieldKey   String     @db.VarChar(32)
+  visibility Visibility @default(PUBLIC)
+  updatedAt  DateTime   @updatedAt
+
+  @@id([userId, fieldKey])
+  @@index([fieldKey, visibility])
+}

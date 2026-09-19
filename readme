@@ -1,0 +1,11779 @@
+项目暂定名称
+TalkFirst
+中文名
+
+先聊
+
+Slogan
+
+先聊聊，再成为朋友。
+
+英文：
+
+Talk First. Connect Later.
+
+1. 产品一句话定义
+
+TalkFirst 是一个面向全球用户的陌生人社交中间平台。
+
+用户先通过兴趣、语言、国家/地区等信息找到陌生人，在 TalkFirst 内进行聊天。
+
+只有当：
+
+双方都愿意进一步认识
+
+之后，才允许双方交换 Instagram、Telegram、WhatsApp、微信、Discord、X 等真实社交账号。
+
+2. 为什么要做这个产品
+
+目前用户使用：
+
+Instagram
+TikTok
+X
+Telegram
+WhatsApp
+Discord
+微信
+QQ
+
+等平台认识陌生人时，经常存在一个问题：
+
+“我想认识这个人，但直接加他的社交账号很突兀。”
+
+例如：
+
+发现一个外国人
+       ↓
+觉得对方很有趣
+       ↓
+想认识
+       ↓
+直接 DM？
+       ↓
+可能不回复
+可能觉得骚扰
+可能怀疑你是骗子
+
+TalkFirst 在中间增加一个缓冲层：
+
+陌生人
+  ↓
+TalkFirst
+  ↓
+查看公开社交名片
+  ↓
+开始聊天
+  ↓
+逐渐了解
+  ↓
+双方愿意继续认识
+  ↓
+双方同意交换账号
+  ↓
+Instagram / Telegram / WhatsApp / 微信……
+
+所以产品核心不是：
+
+“让陌生人聊天。”
+
+而是：
+
+“降低陌生人建立真实社交关系的门槛。”
+
+3. 产品定位
+3.1 不是什么
+
+TalkFirst 第一阶段不是：
+
+❌ Tinder 式约会 App
+❌ 色情社交 App
+❌ 随机视频聊天 App
+❌ 单纯聊天室
+❌ 社交账号交易平台
+❌ 粉丝增长平台
+❌ 纯 AI 聊天 App
+
+3.2 是什么
+
+它是：
+
+陌生人认识 → 聊天 → 双向认可 → 社交账号交换
+
+的平台。
+
+4. 核心产品模型
+
+整个产品只有一个核心闭环：
+
+注册
+ ↓
+创建社交名片
+ ↓
+选择“我想认识谁”
+ ↓
+系统推荐用户
+ ↓
+查看对方名片
+ ↓
+发送认识请求
+ ↓
+对方接受
+ ↓
+进入聊天
+ ↓
+聊天
+ ↓
+双方产生兴趣
+ ↓
+申请交换联系方式
+ ↓
+对方同意
+ ↓
+交换社交账号
+ ↓
+成为 Connections
+
+这就是整个产品的核心生命线。
+
+5. 用户画像
+
+第一阶段建议不要什么人都做。
+
+核心用户
+年龄
+
+建议：
+
+18+
+
+第一版先做成年人。
+
+用户 A：想认识外国人的年轻用户
+
+例如：
+
+中国用户
+
+兴趣：
+
+英语
+游戏
+旅行
+音乐
+
+需求：
+
+“我想找一个外国朋友练英语。”
+
+用户 B：想学习中文的外国用户
+
+例如：
+
+美国用户
+
+需求：
+
+“我想找中国人聊天，练习中文。”
+
+用户 C：喜欢游戏的人
+
+例如：
+
+Minecraft
+Valorant
+GTA
+Steam
+Nintendo
+
+想找：
+
+游戏搭子。
+
+用户 D：旅行爱好者
+
+比如：
+
+准备去日本
+
+想认识：
+
+日本本地人。
+
+6. 第一阶段重点用户
+
+我建议你第一版重点抓：
+
+18–35 岁、喜欢认识外国人、语言学习、游戏、音乐、旅行的用户。
+
+不要一开始定位：
+
+“所有人都可以交友。”
+
+这样太宽。
+
+7. 产品核心原则
+
+整个产品必须坚持四个原则：
+
+① 先认识
+② 再聊天
+③ 双方同意
+④ 最后交换联系方式
+
+这四个原则不要轻易改变。
+
+8. 用户注册
+页面：Welcome
+
+打开 App：
+
+🌍 TalkFirst
+
+Meet people.
+Talk first.
+Connect later.
+
+[开始]
+
+下面：
+
+18+ only
+
+以及：
+
+Terms of Service
+Privacy Policy
+
+9. 注册方式
+
+第一版建议支持：
+
+方案 A
+
+邮箱：
+
+Email
+Password
+方案 B
+
+Google 登录
+
+方案 C
+
+Apple 登录
+
+如果以后做国内版本：
+
+手机号
+微信登录
+
+但MVP 不要一次全部做完。
+
+10. 用户资料
+
+注册之后进入：
+
+Create Your Profile
+
+需要填写：
+
+必填
+昵称
+年龄
+国家/地区
+语言
+性别（可选）
+兴趣
+头像
+
+允许：
+
+上传头像
+默认头像
+
+第一版建议禁止：
+
+直接上传联系方式二维码作为头像。
+
+避免绕过平台机制。
+
+11. 兴趣标签
+
+提供：
+
+Gaming
+Minecraft
+Valorant
+GTA
+Nintendo
+PlayStation
+PC
+Music
+Pop
+Rock
+Hip-hop
+K-pop
+Electronic
+Travel
+Japan
+Korea
+China
+Europe
+USA
+Lifestyle
+Fitness
+Food
+Photography
+Movies
+Books
+Learning
+English
+Chinese
+Japanese
+Korean
+12. 用户语言
+
+用户可以选择：
+
+Native Languages
+
+例如：
+
+Chinese
+Learning Languages
+
+例如：
+
+English
+Japanese
+
+并设置：
+
+English: Intermediate
+
+13. “我为什么想认识别人？”
+
+这个功能非常重要。
+
+用户选择：
+
+☐ Practice a language
+☐ Make friends
+☐ Gaming
+☐ Travel
+☐ Music
+☐ Culture exchange
+☐ Study
+☐ Just chat
+
+可以多选。
+
+14. “我想认识谁？”
+
+例如：
+
+🌍 Anywhere
+
+🇺🇸 United States
+
+🇬🇧 United Kingdom
+
+🇯🇵 Japan
+
+🇰🇷 South Korea
+
+🇨🇳 China
+
+🇩🇪 Germany
+
+用户可以选择：
+
+全球
+
+或者：
+
+指定国家/地区。
+
+15. 用户社交名片
+
+这是整个产品最重要的 UI。
+
+例如：
+
+┌─────────────────────────┐
+│                         │
+│          👨             │
+│                         │
+│        Alex             │
+│        🇺🇸 USA          │
+│        24               │
+│                         │
+│ English 🇺🇸 Native      │
+│ Chinese 🇨🇳 Learning    │
+│                         │
+│ 🎮 Gaming               │
+│ 🎵 Music                │
+│ ✈️ Travel               │
+│ 💻 Technology           │
+│                         │
+│ Looking for             │
+│ Language Exchange       │
+│ Friendship              │
+│                         │
+│                         │
+│       [认识一下]        │
+│                         │
+└─────────────────────────┘
+16. 社交账号
+
+这是产品最大的特殊功能。
+
+用户可以绑定：
+
+Instagram
+Telegram
+WhatsApp
+Discord
+X
+TikTok
+YouTube
+Facebook
+微信
+QQ
+Reddit
+Snapchat
+
+以后可以增加其他平台。
+
+17. 社交账号绝对不能默认公开
+
+例如：
+
+Instagram
+@alexxxxx
+
+🔒 仅在双方同意后显示
+
+用户自己选择：
+
+Instagram
+[开启交换]
+
+Telegram
+[开启交换]
+
+Discord
+[关闭]
+18. 账号交换机制
+
+这是产品最核心的功能之一。
+
+假设：
+
+Alex 和 Mike 聊了半个小时。
+
+Alex 点击：
+
+交换联系方式
+
+弹出：
+
+Connect with Mike?
+
+选择你想分享的账号：
+
+☑ Instagram
+☐ Telegram
+☐ Discord
+☐ WhatsApp
+
+[发送请求]
+19. 对方收到请求
+
+Mike：
+
+Alex wants to connect with you.
+
+They want to share:
+
+Instagram
+
+Do you want to exchange contacts?
+
+[接受]
+[拒绝]
+20. 双方同意之后
+
+显示：
+
+🎉 Connection Created
+You and Alex are now connected.
+
+Instagram
+@alexxxxx
+
+Telegram
+@alexxxxx
+
+[打开 Instagram]
+[复制账号]
+
+双方可以看到对方同意共享的账号。
+
+21. 如果只有一方同意
+
+例如：
+
+A：
+
+同意交换。
+
+B：
+
+不同意。
+
+系统：
+
+等待对方回应。
+
+不能显示对方账号。
+
+22. 不能强制交换
+
+必须保证：
+
+A申请
+ ↓
+B同意
+ ↓
+账号显示
+
+不能：
+
+A申请
+ ↓
+系统直接显示 B
+23. 聊天系统
+
+第一版聊天支持：
+
+文字
+emoji
+图片
+举报
+拉黑
+翻译
+24. 强烈建议加入 AI 翻译
+
+这是你的产品非常重要的功能。
+
+例如：
+
+对方说：
+
+“I just got back from Tokyo.”
+
+你看到：
+
+🇨🇳 我刚从东京回来。
+
+同时可以：
+
+点击翻译原文。
+
+25. AI 翻译
+
+聊天框旁边：
+
+🌐 Translate
+
+用户可以设置：
+
+自动翻译成中文
+
+或者：
+
+自动翻译成英文。
+
+26. AI 不应该直接替用户聊天
+
+第一版不要做：
+
+AI 自动回复。
+
+因为这样会破坏你的核心：
+
+人与人的真实交流。
+
+AI 只做：
+
+翻译
+内容安全
+聊天破冰建议
+
+27. AI 破冰
+
+例如两个人：
+
+🇨🇳 Alex
+Gaming
+Travel
+
+🇯🇵 Yuki
+Gaming
+Anime
+Travel
+
+系统可以提示：
+
+💡 你们都喜欢 Gaming 和 Travel。
+
+建议：
+
+“What's your favorite game right now?”
+
+用户自己点击发送。
+
+28. 首页
+
+首页建议叫：
+
+Discover
+
+大概：
+
+Discover
+────────────────
+
+What do you want to explore?
+
+🌎 Everyone
+
+Recommended for you
+
+┌─────────────────┐
+│     👩          │
+│     Yuki 🇯🇵    │
+│                 │
+│ Gaming          │
+│ Anime           │
+│ Travel          │
+│                 │
+│ English         │
+│ Japanese        │
+│                 │
+│ [Say Hello]     │
+└─────────────────┘
+29. 推荐算法
+
+第一版不需要 AI 大模型。
+
+使用简单积分算法即可。
+
+例如：
+
+国家匹配
+
++20
+
+语言匹配
+
++30
+
+兴趣匹配
+
+每个：
+
++10
+
+社交目的匹配
+
++20
+
+活跃度
+
++10
+
+年龄偏好匹配
+
++10
+
+最后：
+
+Match Score = 语言 + 兴趣 + 目的 + 国家 + 活跃度
+30. 推荐示例
+
+用户 A：
+
+Chinese
+Learning English
+
+Gaming
+Travel
+Music
+
+Interested in:
+USA
+UK
+Japan
+
+系统找到：
+
+用户 B：
+
+USA
+English
+Learning Chinese
+
+Gaming
+Travel
+
+那么匹配度就很高。
+
+31. 不要让用户无限刷人
+
+这是一个非常重要的产品策略。
+
+例如免费用户：
+
+每天推荐 20 个。
+
+避免变成：
+
+Tinder 式无限左滑。
+
+否则用户会：
+
+快速刷完 → 没有认真看人。
+
+你的产品核心应该是：
+
+认识一个人，而不是刷一百个人。
+
+32. “Say Hello”
+
+不要直接：
+
+Add Friend
+
+建议：
+
+Say Hello
+
+因为：
+
+Add Friend
+
+意味着已经建立关系。
+
+而：
+
+Say Hello
+
+只是：
+
+“我想认识你。”
+
+非常符合你的产品理念。
+
+33. 认识请求
+
+用户点击：
+
+Say Hello
+
+可以选择一个破冰方式：
+
+🎮 We both like gaming.
+
+🌍 I want to learn about your country.
+
+🗣️ I'd like to practice languages.
+
+🎵 We both like music.
+
+✍️ Write my own message.
+34. 为什么这个功能非常重要
+
+解决：
+
+“你好”
+
+“你好”
+
+“你多大？”
+
+“你哪里人？”
+
+“……”
+
+的问题。
+
+系统帮助用户找到：
+
+共同话题。
+
+35. Match 页面
+
+如果双方都愿意聊天：
+
+🎉 It's a connection!
+
+You and Yuki want to talk.
+
+[Start Chatting]
+
+注意：
+
+这时候还不是交换联系方式。
+
+只是：
+
+可以聊天。
+
+36. Chat 页面
+
+顶部：
+
+Yuki 🇯🇵
+🟢 Online
+
+中间：
+
+聊天内容。
+
+底部：
+
+😊   +   [Type a message]   🌐
+37. 聊天中的“Connect”按钮
+
+右上角：
+
+⋯
+
+里面：
+
+Report
+Block
+Mute
+Delete chat
+Request contact exchange
+38. 什么时候允许申请交换？
+
+MVP 第一版可以：
+
+聊天达到一定条件后允许。
+
+例如：
+
+条件：
+双方已经互相接受
+至少发生 5 条消息
+账户没有风险标记
+
+然后出现：
+
+🔗 Connect
+
+39. 为什么不要限制成“必须聊天30分钟”
+
+因为不同用户聊天速度不同。
+
+不要强制：
+
+“必须聊天30分钟。”
+
+更合理：
+
+满足最低互动条件 + 用户主动申请。
+
+40. Connections 页面
+
+底部导航：
+
+Discover
+Messages
+Connections
+Profile
+
+Connections：
+
+My Connections
+
+Alex 🇺🇸
+Instagram
+Telegram
+
+Yuki 🇯🇵
+Discord
+
+Mike 🇬🇧
+WhatsApp
+41. Connection 不等于好友
+
+这是产品语言上一个非常重要的区别。
+
+我们不用：
+
+Friends
+
+而叫：
+
+Connections
+
+因为：
+
+只是双方愿意继续保持联系。
+
+更加符合产品定位。
+
+42. Profile 页面
+
+用户：
+
+Alex 🇨🇳
+
+24
+
+Chinese
+English
+
+🎮 Gaming
+🎵 Music
+✈️ Travel
+
+Looking for:
+Language Exchange
+Friendship
+
+──────────────
+
+Social Accounts
+
+Instagram
+🔒 Hidden
+
+Telegram
+🔒 Hidden
+
+Discord
+🔒 Hidden
+43. 设置
+
+包括：
+
+Account
+Email
+Password
+Delete Account
+Privacy
+谁可以发现我
+谁可以发消息
+是否显示在线
+是否显示国家
+是否显示年龄
+Language
+中文
+English
+日本語
+한국어
+44. 安全系统
+
+这个项目安全系统的重要性甚至不低于聊天系统。
+
+因为陌生人社交最容易出现：
+
+色情
+骚扰
+诈骗
+垃圾广告
+恶意链接
+账号导流
+冒充他人
+未成年人风险
+45. 举报
+
+聊天右上角：
+
+Report User
+
+Reason:
+
+○ Harassment
+○ Spam
+○ Scam
+○ Sexual content
+○ Hate speech
+○ Fake profile
+○ Other
+46. 拉黑
+
+用户点击：
+
+Block
+
+然后：
+
+You won't be able to message each other.
+
+[Confirm Block]
+
+同时：
+
+自动取消未完成的连接请求。
+
+47. 防骚扰
+
+例如一个用户一天：
+
+给 1000 个人发送 Say Hello
+
+系统应该限制。
+
+比如：
+
+New account:
+每天最多 20 次
+
+正常账户:
+每天最多 50 次
+
+后续根据信誉提高。
+
+48. 防广告
+
+检测：
+
+Earn money
+Investment
+Crypto
+Casino
+Click this link
+Telegram group
+WhatsApp group
+
+高风险内容进入审核。
+
+49. 外部链接风险
+
+第一版建议：
+
+聊天里面出现：
+
+http://xxxxx
+
+显示：
+
+⚠️ Be careful with external links.
+
+点击前提醒。
+
+50. 社交账号交换必须设置防绕过机制
+
+这是你的产品特别需要注意的问题。
+
+因为有人可能在：
+
+认识请求
+
+阶段就直接发：
+
+Telegram: @xxxx
+
+绕过你的交换机制。
+
+所以第一版需要对：
+
+电话号码
+邮箱
+Telegram username
+Instagram username
+微信号
+URL
+QR Code
+
+做一定程度的检测。
+
+但是：
+
+不要把审核做得过于严格。
+
+否则正常用户聊天也会被误伤。
+
+51. 用户信誉系统
+
+未来可以加入：
+
+Connection Score
+
+用户完成过：
+
+10 次正常连接
+
+并且：
+
+很少被举报
+
+获得：
+
+🟢 Trusted
+
+52. 用户等级
+
+例如：
+
+New
+↓
+Active
+↓
+Trusted
+↓
+Community Member
+
+但不要设计成：
+
+花钱可以买信任等级。
+
+否则会破坏信任体系。
+
+53. 头像认证
+
+后期可以加入：
+
+Selfie verification
+
+显示：
+
+✓ Verified
+
+但是：
+
+MVP 可以不做。
+
+54. AI 内容审核
+
+后期：
+
+用户消息
+ ↓
+AI Moderation
+ ↓
+正常
+ ↓
+发送
+
+或者：
+
+高风险
+ ↓
+阻止
+ ↓
+提示
+
+但是：
+
+第一版可以先使用：
+
+关键词 + 举报 + 人工审核。
+
+55. 后台管理系统
+
+你作为平台管理员必须有一个 Admin。
+
+后台主要包括：
+
+Dashboard
+Users
+10,235
+
+Active today
+1,231
+
+Messages today
+24,532
+
+Connections
+3,221
+
+Reports
+34
+56. 用户管理
+
+管理员可以：
+
+查看用户
+搜索用户
+禁止用户
+解封用户
+查看举报
+查看账号状态
+57. 举报管理
+Reports
+
+User A
+↓
+reported by User B
+
+Reason:
+Spam
+
+Status:
+Pending
+
+[Review]
+[Ban]
+[Dismiss]
+58. 内容审核后台
+
+管理员可以看到：
+
+User
+Message
+Risk Score
+Reason
+Action
+59. 用户封禁
+
+等级：
+
+Warning
+
+警告。
+
+Temporary Ban
+
+例如：
+
+24小时
+
+7-Day Ban
+Permanent Ban
+60. 管理员权限
+
+以后可以：
+
+Super Admin
+Moderator
+Support
+
+不同权限。
+
+61. 数据库设计
+
+如果你准备自己开发，我建议：
+
+PostgreSQL
+
+数据库。
+
+62. User 表
+users
+
+id
+email
+password_hash
+nickname
+avatar
+birth_date
+country
+gender
+bio
+status
+created_at
+updated_at
+last_active_at
+63. Languages
+user_languages
+
+id
+user_id
+language
+level
+type
+
+例如：
+
+Alex
+English
+Learning
+Intermediate
+64. Interests
+interests
+
+id
+name
+category
+
+用户兴趣：
+
+user_interests
+
+user_id
+interest_id
+65. Social Accounts
+social_accounts
+
+id
+user_id
+platform
+username
+visibility
+created_at
+
+例如：
+
+1
+Alex
+Instagram
+@alexxxx
+private
+66. Connection Requests
+connection_requests
+
+id
+sender_id
+receiver_id
+status
+created_at
+updated_at
+
+状态：
+
+pending
+accepted
+rejected
+cancelled
+67. Connections
+connections
+
+id
+user_a
+user_b
+created_at
+status
+68. Chat
+conversations
+
+id
+created_at
+updated_at
+
+参与者：
+
+conversation_members
+
+conversation_id
+user_id
+69. Messages
+messages
+
+id
+conversation_id
+sender_id
+content
+type
+created_at
+deleted_at
+70. Reports
+reports
+
+id
+reporter_id
+reported_user_id
+message_id
+reason
+description
+status
+created_at
+71. Block
+blocks
+
+id
+blocker_id
+blocked_id
+created_at
+72. 用户推荐
+
+以后可以增加：
+
+user_recommendations
+
+user_id
+recommended_user_id
+score
+reason
+created_at
+73. 技术架构
+
+考虑到你是技术新手，我建议不要自己从零搭几十个服务。
+
+第一版：
+
+前端
+
+Flutter
+
+一次开发：
+
+Android + iOS
+
+如果以后做 Web：
+
+Flutter Web / React
+
+74. 后端
+
+推荐：
+
+NestJS
+
+原因：
+
+Node.js
+TypeScript
+API 清晰
+WebSocket 方便
+适合聊天
+后期扩展方便
+75. 数据库
+
+推荐：
+
+PostgreSQL
+
+因为你的数据关系比较明显：
+
+User
+ ↓
+Interest
+ ↓
+Language
+ ↓
+Social Account
+ ↓
+Connection
+ ↓
+Message
+
+PostgreSQL 很适合。
+
+76. Redis
+
+以后加入：
+
+在线状态
+聊天缓存
+限流
+推荐缓存
+验证码
+WebSocket
+77. 实时聊天
+
+使用：
+
+WebSocket
+
+例如：
+
+Flutter
+   ↕
+WebSocket
+   ↕
+NestJS
+   ↕
+PostgreSQL
+78. 图片存储
+
+不要把图片直接存 PostgreSQL。
+
+使用：
+
+S3-compatible Object Storage
+
+例如：
+
+Cloudflare R2
+AWS S3
+Supabase Storage
+
+如果你希望降低初期复杂度，也可以使用 Supabase Storage。
+
+79. 推送通知
+
+聊天消息：
+
+Alex sent you a message.
+
+[Open]
+
+Android：
+
+Firebase Cloud Messaging
+
+iOS：
+
+Apple Push Notification Service
+
+80. 翻译服务
+
+第一版可以接：
+
+OpenAI / Google Translate / DeepL 等 API
+
+逻辑：
+
+英文消息
+ ↓
+Translation API
+ ↓
+中文
+
+不要自己训练翻译模型。
+
+81. AI
+
+AI 第一阶段只做三个事情：
+
+① 翻译
+② 破冰建议
+③ 内容安全
+
+不要一开始做：
+
+AI Agent
+
+AI 虚拟朋友
+
+AI 自动聊天
+
+否则产品方向容易跑偏。
+
+82. 推荐算法 MVP
+
+先不要机器学习。
+
+使用：
+
+Score =
+Language Match × 30
++
+Interest Match × 25
++
+Purpose Match × 20
++
+Country Preference × 15
++
+Activity × 10
+
+满分100。
+
+83. 示例
+
+用户：
+
+中文母语
+
+英语学习
+
+Gaming
+
+想认识美国人
+
+系统发现：
+
+美国
+
+英语母语
+
+学中文
+
+Gaming
+
+那么：
+
+语言：30
+兴趣：20
+目的：20
+国家：15
+活跃：8
+
+Total = 93
+
+于是：
+
+⭐ Highly Recommended
+
+84. 冷启动问题
+
+这是整个项目最大的难点之一。
+
+假设：
+
+你刚上线。
+
+用户：
+
+只有 10 个人。
+
+用户打开：
+
+Discover
+
+结果：
+
+No one found.
+
+用户马上卸载。
+
+所以必须做：
+
+地区池
+
+例如你先重点运营：
+
+🇨🇳 中国
+🇺🇸 美国
+🇯🇵 日本
+
+不要一开始：
+
+全球 200 个国家。
+
+85. 冷启动策略
+
+例如第一阶段：
+
+中国
+
+100人
+
+美国
+
+100人
+
+日本
+
+100人
+
+总共：
+
+300个种子用户。
+
+然后：
+
+中国 ↔ 美国
+
+中国 ↔ 日本
+
+先形成基本生态。
+
+86. 为什么一定需要种子用户
+
+因为社交产品有一个特点：
+
+没有人 = 产品没有价值。
+
+所以第一批用户甚至可以：
+
+手动邀请。
+
+87. 邀请机制
+
+每个用户：
+
+Invite Friends
+
+Your invite code:
+
+ABC123
+
+Invite 3 friends
+↓
+Unlock
+🌟 Extra connections
+88. 会员系统
+
+第一版不要急着收费。
+
+先证明：
+
+用户愿不愿意使用。
+
+达到一定规模以后：
+
+Free
+
+每天：
+
+20 个推荐
+20 个 Say Hello
+基础聊天
+3个社交账号
+89. Premium
+
+例如：
+
+$4.99 / month
+
+提供：
+
+无限 Discover
+高级筛选
+全球地区筛选
+翻译额度
+查看谁喜欢你
+Profile Boost
+更多社交账号
+90. Boost
+
+用户：
+
+“我想让更多人看到我。”
+
+购买：
+
+Profile Boost
+
+例如：
+
+30分钟提高曝光。
+
+这会比单纯卖虚拟货币更加符合产品。
+
+91. 但有一个重要原则
+
+不能付费直接购买“信任”。
+
+不能：
+
+VIP = Verified
+
+不能：
+
+花钱 = 更容易交换账号。
+
+否则产品会变得很奇怪。
+
+92. 底部导航
+
+第一版只需要：
+
+┌────────────────────────────┐
+│                            │
+│        页面内容             │
+│                            │
+├────────────────────────────┤
+│ Discover │ Messages │      │
+│          Connections │ Me  │
+└────────────────────────────┘
+
+四个：
+
+Discover
+
+找人。
+
+Messages
+
+聊天。
+
+Connections
+
+已经建立的关系。
+
+Me
+
+自己的名片。
+
+93. MVP 页面总表
+
+你第一版实际需要：
+
+页面	必须
+Welcome	✅
+Login	✅
+Register	✅
+Create Profile	✅
+Select Interests	✅
+Select Languages	✅
+Discover	✅
+User Profile	✅
+Say Hello	✅
+Messages	✅
+Chat	✅
+Contact Exchange	✅
+Connections	✅
+My Profile	✅
+Settings	✅
+Report	✅
+Block	✅
+Admin Login	✅
+Admin Dashboard	✅
+User Management	✅
+Report Management	✅
+
+大约：
+
+20个核心页面。
+
+已经足够上线验证。
+
+94. 第一版暂时不要做的东西
+
+这个非常重要。
+
+暂时不要做：
+
+❌ 视频聊天
+❌ 语音聊天
+❌ 直播
+❌ 动态朋友圈
+❌ 发帖
+❌ 礼物
+❌ 虚拟币
+❌ AI 自动聊天
+❌ 游戏
+❌ 复杂会员等级
+❌ 地图社交
+❌ 推荐算法机器学习
+❌ 区块链
+❌ NFT
+
+否则项目会无限膨胀。
+
+95. V2
+
+当 MVP 有用户以后，再加入：
+
+AI Match
+
+AI 分析：
+
+用户兴趣 + 语言 + 聊天目的 + 历史互动
+
+然后推荐。
+
+96. V2 可以增加“话题房间”
+
+例如：
+
+🇯🇵 Japan Talk
+
+🎮 Gaming
+
+🎵 Music
+
+📚 Language Exchange
+
+✈️ Travel
+
+🎬 Movies
+
+用户可以进入：
+
+Topic Room
+
+认识陌生人。
+
+97. V2 可以增加“今日话题”
+
+例如：
+
+What country would you like to visit?
+
+所有用户今天都可以讨论这个问题。
+
+这样会降低：
+
+“不知道聊什么。”
+
+98. V2 可以增加每日任务
+
+例如：
+
+Today's mission
+
+🌍 Meet someone from another country.
+
+完成：
++1 Connection
+99. V3：游戏化
+
+这时候才考虑你刚才看到的：
+
+Focus Friend / Habitica
+
+那种玩法。
+
+例如：
+
+🌍 Explorer Level 12
+
+Connections
+27
+
+Countries met
+8
+
+Languages
+3
+
+用户可以收集：
+
+🇨🇳 🇺🇸 🇯🇵 🇰🇷 🇬🇧
+
+100. 甚至可以做“全球社交地图”
+
+这个非常有想象空间。
+
+例如：
+
+          🌎
+
+🇨🇳 12 Connections
+
+🇯🇵 7 Connections
+
+🇺🇸 10 Connections
+
+🇬🇧 3 Connections
+
+以后可以：
+
+点国家 → 查看自己的 Connections。
+
+这时候产品会开始产生非常强的：
+
+收藏 / 成就感。
+
+101. 产品最大的护城河
+
+我认为不是：
+
+Chat
+
+因为聊天谁都可以做。
+
+也不是：
+
+AI
+
+AI 很容易复制。
+
+真正可以积累的是：
+
+① 高质量用户关系
+② 用户信誉
+③ 兴趣/语言匹配数据
+④ Connection 图谱
+⑤ 信任体系
+
+最终形成：
+
+用户
+ ↓
+兴趣
+ ↓
+语言
+ ↓
+聊天
+ ↓
+Connection
+ ↓
+真实社交账号
+ ↓
+长期关系
+102. 最关键的数据指标
+
+你以后一定要看这些。
+
+注册转化率
+
+多少人：
+
+下载 → 注册
+
+Profile 完成率
+
+多少人：
+
+注册 → 完成名片
+
+First Chat Rate
+
+多少用户：
+
+注册 → 第一次聊天
+
+Connection Rate
+
+多少聊天：
+
+聊天 → 成为 Connection
+
+Contact Exchange Rate
+
+多少 Connection：
+
+最终交换社交账号。
+
+103. 最重要的一个指标
+
+我会把：
+
+Connection Rate
+
+作为核心指标。
+
+例如：
+
+1000个用户。
+
+产生：
+
+10000次聊天。
+
+最终：
+
+1500次双向 Connection。
+
+那么：
+
+Connection Rate = 15%
+
+这个指标比：
+
+下载量
+
+更重要。
+
+104. 北极星指标
+
+可以定义：
+
+Weekly Meaningful Connections
+
+每周成功建立的：
+
+双方主动同意的 Connection 数量。
+
+例如：
+
+第一周：
+
+100
+
+第二周：
+
+300
+
+第三周：
+
+800
+
+第四周：
+
+1500
+
+这个指标上涨，说明产品真的有价值。
+
+105. 用户生命周期
+
+理想状态：
+
+Day 1
+注册
+
+Day 1
+创建名片
+
+Day 1
+发现用户
+
+Day 1
+聊天
+
+Day 2
+继续聊天
+
+Day 3
+Connection
+
+Day 4
+交换 Instagram
+
+Day 10
+再次打开 TalkFirst
+
+↓
+寻找新的 Connection
+106. 你这个项目最容易失败的地方
+
+我直接告诉你。
+
+第一：
+
+没人。
+
+解决：
+
+地区聚焦 + 种子用户。
+
+第二：
+
+用户全是骗子。
+
+解决：
+
+验证 + 举报 + 限流 + AI审核 + 信用体系。
+
+第三：
+
+大家一上来就交换账号。
+
+解决：
+
+联系方式默认隐藏。
+
+第四：
+
+大家都只发“Hi”。
+
+解决：
+
+兴趣 + 目的 + AI破冰。
+
+第五：
+
+用户聊天完就走了。
+
+解决：
+
+Connection + 成就 + 全球社交地图 + 关系管理。
+
+107. 最终产品结构
+
+我把整个系统画成一张图：
+
+                     TalkFirst
+                         │
+          ┌──────────────┼──────────────┐
+          │              │              │
+       Discover       Messages      Connections
+          │              │              │
+       找陌生人          聊天           真实连接
+          │              │              │
+          └──────────────┼──────────────┘
+                         │
+                    双方建立信任
+                         │
+                         ↓
+                 Contact Exchange
+                         │
+           ┌─────────────┼─────────────┐
+           │             │             │
+       Instagram     Telegram      WhatsApp
+           │             │             │
+           └─────────────┼─────────────┘
+                         ↓
+                    长期社交关系
+108. 对你来说，最重要的一件事
+
+你现在千万不要马上开始写代码。
+
+因为你是技术新手，如果直接说：
+
+“给我写一个全球陌生人聊天 App。”
+
+AI 很容易给你生成：
+
+50 个文件
+20 个依赖
+10 个数据库表
+一堆代码
+
+然后你遇到：
+
+npm error
+Docker error
+Database error
+WebSocket error
+JWT error
+CORS error
+
+你会完全不知道哪里出了问题。
+
+109. 我建议你的实际开发路线
+
+按照这个顺序。
+
+第一阶段
+产品设计
+
+完成：
+
+PRD
+UI
+数据库设计
+API设计
+
+↓
+
+第二阶段
+做静态前端
+
+先做：
+
+Login
+Profile
+Discover
+Chat
+Connections
+
+先不要接数据库。
+
+↓
+
+第三阶段
+后端
+
+加入：
+
+PostgreSQL
+JWT
+User API
+Profile API
+
+↓
+
+第四阶段
+聊天
+
+加入：
+
+WebSocket
+Messages
+Notifications
+
+↓
+
+第五阶段
+社交账号
+
+加入：
+
+Social Accounts
+Contact Exchange
+
+↓
+
+第六阶段
+安全
+
+加入：
+
+Report
+Block
+Rate Limit
+Moderation
+
+↓
+
+第七阶段
+AI
+
+加入：
+
+Translation
+Ice Breaker
+Moderation
+
+↓
+
+第八阶段
+部署
+Ubuntu
+Docker
+Nginx
+HTTPS
+PostgreSQL
+Redis
+Backend
+Frontend
+
+↓
+
+第九阶段
+测试
+
+找：
+
+20～50个人
+
+真实使用。
+
+↓
+
+第十阶段
+再决定是否正式推广。
+110. 我给你的技术方案
+
+考虑到你之前也在学习前端、Node/Nest、PostgreSQL、Docker 等，我建议这个项目不要再换一套完全陌生的技术栈。
+
+我会建议：
+
+                 TalkFirst
+                     │
+          ┌──────────┴──────────┐
+          │                     │
+       Flutter               Admin Web
+          │                     │
+       Android/iOS             React
+          │                     │
+          └──────────┬──────────┘
+                     │
+                  REST API
+                     │
+                  NestJS
+                     │
+          ┌──────────┼──────────┐
+          │          │          │
+      PostgreSQL    Redis     WebSocket
+          │                     │
+          └──────────┬──────────┘
+                     │
+               Object Storage
+                     │
+              AI / Translation
+
+如果你更想做 Web App 而不是手机 App，第一版也可以改成：
+
+React / Next.js
+      ↓
+NestJS
+      ↓
+PostgreSQL
+      ↓
+Redis
+
+这样开发难度会更低。
+
+111. 我对你的建议：先做 Web MVP
+
+因为你现在是技术新手。
+
+我其实不建议你第一步就：
+
+Android + iOS 原生 App。
+
+最容易成功的路线是：
+
+第一版
+
+响应式 Web App / PWA
+
+手机浏览器就可以打开。
+
+然后：
+
+产品验证成功
+
+再封装成：
+
+Android + iOS App。
+
+这样成本和技术复杂度都会低很多。
+
+112. 第一版最终 MVP
+
+如果让我替你砍功能，我会只留下：
+
+注册
+ ↓
+创建名片
+ ↓
+兴趣
+ ↓
+语言
+ ↓
+国家
+ ↓
+Discover
+ ↓
+Say Hello
+ ↓
+聊天
+ ↓
+翻译
+ ↓
+Connection
+ ↓
+交换社交账号
+ ↓
+Connections
+
+再加：
+
+举报
+拉黑
+后台管理
+
+就够了。
+
+113. 一个真实用户使用场景
+
+比如：
+
+小明，中国，25岁。
+
+他注册 TalkFirst。
+
+选择：
+
+🇨🇳 China
+
+Native:
+Chinese
+
+Learning:
+English
+
+Interests:
+Gaming
+Travel
+Music
+
+Looking for:
+Language Exchange
+Friendship
+
+Want to meet:
+🇺🇸 🇬🇧 🇯🇵
+
+系统推荐：
+
+Emily 🇺🇸
+
+两个人：
+
+Gaming
+Travel
+
+都有兴趣。
+
+小明点击：
+
+Say Hello
+
+选择：
+
+🎮 We both like gaming.
+
+Emily接受。
+
+然后聊天：
+
+“What games do you play?”
+
+……
+
+聊了一段时间。
+
+小明：
+
+🔗 Request Contact Exchange
+
+选择：
+
+☑ Instagram
+☑ Discord
+
+Emily接受。
+
+然后：
+
+🎉 Connection Created
+
+Emily
+Instagram @xxxx
+Discord xxxx
+
+这就是你整个产品的黄金路径。
+
+114. 最终一句话
+
+如果把这个项目压缩成一句产品定义，我建议你永远记住：
+
+TalkFirst 不负责让你“加到更多人”，而是帮助你“认识真正想继续联系的人”。
+
+这句话决定了后面所有产品设计。
+
+下一步我建议直接进入「设计 + 开发规格」
+
+这份 PRD 已经可以作为产品总纲，但对于你这种技术新手，还差 4 份非常关键的东西：
+
+① UI/UX 原型说明
+
+把上面约 20 个页面逐个画出来，告诉 AI 每个按钮放在哪里、什么颜色、什么交互。
+
+② 完整数据库 Schema
+
+直接给你 PostgreSQL/Prisma 可以使用的表结构。
+
+③ 
+完整 API 文档
+例如 POST /auth/register、GET /users/recommendations、POST /connections/request、POST /connections/accept、POST /messages 等，连请求参数和返回 JSON 都定义好。
+
+④ 
+一份“AI 编程总提示词”
+你可以把它直接丢给 Cursor、Claude Code、Antigravity 或其他 AI 编程工具，让它按照这份 PRD 从空文件夹一步一步生成整个项目，而不是让 AI 自己发挥。
+
+
+
+下面我直接给你一套可以作为 TalkFirst 第一版正式数据库基础的 PostgreSQL + Prisma Schema。
+
+我会把你前面确定的功能全部考虑进去：
+
+用户注册/登录
+个人社交名片
+国家/地区
+语言及语言等级
+兴趣标签
+交友目的
+用户偏好
+社交账号
+Discover 推荐
+Say Hello
+Connection
+双向联系方式交换
+一对一聊天
+消息
+图片
+消息翻译
+AI 破冰
+个人动态
+Instagram / X / TikTok / YouTube 等外部社交动态
+动态同步
+动态点赞/评论数据
+举报
+拉黑
+用户审核
+风险评分
+用户信誉
+通知
+设备/推送
+会员
+Boost
+管理员
+
+而且我会尽量按照你后面可以直接交给 NestJS + Prisma 使用的方式设计。
+
+一、先看整体数据库结构
+
+整个 TalkFirst 数据库可以理解成：
+
+                         ┌──────────────┐
+                         │    User      │
+                         └──────┬───────┘
+                                │
+       ┌────────────────────────┼───────────────────────┐
+       │                        │                       │
+       ▼                        ▼                       ▼
+  Profile/Preferences      Languages/Interests    Social Accounts
+       │                        │                       │
+       │                        │                       ▼
+       │                        │                 External Posts
+       │                        │
+       ▼                        ▼
+    Discover              Matching
+       │
+       ▼
+ Connection Request
+       │
+       ▼
+ Connection
+       │
+       ├───────────────┐
+       ▼               ▼
+ Conversation       Contact Exchange
+       │               │
+       ▼               ▼
+   Messages       Shared Accounts
+       │
+       ├──── Translation
+       └──── Reports
+
+
+User
+ │
+ ├── Notifications
+ ├── Blocks
+ ├── Reports
+ ├── Reputation
+ ├── Subscription
+ ├── Boost
+ └── Devices
+二、数据库技术选择
+
+建议：
+
+PostgreSQL
++
+Prisma ORM
++
+NestJS
+
+数据库：
+
+PostgreSQL 16+
+
+ORM：
+
+Prisma
+
+后端：
+
+NestJS
+三、完整 Prisma Schema
+
+下面这一份可以作为：
+
+prisma/schema.prisma
+
+的基础版本。
+
+注意：这是产品级设计基础版，不是说复制后完全不需要根据你实际 Prisma 版本调整。特别是 Prisma 新版本对配置文件和 datasource URL 的写法可能有所变化。
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+//
+// =====================================================
+// ENUMS
+// =====================================================
+//
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+  DELETED
+  PENDING
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  NON_BINARY
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+enum LanguageType {
+  NATIVE
+  LEARNING
+}
+
+enum LanguageLevel {
+  BEGINNER
+  ELEMENTARY
+  INTERMEDIATE
+  UPPER_INTERMEDIATE
+  ADVANCED
+  NATIVE
+}
+
+enum SocialPlatform {
+  INSTAGRAM
+  TELEGRAM
+  WHATSAPP
+  DISCORD
+  X
+  TIKTOK
+  YOUTUBE
+  FACEBOOK
+  WECHAT
+  QQ
+  REDDIT
+  SNAPCHAT
+  OTHER
+}
+
+enum SocialVisibility {
+  PRIVATE
+  CONNECTIONS_ONLY
+  AFTER_MUTUAL_APPROVAL
+}
+
+enum ConnectionRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+  EXPIRED
+}
+
+enum ConnectionStatus {
+  ACTIVE
+  BLOCKED
+  REMOVED
+}
+
+enum ConversationType {
+  DIRECT
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  SYSTEM
+  ICEBREAKER
+  CONTACT_REQUEST
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+  DELETED
+}
+
+enum ReportReason {
+  HARASSMENT
+  SPAM
+  SCAM
+  SEXUAL_CONTENT
+  HATE_SPEECH
+  FAKE_PROFILE
+  IMPERSONATION
+  UNDERAGE
+  ILLEGAL_CONTENT
+  SELF_HARM
+  EXTERNAL_SCAM
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+
+enum ModerationAction {
+  NONE
+  WARNING
+  MESSAGE_BLOCKED
+  CONTENT_REMOVED
+  TEMPORARY_BAN
+  PERMANENT_BAN
+}
+
+enum NotificationType {
+  CONNECTION_REQUEST
+  CONNECTION_ACCEPTED
+  NEW_MESSAGE
+  CONTACT_REQUEST
+  CONTACT_ACCEPTED
+  CONTACT_REJECTED
+  NEW_POST
+  POST_LIKE
+  POST_COMMENT
+  SYSTEM
+  SECURITY
+}
+
+enum ExternalPostType {
+  TEXT
+  IMAGE
+  VIDEO
+  REEL
+  SHORT
+  LINK
+  STORY
+  OTHER
+}
+
+enum SyncStatus {
+  ACTIVE
+  PAUSED
+  ERROR
+  DISCONNECTED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum SubscriptionPlan {
+  FREE
+  PREMIUM
+  PRO
+}
+
+enum BoostStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum ReportTargetType {
+  USER
+  MESSAGE
+  POST
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  MODERATOR
+  SUPPORT
+}
+
+//
+// =====================================================
+// USER
+// =====================================================
+//
+
+model User {
+  id                String     @id @default(uuid()) @db.Uuid
+
+  email             String?    @unique
+  passwordHash      String?
+
+  nickname          String
+  avatarUrl         String?
+  bio               String?
+
+  birthDate         DateTime?
+  gender            Gender?
+
+  countryCode       String?
+  countryName       String?
+
+  status            UserStatus @default(PENDING)
+
+  emailVerified     Boolean    @default(false)
+  phoneVerified     Boolean    @default(false)
+
+  lastActiveAt      DateTime?
+  lastLoginAt       DateTime?
+
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  deletedAt         DateTime?
+
+  profile           UserProfile?
+  preferences       UserPreference?
+
+  languages         UserLanguage[]
+  interests         UserInterest[]
+  socialAccounts    SocialAccount[]
+
+  sentRequests      ConnectionRequest[] @relation("SentRequests")
+  receivedRequests  ConnectionRequest[] @relation("ReceivedRequests")
+
+  connectionsA      Connection[] @relation("ConnectionUserA")
+  connectionsB      Connection[] @relation("ConnectionUserB")
+
+  conversations     ConversationMember[]
+  messages          Message[]
+
+  blocksGiven       Block[] @relation("Blocker")
+  blocksReceived    Block[] @relation("Blocked")
+
+  reportsMade       Report[] @relation("Reporter")
+  reportsReceived   Report[] @relation("ReportedUser")
+
+  posts             UserPost[]
+  externalPosts     ExternalPost[]
+
+  notifications     Notification[]
+  devices           UserDevice[]
+
+  reputation        UserReputation?
+
+  subscription      Subscription?
+  boosts            ProfileBoost[]
+
+  moderationRecords  ModerationRecord[]
+
+  @@index([status])
+  @@index([countryCode])
+  @@index([lastActiveAt])
+  @@index([createdAt])
+}
+
+//
+// =====================================================
+// USER PROFILE
+// =====================================================
+//
+
+model UserProfile {
+  id              String   @id @default(uuid()) @db.Uuid
+
+  userId          String   @unique @db.Uuid
+
+  displayName     String?
+  occupation      String?
+  education       String?
+  locationText    String?
+
+  isDiscoverable  Boolean  @default(true)
+  showAge         Boolean  @default(true)
+  showCountry     Boolean  @default(true)
+  showOnline      Boolean  @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+//
+// =====================================================
+// USER PREFERENCES
+// =====================================================
+//
+
+model UserPreference {
+  id                    String   @id @default(uuid()) @db.Uuid
+
+  userId                String   @unique @db.Uuid
+
+  minAge                Int?
+  maxAge                Int?
+
+  preferredGender       Gender?
+
+  globalSearch          Boolean  @default(true)
+
+  allowMessages         Boolean  @default(true)
+  allowConnectionReq    Boolean  @default(true)
+
+  showInRecommendations Boolean  @default(true)
+
+  autoTranslate         Boolean  @default(false)
+
+  syncSocialPosts       Boolean  @default(false)
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  countries             UserPreferredCountry[]
+  purposes              UserPurpose[]
+}
+
+//
+// =====================================================
+// COUNTRIES
+// =====================================================
+//
+
+model Country {
+  id          String @id @default(uuid()) @db.Uuid
+
+  code        String @unique
+  name        String
+  nameEn      String
+
+  flagEmoji   String?
+
+  active      Boolean @default(true)
+
+  createdAt   DateTime @default(now())
+
+  preferredBy UserPreferredCountry[]
+}
+
+model UserPreferredCountry {
+  id           String @id @default(uuid()) @db.Uuid
+
+  userId       String @db.Uuid
+  countryId    String @db.Uuid
+
+  user         UserPreference @relation(fields: [userId], references: [id], onDelete: Cascade)
+  country      Country        @relation(fields: [countryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, countryId])
+}
+
+//
+// =====================================================
+// LANGUAGES
+// =====================================================
+//
+
+model Language {
+  id          String @id @default(uuid()) @db.Uuid
+
+  code        String @unique
+  name        String
+  nameEn      String
+
+  createdAt   DateTime @default(now())
+
+  users       UserLanguage[]
+}
+
+model UserLanguage {
+  id          String @id @default(uuid()) @db.Uuid
+
+  userId      String @db.Uuid
+  languageId  String @db.Uuid
+
+  type        LanguageType
+  level       LanguageLevel
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  language    Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, languageId, type])
+  @@index([languageId])
+}
+
+//
+// =====================================================
+// INTERESTS
+// =====================================================
+//
+
+model InterestCategory {
+  id          String @id @default(uuid()) @db.Uuid
+
+  name        String
+  nameEn      String
+
+  interests   Interest[]
+}
+
+model Interest {
+  id          String @id @default(uuid()) @db.Uuid
+
+  categoryId  String @db.Uuid
+
+  name        String
+  nameEn      String
+
+  active      Boolean @default(true)
+
+  category    InterestCategory @relation(fields: [categoryId], references: [id])
+
+  users       UserInterest[]
+
+  @@index([categoryId])
+}
+
+model UserInterest {
+  id          String @id @default(uuid()) @db.Uuid
+
+  userId      String @db.Uuid
+  interestId  String @db.Uuid
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  interest    Interest @relation(fields: [interestId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, interestId])
+  @@index([interestId])
+}
+
+//
+// =====================================================
+// PURPOSES
+// =====================================================
+//
+
+model Purpose {
+  id          String @id @default(uuid()) @db.Uuid
+
+  code        String @unique
+
+  name        String
+  nameEn      String
+
+  active      Boolean @default(true)
+
+  users       UserPurpose[]
+}
+
+model UserPurpose {
+  id           String @id @default(uuid()) @db.Uuid
+
+  userId       String @db.Uuid
+  purposeId    String @db.Uuid
+
+  user         UserPreference @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose      Purpose        @relation(fields: [purposeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, purposeId])
+}
+
+//
+// =====================================================
+// SOCIAL ACCOUNTS
+// =====================================================
+//
+
+model SocialAccount {
+  id                 String @id @default(uuid()) @db.Uuid
+
+  userId             String @db.Uuid
+
+  platform           SocialPlatform
+
+  username           String
+  displayName        String?
+
+  profileUrl         String?
+
+  visibility         SocialVisibility
+    @default(AFTER_MUTUAL_APPROVAL)
+
+  isVerified          Boolean @default(false)
+
+  isActive            Boolean @default(true)
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user                User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  externalConnection ExternalSocialConnection?
+
+  sharedAccountsA    SharedSocialAccount[]
+  sharedAccountsB    SharedSocialAccount[]
+
+  @@index([userId])
+  @@index([platform])
+  @@unique([userId, platform, username])
+}
+
+//
+// =====================================================
+// EXTERNAL SOCIAL PLATFORM CONNECTION
+// =====================================================
+//
+
+model ExternalSocialConnection {
+  id                String @id @default(uuid()) @db.Uuid
+
+  socialAccountId   String @unique @db.Uuid
+
+  accessToken       String?
+  refreshToken      String?
+
+  tokenExpiresAt    DateTime?
+
+  syncStatus        SyncStatus @default(ACTIVE)
+
+  lastSyncAt        DateTime?
+  nextSyncAt        DateTime?
+
+  errorMessage      String?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  socialAccount     SocialAccount @relation(
+    fields: [socialAccountId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  posts             ExternalPost[]
+}
+
+//
+// =====================================================
+// USER POSTS
+// =====================================================
+//
+
+model UserPost {
+  id             String   @id @default(uuid()) @db.Uuid
+
+  userId         String   @db.Uuid
+
+  content        String?
+  mediaUrl       String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  user           User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  likes          PostLike[]
+  comments       PostComment[]
+
+  @@index([userId, createdAt])
+}
+
+//
+// =====================================================
+// EXTERNAL SOCIAL POSTS
+// =====================================================
+//
+
+model ExternalPost {
+  id                  String @id @default(uuid()) @db.Uuid
+
+  userId              String @db.Uuid
+  connectionId        String @db.Uuid
+
+  externalPostId      String
+
+  platform            SocialPlatform
+
+  type                ExternalPostType
+
+  content             String?
+
+  mediaUrl            String?
+  thumbnailUrl        String?
+
+  externalUrl         String?
+
+  publishedAt         DateTime
+
+  likeCount           Int @default(0)
+  commentCount        Int @default(0)
+  shareCount          Int @default(0)
+  viewCount           Int @default(0)
+
+  isVisible            Boolean @default(true)
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user                 User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  connection           ExternalSocialConnection @relation(
+    fields: [connectionId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@unique([platform, externalPostId])
+  @@index([userId, publishedAt])
+  @@index([platform, publishedAt])
+}
+
+//
+// =====================================================
+// POST LIKES
+// =====================================================
+//
+
+model PostLike {
+  id          String   @id @default(uuid()) @db.Uuid
+
+  postId      String   @db.Uuid
+  userId      String   @db.Uuid
+
+  createdAt   DateTime @default(now())
+
+  post        UserPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+}
+
+//
+// =====================================================
+// POST COMMENTS
+// =====================================================
+//
+
+model PostComment {
+  id          String   @id @default(uuid()) @db.Uuid
+
+  postId      String   @db.Uuid
+  userId      String   @db.Uuid
+
+  content     String
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  post        UserPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+}
+
+//
+// =====================================================
+// CONNECTION REQUEST
+// =====================================================
+//
+
+model ConnectionRequest {
+  id           String @id @default(uuid()) @db.Uuid
+
+  senderId     String @db.Uuid
+  receiverId   String @db.Uuid
+
+  status       ConnectionRequestStatus @default(PENDING)
+
+  message      String?
+
+  createdAt    DateTime @default(now())
+  respondedAt  DateTime?
+
+  sender       User @relation(
+    "SentRequests",
+    fields: [senderId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  receiver     User @relation(
+    "ReceivedRequests",
+    fields: [receiverId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@index([senderId, status])
+  @@index([receiverId, status])
+}
+
+//
+// =====================================================
+// CONNECTION
+// =====================================================
+//
+
+model Connection {
+  id           String @id @default(uuid()) @db.Uuid
+
+  userAId      String @db.Uuid
+  userBId      String @db.Uuid
+
+  status       ConnectionStatus @default(ACTIVE)
+
+  createdAt    DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userA        User @relation(
+    "ConnectionUserA",
+    fields: [userAId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  userB        User @relation(
+    "ConnectionUserB",
+    fields: [userBId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  conversation Conversation?
+
+  contactExchanges ContactExchange[]
+
+  @@index([userAId])
+  @@index([userBId])
+
+  @@unique([userAId, userBId])
+}
+
+//
+// =====================================================
+// CONTACT EXCHANGE
+// =====================================================
+//
+
+model ContactExchange {
+  id            String @id @default(uuid()) @db.Uuid
+
+  connectionId  String @db.Uuid
+
+  requesterId   String @db.Uuid
+  receiverId    String @db.Uuid
+
+  status        ConnectionRequestStatus @default(PENDING)
+
+  createdAt     DateTime @default(now())
+  respondedAt   DateTime?
+
+  connection   Connection @relation(
+    fields: [connectionId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  requester     User @relation("ContactRequester", fields: [requesterId], references: [id])
+  receiver      User @relation("ContactReceiver", fields: [receiverId], references: [id])
+
+  sharedAccounts SharedSocialAccount[]
+}
+
+//
+// =====================================================
+// SHARED SOCIAL ACCOUNT
+// =====================================================
+//
+
+model SharedSocialAccount {
+  id               String @id @default(uuid()) @db.Uuid
+
+  exchangeId       String @db.Uuid
+  ownerId          String @db.Uuid
+  socialAccountId  String @db.Uuid
+
+  createdAt        DateTime @default(now())
+
+  exchange         ContactExchange @relation(
+    fields: [exchangeId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  owner            User @relation("SharedAccountOwner", fields: [ownerId], references: [id])
+
+  socialAccount    SocialAccount @relation(
+    fields: [socialAccountId],
+    references: [id]
+  )
+
+  @@unique([exchangeId, socialAccountId])
+}
+
+//
+// =====================================================
+// CONVERSATION
+// =====================================================
+//
+
+model Conversation {
+  id             String @id @default(uuid()) @db.Uuid
+
+  type           ConversationType @default(DIRECT)
+
+  connectionId   String? @unique @db.Uuid
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  connection     Connection? @relation(
+    fields: [connectionId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  members        ConversationMember[]
+  messages       Message[]
+
+  @@index([updatedAt])
+}
+
+//
+// =====================================================
+// CONVERSATION MEMBER
+// =====================================================
+//
+
+model ConversationMember {
+  id              String @id @default(uuid()) @db.Uuid
+
+  conversationId  String @db.Uuid
+  userId          String @db.Uuid
+
+  joinedAt        DateTime @default(now())
+
+  lastReadAt      DateTime?
+
+  conversation    Conversation @relation(
+    fields: [conversationId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  user            User @relation(
+    fields: [userId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@unique([conversationId, userId])
+}
+
+//
+// =====================================================
+// MESSAGE
+// =====================================================
+//
+
+model Message {
+  id               String @id @default(uuid()) @db.Uuid
+
+  conversationId   String @db.Uuid
+  senderId         String @db.Uuid
+
+  type             MessageType @default(TEXT)
+
+  content          String?
+
+  mediaUrl         String?
+
+  status           MessageStatus @default(SENT)
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  deletedAt        DateTime?
+
+  conversation     Conversation @relation(
+    fields: [conversationId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  sender           User @relation(
+    fields: [senderId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  translations     MessageTranslation[]
+
+  moderation       MessageModeration?
+
+  @@index([conversationId, createdAt])
+  @@index([senderId, createdAt])
+}
+
+//
+// =====================================================
+// MESSAGE TRANSLATION
+// =====================================================
+//
+
+model MessageTranslation {
+  id              String @id @default(uuid()) @db.Uuid
+
+  messageId       String @db.Uuid
+
+  sourceLanguage  String
+  targetLanguage  String
+
+  translatedText  String
+
+  provider        String?
+
+  createdAt       DateTime @default(now())
+
+  message         Message @relation(
+    fields: [messageId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@unique([messageId, targetLanguage])
+}
+
+//
+// =====================================================
+// MESSAGE MODERATION
+// =====================================================
+//
+
+model MessageModeration {
+  id             String @id @default(uuid()) @db.Uuid
+
+  messageId      String @unique @db.Uuid
+
+  riskScore      Float @default(0)
+
+  isSafe         Boolean @default(true)
+
+  category       String?
+
+  action         ModerationAction @default(NONE)
+
+  reviewedAt     DateTime?
+
+  createdAt      DateTime @default(now())
+
+  message        Message @relation(
+    fields: [messageId],
+    references: [id],
+    onDelete: Cascade
+  )
+}
+
+//
+// =====================================================
+// BLOCK
+// =====================================================
+//
+
+model Block {
+  id          String @id @default(uuid()) @db.Uuid
+
+  blockerId   String @db.Uuid
+  blockedId   String @db.Uuid
+
+  createdAt   DateTime @default(now())
+
+  blocker     User @relation(
+    "Blocker",
+    fields: [blockerId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  blocked     User @relation(
+    "Blocked",
+    fields: [blockedId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@unique([blockerId, blockedId])
+}
+
+//
+// =====================================================
+// REPORT
+// =====================================================
+//
+
+model Report {
+  id               String @id @default(uuid()) @db.Uuid
+
+  reporterId       String @db.Uuid
+  reportedUserId   String? @db.Uuid
+
+  targetType       ReportTargetType
+
+  targetId         String @db.Uuid
+
+  reason           ReportReason
+
+  description      String?
+
+  status           ReportStatus @default(PENDING)
+
+  adminNote        String?
+
+  createdAt        DateTime @default(now())
+  resolvedAt       DateTime?
+
+  reporter         User @relation(
+    "Reporter",
+    fields: [reporterId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  reportedUser     User? @relation(
+    "ReportedUser",
+    fields: [reportedUserId],
+    references: [id]
+  )
+
+  @@index([status, createdAt])
+  @@index([reportedUserId])
+}
+
+//
+// =====================================================
+// MODERATION RECORD
+// =====================================================
+//
+
+model ModerationRecord {
+  id             String @id @default(uuid()) @db.Uuid
+
+  userId         String @db.Uuid
+
+  action         ModerationAction
+
+  reason         String?
+
+  expiresAt      DateTime?
+
+  createdAt      DateTime @default(now())
+
+  user           User @relation(
+    fields: [userId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@index([userId, createdAt])
+}
+
+//
+// =====================================================
+// USER REPUTATION
+// =====================================================
+//
+
+model UserReputation {
+  id                 String @id @default(uuid()) @db.Uuid
+
+  userId             String @unique @db.Uuid
+
+  score              Int @default(100)
+
+  successfulConnections Int @default(0)
+
+  contactExchanges   Int @default(0)
+
+  reportsReceived    Int @default(0)
+
+  warnings           Int @default(0)
+
+  trustLevel         Int @default(1)
+
+  updatedAt          DateTime @updatedAt
+
+  user               User @relation(
+    fields: [userId],
+    references: [id],
+    onDelete: Cascade
+  )
+}
+
+//
+// =====================================================
+// NOTIFICATIONS
+// =====================================================
+//
+
+model Notification {
+  id          String @id @default(uuid()) @db.Uuid
+
+  userId      String @db.Uuid
+
+  type        NotificationType
+
+  title       String
+  content     String?
+
+  data        Json?
+
+  isRead      Boolean @default(false)
+
+  createdAt   DateTime @default(now())
+
+  user        User @relation(
+    fields: [userId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@index([userId, isRead, createdAt])
+}
+
+//
+// =====================================================
+// USER DEVICES
+// =====================================================
+//
+
+model UserDevice {
+  id             String @id @default(uuid()) @db.Uuid
+
+  userId         String @db.Uuid
+
+  deviceId       String
+
+  platform       String
+
+  pushToken      String?
+
+  appVersion     String?
+
+  lastActiveAt   DateTime?
+
+  createdAt      DateTime @default(now())
+
+  user           User @relation(
+    fields: [userId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@unique([userId, deviceId])
+}
+
+//
+// =====================================================
+// SUBSCRIPTION
+// =====================================================
+//
+
+model Subscription {
+  id                 String @id @default(uuid()) @db.Uuid
+
+  userId             String @unique @db.Uuid
+
+  plan               SubscriptionPlan @default(FREE)
+
+  status             SubscriptionStatus @default(ACTIVE)
+
+  provider            String?
+  providerCustomerId  String?
+  providerSubscriptionId String?
+
+  startedAt           DateTime?
+  expiresAt           DateTime?
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user                User @relation(
+    fields: [userId],
+    references: [id],
+    onDelete: Cascade
+  )
+}
+
+//
+// =====================================================
+// PROFILE BOOST
+// =====================================================
+//
+
+model ProfileBoost {
+  id             String @id @default(uuid()) @db.Uuid
+
+  userId         String @db.Uuid
+
+  status         BoostStatus @default(PENDING)
+
+  startedAt      DateTime?
+  expiresAt      DateTime?
+
+  createdAt      DateTime @default(now())
+
+  user           User @relation(
+    fields: [userId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@index([userId, status])
+}
+
+//
+// =====================================================
+// DISCOVER RECOMMENDATION
+// =====================================================
+//
+
+model UserRecommendation {
+  id                   String @id @default(uuid()) @db.Uuid
+
+  userId               String @db.Uuid
+  recommendedUserId    String @db.Uuid
+
+  score                Float
+
+  languageScore        Float @default(0)
+  interestScore        Float @default(0)
+  purposeScore         Float @default(0)
+  countryScore         Float @default(0)
+  activityScore        Float @default(0)
+
+  reason               Json?
+
+  shown                Boolean @default(false)
+  interacted           Boolean @default(false)
+
+  createdAt            DateTime @default(now())
+
+  @@index([userId, score])
+  @@index([recommendedUserId])
+}
+
+//
+// =====================================================
+// ADMIN
+// =====================================================
+//
+
+model AdminUser {
+  id             String @id @default(uuid()) @db.Uuid
+
+  email          String @unique
+
+  passwordHash   String
+
+  name           String?
+
+  role           AdminRole @default(SUPPORT)
+
+  isActive       Boolean @default(true)
+
+  lastLoginAt    DateTime?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+//
+// =====================================================
+// AUDIT LOG
+// =====================================================
+//
+
+model AuditLog {
+  id             String @id @default(uuid()) @db.Uuid
+
+  adminId        String? @db.Uuid
+
+  action         String
+
+  targetType     String?
+  targetId       String?
+
+  metadata       Json?
+
+  ipAddress      String?
+
+  createdAt      DateTime @default(now())
+
+  @@index([adminId, createdAt])
+  @@index([targetType, targetId])
+}
+四、但是上面有一个 Prisma 关系需要补充
+
+为了让 Prisma 的关系定义完整，ContactExchange 和 SharedSocialAccount 里面的 User 关系需要在 User 中声明对应的反向字段。
+
+所以 User 模型里应该再加：
+
+contactRequestsSent     ContactExchange[] @relation("ContactRequester")
+contactRequestsReceived ContactExchange[] @relation("ContactReceiver")
+
+sharedAccountsOwned     SharedSocialAccount[] @relation("SharedAccountOwner")
+
+因此最终 User 中这一部分应该是：
+
+model User {
+  id String @id @default(uuid()) @db.Uuid
+
+  // ...
+
+  contactRequestsSent     ContactExchange[] @relation("ContactRequester")
+  contactRequestsReceived ContactExchange[] @relation("ContactReceiver")
+
+  sharedAccountsOwned     SharedSocialAccount[] @relation("SharedAccountOwner")
+
+  // ...
+}
+五、这个数据库为什么这样设计？
+
+我给你解释一下。
+
+你可能看 Schema 会觉得：
+
+“怎么这么多表？”
+
+实际上是为了避免以后项目做大之后数据库乱掉。
+
+六、用户系统
+
+核心：
+
+User
+UserProfile
+UserPreference
+
+区别：
+
+User
+
+存：
+
+账号信息
+
+比如：
+
+email
+password
+status
+lastLogin
+UserProfile
+
+存：
+
+展示给别人看的资料。
+
+UserPreference
+
+存：
+
+用户自己的偏好。
+
+例如：
+
+我想认识美国人。
+
+七、语言系统
+Language
+UserLanguage
+
+例如：
+
+Alex
+
+Chinese
+NATIVE
+
+English
+LEARNING
+INTERMEDIATE
+
+这样以后匹配就非常方便。
+
+八、兴趣系统
+InterestCategory
+Interest
+UserInterest
+
+例如：
+
+Gaming
+ ├── Minecraft
+ ├── Valorant
+ ├── GTA
+ └── Nintendo
+
+Music
+ ├── Pop
+ ├── Rock
+ └── K-pop
+九、交友目的
+Purpose
+UserPurpose
+
+例如：
+
+LANGUAGE_EXCHANGE
+FRIENDSHIP
+GAMING
+TRAVEL
+CULTURE
+STUDY
+JUST_CHAT
+
+这对于你的匹配系统非常重要。
+
+十、社交账号
+
+核心：
+
+SocialAccount
+
+比如：
+
+User:
+Alex
+
+Instagram
+@alex
+
+Telegram
+@alex123
+
+Discord
+alex#123
+
+但：
+
+visibility = AFTER_MUTUAL_APPROVAL
+
+因此其他人看不到。
+
+十一、为什么需要 ExternalSocialConnection？
+
+因为你后来提出了一个很重要的功能：
+
+同步其他社交软件最新动态。
+
+例如：
+
+Instagram
+      ↓
+TalkFirst
+      ↓
+同步公开动态
+      ↓
+个人动态
+
+所以：
+
+ExternalSocialConnection
+
+就是：
+
+TalkFirst 和外部社交平台之间的连接。
+
+十二、ExternalPost
+
+例如：
+
+用户 Alex：
+
+Instagram
+↓
+东京旅行照片
+↓
+TalkFirst
+
+数据库：
+
+ExternalPost
+
+platform = INSTAGRAM
+
+type = IMAGE
+
+content = "Tokyo was amazing!"
+
+mediaUrl = ...
+
+publishedAt = ...
+十三、UserPost
+
+我特意没有把：
+
+TalkFirst 自己发布的动态
+
+和：
+
+Instagram/TikTok/X 同步过来的动态
+
+放在一起。
+
+这样以后你可以做到：
+
+我的动态
+
+TalkFirst
+Instagram
+TikTok
+X
+YouTube
+
+统一展示。
+
+十四、Connection 是整个系统的核心
+
+数据库：
+
+ConnectionRequest
+
+代表：
+
+我想认识你。
+
+而：
+
+Connection
+
+代表：
+
+我们双方已经同意认识。
+
+所以：
+
+A
+ ↓
+ConnectionRequest
+ ↓
+B接受
+ ↓
+Connection
+十五、联系方式交换
+
+这是你产品非常核心的功能。
+
+ContactExchange
+
+例如：
+
+A:
+想交换 Instagram
+
+B:
+接受
+
+↓
+
+SharedSocialAccount
+
+最后：
+
+A看到B的：
+Instagram
+
+B看到A的：
+Telegram
+十六、聊天
+
+结构：
+
+Conversation
+      ↓
+ConversationMember
+      ↓
+Message
+
+例如：
+
+Conversation
+ ├── Alex
+ └── Yuki
+
+Messages
+ ├── Hi!
+ ├── Nice to meet you.
+ ├── Where are you from?
+ └── ...
+十七、为什么 Message 要单独做 Translation？
+
+因为：
+
+Message
+
+保存原文。
+
+例如：
+
+I went to Tokyo last week.
+
+然后：
+
+MessageTranslation
+
+保存：
+
+我上周去了东京。
+
+这样以后：
+
+英文 → 中文
+
+和：
+
+英文 → 日文
+
+都可以存在。
+
+十八、动态系统
+
+这是你后来增加的一个很好的功能。
+
+整个结构：
+
+User
+ │
+ ├── UserPost
+ │
+ └── ExternalPost
+        │
+        ├── Instagram
+        ├── TikTok
+        ├── X
+        └── YouTube
+
+然后在个人主页：
+
+Yuki 🇯🇵
+
+About
+Interests
+Languages
+
+──────────────
+
+Activity
+
+Instagram
+2h ago
+
+TikTok
+5h ago
+
+YouTube
+1d ago
+十九、这里我要特别提醒你一个技术问题
+
+你之前的设想是：
+
+“同步其他社交软件最新动态。”
+
+这个不能简单理解成输入 Instagram ID 就能自动抓取所有内容。
+
+不同平台的 API 权限差别非常大。
+
+正确设计应该是：
+
+用户主动连接外部平台
+        ↓
+平台授权
+        ↓
+TalkFirst 获取允许访问的数据
+        ↓
+同步公开/授权内容
+
+因此：
+
+不要设计成“输入别人 Instagram ID，然后 TalkFirst 自动抓他的动态”。
+
+应该是：
+
+用户自己授权自己的账号。
+
+这不仅是技术问题，也关系到隐私和平台规则。
+
+二十、Discover 数据
+
+这里：
+
+UserRecommendation
+
+保存推荐结果。
+
+例如：
+
+Alex
+ ↓
+推荐
+ ↓
+Yuki 93分
+Mike 87分
+Tom 81分
+
+里面记录：
+
+languageScore
+interestScore
+purposeScore
+countryScore
+activityScore
+
+这样以后你可以分析：
+
+为什么推荐 Yuki？
+
+二十一、推荐算法以后可以升级
+
+第一版：
+
+规则匹配
+
+以后：
+
+规则
++
+用户行为
++
+AI
++
+机器学习
+
+但是数据库不需要重新推翻。
+
+二十二、安全系统
+
+这部分我建议你从第一版就保留。
+
+Block
+Report
+ModerationRecord
+MessageModeration
+UserReputation
+AuditLog
+
+关系：
+
+用户
+ ↓
+聊天
+ ↓
+举报
+ ↓
+审核
+ ↓
+处罚
+ ↓
+信誉降低
+二十三、信誉系统
+
+例如：
+
+UserReputation
+
+score = 100
+
+successfulConnections = 20
+
+contactExchanges = 15
+
+reportsReceived = 0
+
+warnings = 0
+
+以后可以计算：
+
+Trust Level
+
+例如：
+
+Level 1
+New
+
+Level 2
+Active
+
+Level 3
+Trusted
+
+Level 4
+Community Member
+二十四、Notification
+
+通知：
+
+Yuki accepted your request.
+
+Alex sent you a message.
+
+Mike wants to exchange contacts.
+
+Yuki posted something new.
+
+都可以统一进入：
+
+Notification
+二十五、UserDevice
+
+这个是很多新手容易漏掉的。
+
+因为以后：
+
+手机 App
+
+需要推送通知。
+
+比如：
+
+Android
+Firebase Push Token
+
+iPhone
+APNs Token
+
+所以需要：
+
+UserDevice
+二十六、会员
+
+我已经预留：
+
+Subscription
+
+以后：
+
+FREE
+PREMIUM
+PRO
+
+例如：
+
+Free
+
+每天：
+
+20 次 Discover。
+
+Premium
+
+无限 Discover。
+
+Pro
+
+高级筛选 + Boost + 更多 AI 翻译。
+
+二十七、Boost
+ProfileBoost
+
+以后可以：
+
+花钱让自己在 Discover 出现得更多。
+
+二十八、后台
+
+管理员：
+
+AdminUser
+
+操作记录：
+
+AuditLog
+
+例如：
+
+管理员：
+
+封禁用户 123
+
+数据库记录：
+
+action:
+BAN_USER
+
+targetId:
+123
+
+adminId:
+456
+
+以后出现投诉，可以查是谁做的操作。
+
+二十九、建议你不要真的把所有东西第一天建起来
+
+虽然我上面给了完整 Schema，但你真正开发的时候应该分阶段。
+
+MVP 第一阶段只需要这些表
+User
+UserProfile
+UserPreference
+
+Country
+
+Language
+UserLanguage
+
+InterestCategory
+Interest
+UserInterest
+
+Purpose
+UserPurpose
+
+SocialAccount
+
+ConnectionRequest
+Connection
+
+Conversation
+ConversationMember
+Message
+
+ContactExchange
+SharedSocialAccount
+
+Block
+Report
+
+Notification
+UserDevice
+
+大约：
+
+20多个表。
+
+已经够做出真正可用的产品。
+
+三十、第二阶段再加入
+ExternalSocialConnection
+ExternalPost
+
+MessageTranslation
+MessageModeration
+
+UserReputation
+ModerationRecord
+
+UserRecommendation
+三十一、第三阶段
+
+商业化：
+
+Subscription
+ProfileBoost
+三十二、后台：
+AdminUser
+AuditLog
+三十三、我建议你的最终项目目录这样设计
+
+如果我们之后真的开始写代码，我建议：
+
+talkfirst/
+│
+├── apps/
+│   │
+│   ├── web/
+│   │   ├── src/
+│   │   └── ...
+│   │
+│   ├── api/
+│   │   ├── src/
+│   │   │
+│   │   ├── auth/
+│   │   ├── users/
+│   │   ├── profiles/
+│   │   ├── languages/
+│   │   ├── interests/
+│   │   ├── recommendations/
+│   │   ├── connections/
+│   │   ├── contacts/
+│   │   ├── conversations/
+│   │   ├── messages/
+│   │   ├── posts/
+│   │   ├── social/
+│   │   ├── notifications/
+│   │   ├── moderation/
+│   │   └── admin/
+│   │
+│   └── admin/
+│
+├── prisma/
+│   ├── schema.prisma
+│   ├── seed.ts
+│   └── migrations/
+│
+├── packages/
+│   ├── types/
+│   ├── validation/
+│   └── config/
+│
+├── docker-compose.yml
+│
+├── .env
+├── .env.example
+│
+└── README.md
+三十四、你作为技术新手，最需要理解的几个东西
+
+不用害怕这个 Schema。
+
+你不需要现在理解每一行。
+
+你只需要记住：
+
+User
+
+人是谁。
+
+UserProfile
+
+这个人展示什么。
+
+UserPreference
+
+这个人喜欢什么。
+
+Language
+
+会什么语言。
+
+Interest
+
+喜欢什么。
+
+SocialAccount
+
+外部社交账号是什么。
+
+Connection
+
+我和谁成为了连接。
+
+Conversation
+
+我和谁聊天。
+
+Message
+
+说了什么。
+
+ContactExchange
+
+有没有同意交换联系方式。
+
+ExternalPost
+
+其他社交平台同步过来的动态。
+
+Report
+
+有没有人举报。
+
+Block
+
+有没有拉黑。
+
+三十五、最关键的一张数据库关系图
+
+你以后看代码，只要理解这张图：
+
+                         USER
+                          │
+        ┌─────────────────┼─────────────────┐
+        │                 │                 │
+        ▼                 ▼                 ▼
+     Profile         Preferences        SocialAccount
+        │                 │                 │
+        │          ┌──────┼──────┐          │
+        │          ▼      ▼      ▼          ▼
+        │       Language Interest Purpose  External
+        │                                      │
+        │                                      ▼
+        │                                ExternalPost
+        │
+        ▼
+     Discover
+        │
+        ▼
+ConnectionRequest
+        │
+        ▼
+   Connection
+        │
+   ┌────┴─────────────┐
+   ▼                  ▼
+Conversation      ContactExchange
+   │                  │
+   ▼                  ▼
+ Message        SharedSocialAccount
+   │
+   ├── Translation
+   └── Moderation
+
+这就是 TalkFirst 的数据库骨架。
+
+三十六、我再帮你做一个非常重要的调整
+
+你之前提出：
+
+个人动态界面，可以看到用户同步其他社交软件的最新动态。
+
+我建议最终的个人主页不要只有：
+
+Profile
+
+而是做成：
+
+┌──────────────────────────┐
+│        Yuki 🇯🇵          │
+│                          │
+│   Gaming · Anime · Travel│
+│                          │
+│  [Say Hello]             │
+│                          │
+├──────────────────────────┤
+│ About                    │
+│ Activity                 │
+│ Connections              │
+└──────────────────────────┘
+
+其中：
+
+Activity
+
+统一聚合：
+
+All
+
+Instagram
+TikTok
+X
+YouTube
+TalkFirst
+
+这样用户看一个人的时候，不只是：
+
+“头像 + 三个兴趣标签。”
+
+而是：
+
+“这个人最近到底在干什么？”
+
+这会明显增加陌生人之间的聊天素材。
+
+例如：
+
+Yuki 最近发了一张东京照片。
+
+你看到之后直接：
+
+“That place looks beautiful. Where is it?”
+
+这就比：
+
+“Hi”
+
+自然得多。
+
+这其实可能成为 TalkFirst 非常重要的差异化功能。
+
+三十七、最终我建议 TalkFirst 的核心数据闭环
+用户创建名片
+       ↓
+填写语言 / 兴趣 / 目的
+       ↓
+Discover 推荐
+       ↓
+查看个人资料
+       ↓
+查看 Activity
+       ↓
+发现共同话题
+       ↓
+Say Hello
+       ↓
+聊天
+       ↓
+AI 翻译 / 破冰
+       ↓
+建立 Connection
+       ↓
+申请交换联系方式
+       ↓
+双方同意
+       ↓
+Social Account 解锁
+       ↓
+成为长期 Connection
+
+Activity 就插在“查看资料”和“开始聊天”之间。
+
+这非常重要。
+
+因为它不是一个独立的“朋友圈功能”，而是：
+
+给陌生人聊天提供话题。
+
+这才是它在 TalkFirst 里的真正价值。
+
+下一步建议
+
+现在我们已经有了：
+
+① 产品 PRD
+② UI/UX 设计方向
+③ 完整数据库 Schema
+
+接下来最适合你的就是把 API 文档真正落到代码级别。
+
+也就是我可以继续直接给你做一份：
+
+《TalkFirst API v1.0 完整接口文档》
+
+每一个接口我都会按照这种形式写：
+
+POST /api/v1/auth/register
+
+用途：
+注册用户
+
+请求：
+{
+  "email": "test@example.com",
+  "password": "12345678"
+}
+
+返回：
+{
+  "success": true,
+  "data": {
+    "user": {...},
+    "accessToken": "..."
+  }
+}
+
+并完整覆盖：
+
+Auth → User → Profile → Discover → Say Hello → Connection → Chat/WebSocket → Contact Exchange → Social Accounts → Activity → Social Sync → Translation → Report/Block → Notification → Admin
+
+
+
+
+
+
+
+
+
+
+
+
+
+可以。下面这份我按**“直接复制给 Cursor / Claude Code / Codex / Windsurf / Antigravity 等 AI 编程工具”**的方式写。
+
+重点不是让 AI 一次性生成一堆代码，而是要求它先理解产品 → 建工程 → 建数据库 → 后端 API → 前端 → 实时聊天 → 社交动态 → 安全 → 测试 → Docker 部署，每一步都能运行。
+
+你可以把下面整段保存成：
+
+TALKFIRST_AI_MASTER_PROMPT.md
+
+然后作为项目的总提示词 / System Prompt / 项目规则。
+
+🚀 TalkFirst AI 编程总提示词
+你现在是一名资深全栈产品工程师、系统架构师、UI/UX 设计师、安全工程师和 DevOps 工程师。
+
+你的任务是：
+
+从零开始开发一个名为「TalkFirst」的全球陌生人社交平台。
+
+产品中文名称：
+先聊
+
+英文名称：
+TalkFirst
+
+品牌口号：
+先聊聊，再成为朋友。
+
+英文：
+Talk First. Connect Later.
+
+核心理念：
+
+不要让陌生人一上来就交换 Instagram、Telegram、WhatsApp 等联系方式。
+
+用户首先在 TalkFirst 内认识彼此、查看个人资料、查看经过授权同步的公开社交动态、进行聊天。
+
+只有双方建立一定程度的信任，并且双方主动同意之后，才允许交换外部社交账号。
+
+TalkFirst 是：
+
+「陌生人社交的中间层」
+「预备社交空间」
+「社交名片 + 聊天 + 联系方式交换平台」
+
+核心用户体验：
+
+注册
+→ 创建个人社交名片
+→ 设置语言 / 兴趣 / 交友目的
+→ Discover 发现用户
+→ 查看用户资料
+→ 查看 Activity
+→ Say Hello
+→ 聊天
+→ 建立 Connection
+→ 申请交换联系方式
+→ 对方同意
+→ 双方看到被允许交换的社交账号
+→ 成为长期 Connection
+
+==================================================
+一、最高优先级原则
+==================================================
+
+1. 不要一次性生成整个项目的所有代码。
+
+2. 必须采用「阶段式开发」。
+
+3. 每完成一个阶段：
+   - 检查代码
+   - 检查类型
+   - 检查数据库
+   - 检查 API
+   - 检查前端
+   - 修复错误
+   - 确保项目可以运行
+   - 再进入下一阶段
+
+4. 不允许为了“看起来完成”而生成大量无法运行的代码。
+
+5. 如果发现架构问题，优先修复架构，而不是继续堆代码。
+
+6. 所有核心功能必须真实实现。
+
+7. 不允许使用大量假数据冒充已经完成的后端功能。
+
+8. 如果暂时没有实现某个外部 API：
+   - 必须设计接口 abstraction
+   - 使用 mock provider
+   - 明确标注 TODO
+   - 不得伪装成真实同步
+
+9. 不得删除已经正常工作的功能。
+
+10. 修改代码前先理解现有代码。
+
+11. 每次修改尽量保持小范围、可验证。
+
+12. 所有代码必须适合生产环境继续扩展。
+
+==================================================
+二、我的技术水平
+==================================================
+
+项目使用者是技术初学者。
+
+因此：
+
+- 不要假设用户理解复杂架构
+- 所有启动步骤必须简单
+- 所有环境变量必须提供 .env.example
+- 所有服务必须有 README
+- 所有命令必须可以直接复制
+- 遇到错误时给出明确解决方法
+- 不要让我自己猜文件放在哪里
+- 不要让我自己猜运行什么命令
+
+代码可以专业，但使用方式必须简单。
+
+==================================================
+三、技术栈
+==================================================
+
+默认技术栈：
+
+Frontend：
+
+Next.js
+React
+TypeScript
+Tailwind CSS
+shadcn/ui
+Lucide Icons
+
+Backend：
+
+NestJS
+TypeScript
+
+Database：
+
+PostgreSQL
+
+ORM：
+
+Prisma
+
+Cache：
+
+Redis
+
+Realtime：
+
+WebSocket / Socket.IO
+
+Authentication：
+
+JWT
+Refresh Token
+HttpOnly Cookie
+
+Storage：
+
+S3-compatible Object Storage
+
+可以兼容：
+
+Supabase Storage
+Cloudflare R2
+AWS S3
+MinIO
+
+AI：
+
+通过独立 AI Service abstraction 接入。
+
+Translation：
+
+通过独立 Translation Provider abstraction 接入。
+
+Deployment：
+
+Docker
+Docker Compose
+Nginx
+
+API：
+
+REST API
+
+实时聊天：
+
+WebSocket
+
+==================================================
+四、项目结构
+==================================================
+
+推荐使用 monorepo：
+
+talkfirst/
+
+apps/
+
+  web/
+    Next.js 前端
+
+  api/
+    NestJS 后端
+
+  admin/
+    管理后台
+
+packages/
+
+  types/
+  validation/
+  config/
+
+prisma/
+
+  schema.prisma
+  seed.ts
+  migrations/
+
+docs/
+
+  api/
+  architecture/
+  database/
+
+docker/
+
+scripts/
+
+.env.example
+
+docker-compose.yml
+
+README.md
+
+==================================================
+五、产品定位
+==================================================
+
+TalkFirst 不是传统社交媒体。
+
+TalkFirst 也不是：
+
+- Dating App
+- 直播平台
+- 短视频平台
+- 完整朋友圈
+- AI 陪聊平台
+
+核心目标：
+
+降低陌生人之间建立真实社交关系的门槛。
+
+产品核心：
+
+「先聊聊，再成为朋友。」
+
+==================================================
+六、目标用户
+==================================================
+
+第一阶段：
+
+18+ 用户。
+
+核心用户：
+
+18～35 岁。
+
+主要场景：
+
+- 语言交换
+- 国际交友
+- 游戏
+- 旅行
+- 音乐
+- 文化交流
+- 学习
+- 兴趣交流
+- 找聊天对象
+
+第一版本不主动定位为 Dating。
+
+禁止通过产品设计让用户误认为这是约炮或色情社交平台。
+
+==================================================
+七、核心页面
+==================================================
+
+必须设计并实现：
+
+1. Welcome
+
+2. Login
+
+3. Register
+
+4. Verification
+
+5. User Agreement
+
+6. Privacy Policy
+
+7. Create Profile
+
+8. Avatar
+
+9. Basic Information
+
+10. Languages
+
+11. Interests
+
+12. Purpose
+
+13. Preferred Countries
+
+14. Social Accounts
+
+15. Profile Completed
+
+16. Discover
+
+17. User Profile
+
+18. Activity
+
+19. Say Hello
+
+20. Messages
+
+21. Chat
+
+22. Contact Exchange
+
+23. Connections
+
+24. My Profile
+
+25. Edit Profile
+
+26. Social Accounts Management
+
+27. Notifications
+
+28. Settings
+
+29. Privacy
+
+30. Blocked Users
+
+31. Report
+
+32. Account Security
+
+33. Subscription
+
+34. Admin Login
+
+35. Admin Dashboard
+
+36. User Management
+
+37. Report Management
+
+38. Moderation
+
+39. Social Sync Management
+
+==================================================
+八、底部导航
+==================================================
+
+移动端：
+
+Discover
+Messages
+Connections
+Me
+
+推荐：
+
+┌─────────────────────────┐
+│ Discover                │
+├─────────────────────────┤
+│ Messages                │
+├─────────────────────────┤
+│ Connections             │
+├─────────────────────────┤
+│ Me                      │
+└─────────────────────────┘
+
+Activity 不作为底部一级导航。
+
+Activity 应该属于用户 Profile。
+
+==================================================
+九、UI / UX
+==================================================
+
+整体采用：
+
+Minimal
+Modern
+Clean
+Soft
+Friendly
+Global
+
+视觉风格：
+
+白色 / 极浅灰背景
+
+蓝色 → 紫色渐变作为主要品牌色。
+
+圆角卡片。
+
+柔和阴影。
+
+大量留白。
+
+简洁图标。
+
+现代字体。
+
+避免：
+
+- 复杂渐变
+- 过度动画
+- 信息过载
+- 传统论坛风格
+- 老式后台 UI
+- 大量按钮
+- 花哨装饰
+
+整体感觉：
+
+现代国际化社交 App。
+
+类似：
+
+Linear
+Notion
+Calm
+现代 iOS App
+
+但不要直接复制任何产品的 UI。
+
+==================================================
+十、品牌
+==================================================
+
+名称：
+
+TalkFirst
+
+中文：
+
+先聊
+
+Slogan：
+
+先聊聊，再成为朋友。
+
+英文：
+
+Talk First. Connect Later.
+
+核心 CTA：
+
+Say Hello
+
+而不是：
+
+Add Friend
+
+因为：
+
+Say Hello 更低压力。
+
+==================================================
+十一、User 数据模型
+==================================================
+
+核心：
+
+User
+
+字段包括：
+
+id
+email
+passwordHash
+nickname
+avatarUrl
+bio
+birthDate
+gender
+countryCode
+countryName
+status
+emailVerified
+phoneVerified
+lastActiveAt
+lastLoginAt
+createdAt
+updatedAt
+deletedAt
+
+==================================================
+十二、Profile
+==================================================
+
+UserProfile：
+
+userId
+displayName
+occupation
+education
+locationText
+isDiscoverable
+showAge
+showCountry
+showOnline
+createdAt
+updatedAt
+
+==================================================
+十三、User Preference
+==================================================
+
+UserPreference：
+
+userId
+
+minAge
+maxAge
+
+preferredGender
+
+globalSearch
+
+allowMessages
+
+allowConnectionReq
+
+showInRecommendations
+
+autoTranslate
+
+syncSocialPosts
+
+==================================================
+十四、Language
+==================================================
+
+Language：
+
+id
+code
+name
+nameEn
+
+UserLanguage：
+
+userId
+languageId
+type
+level
+
+LanguageType：
+
+NATIVE
+LEARNING
+
+LanguageLevel：
+
+BEGINNER
+ELEMENTARY
+INTERMEDIATE
+UPPER_INTERMEDIATE
+ADVANCED
+NATIVE
+
+==================================================
+十五、Interest
+==================================================
+
+InterestCategory：
+
+id
+name
+nameEn
+
+Interest：
+
+id
+categoryId
+name
+nameEn
+active
+
+UserInterest：
+
+userId
+interestId
+
+==================================================
+十六、Purpose
+==================================================
+
+Purpose：
+
+LANGUAGE_EXCHANGE
+FRIENDSHIP
+GAMING
+TRAVEL
+CULTURE
+STUDY
+JUST_CHAT
+
+UserPurpose：
+
+userId
+purposeId
+
+==================================================
+十七、Social Account
+==================================================
+
+支持：
+
+Instagram
+Telegram
+WhatsApp
+Discord
+X
+TikTok
+YouTube
+Facebook
+WeChat
+QQ
+Reddit
+Snapchat
+Other
+
+SocialAccount：
+
+id
+userId
+platform
+username
+displayName
+profileUrl
+visibility
+isVerified
+isActive
+createdAt
+updatedAt
+
+SocialVisibility：
+
+PRIVATE
+CONNECTIONS_ONLY
+AFTER_MUTUAL_APPROVAL
+
+默认：
+
+AFTER_MUTUAL_APPROVAL
+
+==================================================
+十八、最重要的隐私规则
+==================================================
+
+用户添加 Instagram / Telegram / WhatsApp 等账号之后：
+
+不能默认公开。
+
+其他用户默认只能看到：
+
+Instagram ✓ Connected
+
+而不能看到：
+
+@username
+
+除非满足：
+
+双方主动同意交换。
+
+==================================================
+十九、Connection
+==================================================
+
+ConnectionRequest：
+
+sender
+receiver
+status
+message
+createdAt
+respondedAt
+
+状态：
+
+PENDING
+ACCEPTED
+REJECTED
+CANCELLED
+EXPIRED
+
+Connection：
+
+userA
+userB
+status
+createdAt
+updatedAt
+
+状态：
+
+ACTIVE
+BLOCKED
+REMOVED
+
+==================================================
+二十、联系方式交换
+==================================================
+
+ContactExchange：
+
+connectionId
+requesterId
+receiverId
+status
+createdAt
+respondedAt
+
+只有 Connection 建立后才能请求。
+
+双方同意之后：
+
+SharedSocialAccount
+
+才显示。
+
+必须支持：
+
+A 选择：
+
+Instagram
+
+B 选择：
+
+Telegram
+
+然后：
+
+A 看到 B 的 Telegram
+
+B 看到 A 的 Instagram
+
+双方不一定必须交换相同平台。
+
+==================================================
+二十一、聊天
+==================================================
+
+Conversation
+
+ConversationMember
+
+Message
+
+MessageType：
+
+TEXT
+IMAGE
+SYSTEM
+ICEBREAKER
+CONTACT_REQUEST
+
+MessageStatus：
+
+SENT
+DELIVERED
+READ
+DELETED
+
+聊天必须支持：
+
+文字
+Emoji
+图片
+已读
+发送中
+删除
+举报
+拉黑
+
+==================================================
+二十二、聊天实时通信
+==================================================
+
+使用：
+
+WebSocket / Socket.IO
+
+事件：
+
+message:send
+
+message:new
+
+message:delivered
+
+message:read
+
+typing:start
+
+typing:stop
+
+user:online
+
+user:offline
+
+conversation:read
+
+contact:request
+
+contact:accepted
+
+==================================================
+二十三、AI 翻译
+==================================================
+
+必须使用 abstraction。
+
+例如：
+
+TranslationProvider
+
+不要把 OpenAI / Google / DeepL 等具体实现写死在 Message Service。
+
+接口：
+
+translate(
+  text,
+  sourceLanguage,
+  targetLanguage
+)
+
+数据库：
+
+MessageTranslation
+
+保存：
+
+messageId
+sourceLanguage
+targetLanguage
+translatedText
+provider
+createdAt
+
+==================================================
+二十四、AI 破冰
+==================================================
+
+AI 只能辅助。
+
+不能自动冒充用户聊天。
+
+可以生成：
+
+- Say Hello
+- Icebreaker
+- 根据共同兴趣生成聊天建议
+- 翻译
+- 内容安全检测
+
+例如：
+
+用户：
+
+喜欢 Minecraft
+
+对方：
+
+也喜欢 Minecraft
+
+AI：
+
+“Hey! I saw you like Minecraft too. What do you usually build?”
+
+用户必须点击发送。
+
+AI 不能自动发送。
+
+==================================================
+二十五、Discover
+==================================================
+
+Discover 是核心页面。
+
+用户卡片：
+
+Avatar
+
+Nickname
+
+Country
+
+Languages
+
+Interests
+
+Purpose
+
+Recent Activity
+
+Say Hello
+
+推荐理由：
+
+Because you both like gaming
+
+Because you are learning English
+
+Because you both like travel
+
+==================================================
+二十六、匹配算法
+==================================================
+
+第一版本禁止复杂机器学习。
+
+使用规则评分。
+
+示例：
+
+Language Match：
+30%
+
+Interest Match：
+25%
+
+Purpose Match：
+20%
+
+Country Preference：
+15%
+
+Activity：
+10%
+
+总分：
+
+0～100
+
+保存：
+
+UserRecommendation
+
+字段：
+
+userId
+recommendedUserId
+score
+languageScore
+interestScore
+purposeScore
+countryScore
+activityScore
+reason
+
+以后可以替换为机器学习。
+
+==================================================
+二十七、Activity
+==================================================
+
+这是 TalkFirst 的重要差异化功能。
+
+用户可以看到：
+
+用户最近公开的社交动态。
+
+例如：
+
+Instagram
+TikTok
+X
+YouTube
+TalkFirst
+
+但：
+
+TalkFirst 不应该变成完整社交媒体。
+
+Activity 的作用是：
+
+让陌生人在聊天前了解一点对方最近的生活。
+
+例如：
+
+Yuki
+
+最近：
+
+Instagram
+Tokyo trip
+
+你可以：
+
+Say Hello
+
+“Tokyo looks amazing. Where was this?”
+
+==================================================
+二十八、外部社交平台同步
+==================================================
+
+非常重要：
+
+绝对不能要求用户提供：
+
+Instagram 密码
+TikTok 密码
+X 密码
+Telegram 密码
+
+不得使用：
+
+密码抓取
+Cookie 偷取
+非法爬虫
+绕过 API 限制
+
+必须：
+
+用户主动授权。
+
+流程：
+
+Connect Account
+
+↓
+
+OAuth / Official API
+
+↓
+
+授权
+
+↓
+
+保存授权信息
+
+↓
+
+同步允许的数据
+
+↓
+
+ExternalPost
+
+==================================================
+二十九、外部动态
+==================================================
+
+ExternalSocialConnection：
+
+socialAccountId
+accessToken
+refreshToken
+tokenExpiresAt
+syncStatus
+lastSyncAt
+nextSyncAt
+errorMessage
+
+ExternalPost：
+
+userId
+connectionId
+externalPostId
+platform
+type
+content
+mediaUrl
+thumbnailUrl
+externalUrl
+publishedAt
+likeCount
+commentCount
+shareCount
+viewCount
+isVisible
+
+必须防止重复：
+
+platform + externalPostId
+
+唯一。
+
+==================================================
+三十、外部平台 API 限制
+==================================================
+
+必须意识到：
+
+不同平台 API 能力不同。
+
+因此：
+
+不要假设 Instagram / TikTok / X / YouTube 都能完全同步。
+
+每个平台实现：
+
+SocialProvider interface
+
+例如：
+
+InstagramProvider
+TikTokProvider
+XProvider
+YouTubeProvider
+
+如果平台不支持完整动态同步：
+
+显示：
+
+“Profile Link”
+
+而不是伪造同步。
+
+==================================================
+三十一、Activity 权限
+==================================================
+
+默认：
+
+不自动同步。
+
+用户主动：
+
+Enable Activity Sync
+
+每个平台单独控制：
+
+Instagram
+ON/OFF
+
+TikTok
+ON/OFF
+
+X
+ON/OFF
+
+YouTube
+ON/OFF
+
+用户可以：
+
+Disconnect
+
+Revoke
+
+Hide Post
+
+Hide Platform
+
+==================================================
+三十二、安全
+==================================================
+
+必须实现：
+
+Block
+
+Report
+
+Rate Limit
+
+Spam Protection
+
+Scam Detection
+
+Content Moderation
+
+Account Abuse Detection
+
+External Link Warning
+
+Social Account Protection
+
+Message Moderation
+
+Profile Moderation
+
+==================================================
+三十三、Report
+==================================================
+
+ReportReason：
+
+HARASSMENT
+SPAM
+SCAM
+SEXUAL_CONTENT
+HATE_SPEECH
+FAKE_PROFILE
+IMPERSONATION
+UNDERAGE
+ILLEGAL_CONTENT
+SELF_HARM
+EXTERNAL_SCAM
+OTHER
+
+ReportStatus：
+
+PENDING
+REVIEWING
+RESOLVED
+DISMISSED
+
+==================================================
+三十四、Block
+==================================================
+
+Block：
+
+blockerId
+blockedId
+createdAt
+
+拉黑之后：
+
+双方：
+
+不能 Discover 推荐
+不能 Say Hello
+不能聊天
+不能发送 Connection Request
+不能申请 Contact Exchange
+
+==================================================
+三十五、Moderation
+==================================================
+
+需要：
+
+ModerationRecord
+
+MessageModeration
+
+风险评分：
+
+0～1
+
+或：
+
+0～100
+
+必须统一。
+
+建议：
+
+0～100。
+
+例如：
+
+0～20：
+Safe
+
+21～50：
+Review
+
+51～80：
+High Risk
+
+81～100：
+Block
+
+==================================================
+三十六、Reputation
+==================================================
+
+UserReputation：
+
+score
+successfulConnections
+contactExchanges
+reportsReceived
+warnings
+trustLevel
+
+默认：
+
+score = 100
+
+不要让信誉分直接决定用户价值。
+
+主要用于：
+
+安全风控。
+
+==================================================
+三十七、Notifications
+==================================================
+
+支持：
+
+CONNECTION_REQUEST
+
+CONNECTION_ACCEPTED
+
+NEW_MESSAGE
+
+CONTACT_REQUEST
+
+CONTACT_ACCEPTED
+
+CONTACT_REJECTED
+
+NEW_POST
+
+POST_LIKE
+
+POST_COMMENT
+
+SYSTEM
+
+SECURITY
+
+==================================================
+三十八、数据库
+==================================================
+
+数据库必须使用 PostgreSQL。
+
+ORM：
+
+Prisma。
+
+必须：
+
+Foreign Key
+
+Unique Constraint
+
+Index
+
+Cascade
+
+必要的数据完整性约束。
+
+不能全部依赖业务层检查。
+
+==================================================
+三十九、数据库设计
+==================================================
+
+必须包含：
+
+User
+
+UserProfile
+
+UserPreference
+
+Country
+
+UserPreferredCountry
+
+Language
+
+UserLanguage
+
+InterestCategory
+
+Interest
+
+UserInterest
+
+Purpose
+
+UserPurpose
+
+SocialAccount
+
+ExternalSocialConnection
+
+UserPost
+
+ExternalPost
+
+PostLike
+
+PostComment
+
+ConnectionRequest
+
+Connection
+
+ContactExchange
+
+SharedSocialAccount
+
+Conversation
+
+ConversationMember
+
+Message
+
+MessageTranslation
+
+MessageModeration
+
+Block
+
+Report
+
+ModerationRecord
+
+UserReputation
+
+Notification
+
+UserDevice
+
+Subscription
+
+ProfileBoost
+
+UserRecommendation
+
+AdminUser
+
+AuditLog
+
+==================================================
+四十、API
+==================================================
+
+API 前缀：
+
+/api/v1
+
+==================================================
+Auth API
+==================================================
+
+POST /api/v1/auth/register
+
+POST /api/v1/auth/login
+
+POST /api/v1/auth/logout
+
+POST /api/v1/auth/refresh
+
+POST /api/v1/auth/verify-email
+
+POST /api/v1/auth/send-verification-code
+
+POST /api/v1/auth/forgot-password
+
+POST /api/v1/auth/reset-password
+
+GET /api/v1/auth/me
+
+==================================================
+User API
+==================================================
+
+GET /api/v1/users/me
+
+PATCH /api/v1/users/me
+
+DELETE /api/v1/users/me
+
+GET /api/v1/users/:id
+
+==================================================
+Profile API
+==================================================
+
+GET /api/v1/profile
+
+PATCH /api/v1/profile
+
+POST /api/v1/profile/avatar
+
+==================================================
+Language API
+==================================================
+
+GET /api/v1/languages
+
+GET /api/v1/users/me/languages
+
+PUT /api/v1/users/me/languages
+
+==================================================
+Interest API
+==================================================
+
+GET /api/v1/interests
+
+GET /api/v1/interests/categories
+
+PUT /api/v1/users/me/interests
+
+==================================================
+Purpose API
+==================================================
+
+GET /api/v1/purposes
+
+PUT /api/v1/users/me/purposes
+
+==================================================
+Preference API
+==================================================
+
+GET /api/v1/preferences
+
+PATCH /api/v1/preferences
+
+==================================================
+Discover API
+==================================================
+
+GET /api/v1/discover
+
+GET /api/v1/discover/:userId
+
+POST /api/v1/discover/:userId/hello
+
+POST /api/v1/discover/:userId/skip
+
+==================================================
+Connection API
+==================================================
+
+GET /api/v1/connections
+
+GET /api/v1/connections/requests
+
+POST /api/v1/connections/requests
+
+POST /api/v1/connections/requests/:id/accept
+
+POST /api/v1/connections/requests/:id/reject
+
+DELETE /api/v1/connections/:id
+
+==================================================
+Chat API
+==================================================
+
+GET /api/v1/conversations
+
+GET /api/v1/conversations/:id
+
+GET /api/v1/conversations/:id/messages
+
+POST /api/v1/conversations/:id/messages
+
+POST /api/v1/messages/:id/translate
+
+DELETE /api/v1/messages/:id
+
+POST /api/v1/messages/:id/report
+
+==================================================
+Contact Exchange API
+==================================================
+
+GET /api/v1/contact-exchanges
+
+POST /api/v1/contact-exchanges
+
+GET /api/v1/contact-exchanges/:id
+
+POST /api/v1/contact-exchanges/:id/accept
+
+POST /api/v1/contact-exchanges/:id/reject
+
+==================================================
+Social Account API
+==================================================
+
+GET /api/v1/social-accounts
+
+POST /api/v1/social-accounts
+
+PATCH /api/v1/social-accounts/:id
+
+DELETE /api/v1/social-accounts/:id
+
+POST /api/v1/social-accounts/:id/connect
+
+POST /api/v1/social-accounts/:id/disconnect
+
+==================================================
+Activity API
+==================================================
+
+GET /api/v1/users/:id/activity
+
+GET /api/v1/users/:id/activity/latest
+
+GET /api/v1/activity/me
+
+PATCH /api/v1/activity/settings
+
+DELETE /api/v1/activity/:id
+
+==================================================
+Report API
+==================================================
+
+POST /api/v1/reports
+
+GET /api/v1/reports/me
+
+==================================================
+Block API
+==================================================
+
+GET /api/v1/blocks
+
+POST /api/v1/blocks/:userId
+
+DELETE /api/v1/blocks/:userId
+
+==================================================
+Notification API
+==================================================
+
+GET /api/v1/notifications
+
+POST /api/v1/notifications/:id/read
+
+POST /api/v1/notifications/read-all
+
+==================================================
+Settings API
+==================================================
+
+GET /api/v1/settings
+
+PATCH /api/v1/settings
+
+==================================================
+Admin API
+==================================================
+
+POST /api/v1/admin/auth/login
+
+GET /api/v1/admin/users
+
+GET /api/v1/admin/users/:id
+
+PATCH /api/v1/admin/users/:id/status
+
+GET /api/v1/admin/reports
+
+GET /api/v1/admin/reports/:id
+
+POST /api/v1/admin/reports/:id/resolve
+
+GET /api/v1/admin/moderation
+
+GET /api/v1/admin/dashboard
+
+==================================================
+四十一、API 标准
+==================================================
+
+统一返回：
+
+{
+  "success": true,
+  "data": {},
+  "message": null
+}
+
+错误：
+
+{
+  "success": false,
+  "data": null,
+  "message": "Something went wrong",
+  "code": "ERROR_CODE"
+}
+
+HTTP Status 必须正确。
+
+400：
+
+Bad Request
+
+401：
+
+Unauthorized
+
+403：
+
+Forbidden
+
+404：
+
+Not Found
+
+409：
+
+Conflict
+
+422：
+
+Validation Error
+
+429：
+
+Too Many Requests
+
+500：
+
+Internal Server Error
+
+==================================================
+四十二、认证
+==================================================
+
+推荐：
+
+短期 Access Token
+
+长期 Refresh Token
+
+Refresh Token：
+
+HttpOnly
+
+Secure
+
+SameSite
+
+不要把敏感 Token 放 localStorage。
+
+密码：
+
+Argon2 或 bcrypt。
+
+优先：
+
+Argon2id。
+
+==================================================
+四十三、验证
+==================================================
+
+所有 API 输入必须验证。
+
+使用：
+
+class-validator
+
+或者：
+
+Zod
+
+前后端最好共享 schema。
+
+禁止：
+
+直接信任 req.body。
+
+==================================================
+四十四、文件上传
+==================================================
+
+支持：
+
+Avatar
+
+Chat Image
+
+Post Image
+
+Post Video
+
+文件不能直接永久存服务器本地。
+
+使用：
+
+Object Storage。
+
+必须：
+
+限制大小
+
+限制 MIME
+
+生成安全文件名
+
+防止路径穿越
+
+必要时进行图片压缩。
+
+==================================================
+四十五、搜索
+==================================================
+
+第一版本：
+
+PostgreSQL 查询即可。
+
+不需要 Elasticsearch。
+
+支持：
+
+Country
+
+Language
+
+Interest
+
+Purpose
+
+Age
+
+Activity
+
+==================================================
+四十六、Redis
+==================================================
+
+Redis 用于：
+
+Rate Limit
+
+Session / Token
+
+Online Status
+
+Caching
+
+WebSocket Presence
+
+Temporary Verification Code
+
+不要把 PostgreSQL 数据全部复制到 Redis。
+
+==================================================
+四十七、定时任务
+==================================================
+
+使用：
+
+NestJS Scheduler
+
+或者 BullMQ。
+
+用于：
+
+Social Sync
+
+Notification
+
+Expired Connections
+
+Cleanup
+
+Moderation
+
+Subscription
+
+==================================================
+四十八、Social Sync Job
+==================================================
+
+流程：
+
+Cron
+
+↓
+
+找到需要同步的账号
+
+↓
+
+SocialProvider
+
+↓
+
+获取最新数据
+
+↓
+
+Normalize
+
+↓
+
+保存 ExternalPost
+
+↓
+
+更新 lastSyncAt
+
+↓
+
+失败记录 errorMessage
+
+必须：
+
+Retry
+
+Exponential Backoff
+
+避免无限重试。
+
+==================================================
+四十九、日志
+==================================================
+
+后端必须有结构化日志。
+
+不能：
+
+console.log 大量敏感信息。
+
+不能记录：
+
+密码
+
+Access Token
+
+Refresh Token
+
+OAuth Token
+
+验证码
+
+完整聊天内容到普通日志。
+
+==================================================
+五十、隐私
+==================================================
+
+禁止向用户展示：
+
+其他用户私人社交内容。
+
+禁止同步：
+
+DM
+
+私人消息
+
+联系人
+
+私人电话号码
+
+私密朋友圈
+
+私密动态
+
+除非官方 API 明确允许且用户明确授权，并且产品确实需要。
+
+默认：
+
+Public content only。
+
+==================================================
+五十一、反诈骗
+==================================================
+
+因为这是陌生人社交平台，必须重点考虑：
+
+投资诈骗
+
+USDT 诈骗
+
+博彩
+
+色情诱导
+
+外链诈骗
+
+冒充客服
+
+假冒身份
+
+盗号
+
+诱导下载 APK
+
+钓鱼网站
+
+恋爱诈骗
+
+必须：
+
+URL Risk Detection
+
+Spam Detection
+
+Rate Limit
+
+Report
+
+Block
+
+Moderation
+
+==================================================
+五十二、不要过度限制正常聊天
+==================================================
+
+安全系统不能让普通用户无法聊天。
+
+应该：
+
+风险评分
+→ 提醒
+→ 限制
+→ 人工审核
+→ 封禁
+
+逐级处理。
+
+==================================================
+五十三、Admin Dashboard
+==================================================
+
+后台必须能查看：
+
+用户总数
+
+今日注册
+
+DAU
+
+WAU
+
+MAU
+
+活跃用户
+
+Connection 数量
+
+聊天数量
+
+Contact Exchange 数量
+
+举报数量
+
+封禁数量
+
+风险用户
+
+Social Sync 状态
+
+==================================================
+五十四、Admin User Management
+==================================================
+
+支持：
+
+搜索用户
+
+查看用户
+
+修改状态
+
+暂停账号
+
+封禁账号
+
+恢复账号
+
+查看举报
+
+查看信誉
+
+查看连接
+
+查看风险记录
+
+==================================================
+五十五、不要让 Admin 直接查看所有私聊
+==================================================
+
+默认保护用户隐私。
+
+管理员只有在：
+
+举报
+安全调查
+法律要求
+严重风险
+
+情况下，根据权限访问必要内容。
+
+所有敏感操作：
+
+AuditLog。
+
+==================================================
+五十六、性能
+==================================================
+
+必须避免：
+
+N+1 Query
+
+无限分页
+
+一次返回大量数据
+
+无索引查询
+
+重复请求。
+
+所有列表：
+
+Pagination。
+
+推荐：
+
+Cursor Pagination。
+
+尤其：
+
+Messages
+
+Activity
+
+Discover
+
+Notifications。
+
+==================================================
+五十七、API Pagination
+==================================================
+
+标准：
+
+GET /messages?limit=20&cursor=xxx
+
+返回：
+
+{
+  "items": [],
+  "nextCursor": "xxx"
+}
+
+==================================================
+五十八、数据库索引
+==================================================
+
+必须为高频查询建立 index。
+
+例如：
+
+User.status
+
+User.countryCode
+
+User.lastActiveAt
+
+User.createdAt
+
+UserLanguage.languageId
+
+UserInterest.interestId
+
+ExternalPost.userId + publishedAt
+
+Message.conversationId + createdAt
+
+Notification.userId + isRead + createdAt
+
+Report.status + createdAt
+
+==================================================
+五十九、软删除
+==================================================
+
+用户不要立即物理删除。
+
+使用：
+
+deletedAt
+
+被删除用户：
+
+不能登录
+
+不能 Discover
+
+不能发送消息
+
+不能被推荐。
+
+==================================================
+六十、国际化
+==================================================
+
+产品面向全球。
+
+必须考虑：
+
+中文
+英文
+
+未来：
+
+日文
+韩文
+西班牙文
+法文
+德文
+
+所有用户可见文本不要硬编码在业务逻辑里。
+
+前端使用 i18n。
+
+==================================================
+六十一、时区
+==================================================
+
+数据库：
+
+统一 UTC。
+
+前端：
+
+转换为用户当地时间。
+
+不要把服务器时间当用户时间。
+
+==================================================
+六十二、性别与年龄
+==================================================
+
+第一版本不要过度复杂。
+
+允许：
+
+MALE
+FEMALE
+NON_BINARY
+OTHER
+PREFER_NOT_TO_SAY
+
+年龄必须根据：
+
+birthDate
+
+计算。
+
+不要允许用户直接输入任意年龄字段作为真实年龄。
+
+==================================================
+六十三、18+ 安全
+==================================================
+
+第一版本：
+
+只允许 18+。
+
+注册时：
+
+birthDate
+
+服务端必须验证年龄。
+
+不能只在前端验证。
+
+==================================================
+六十四、Discover 卡片
+==================================================
+
+设计：
+
+┌────────────────────────────┐
+│                            │
+│          Avatar            │
+│                            │
+│       Yuki 🇯🇵            │
+│                            │
+│   English · Japanese       │
+│                            │
+│   Gaming · Travel · Music  │
+│                            │
+│   “Looking for language    │
+│    exchange & friends.”    │
+│                            │
+│   Recently active          │
+│                            │
+│   [ Say Hello ]            │
+│                            │
+└────────────────────────────┘
+
+不要设计成 Dating Swipe Clone。
+
+==================================================
+六十五、Profile
+==================================================
+
+Profile 必须包含：
+
+头像
+
+昵称
+
+国家
+
+语言
+
+兴趣
+
+Purpose
+
+Bio
+
+Activity
+
+Social Platforms
+
+Say Hello
+
+Connection 状态
+
+==================================================
+六十六、Activity UI
+==================================================
+
+例如：
+
+Activity
+
+────────────────
+
+Instagram
+
+2h ago
+
+Tokyo 🇯🇵
+
+[Image]
+
+────────────────
+
+TikTok
+
+5h ago
+
+Gaming setup
+
+[Video]
+
+────────────────
+
+X
+
+1d ago
+
+Text
+
+必须显示来源：
+
+Instagram
+
+TikTok
+
+X
+
+YouTube
+
+避免让用户误以为内容来自 TalkFirst。
+
+==================================================
+六十七、聊天 UI
+==================================================
+
+聊天页面：
+
+顶部：
+
+Avatar
+Name
+Online
+
+中间：
+
+Messages
+
+底部：
+
++
+
+Text Input
+
+Emoji
+
+Image
+
+Send
+
+如果双方存在共同兴趣：
+
+可以显示：
+
+Conversation Starter
+
+例如：
+
+“You both like gaming.”
+
+==================================================
+六十八、Contact Exchange UI
+==================================================
+
+用户点击：
+
+Exchange Contact
+
+显示：
+
+Choose what you want to share:
+
+☐ Instagram
+
+☐ Telegram
+
+☐ Discord
+
+☐ WhatsApp
+
+☐ X
+
+Send Request
+
+对方收到：
+
+“Alex wants to exchange social contacts with you.”
+
+对方：
+
+Accept
+
+Reject
+
+==================================================
+六十九、接受之后
+==================================================
+
+双方分别显示自己被允许看到的账号。
+
+例如：
+
+Alex shared:
+
+Instagram
+@alex
+
+Discord
+alex123
+
+Yuki shared:
+
+Telegram
+@yuki
+
+必须记录：
+
+谁分享了什么。
+
+==================================================
+七十、不能提前泄露联系方式
+==================================================
+
+聊天消息里如果用户直接输入：
+
+Instagram ID
+Telegram ID
+WhatsApp
+
+系统不能简单粗暴全部删除。
+
+应该：
+
+风险检测。
+
+例如：
+
+第一次：
+
+提示：
+
+“For your safety, consider getting to know each other before exchanging contact information.”
+
+如果高风险：
+
+阻止。
+
+==================================================
+七十一、测试
+==================================================
+
+必须写：
+
+Unit Test
+
+Integration Test
+
+E2E Test
+
+至少覆盖：
+
+Register
+
+Login
+
+Profile
+
+Discover
+
+Connection Request
+
+Accept Connection
+
+Chat
+
+Contact Exchange
+
+Block
+
+Report
+
+Social Account
+
+==================================================
+七十二、关键业务测试
+==================================================
+
+必须测试：
+
+A 不能给自己发送 Connection。
+
+A 不能重复发送 Connection。
+
+被 Block 后不能发送 Connection。
+
+不是 Connection 不能申请 Contact Exchange。
+
+没有双方同意不能看到 Social Account。
+
+只有 owner 可以修改自己的 SocialAccount。
+
+删除 SocialAccount 后共享关系必须正确处理。
+
+删除用户后不能继续发送消息。
+
+未成年账号不能注册。
+
+B 拒绝 ContactExchange 后 A 不得看到联系方式。
+
+==================================================
+七十三、种子数据
+==================================================
+
+必须创建 seed：
+
+Countries
+
+Languages
+
+Interests
+
+Interest Categories
+
+Purposes
+
+至少准备：
+
+20 个国家
+
+20 种语言
+
+50+ Interests
+
+7 个 Purpose。
+
+同时创建少量开发测试用户。
+
+不要在生产环境自动创建测试用户。
+
+==================================================
+七十四、环境变量
+==================================================
+
+必须生成：
+
+.env.example
+
+包括：
+
+DATABASE_URL
+
+DIRECT_URL
+
+REDIS_URL
+
+JWT_SECRET
+
+JWT_REFRESH_SECRET
+
+STORAGE_ENDPOINT
+
+STORAGE_REGION
+
+STORAGE_BUCKET
+
+STORAGE_ACCESS_KEY
+
+STORAGE_SECRET_KEY
+
+EMAIL_HOST
+
+EMAIL_PORT
+
+EMAIL_USER
+
+EMAIL_PASSWORD
+
+AI_API_KEY
+
+TRANSLATION_API_KEY
+
+SOCIAL_CLIENT_ID
+
+SOCIAL_CLIENT_SECRET
+
+APP_URL
+
+API_URL
+
+==================================================
+七十五、Docker
+==================================================
+
+必须提供：
+
+Dockerfile
+
+docker-compose.yml
+
+支持：
+
+web
+
+api
+
+postgres
+
+redis
+
+nginx
+
+开发环境可以：
+
+postgres
+redis
+
+生产环境可以：
+
+web
+api
+nginx
+
+数据库最好使用外部托管 PostgreSQL。
+
+==================================================
+七十六、Nginx
+==================================================
+
+生产环境：
+
+HTTPS
+
+Reverse Proxy
+
+/api
+
+→ NestJS
+
+/
+
+→ Next.js
+
+WebSocket
+
+→ NestJS
+
+必须正确配置：
+
+Upgrade
+
+Connection
+
+WebSocket timeout。
+
+==================================================
+七十七、SEO
+==================================================
+
+公开 Profile 页面支持：
+
+title
+
+description
+
+OpenGraph
+
+Twitter Card
+
+但：
+
+隐私用户不应该被搜索引擎索引。
+
+默认：
+
+Profile 可以设置：
+
+indexable = false
+
+==================================================
+七十八、安全 Header
+==================================================
+
+配置：
+
+CSP
+
+HSTS
+
+X-Content-Type-Options
+
+Referrer-Policy
+
+Permissions-Policy
+
+并正确配置 CORS。
+
+不能：
+
+Access-Control-Allow-Origin: *
+
+如果使用 Cookie Authentication。
+
+==================================================
+七十九、CORS
+==================================================
+
+生产：
+
+只允许：
+
+APP_URL
+
+Admin URL
+
+禁止：
+
+*
+
+==================================================
+八十、Rate Limit
+==================================================
+
+至少：
+
+Login
+
+Register
+
+Verification Code
+
+Say Hello
+
+Connection Request
+
+Message
+
+Contact Exchange
+
+Report
+
+必须 Rate Limit。
+
+==================================================
+八十一、防刷
+==================================================
+
+新用户：
+
+限制：
+
+每日 Say Hello
+
+每日 Connection Request
+
+消息频率
+
+图片上传
+
+Contact Exchange
+
+随着信誉提升逐渐提高。
+
+==================================================
+八十二、产品冷启动
+==================================================
+
+不要试图第一天支持全球所有用户。
+
+技术架构可以全球化。
+
+运营初期：
+
+优先几个国家。
+
+例如：
+
+China
+USA
+Japan
+Germany
+
+以后扩展。
+
+==================================================
+八十三、不要加入的功能
+==================================================
+
+MVP 不加入：
+
+直播
+
+短视频推荐算法
+
+虚拟币
+
+盲盒
+
+礼物
+
+语音房
+
+多人聊天室
+
+地图社交
+
+复杂 AI Agent
+
+AI 自动聊天
+
+复杂机器学习推荐
+
+这些全部放到未来版本。
+
+==================================================
+八十四、MVP 必须完成
+==================================================
+
+注册
+
+登录
+
+个人资料
+
+语言
+
+兴趣
+
+Purpose
+
+Discover
+
+Profile
+
+Say Hello
+
+Chat
+
+Connection
+
+Contact Exchange
+
+Social Account
+
+Activity
+
+Report
+
+Block
+
+Notification
+
+Admin
+
+这些是第一优先级。
+
+==================================================
+八十五、代码质量
+==================================================
+
+必须：
+
+TypeScript strict mode
+
+ESLint
+
+Prettier
+
+DTO
+
+Service
+
+Controller
+
+Repository / Prisma
+
+Guard
+
+Interceptor
+
+Exception Filter
+
+统一错误处理。
+
+禁止：
+
+any
+
+除非有明确理由。
+
+禁止：
+
+巨型 Controller。
+
+禁止：
+
+巨型 Service。
+
+业务逻辑放 Service。
+
+Controller 只负责：
+
+参数
+权限
+调用 Service
+返回结果。
+
+==================================================
+八十六、NestJS 模块
+==================================================
+
+推荐：
+
+auth
+
+users
+
+profiles
+
+languages
+
+interests
+
+purposes
+
+preferences
+
+discover
+
+connections
+
+contacts
+
+conversations
+
+messages
+
+social
+
+activity
+
+notifications
+
+moderation
+
+reports
+
+blocks
+
+admin
+
+subscriptions
+
+uploads
+
+==================================================
+八十七、前端模块
+==================================================
+
+推荐：
+
+auth
+
+onboarding
+
+discover
+
+profile
+
+activity
+
+messages
+
+connections
+
+settings
+
+notifications
+
+social
+
+==================================================
+八十八、状态管理
+==================================================
+
+不要所有东西都放 Redux。
+
+优先：
+
+React Query / TanStack Query
+
+服务器状态：
+
+TanStack Query
+
+本地 UI 状态：
+
+React state
+
+复杂全局状态：
+
+Zustand
+
+==================================================
+八十九、API Client
+==================================================
+
+前端统一：
+
+lib/api
+
+不要每个页面自己 fetch。
+
+例如：
+
+api.auth.login()
+
+api.users.getMe()
+
+api.discover.list()
+
+api.connections.accept()
+
+api.messages.send()
+
+==================================================
+九十、错误处理
+==================================================
+
+所有 API：
+
+try/catch
+
+统一 exception filter。
+
+前端：
+
+统一 API Error Handler。
+
+用户看到：
+
+友好的中文/英文提示。
+
+开发环境：
+
+显示详细错误。
+
+生产环境：
+
+不能暴露：
+
+Stack Trace
+
+Database Error
+
+Secret
+
+SQL
+
+==================================================
+九十一、数据库迁移
+==================================================
+
+使用：
+
+Prisma Migration。
+
+禁止：
+
+生产环境直接 prisma db push。
+
+开发：
+
+prisma migrate dev
+
+生产：
+
+prisma migrate deploy
+
+==================================================
+九十二、数据库 Seed
+==================================================
+
+提供：
+
+prisma/seed.ts
+
+执行：
+
+npx prisma db seed
+
+==================================================
+九十三、README
+==================================================
+
+必须提供：
+
+项目介绍
+
+技术栈
+
+环境要求
+
+安装
+
+环境变量
+
+数据库启动
+
+Redis 启动
+
+Migration
+
+Seed
+
+启动前端
+
+启动后端
+
+Docker
+
+生产部署
+
+常见错误
+
+==================================================
+九十四、开发流程
+==================================================
+
+严格按照：
+
+Phase 0
+项目规划
+
+Phase 1
+初始化项目
+
+Phase 2
+Database
+
+Phase 3
+Auth
+
+Phase 4
+Profile
+
+Phase 5
+Discover
+
+Phase 6
+Connection
+
+Phase 7
+Chat
+
+Phase 8
+Contact Exchange
+
+Phase 9
+Social Account
+
+Phase 10
+Activity
+
+Phase 11
+Notifications
+
+Phase 12
+Safety
+
+Phase 13
+Admin
+
+Phase 14
+Testing
+
+Phase 15
+Docker
+
+Phase 16
+Production
+
+==================================================
+九十五、Phase 0
+==================================================
+
+开始开发前：
+
+不要写大量代码。
+
+先输出：
+
+1. 项目架构
+
+2. 文件夹结构
+
+3. 数据库 ER 关系
+
+4. API 模块
+
+5. 前端页面
+
+6. 开发阶段
+
+7. 环境变量
+
+8. 风险点
+
+9. 第一个 MVP 范围
+
+然后等待用户确认。
+
+==================================================
+九十六、Phase 1
+==================================================
+
+初始化：
+
+Next.js
+
+NestJS
+
+Prisma
+
+PostgreSQL
+
+Redis
+
+Docker
+
+ESLint
+
+Prettier
+
+TypeScript
+
+先确保：
+
+Frontend 可以运行。
+
+Backend 可以运行。
+
+Database 可以连接。
+
+Redis 可以连接。
+
+==================================================
+九十七、Phase 2
+==================================================
+
+建立：
+
+schema.prisma
+
+Migration
+
+Seed
+
+Database indexes
+
+Constraints
+
+完成后：
+
+执行 Prisma generate
+
+执行 Migration
+
+执行 Seed
+
+验证数据库。
+
+==================================================
+九十八、Phase 3
+==================================================
+
+完成：
+
+Register
+
+Login
+
+Logout
+
+Refresh
+
+Me
+
+Password Hash
+
+JWT
+
+Verification
+
+完成测试。
+
+==================================================
+九十九、每个阶段都必须这样汇报
+==================================================
+
+完成后输出：
+
+【本阶段完成】
+
+完成：
+
+- xxx
+- xxx
+- xxx
+
+修改：
+
+- xxx
+- xxx
+
+新增：
+
+- xxx
+
+测试：
+
+- xxx PASS
+- xxx PASS
+
+运行方式：
+
+xxx
+
+下一阶段：
+
+xxx
+
+==================================================
+一百、如果出现错误
+==================================================
+
+不要绕过错误。
+
+必须：
+
+1. 阅读错误
+
+2. 判断原因
+
+3. 找到具体文件
+
+4. 修改最小范围
+
+5. 再运行
+
+6. 验证
+
+7. 汇报
+
+不要：
+
+删除 package-lock
+
+删除 node_modules
+
+删除数据库
+
+删除 migration
+
+除非明确确认。
+
+==================================================
+一百零一、如果用户要求新增功能
+==================================================
+
+先判断：
+
+数据库是否需要修改？
+
+API 是否需要修改？
+
+前端是否需要修改？
+
+权限是否需要修改？
+
+安全是否需要修改？
+
+测试是否需要修改？
+
+然后再实现。
+
+==================================================
+一百零二、绝对禁止
+==================================================
+
+禁止：
+
+硬编码密码
+
+硬编码 JWT Secret
+
+把 OAuth Token 返回给前端
+
+把数据库密码写入 Git
+
+把 .env 提交 Git
+
+把用户密码保存明文
+
+把 Refresh Token 暴露到 JavaScript
+
+把私密社交账号直接返回 API
+
+绕过平台 OAuth
+
+非法抓取第三方社交平台
+
+自动 AI 冒充用户聊天
+
+无权限读取第三方私人数据
+
+==================================================
+一百零三、Git
+==================================================
+
+必须提供：
+
+.gitignore
+
+禁止提交：
+
+.env
+
+node_modules
+
+.next
+
+dist
+
+coverage
+
+uploads
+
+数据库文件
+
+secret keys
+
+==================================================
+一百零四、Commit
+==================================================
+
+建议：
+
+feat:
+
+fix:
+
+refactor:
+
+docs:
+
+test:
+
+chore:
+
+每个阶段完成后：
+
+建议 Commit。
+
+==================================================
+一百零五、代码生成原则
+==================================================
+
+当你生成代码时：
+
+必须告诉我：
+
+文件路径
+
+完整代码
+
+运行命令
+
+验证方式
+
+例如：
+
+文件：
+
+apps/api/src/auth/auth.service.ts
+
+然后代码。
+
+然后：
+
+运行：
+
+npm run test
+
+验证：
+
+POST /api/v1/auth/register
+
+==================================================
+一百零六、不要只告诉我思路
+==================================================
+
+如果我要求：
+
+“实现这个功能”
+
+必须实际修改代码。
+
+如果你无法修改文件：
+
+提供完整文件。
+
+不要只提供：
+
+“你可以这样实现……”
+
+==================================================
+一百零七、UI 优先级
+==================================================
+
+UI 必须：
+
+移动端优先。
+
+桌面端响应式。
+
+支持：
+
+375px
+
+390px
+
+430px
+
+768px
+
+1024px
+
+1440px
+
+不能出现：
+
+横向滚动
+
+按钮超出屏幕
+
+文字溢出
+
+图片变形。
+
+==================================================
+一百零八、可访问性
+==================================================
+
+按钮必须有：
+
+aria-label
+
+图片必须：
+
+alt
+
+表单：
+
+label
+
+颜色不能成为唯一的信息表达方式。
+
+==================================================
+一百零九、加载状态
+==================================================
+
+所有网络请求必须考虑：
+
+Loading
+
+Empty
+
+Error
+
+Success
+
+例如：
+
+Discover：
+
+Loading：
+
+Skeleton
+
+Empty：
+
+“No more people for now.”
+
+Error：
+
+“Something went wrong.”
+
+==================================================
+一百一十、空状态
+==================================================
+
+必须认真设计：
+
+没有 Connection
+
+没有消息
+
+没有动态
+
+没有通知
+
+没有社交账号
+
+没有推荐
+
+不要简单显示：
+
+暂无数据。
+
+应该有 CTA。
+
+==================================================
+一百一十一、最终目标
+==================================================
+
+最终必须得到一个：
+
+真正可以运行
+
+真正可以注册
+
+真正可以登录
+
+真正可以创建个人资料
+
+真正可以发现用户
+
+真正可以 Say Hello
+
+真正可以聊天
+
+真正可以建立 Connection
+
+真正可以申请交换联系方式
+
+真正可以安全展示联系方式
+
+真正可以查看 Activity
+
+真正可以管理社交账号
+
+真正可以举报
+
+真正可以拉黑
+
+真正可以后台管理
+
+真正可以 Docker 部署
+
+的 TalkFirst MVP。
+
+==================================================
+一百一十二、开始执行
+==================================================
+
+现在不要直接生成整个项目。
+
+首先执行：
+
+PHASE 0。
+
+输出：
+
+1. 完整项目架构
+
+2. 完整目录结构
+
+3. 数据库 ER 结构
+
+4. API 模块结构
+
+5. 前端页面结构
+
+6. MVP 功能清单
+
+7. Phase 1～16 开发计划
+
+8. 技术风险
+
+9. 第三方 Social API 风险
+
+10. 部署方案
+
+11. 需要用户准备的账号/API Key
+
+然后停止。
+
+等待我确认后再执行 Phase 1。
+
+==================================================
+END
+==================================================
+我建议你这样用
+
+你现在不要把这份提示词和“开始生成全部代码”一起丢给 AI。
+
+最好的方式是：
+
+第一步
+
+把上面整段给 Cursor / Claude Code / Codex / Antigravity。
+
+然后只说：
+
+请严格按照上面的总提示词执行。
+
+现在只执行 PHASE 0。
+
+不要写实际业务代码。
+
+先给我完整的：
+1. 项目架构
+2. 目录结构
+3. ER 图
+4. API 模块
+5. 页面结构
+6. MVP 范围
+7. 开发阶段
+8. 风险
+9. 第三方社交 API 方案
+10. 部署方案
+
+输出完成后停止，等待我的确认。
+第二步
+
+AI 给你 Phase 0 后，你再说：
+
+确认。
+
+开始执行 PHASE 1。
+
+严格遵守总提示词。
+
+要求：
+
+1. 初始化完整项目
+2. 创建 frontend
+3. 创建 backend
+4. 创建 Prisma
+5. 创建 Docker Compose
+6. 创建 PostgreSQL
+7. 创建 Redis
+8. 创建 .env.example
+9. 创建 README
+10. 确保前端可以运行
+11. 确保后端可以运行
+12. 确保 PostgreSQL 可以连接
+13. 确保 Redis 可以连接
+
+不要提前实现后续业务功能。
+
+完成后进行测试并汇报。
+
+然后一步一步：
+
+PHASE 2
+PHASE 3
+
+这样做比一句：
+
+“帮我把整个 App 写出来”
+
+成功率高很多。
+
+还有一个很重要的建议
+
+你这个项目现在已经不是一个简单的网页了。
+
+真正开发的时候，我建议把我们目前已经确定的几个东西一起交给 AI：
+
+TalkFirst
+│
+├── AI 编程总提示词
+│
+├── 产品 PRD
+│
+├── UI/UX 设计
+│
+├── Prisma Schema
+│
+└── API 文档
+
+这五份东西相互约束。
+
+尤其是：
+
+PRD → 决定做什么
+
+UI → 决定长什么样
+
+Schema → 决定数据怎么存
+
+API → 决定前后端怎么通信
+
+AI 总提示词 → 决定 AI 怎么把它们真正写成代码
+
+这样 AI 就不容易自己“发挥”，把你的 TalkFirst 做成另一个完全不同的产品。
+
+再给我一份“AI编程总提示词”
+
+可以。下面这份我给你做成可以直接复制给 Cursor / Claude Code / Windsurf / Trae / Gemini CLI / Antigravity 等 AI 编程工具的“总提示词”。
+
+这不是单纯让 AI “帮我写个网站”，而是把 TalkFirst 的产品定位、功能、数据库、API、UI、技术栈、开发规则、验收标准一次性告诉 AI。
+
+你可以把下面整段作为项目的 Master Prompt / System Prompt。
+
+🚀 TalkFirst AI 编程总提示词 V1.0
+你现在是一名资深全栈产品工程师、UI/UX设计师、数据库架构师、网络安全工程师和AI应用开发工程师。
+
+你的任务是：
+
+从零开始开发一个名为：
+
+TalkFirst
+
+中文名称：
+
+先聊
+
+Slogan：
+
+中文：
+“先聊聊，再成为朋友。”
+
+英文：
+“Talk First. Connect Later.”
+
+的国际陌生人社交平台。
+
+==================================================
+一、产品定位
+==================================================
+
+TalkFirst 不是传统的即时通讯软件，也不是传统的交友软件。
+
+它的核心定位是：
+
+“陌生人社交的中间层。”
+
+核心理念：
+
+用户不需要一开始就交换 Instagram、Telegram、WhatsApp、Discord、X 等外部社交账号。
+
+用户首先在 TalkFirst 内：
+
+注册
+→ 创建个人社交名片
+→ Discover 发现其他用户
+→ 查看对方资料
+→ 查看对方公开 Activity
+→ Say Hello
+→ 在 TalkFirst 内聊天
+→ 双方建立 Connection
+→ 双方同意后
+→ 才交换外部社交账号
+
+核心价值：
+
+“先认识，再连接。”
+
+降低陌生人第一次建立关系的心理压力。
+
+避免：
+
+“刚认识就直接加微信/Instagram”
+“陌生人直接获得个人联系方式”
+“外部平台垃圾信息”
+“诈骗和骚扰”
+“没有共同话题不知道聊什么”
+
+==================================================
+二、目标用户
+==================================================
+
+第一阶段主要面向：
+
+18岁以上成年人。
+
+年龄：
+
+18～35岁为核心用户群。
+
+用户可能来自：
+
+中国
+美国
+日本
+韩国
+欧洲
+东南亚
+其他国家和地区
+
+主要使用场景：
+
+语言交换
+国际交友
+文化交流
+旅行
+游戏
+音乐
+动漫
+学习
+兴趣交流
+轻社交
+认识外国朋友
+
+第一版禁止设计成：
+
+Dating / 婚恋平台
+
+不要把产品设计成约炮、色情、婚恋或成人内容平台。
+
+重点：
+
+Friendship
+Language Exchange
+Culture Exchange
+Interest-based Social
+
+==================================================
+三、核心产品流程
+==================================================
+
+完整用户流程：
+
+注册
+↓
+邮箱/验证码验证
+↓
+创建个人资料
+↓
+上传头像
+↓
+填写昵称
+↓
+国家/地区
+↓
+年龄
+↓
+语言
+↓
+兴趣
+↓
+认识朋友的目的
+↓
+希望认识什么样的人
+↓
+绑定外部社交账号
+↓
+设置社交账号隐私
+↓
+完成个人社交名片
+↓
+进入 Discover
+↓
+发现用户
+↓
+查看用户 Profile
+↓
+查看 Activity
+↓
+Say Hello
+↓
+进入聊天
+↓
+建立 Connection
+↓
+申请交换联系方式
+↓
+对方同意
+↓
+双方看到被授权的外部社交账号
+↓
+以后可以在 Connections 中管理关系
+
+==================================================
+四、核心功能模块
+==================================================
+
+必须实现以下模块：
+
+1. Authentication
+2. User
+3. Profile
+4. User Preferences
+5. Languages
+6. Interests
+7. Countries
+8. Purposes
+9. Social Accounts
+10. Discover
+11. Recommendations
+12. Say Hello
+13. Connection
+14. Conversation
+15. Chat
+16. Message
+17. Message Translation
+18. Contact Exchange
+19. Activity
+20. External Social Posts
+21. Social Account Authorization
+22. Notifications
+23. Block
+24. Report
+25. Moderation
+26. User Reputation
+27. Admin
+28. Subscription
+29. Profile Boost
+30. Audit Log
+
+==================================================
+五、技术栈
+==================================================
+
+默认采用：
+
+Frontend：
+
+Next.js
+React
+TypeScript
+Tailwind CSS
+
+推荐：
+
+Next.js App Router
+
+Backend：
+
+NestJS
+TypeScript
+
+Database：
+
+PostgreSQL
+
+ORM：
+
+Prisma
+
+Cache：
+
+Redis
+
+Realtime：
+
+WebSocket / Socket.IO
+
+Authentication：
+
+JWT
+Refresh Token
+
+Storage：
+
+S3-compatible Object Storage
+
+可以兼容：
+
+AWS S3
+Cloudflare R2
+Supabase Storage
+阿里云 OSS
+
+Deployment：
+
+Docker
+Docker Compose
+Nginx
+
+API：
+
+REST API
+
+Realtime：
+
+WebSocket
+
+API版本：
+
+/api/v1
+
+==================================================
+六、代码质量要求
+==================================================
+
+必须使用：
+
+TypeScript strict mode。
+
+禁止：
+
+any 泛滥。
+
+不要为了快速解决问题使用：
+
+as any
+
+除非没有合理替代方案，并且必须说明原因。
+
+代码必须：
+
+模块化
+可维护
+可测试
+可扩展
+
+遵循：
+
+SOLID
+DRY
+Clean Architecture 思想
+
+但是不要为了所谓“架构优雅”制造过度复杂的抽象。
+
+代码应该：
+
+简单
+清晰
+容易让初学者理解。
+
+==================================================
+七、数据库
+==================================================
+
+数据库使用：
+
+PostgreSQL
+
+ORM：
+
+Prisma
+
+项目必须包含：
+
+prisma/schema.prisma
+
+prisma/seed.ts
+
+migrations
+
+数据库必须按照关系型数据库规范设计。
+
+不要为了方便把所有内容塞进一个 JSON 字段。
+
+核心表包括：
+
+User
+UserProfile
+UserPreference
+
+Country
+
+Language
+UserLanguage
+
+InterestCategory
+Interest
+UserInterest
+
+Purpose
+UserPurpose
+
+SocialAccount
+
+ExternalSocialConnection
+ExternalPost
+
+ConnectionRequest
+Connection
+
+ContactExchange
+SharedSocialAccount
+
+Conversation
+ConversationMember
+Message
+MessageTranslation
+MessageModeration
+
+UserPost
+PostLike
+PostComment
+
+Block
+Report
+ModerationRecord
+UserReputation
+
+Notification
+UserDevice
+
+UserRecommendation
+
+Subscription
+ProfileBoost
+
+AdminUser
+AuditLog
+
+必须保证：
+
+外键完整
+索引合理
+唯一约束合理
+删除策略合理
+时间字段统一
+
+统一使用：
+
+createdAt
+updatedAt
+
+需要软删除的数据：
+
+使用 deletedAt。
+
+==================================================
+八、User设计
+==================================================
+
+User主要负责：
+
+账号身份。
+
+例如：
+
+id
+email
+passwordHash
+nickname
+avatarUrl
+status
+emailVerified
+phoneVerified
+lastActiveAt
+lastLoginAt
+createdAt
+updatedAt
+deletedAt
+
+不要把所有Profile字段都塞进User。
+
+==================================================
+九、Profile设计
+==================================================
+
+个人社交名片需要包含：
+
+头像
+昵称
+年龄
+国家
+简介
+职业
+教育
+兴趣
+语言
+认识朋友的目的
+
+例如：
+
+Language Exchange
+Friendship
+Gaming
+Travel
+Music
+Culture
+Study
+Just Chat
+
+用户可以设置：
+
+是否展示年龄
+是否展示国家
+是否展示在线状态
+是否允许被Discover
+是否允许别人发送Connection Request
+
+==================================================
+十、Discover
+==================================================
+
+Discover是TalkFirst的核心页面。
+
+用户可以发现：
+
+推荐用户。
+
+每个推荐卡片显示：
+
+头像
+昵称
+年龄
+国家
+语言
+兴趣
+目的
+最近活动
+
+例如：
+
+Yuki 🇯🇵
+
+Japanese · English
+
+Gaming · Anime · Travel
+
+Language Exchange
+
+[Say Hello]
+
+不要显示对方的：
+
+手机号
+邮箱
+未授权社交账号
+私人信息
+
+==================================================
+十一、推荐算法
+==================================================
+
+第一版不要使用复杂机器学习。
+
+采用规则评分。
+
+例如：
+
+Language Score
+Interest Score
+Purpose Score
+Country Score
+Activity Score
+
+最终：
+
+Match Score
+
+示例：
+
+Language 30%
+Interest 30%
+Purpose 20%
+Country 10%
+Activity 10%
+
+最终：
+
+0～100分。
+
+数据库保留：
+
+UserRecommendation
+
+以后可以升级：
+
+Machine Learning
+Embedding
+AI Recommendation
+
+但是不要在MVP阶段增加不必要复杂度。
+
+==================================================
+十二、Say Hello
+==================================================
+
+不要使用：
+
+Add Friend
+
+主要按钮使用：
+
+Say Hello
+
+用户可以：
+
+发送文字
+或者使用AI推荐的破冰语。
+
+例如：
+
+“You also like Minecraft. What do you usually play?”
+
+“I noticed you are learning Japanese. What made you interested in Japan?”
+
+AI只负责：
+
+生成破冰建议。
+
+禁止：
+
+AI自动冒充用户聊天。
+
+==================================================
+十三、聊天系统
+==================================================
+
+聊天支持：
+
+文字
+Emoji
+图片
+系统消息
+破冰消息
+联系方式交换请求
+
+Message必须保存：
+
+sender
+conversation
+type
+content
+status
+createdAt
+updatedAt
+
+支持：
+
+SENT
+DELIVERED
+READ
+
+聊天使用：
+
+WebSocket / Socket.IO。
+
+REST负责：
+
+历史消息
+分页
+聊天列表
+
+WebSocket负责：
+
+实时消息
+已读
+在线状态
+Typing
+通知
+
+==================================================
+十四、消息翻译
+==================================================
+
+TalkFirst是国际社交平台。
+
+聊天必须支持：
+
+一键翻译。
+
+例如：
+
+English
+↓
+Chinese
+
+English
+↓
+Japanese
+
+English
+↓
+Korean
+
+原文和翻译必须分开保存。
+
+使用：
+
+MessageTranslation
+
+不要覆盖原始消息。
+
+AI/翻译API应该通过独立Service封装。
+
+不要把第三方AI SDK直接散落在业务代码里。
+
+==================================================
+十五、联系方式交换
+==================================================
+
+这是TalkFirst最重要的功能之一。
+
+Social Account默认：
+
+PRIVATE
+
+或者：
+
+AFTER_MUTUAL_APPROVAL
+
+例如：
+
+用户A：
+
+Instagram
+Telegram
+
+用户B：
+
+Instagram
+Discord
+
+双方聊天以后：
+
+A：
+
+“交换Instagram？”
+
+↓
+
+B接受
+
+↓
+
+ContactExchange
+
+↓
+
+双方看到被授权的SocialAccount。
+
+必须做到：
+
+没有双方同意：
+
+不能显示账号。
+
+禁止：
+
+通过API绕过权限查看账号。
+
+==================================================
+十六、Social Account
+==================================================
+
+支持：
+
+Instagram
+Telegram
+WhatsApp
+Discord
+X
+TikTok
+YouTube
+Facebook
+WeChat
+QQ
+Reddit
+Snapchat
+
+以及：
+
+OTHER
+
+SocialAccount字段至少包括：
+
+platform
+username
+displayName
+profileUrl
+visibility
+isVerified
+isActive
+
+==================================================
+十七、外部社交动态 Activity
+==================================================
+
+TalkFirst允许用户同步外部社交平台的公开/授权内容。
+
+目标：
+
+让陌生人在聊天之前看到对方最近的公开动态。
+
+例如：
+
+Yuki
+
+Activity
+
+Instagram
+2 hours ago
+
+Tokyo trip
+
+TikTok
+5 hours ago
+
+Gaming video
+
+YouTube
+1 day ago
+
+Travel vlog
+
+Activity不是为了取代Instagram/TikTok。
+
+Activity只是：
+
+“社交上下文层”。
+
+核心目的：
+
+帮助陌生人找到聊天话题。
+
+==================================================
+十八、外部社交平台同步规则
+==================================================
+
+非常重要：
+
+禁止：
+
+抓取密码
+抓取Cookie
+绕过平台API
+非法爬虫
+要求用户提供第三方平台密码
+绕过平台权限
+
+正确方式：
+
+用户主动：
+
+Connect Account
+
+↓
+
+OAuth / 官方授权
+
+↓
+
+TalkFirst获取平台允许访问的数据
+
+↓
+
+同步公开/授权内容。
+
+如果某个平台没有提供合适的官方API：
+
+不要伪造同步功能。
+
+可以提供：
+
+“View Profile”
+
+或者：
+
+“Add Social Link”
+
+而不是假装可以读取Feed。
+
+==================================================
+十九、Activity数据库
+==================================================
+
+至少支持：
+
+ExternalSocialConnection
+
+ExternalPost
+
+ExternalPost需要保存：
+
+platform
+externalPostId
+type
+content
+mediaUrl
+thumbnailUrl
+externalUrl
+publishedAt
+likeCount
+commentCount
+shareCount
+viewCount
+
+必须支持：
+
+同步状态。
+
+ACTIVE
+PAUSED
+ERROR
+DISCONNECTED
+
+记录：
+
+lastSyncAt
+nextSyncAt
+errorMessage
+
+==================================================
+二十、Activity隐私
+==================================================
+
+默认：
+
+同步关闭。
+
+用户自己决定是否同步。
+
+每个平台独立控制：
+
+Instagram
+TikTok
+X
+YouTube
+Facebook
+
+可以：
+
+连接
+断开
+暂停同步
+隐藏动态
+只同步公开内容
+
+不能显示：
+
+私信
+私人帖子
+私人联系人
+手机号
+邮箱
+私密Follower数据
+
+==================================================
+二十一、Activity与聊天联动
+==================================================
+
+Activity可以提供：
+
+Conversation Starter。
+
+例如：
+
+“你最近去了东京？”
+
+但是：
+
+不要自动发送。
+
+应该显示：
+
+“Talk about this”
+
+用户点击以后：
+
+生成：
+
+“Tokyo looks amazing! Which place did you enjoy the most?”
+
+用户自己决定是否发送。
+
+不要让用户感觉被监控。
+
+==================================================
+二十二、Block
+==================================================
+
+用户可以：
+
+Block User。
+
+Block后：
+
+不能聊天
+不能发送Connection Request
+不能Discover推荐
+不能交换联系方式
+
+==================================================
+二十三、Report
+==================================================
+
+支持举报：
+
+用户
+消息
+动态
+
+举报类型：
+
+HARASSMENT
+SPAM
+SCAM
+SEXUAL_CONTENT
+HATE_SPEECH
+FAKE_PROFILE
+IMPERSONATION
+UNDERAGE
+ILLEGAL_CONTENT
+SELF_HARM
+EXTERNAL_SCAM
+OTHER
+
+必须保存：
+
+reporter
+target
+reason
+description
+status
+createdAt
+resolvedAt
+
+==================================================
+二十四、Moderation
+==================================================
+
+必须预留内容审核。
+
+可以使用AI moderation。
+
+但：
+
+AI只能作为辅助。
+
+最终严重处罚可以进入：
+
+Admin Review。
+
+支持：
+
+WARNING
+MESSAGE_BLOCKED
+CONTENT_REMOVED
+TEMPORARY_BAN
+PERMANENT_BAN
+
+==================================================
+二十五、用户信誉
+==================================================
+
+UserReputation：
+
+默认：
+
+100
+
+可以记录：
+
+successfulConnections
+contactExchanges
+reportsReceived
+warnings
+trustLevel
+
+注意：
+
+不要把信誉分设计成“绝对真实身份认证”。
+
+Trust Score只是：
+
+社区行为指标。
+
+==================================================
+二十六、通知系统
+==================================================
+
+Notification支持：
+
+Connection Request
+Connection Accepted
+New Message
+Contact Request
+Contact Accepted
+Contact Rejected
+New Post
+Post Like
+Post Comment
+System
+Security
+
+支持：
+
+已读/未读。
+
+==================================================
+二十七、前端UI设计
+==================================================
+
+整体视觉：
+
+Minimal
+Modern
+Clean
+Friendly
+International
+
+不要：
+
+复杂
+花哨
+大量渐变
+大量动画
+游戏化过度
+
+主视觉：
+
+白色
+浅灰
+浅蓝
+淡紫
+
+主按钮：
+
+蓝紫渐变可以使用。
+
+整体：
+
+圆角
+大留白
+卡片
+柔和阴影
+
+风格：
+
+现代移动App。
+
+==================================================
+二十八、品牌
+==================================================
+
+Logo：
+
+TalkFirst
+
+中文：
+
+先聊
+
+Slogan：
+
+先聊聊，再成为朋友。
+
+英文：
+
+Talk First. Connect Later.
+
+UI文字可以采用：
+
+中英双语设计思维。
+
+但是正式产品需要支持：
+
+i18n。
+
+第一版：
+
+中文
+English
+
+架构必须允许以后增加：
+
+Japanese
+Korean
+German
+Spanish
+French
+
+==================================================
+二十九、页面结构
+==================================================
+
+必须实现以下页面：
+
+/welcome
+
+/login
+
+/register
+
+/verify
+
+/onboarding
+
+/onboarding/profile
+
+/onboarding/languages
+
+/onboarding/interests
+
+/onboarding/purposes
+
+/onboarding/social
+
+/discover
+
+/users/[id]
+
+/users/[id]/activity
+
+/messages
+
+/messages/[conversationId]
+
+/connections
+
+/connections/[id]
+
+/contact-exchange
+
+/profile
+
+/profile/edit
+
+/profile/activity
+
+/settings
+
+/settings/privacy
+
+/settings/social
+
+/settings/notifications
+
+/report
+
+/block
+
+/admin
+
+/admin/users
+
+/admin/reports
+
+/admin/moderation
+
+==================================================
+三十、底部导航
+==================================================
+
+推荐：
+
+Discover
+Messages
+Connections
+Me
+
+不要在第一版增加太多Tab。
+
+Activity不需要独立成为底部Tab。
+
+Activity应该主要存在：
+
+Profile
+User Profile
+
+==================================================
+三十一、API规范
+==================================================
+
+所有API：
+
+/api/v1
+
+例如：
+
+POST /api/v1/auth/register
+
+POST /api/v1/auth/login
+
+POST /api/v1/auth/refresh
+
+POST /api/v1/auth/logout
+
+GET /api/v1/me
+
+PATCH /api/v1/me
+
+GET /api/v1/users/:id
+
+GET /api/v1/discover
+
+POST /api/v1/connection-requests
+
+GET /api/v1/connection-requests
+
+POST /api/v1/connection-requests/:id/accept
+
+POST /api/v1/connection-requests/:id/reject
+
+GET /api/v1/connections
+
+DELETE /api/v1/connections/:id
+
+GET /api/v1/conversations
+
+GET /api/v1/conversations/:id/messages
+
+POST /api/v1/conversations/:id/messages
+
+POST /api/v1/connections/:id/contact-exchange
+
+POST /api/v1/contact-exchanges/:id/accept
+
+POST /api/v1/contact-exchanges/:id/reject
+
+GET /api/v1/social-accounts
+
+POST /api/v1/social-accounts
+
+DELETE /api/v1/social-accounts/:id
+
+GET /api/v1/users/:id/activity
+
+GET /api/v1/me/activity
+
+POST /api/v1/social/:platform/connect
+
+POST /api/v1/social/:platform/sync
+
+POST /api/v1/social/:platform/disconnect
+
+POST /api/v1/users/:id/block
+
+DELETE /api/v1/users/:id/block
+
+POST /api/v1/reports
+
+GET /api/v1/notifications
+
+POST /api/v1/notifications/:id/read
+
+==================================================
+三十二、API返回格式
+==================================================
+
+统一：
+
+{
+  "success": true,
+  "data": {},
+  "message": null
+}
+
+错误：
+
+{
+  "success": false,
+  "data": null,
+  "message": "Something went wrong",
+  "code": "ERROR_CODE"
+}
+
+分页：
+
+{
+  "success": true,
+  "data": [],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 100,
+    "hasNext": true
+  }
+}
+
+==================================================
+三十三、错误处理
+==================================================
+
+必须建立统一错误体系。
+
+例如：
+
+AUTH_INVALID_CREDENTIALS
+AUTH_TOKEN_EXPIRED
+USER_NOT_FOUND
+USER_BLOCKED
+CONNECTION_ALREADY_EXISTS
+CONNECTION_REQUEST_EXISTS
+CONTACT_EXCHANGE_NOT_ALLOWED
+SOCIAL_ACCOUNT_NOT_FOUND
+SOCIAL_ACCOUNT_PRIVATE
+MESSAGE_NOT_ALLOWED
+RATE_LIMIT_EXCEEDED
+VALIDATION_ERROR
+
+不要在Controller中到处：
+
+throw new Error("xxx")
+
+应该建立统一异常处理。
+
+==================================================
+三十四、认证
+==================================================
+
+使用：
+
+Access Token
++
+Refresh Token
+
+Access Token：
+
+短期有效。
+
+Refresh Token：
+
+长期有效。
+
+密码：
+
+必须使用：
+
+Argon2 或 bcrypt。
+
+禁止：
+
+明文保存密码。
+
+禁止：
+
+把JWT Secret写死在代码中。
+
+全部放：
+
+.env
+
+==================================================
+三十五、环境变量
+==================================================
+
+必须提供：
+
+.env.example
+
+至少：
+
+DATABASE_URL
+
+REDIS_URL
+
+JWT_ACCESS_SECRET
+
+JWT_REFRESH_SECRET
+
+JWT_ACCESS_EXPIRES
+
+JWT_REFRESH_EXPIRES
+
+STORAGE_ENDPOINT
+
+STORAGE_BUCKET
+
+STORAGE_ACCESS_KEY
+
+STORAGE_SECRET_KEY
+
+OPENAI_API_KEY
+
+以及：
+
+外部社交平台OAuth配置。
+
+不要把真实Secret提交到Git。
+
+==================================================
+三十六、安全要求
+==================================================
+
+必须考虑：
+
+SQL Injection
+XSS
+CSRF
+JWT安全
+Rate Limit
+Brute Force
+Spam
+Account Enumeration
+Mass Assignment
+IDOR
+权限越权
+文件上传攻击
+恶意图片
+恶意URL
+Prompt Injection
+
+尤其注意：
+
+任何：
+
+/users/:id
+
+/:id
+
+都必须检查：
+
+当前用户是否有权限访问。
+
+禁止：
+
+只因为知道UUID就能读取私人信息。
+
+==================================================
+三十七、文件上传
+==================================================
+
+头像和图片上传：
+
+不要直接让服务器随便接受任意文件。
+
+检查：
+
+MIME
+Extension
+File Size
+
+限制：
+
+图片格式：
+
+JPEG
+PNG
+WEBP
+
+限制最大文件大小。
+
+上传以后：
+
+使用对象存储。
+
+不要长期把用户图片直接塞PostgreSQL。
+
+==================================================
+三十八、Rate Limit
+==================================================
+
+必须限制：
+
+登录
+
+注册
+
+验证码
+
+Say Hello
+
+Connection Request
+
+Contact Exchange
+
+Message
+
+Report
+
+Social Sync
+
+AI请求
+
+例如：
+
+单用户：
+
+每分钟最多发送一定数量消息。
+
+具体数字可以放Config。
+
+不要写死在业务代码。
+
+==================================================
+三十九、AI功能
+==================================================
+
+AI只能作为辅助。
+
+AI功能：
+
+1. Icebreaker
+2. Translation
+3. Content Moderation
+4. Activity Conversation Starter
+
+禁止：
+
+AI自动冒充用户。
+
+禁止：
+
+AI未经用户同意自动发送消息。
+
+AI服务必须抽象：
+
+AiService
+
+TranslationService
+
+ModerationService
+
+IcebreakerService
+
+以后可以更换AI供应商。
+
+==================================================
+四十、后台Admin
+==================================================
+
+管理员可以：
+
+查看用户
+搜索用户
+封禁用户
+解封用户
+查看举报
+处理举报
+删除内容
+查看风险用户
+查看审核记录
+查看系统统计
+
+Admin角色：
+
+SUPER_ADMIN
+MODERATOR
+SUPPORT
+
+所有管理员操作：
+
+必须写入：
+
+AuditLog。
+
+==================================================
+四十一、Admin Dashboard
+==================================================
+
+至少显示：
+
+总用户
+今日注册
+DAU
+WAU
+活跃用户
+Connection数量
+聊天数量
+Contact Exchange数量
+举报数量
+封禁用户
+社交账号绑定数量
+
+==================================================
+四十二、关键产品指标
+==================================================
+
+重点关注：
+
+Registration Conversion
+
+Profile Completion
+
+First Message Rate
+
+First Conversation Rate
+
+Connection Rate
+
+Contact Exchange Rate
+
+Weekly Meaningful Connections
+
+其中核心指标：
+
+Weekly Meaningful Connections。
+
+不要只追求：
+
+注册数量。
+
+==================================================
+四十三、MVP范围
+==================================================
+
+第一阶段必须优先实现：
+
+注册
+登录
+Profile
+Languages
+Interests
+Purposes
+Social Account
+Discover
+Say Hello
+Connection
+Chat
+Contact Exchange
+Block
+Report
+Notification
+
+Activity可以先做：
+
+TalkFirst内部动态
+
+以及：
+
+外部社交平台Profile Link。
+
+真正OAuth Feed Sync作为第二阶段。
+
+==================================================
+四十四、第一版禁止做的东西
+==================================================
+
+MVP不要实现：
+
+直播
+视频聊天
+虚拟货币
+盲盒
+复杂游戏化
+地图社交
+礼物
+AI陪聊
+Dating
+成人内容
+复杂推荐模型
+复杂会员体系
+大量动画
+NFT
+Crypto
+
+先证明：
+
+陌生人
+→
+聊天
+→
+Connection
+→
+联系方式交换
+
+这个核心闭环。
+
+==================================================
+四十五、开发方式
+==================================================
+
+你必须采用：
+
+Incremental Development
+
+不要一次性生成几万行代码。
+
+必须：
+
+先建立项目
+↓
+配置数据库
+↓
+建立Schema
+↓
+Migration
+↓
+Seed
+↓
+Auth
+↓
+Profile
+↓
+Discover
+↓
+Connection
+↓
+Chat
+↓
+Contact Exchange
+↓
+Activity
+↓
+Moderation
+↓
+Admin
+↓
+测试
+↓
+部署
+
+每完成一个模块：
+
+必须运行：
+
+typecheck
+lint
+test
+build
+
+确保没有明显错误以后再进入下一模块。
+
+==================================================
+四十六、不要自作主张修改产品逻辑
+==================================================
+
+如果发现需求存在冲突：
+
+先说明冲突。
+
+然后选择：
+
+最简单
+最安全
+最容易扩展
+
+的方案。
+
+不要擅自改变：
+
+产品核心定位。
+
+==================================================
+四十七、不要为了“看起来完成”而伪造功能
+==================================================
+
+特别禁止：
+
+假装OAuth已经连接。
+
+假装Instagram已经同步。
+
+假装AI已经调用。
+
+假装WebSocket已经工作。
+
+假装数据库已经连接。
+
+如果第三方API暂时没有配置：
+
+必须使用：
+
+Mock / Adapter。
+
+并清楚标记：
+
+TODO:
+需要配置真实Provider。
+
+==================================================
+四十八、Mock数据
+==================================================
+
+开发阶段可以使用：
+
+Seed Data。
+
+至少创建：
+
+20个测试用户。
+
+不同国家：
+
+China
+Japan
+USA
+Germany
+Korea
+UK
+France
+
+不同兴趣：
+
+Gaming
+Travel
+Music
+Anime
+Technology
+Photography
+Movies
+Sports
+
+不同语言。
+
+用于测试：
+
+Discover
+Match
+Connection
+Chat
+
+==================================================
+四十九、测试账号
+==================================================
+
+Seed提供：
+
+demo1@example.com
+
+demo2@example.com
+
+等测试账号。
+
+密码不要写入生产环境。
+
+==================================================
+五十、测试要求
+==================================================
+
+必须至少测试：
+
+注册
+
+登录
+
+Token刷新
+
+Profile修改
+
+Discover
+
+Say Hello
+
+Connection Request
+
+Accept
+
+Reject
+
+Block
+
+Unblock
+
+Chat
+
+Send Message
+
+Read Message
+
+Contact Exchange
+
+Accept Contact Exchange
+
+Reject Contact Exchange
+
+Report
+
+Notification
+
+Social Account权限
+
+==================================================
+五十一、前端状态管理
+==================================================
+
+不要所有状态都塞进一个Store。
+
+根据实际需要：
+
+React Query / TanStack Query
+
+用于：
+
+Server State。
+
+本地UI状态：
+
+React State。
+
+只有真正需要：
+
+跨页面共享的状态
+
+才使用：
+
+Zustand等。
+
+==================================================
+五十二、前端请求
+==================================================
+
+统一：
+
+API Client。
+
+不要：
+
+每个组件自己fetch。
+
+例如：
+
+src/lib/api/
+
+authApi
+userApi
+discoverApi
+connectionApi
+messageApi
+socialApi
+notificationApi
+
+==================================================
+五十三、前端组件
+==================================================
+
+组件需要复用。
+
+例如：
+
+UserCard
+Avatar
+InterestTag
+LanguageTag
+SocialBadge
+ConnectionButton
+SayHelloButton
+MessageBubble
+ActivityCard
+EmptyState
+LoadingState
+ErrorState
+Modal
+ConfirmDialog
+
+==================================================
+五十四、响应式
+==================================================
+
+优先：
+
+Mobile First。
+
+必须支持：
+
+手机
+平板
+Desktop
+
+尤其：
+
+390px左右移动端。
+
+不能出现：
+
+横向滚动
+按钮溢出
+文字溢出
+卡片变形。
+
+==================================================
+五十五、Loading / Empty / Error
+==================================================
+
+每个页面必须考虑：
+
+Loading
+
+Empty
+
+Error
+
+Success。
+
+例如：
+
+Discover没有推荐：
+
+“No more people nearby right now.”
+
+Messages没有聊天：
+
+“Start a conversation.”
+
+Connections没有连接：
+
+“Your meaningful connections will appear here.”
+
+==================================================
+五十六、国际化
+==================================================
+
+不要把大量中文文字硬编码在组件里。
+
+使用：
+
+i18n。
+
+例如：
+
+messages.zh.json
+
+messages.en.json
+
+以后可以添加：
+
+ja
+ko
+de
+fr
+es
+
+==================================================
+五十七、日志
+==================================================
+
+后端使用结构化日志。
+
+至少记录：
+
+error
+warn
+info
+
+生产环境不要打印：
+
+password
+accessToken
+refreshToken
+OAuth token
+私人聊天内容
+
+==================================================
+五十八、数据库索引
+==================================================
+
+必须根据查询场景建立索引。
+
+重点：
+
+User.status
+User.countryCode
+User.lastActiveAt
+
+UserLanguage.languageId
+
+UserInterest.interestId
+
+Connection.userAId
+Connection.userBId
+
+Conversation.updatedAt
+
+Message.conversationId
+Message.createdAt
+
+ExternalPost.userId
+ExternalPost.publishedAt
+
+Notification.userId
+Notification.isRead
+
+Report.status
+
+==================================================
+五十九、删除策略
+==================================================
+
+用户删除账号：
+
+不要立刻物理删除所有数据。
+
+优先：
+
+soft delete。
+
+User：
+
+deletedAt
+
+status：
+
+DELETED
+
+敏感数据按照法律/平台要求进行清理。
+
+==================================================
+六十、隐私
+==================================================
+
+必须遵循：
+
+Privacy by Default。
+
+默认：
+
+Social Account隐藏。
+
+默认：
+
+Activity Sync关闭。
+
+默认：
+
+不公开邮箱。
+
+默认：
+
+不公开手机号。
+
+默认：
+
+不公开私人内容。
+
+==================================================
+六十一、禁止泄露个人信息
+==================================================
+
+API返回User时：
+
+不能直接：
+
+return user;
+
+必须使用：
+
+DTO。
+
+例如：
+
+PublicUserDto
+
+PrivateUserDto
+
+AdminUserDto
+
+防止：
+
+passwordHash
+email
+phone
+OAuth Token
+
+意外返回。
+
+==================================================
+六十二、DTO
+==================================================
+
+所有API必须定义：
+
+Request DTO
+
+Response DTO
+
+Validation DTO。
+
+使用：
+
+class-validator
+
+或等效方案。
+
+==================================================
+六十三、API文档
+==================================================
+
+使用：
+
+Swagger / OpenAPI。
+
+后端必须提供：
+
+/docs
+
+或者：
+
+/api/docs
+
+每个API必须有：
+
+summary
+description
+request schema
+response schema
+authentication
+error codes
+
+==================================================
+六十四、README
+==================================================
+
+项目必须提供：
+
+README.md
+
+内容：
+
+项目介绍
+技术栈
+环境要求
+安装
+.env配置
+数据库配置
+Migration
+Seed
+启动开发环境
+测试
+Build
+Docker
+部署
+API文档
+常见问题
+
+==================================================
+六十五、Docker
+==================================================
+
+提供：
+
+docker-compose.yml
+
+至少支持：
+
+PostgreSQL
+Redis
+API
+
+前端可以：
+
+独立运行
+
+或者：
+
+通过Docker运行。
+
+==================================================
+六十六、生产环境
+==================================================
+
+生产环境建议：
+
+Nginx
+↓
+Frontend
+↓
+Backend
+↓
+PostgreSQL
+Redis
+Object Storage
+
+必须支持：
+
+HTTPS。
+
+不要把：
+
+PostgreSQL
+
+直接暴露到公网。
+
+Redis：
+
+不要暴露公网。
+
+==================================================
+六十七、Git
+==================================================
+
+项目必须适合：
+
+GitHub。
+
+提供：
+
+.gitignore
+
+禁止提交：
+
+.env
+
+node_modules
+
+.next
+
+dist
+
+数据库Secret
+
+OAuth Secret
+
+API Key
+
+Private Key
+
+==================================================
+六十八、Commit
+==================================================
+
+推荐按照模块提交：
+
+feat: initialize project
+
+feat: add authentication
+
+feat: add user profile
+
+feat: add discover
+
+feat: add connections
+
+feat: add chat
+
+feat: add contact exchange
+
+feat: add activity
+
+feat: add moderation
+
+feat: add admin
+
+==================================================
+六十九、遇到错误时
+==================================================
+
+如果运行报错：
+
+不要猜。
+
+按照：
+
+1. 读取完整错误
+2. 找到真正原因
+3. 修复最小范围
+4. 重新运行
+5. 验证
+
+不要：
+
+删除大量代码
+重装整个项目
+随意升级所有依赖
+修改大量配置
+
+==================================================
+七十、依赖管理
+==================================================
+
+不要为了一个小功能安装大量npm包。
+
+优先：
+
+现有依赖。
+
+安装新依赖前：
+
+说明：
+
+为什么需要。
+
+==================================================
+七十一、数据库Migration
+==================================================
+
+禁止：
+
+直接修改生产数据库。
+
+开发：
+
+Prisma migration。
+
+例如：
+
+npx prisma migrate dev
+
+生产：
+
+npx prisma migrate deploy
+
+==================================================
+七十二、Seed
+==================================================
+
+必须提供：
+
+prisma/seed.ts
+
+初始化：
+
+Countries
+Languages
+Interest Categories
+Interests
+Purposes
+
+并提供：
+
+Demo Users。
+
+==================================================
+七十三、开发优先级
+==================================================
+
+严格按照：
+
+P0：
+
+项目初始化
+
+数据库
+
+Auth
+
+User
+
+Profile
+
+Onboarding
+
+Discover
+
+Connection
+
+Chat
+
+Contact Exchange
+
+Block
+
+Report
+
+Notification
+
+P1：
+
+Activity
+
+Translation
+
+Moderation
+
+Recommendation
+
+P2：
+
+OAuth Social Sync
+
+Subscription
+
+Boost
+
+Advanced AI
+
+Analytics
+
+==================================================
+七十四、开发阶段汇报格式
+==================================================
+
+每完成一个阶段，向我汇报：
+
+【完成】
+
+完成了什么。
+
+【修改文件】
+
+列出文件。
+
+【数据库】
+
+修改了哪些Schema。
+
+【API】
+
+增加了哪些API。
+
+【测试】
+
+执行了什么命令。
+
+【结果】
+
+成功/失败。
+
+【下一步】
+
+下一步准备做什么。
+
+==================================================
+七十五、对我这个用户的沟通方式
+==================================================
+
+我是技术初学者。
+
+所以：
+
+不要默认我知道复杂技术。
+
+解释问题时：
+
+先告诉我：
+
+“现在发生了什么”。
+
+再告诉我：
+
+“为什么”。
+
+最后告诉我：
+
+“怎么解决”。
+
+命令必须可以：
+
+直接复制粘贴。
+
+例如：
+
+cd xxx
+
+npm install
+
+npx prisma migrate dev
+
+不要只说：
+
+“配置数据库”。
+
+要告诉我：
+
+具体修改哪个文件。
+
+哪个字段。
+
+填什么。
+
+==================================================
+七十六、非常重要：不要一次性问我几十个问题
+==================================================
+
+如果信息已经足够：
+
+直接开始开发。
+
+只有遇到真正阻塞的问题：
+
+才询问我。
+
+如果存在多个合理方案：
+
+优先选择：
+
+简单
+稳定
+安全
+可维护
+
+的方案。
+
+==================================================
+七十七、最终目标
+==================================================
+
+最终生成：
+
+一个真正可以运行的TalkFirst MVP。
+
+而不是：
+
+Demo截图。
+
+必须真正实现：
+
+Frontend
++
+Backend
++
+PostgreSQL
++
+Redis
++
+Authentication
++
+REST API
++
+WebSocket
++
+Admin
++
+Moderation
++
+Docker
+
+并能够：
+
+本地运行。
+
+以后部署到：
+
+Ubuntu Cloud Server
++
+Nginx
++
+Docker。
+
+==================================================
+七十八、最终验收标准
+==================================================
+
+当项目完成后：
+
+新用户可以：
+
+注册
+↓
+登录
+↓
+创建Profile
+↓
+选择语言
+↓
+选择兴趣
+↓
+选择交友目的
+↓
+绑定Social Account
+↓
+进入Discover
+↓
+看到推荐用户
+↓
+查看Profile
+↓
+查看Activity
+↓
+Say Hello
+↓
+聊天
+↓
+建立Connection
+↓
+申请交换联系方式
+↓
+对方接受
+↓
+看到被授权的Social Account
+↓
+进入Connections。
+
+同时：
+
+用户可以Block
+用户可以Report
+管理员可以审核
+系统可以发送Notification。
+
+这条流程必须完整可运行。
+
+==================================================
+七十九、最终输出
+==================================================
+
+项目最终必须拥有：
+
+完整源代码
+
+完整Prisma Schema
+
+Migration
+
+Seed
+
+REST API
+
+Swagger
+
+WebSocket
+
+前端页面
+
+后台管理
+
+认证
+
+权限
+
+测试
+
+Docker
+
+.env.example
+
+README
+
+部署文档
+
+==================================================
+八十、现在开始
+==================================================
+
+不要先写大量代码。
+
+第一步：
+
+分析整个项目。
+
+输出：
+
+1. 项目架构
+2. 文件目录
+3. 数据库模块
+4. API模块
+5. 前端页面
+6. 开发阶段
+7. MVP优先级
+8. 风险点
+
+然后开始：
+
+Phase 1：
+
+初始化项目。
+
+完成后：
+
+运行测试。
+
+确认没有明显错误后进入Phase 2。
+
+每个Phase完成以后再继续。
+
+永远不要为了“快速完成”跳过：
+
+数据库设计
+权限验证
+错误处理
+安全检查
+测试
+我建议你这样使用
+
+如果你用的是 Cursor / Windsurf / Trae / Claude Code / Antigravity，不要一上来就说：
+
+“把整个项目一次性生成。”
+
+这样 AI 很容易生成一堆互相冲突的代码。
+
+最好：
+
+第一次
+
+把上面的总提示词完整发给 AI。
+
+然后让它：
+
+先不要写业务代码，只进行项目分析并输出 Phase 1 开发计划。
+
+第二次
+
+等它分析完，再告诉它：
+
+按照你刚才的架构开始执行 Phase 1。
+
+要求：
+
+1. 创建完整项目目录
+2. 初始化前端
+3. 初始化NestJS后端
+4. 初始化Prisma
+5. 配置PostgreSQL
+6. 配置Redis
+7. 创建.env.example
+8. 创建Docker Compose
+9. 创建README
+10. 创建基础健康检查API
+
+不要开始开发Discover、Chat等业务功能。
+
+完成后运行：
+
+typecheck
+lint
+test
+build
+
+然后告诉我执行结果。
+第三次
+
+然后按模块继续：
+
+开始 Phase 2：Database + Authentication。
+
+严格按照Master Prompt。
+
+先完成：
+
+Prisma Schema
+Migration
+Seed
+User
+Auth
+JWT
+Refresh Token
+Register
+Login
+Logout
+Get Current User
+
+完成后运行：
+
+typecheck
+lint
+test
+build
+
+不要提前开发其他模块。
+
+然后：
+
+开始 Phase 3：Profile + Onboarding。
+
+再：
+
+开始 Phase 4：Discover + Recommendation。
+
+再：
+
+开始 Phase 5：Connection + Say Hello。
+
+再：
+
+开始 Phase 6：Chat + WebSocket。
+
+再：
+
+开始 Phase 7：Contact Exchange。
+
+再：
+
+开始 Phase 8：Activity。
+
+再：
+
+开始 Phase 9：Moderation + Report + Block。
+
+最后：
+
+开始 Phase 10：Admin + Docker + Production Deployment。
+一个非常重要的建议
+
+你这个项目现在已经不是单纯的“做个漂亮网页”了。
+
+它实际上是：
+
+社交产品 + 实时聊天 + 权限系统 + 外部社交平台 + 内容审核 + AI + PostgreSQL + Redis + WebSocket
+
+所以我建议你不要让一个 AI Agent 一次性生成全部代码。
+
+最稳的路线是：
+
+总提示词
+    ↓
+项目架构
+    ↓
+数据库
+    ↓
+Auth
+    ↓
+Profile
+    ↓
+Discover
+    ↓
+Connection
+    ↓
+Chat
+    ↓
+Contact Exchange
+    ↓
+Activity
+    ↓
+安全/审核
+    ↓
+Admin
+    ↓
+Docker
+    ↓
+上线
+
+这样即使中途出现错误，也比较容易定位。

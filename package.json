@@ -1,0 +1,56 @@
+{
+  "name": "talkfirst",
+  "private": true,
+  "version": "0.1.0",
+  "description": "TalkFirst — Talk First. Connect Later.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:web": "npm run dev -w @talkfirst/web",
+    "dev:api": "npm run start:dev -w @talkfirst/api",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "prisma:generate": "prisma generate --schema prisma/schema.prisma",
+    "prisma:migrate": "prisma migrate dev --schema prisma/schema.prisma",
+    "db:up": "docker compose up -d postgres redis",
+    "db:down": "docker compose down",
+    "docker:build": "docker compose --env-file .env.docker build",
+    "docker:up": "docker compose --env-file .env.docker up -d --build",
+    "docker:down": "docker compose --env-file .env.docker down",
+    "docker:logs": "docker compose --env-file .env.docker logs -f",
+    "docker:ps": "docker compose --env-file .env.docker ps",
+    "docker:reset": "docker compose --env-file .env.docker down -v"
+  },
+  "devDependencies": {
+    "prisma": "^6.6.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  },
+  "dependencies": {
+    "@nestjs/cli": "^11.0.24",
+    "@nestjs/common": "^12.0.3",
+    "@nestjs/config": "^12.0.0",
+    "@nestjs/core": "^12.0.3",
+    "@nestjs/jwt": "^12.0.2",
+    "@nestjs/passport": "^12.0.0",
+    "@nestjs/platform-express": "^12.0.3",
+    "@nestjs/platform-socket.io": "^12.0.3",
+    "@nestjs/testing": "^12.0.3",
+    "@nestjs/throttler": "^6.6.0",
+    "@nestjs/websockets": "^12.0.3",
+    "@prisma/client": "^6.6.0",
+    "socket.io": "^4.8.3"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "prisma": {
+    "schema": "prisma/schema.prisma",
+    "seed": "npx tsx prisma/seed.ts"
+  }
+}
