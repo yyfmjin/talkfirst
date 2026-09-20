@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import type { SocialPlatform } from "@prisma/client";
+import { NotificationService } from "../notifications/notification.service";
 import { PrismaService } from "../prisma/prisma.service";
 
 const EXCHANGE_MESSAGE_LIMIT = 5;
@@ -27,7 +28,11 @@ const PLATFORM_LABELS: Record<SocialPlatform, string> = {
 
 @Injectable()
 export class ExchangeService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    /** PC-3.1b — the one writer of notifications; see `NotificationService`. */
+    private readonly notifications: NotificationService,
+  ) {}
 
   platformLabels() {
     return PLATFORM_LABELS;
@@ -149,16 +154,23 @@ export class ExchangeService {
           content: `🔗 ${exchange.requester.nickname ?? "Someone"} requested contact exchange (${normalized.map((p) => PLATFORM_LABELS[p]).join("、")})`,
         },
       });
-      await tx.notification.create({
-        data: {
-          userId: context.peerId,
-          type: "EXCHANGE_REQUEST",
-          title: "🔗 Contact exchange request",
-          body: `${exchange.requester.nickname ?? "Someone"} wants to exchange ${normalized.map((p) => PLATFORM_LABELS[p]).join("、")}`,
-          data: JSON.stringify({ exchangeId: exchange.id, conversationId }),
-        },
-      });
       return exchange;
+    });
+
+    // PC-3.1b — outside the transaction: the exchange request is the real work,
+    // and a notification must not be able to roll it back.
+    await this.notifications.notify({
+      userId: context.peerId,
+      type: "EXCHANGE_REQUEST",
+      title: "🔗 Contact exchange request",
+      body: `${created.requester.nickname ?? "Someone"} wants to exchange ${normalized.map((p) => PLATFORM_LABELS[p]).join("、")}`,
+      data: {
+        actorId: userId,
+        targetType: "EXCHANGE",
+        targetId: created.id,
+        exchangeId: created.id,
+        conversationId,
+      },
     });
 
     return this.toPayload(created);
@@ -268,15 +280,6 @@ export class ExchangeService {
           content: `🎉 Contact exchange accepted. You can now see each other's ${exchange.platforms.map((p) => PLATFORM_LABELS[p]).join("、")}.`,
         },
       });
-      await tx.notification.create({
-        data: {
-          userId: exchange.requesterId,
-          type: "EXCHANGE_ACCEPTED",
-          title: "🎉 Contact exchange accepted",
-          body: "Check Connections to see each other's accounts.",
-          data: JSON.stringify({ exchangeId, conversationId: exchange.conversationId }),
-        },
-      });
       const shared = await this.sharedAccountsForPair(
         tx,
         exchange.requesterId,
@@ -284,6 +287,22 @@ export class ExchangeService {
         exchange.platforms,
       );
       return { updated, shared };
+    });
+
+    // PC-3.1b — after the commit: the accepted exchange (and the shared
+    // accounts it produced) stand even if the notification cannot be written.
+    await this.notifications.notify({
+      userId: exchange.requesterId,
+      type: "EXCHANGE_ACCEPTED",
+      title: "🎉 Contact exchange accepted",
+      body: "Check Connections to see each other's accounts.",
+      data: {
+        actorId: userId,
+        targetType: "EXCHANGE",
+        targetId: exchange.id,
+        exchangeId: exchange.id,
+        conversationId: exchange.conversationId,
+      },
     });
 
     return { exchange: this.toPayload(result.updated), shared: result.shared };

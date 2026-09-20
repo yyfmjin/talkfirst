@@ -27,6 +27,11 @@ import { loginAndLand } from "../fixtures/browser";
  *     so this is a real, reachable state that no UI can set up);
  *   - a report with **no** `messageId`, i.e. a USER report.
  *
+ * PC-2.5.4 adds the third target: a report whose `momentId` is set. Both the
+ * "moment still there" and the "moment already deleted" shapes are needed, plus
+ * the one row that carries *both* pointers — that last one is the only fixture
+ * that can tell the `MOMENT > MESSAGE` priority from a coin flip.
+ *
  * They are created through Prisma under a marker and removed precisely.
  */
 
@@ -44,9 +49,19 @@ let danglingReportId: string;
 let userReportId: string;
 /** A report whose message row exists but is soft-deleted. */
 let deletedMessageReportId: string;
+/** PC-2.5.4 — a report pointing at a moment that still exists. */
+let momentReportId: string;
+/** PC-2.5.4 — a report pointing at a moment that has since been deleted. */
+let momentGoneReportId: string;
+/** PC-2.5.4 — one row with both pointers, to pin MOMENT over MESSAGE. */
+let momentAndMessageReportId: string;
+/** The moment the live-moment report points at. */
+let reportedMomentId: string;
 
 /** The message the live-message report points at. */
 const MESSAGE_BODY = `${MARKER} — the reported message body`;
+/** PC-2.5.4 — the moment the live-moment report points at. */
+const MOMENT_BODY = `${MARKER} — the reported moment body`;
 
 test.beforeAll(async () => {
   prisma = new PrismaClient();
@@ -166,11 +181,89 @@ test.beforeAll(async () => {
   danglingReportId = danglingReport.id;
   deletedMessageReportId = deletedReport.id;
   userReportId = userReport.id;
+
+  // ---- PC-2.5.4: the MOMENT target -------------------------------------------
+  // Nothing in the console can create a moment, so these are written directly,
+  // like the message fixtures above.
+  const reportedMoment = await prisma.moment.create({
+    data: {
+      userId: supportId,
+      platform: "INSTAGRAM",
+      content: MOMENT_BODY,
+      source: "USER",
+    },
+    select: { id: true },
+  });
+  reportedMomentId = reportedMoment.id;
+
+  // A moment that is deleted again straight away. `Report.momentId` carries no
+  // foreign key, so this is the state every report reaches once its content is
+  // removed — a normal render, not a crash.
+  const doomedMoment = await prisma.moment.create({
+    data: {
+      userId: supportId,
+      platform: "INSTAGRAM",
+      content: `${MARKER} — moment that gets deleted`,
+      source: "USER",
+    },
+    select: { id: true },
+  });
+  await prisma.moment.delete({ where: { id: doomedMoment.id } });
+
+  const momentReport = await prisma.report.create({
+    data: {
+      reporterId: superadminId,
+      reportedUserId: supportId,
+      reason: "Spam",
+      description: `${MARKER} — moment target`,
+      status: "OPEN",
+      momentId: reportedMoment.id,
+      messageId: null,
+    },
+    select: { id: true },
+  });
+  momentReportId = momentReport.id;
+
+  const momentGoneReport = await prisma.report.create({
+    data: {
+      reporterId: superadminId,
+      reportedUserId: supportId,
+      reason: "Scam",
+      description: `${MARKER} — deleted moment target`,
+      status: "OPEN",
+      momentId: doomedMoment.id,
+      messageId: null,
+    },
+    select: { id: true },
+  });
+  momentGoneReportId = momentGoneReport.id;
+
+  const bothReport = await prisma.report.create({
+    data: {
+      reporterId: superadminId,
+      reportedUserId: supportId,
+      reason: "Other",
+      description: `${MARKER} — both pointers`,
+      status: "OPEN",
+      momentId: reportedMoment.id,
+      messageId: liveMessage.id,
+    },
+    select: { id: true },
+  });
+  momentAndMessageReportId = bothReport.id;
 });
 
 test.afterAll(async () => {
   if (!prisma) return;
-  const reportIds = [messageReportId, danglingReportId, deletedMessageReportId, userReportId];
+  const reportIds = [
+    messageReportId,
+    danglingReportId,
+    deletedMessageReportId,
+    userReportId,
+    momentReportId,
+    momentGoneReportId,
+    momentAndMessageReportId,
+  ];
   const messages = await prisma.message.findMany({
     where: { content: { startsWith: MARKER } },
     select: { id: true },
@@ -182,6 +275,9 @@ test.afterAll(async () => {
     where: { targetType: "REPORT", targetId: { in: reportIds } },
   });
   await prisma.report.deleteMany({ where: { id: { in: reportIds } } });
+  // The moment rows go last: nothing references them, but they are as much a
+  // fixture as the reports are.
+  await prisma.moment.deleteMany({ where: { content: { startsWith: MARKER } } });
   if (messageIds.length > 0) {
     await prisma.message.deleteMany({ where: { id: { in: messageIds } } });
   }
@@ -299,6 +395,85 @@ test.describe("report detail", () => {
     expect(rows[0].adminId).toBe(superadminId);
     expect(rows[0].action).toBe("REPORT_REVIEWING");
     expect(rows[0].reason).toBe("browser fixture review");
+  });
+
+  // ------------------------------------------------------------------ moment target
+  test("Test 39: a MOMENT report renders the moment body and its author", async ({ page }) => {
+    await openReport(page, momentReportId);
+
+    // There is still no `targetType` column — a row with a `momentId` is a
+    // moment report, and since PC-2.5.4 the badge says so.
+    await expect(page.getByTestId("report-target-badge")).toHaveText("动态举报");
+
+    const block = page.getByTestId("report-moment");
+    await expect(block).toBeVisible();
+    await expect(block).toContainText(MOMENT_BODY);
+    // The author is named, so an operator knows whose moment this is. The
+    // fixture accounts are seeded with `PW <key>` nicknames and the API
+    // prefers `nickname ?? email`, so this asserts the nickname path.
+    await expect(block).toContainText("PW support");
+    await expect(block).toContainText("INSTAGRAM");
+    await expect(page.getByTestId("report-moment-unavailable")).toHaveCount(0);
+
+    // A moment report has no message section: showing an empty one would imply
+    // message evidence exists and is blank.
+    await expect(page.getByTestId("report-message")).toHaveCount(0);
+  });
+
+  test("Test 40: a deleted moment degrades to copy instead of crashing", async ({ page }) => {
+    const pageErrors: string[] = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+
+    await openReport(page, momentGoneReportId);
+
+    // `momentId` carries no foreign key, so a report can outlive its moment.
+    // That is an ordinary state, and the screen has to say so rather than 500.
+    await expect(page.getByTestId("report-target-badge")).toHaveText("动态举报");
+    await expect(page.getByTestId("report-moment")).toBeVisible();
+    await expect(page.getByTestId("report-moment-unavailable")).toHaveText("该动态已被删除，内容无法查看。");
+
+    // The report stays readable and reviewable — only the evidence is gone.
+    await expect(page.getByTestId("report-summary")).toBeVisible();
+    await expect(page.getByRole("button", { name: "处理" })).toBeVisible();
+    expect(pageErrors).toEqual([]);
+  });
+
+  test("Test 41: MOMENT wins over MESSAGE when a row carries both pointers", async ({ page }) => {
+    await openReport(page, momentAndMessageReportId);
+
+    // The rule is a priority, not "whichever pointer happens to be non-null".
+    // This fixture is the only shape that can tell those two apart.
+    await expect(page.getByTestId("report-target-badge")).toHaveText("动态举报");
+    await expect(page.getByTestId("report-moment")).toContainText(MOMENT_BODY);
+    await expect(page.getByTestId("report-message")).toHaveCount(0);
+  });
+
+  test("Test 42: a MOMENT report is reviewed by the same workflow and audited", async ({ page }) => {
+    await openReport(page, momentReportId);
+    await expect(page.getByTestId("status-badge")).toHaveText("OPEN");
+
+    // No MOMENT-specific review path: the buttons and the dialog are the ones a
+    // USER or MESSAGE report uses.
+    await page.getByRole("button", { name: "处理" }).first().click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await dialog.locator("textarea").fill("moment fixture review");
+    await dialog.getByRole("button", { name: "处理" }).last().click();
+
+    await expect(page.getByTestId("status-badge")).toHaveText("RESOLVED", { timeout: 15_000 });
+    // The screen re-reads the whole detail after the write, so the evidence has
+    // to survive it.
+    await expect(page.getByTestId("report-moment")).toContainText(MOMENT_BODY);
+
+    const rows = await prisma.adminAuditLog.findMany({
+      where: { targetType: "REPORT", targetId: momentReportId },
+      select: { actorType: true, adminId: true, reason: true, action: true },
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].actorType).toBe("USER");
+    expect(rows[0].adminId).toBe(superadminId);
+    expect(rows[0].action).toBe("REPORT_RESOLVED");
+    expect(rows[0].reason).toBe("moment fixture review");
   });
 
   // ------------------------------------------------------------------ not found

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Shell } from "@/components/shell";
+import { StatusBadge } from "@/components/status-badge";
 import { ConfirmDialog, type ConfirmPayload } from "@/components/confirm-dialog";
 import { apiFetch, apiSend } from "@/lib/api";
 import { canSetUserStatus } from "@/lib/permissions";
@@ -129,12 +130,6 @@ const SORT_DIRECTIONS: Array<{ value: string; label: string }> = [
   { value: "asc", label: "正序" },
 ];
 
-const STATUS_BADGE: Record<string, string> = {
-  ACTIVE: "bg-[#E7F5EC] text-[#1F7A44]",
-  DISABLED: "bg-[#EDEFF3] text-[#5A6472]",
-  SUSPENDED: "bg-[#FDF3E0] text-[#8A5A00]",
-  BANNED: "bg-[#FBE9E9] text-[#B3261E]",
-};
 
 /**
  * Builds the request path from an explicit filter set.
@@ -449,11 +444,11 @@ function UsersScreen() {
       ) : null}
 
       {error ? (
-        <div className="mt-3 rounded-2xl border border-line p-4">
+        <div className="mt-3 rounded-2xl border border-line bg-card shadow-card p-4">
           <p className="text-[13px] text-red-500">{error}</p>
           <button
             onClick={() => void reload(page)}
-            className="mt-3 h-9 rounded-xl border border-line px-4 text-[13px]"
+            className="mt-3 tf-btn"
           >
             重试
           </button>
@@ -469,7 +464,7 @@ function UsersScreen() {
       ) : null}
 
       {result && result.total === 0 ? (
-        <div className="mt-3 rounded-2xl border border-line p-4">
+        <div className="mt-3 rounded-2xl border border-line bg-card shadow-card p-4">
           <p className="text-[13px] font-medium">暂无用户</p>
           {/* The two empty cases are different problems: an empty database is
               not something a filter change can fix. */}
@@ -479,7 +474,7 @@ function UsersScreen() {
           {appliedHasFilters ? (
             <button
               onClick={() => applyDraft(DEFAULT_FILTERS)}
-              className="mt-3 h-9 rounded-xl border border-line px-4 text-[13px]"
+              className="mt-3 tf-btn"
             >
               清空筛选
             </button>
@@ -493,7 +488,7 @@ function UsersScreen() {
           const actions = STATUS_ACTION_ORDER.filter((action) => canSetUserStatus(role, action));
 
           return (
-            <div key={item.id} className="rounded-2xl border border-line p-4">
+            <div key={item.id} className="rounded-2xl border border-line bg-card shadow-card p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-[14px] font-medium">
@@ -505,14 +500,7 @@ function UsersScreen() {
                   <p className="mt-1 flex flex-wrap items-center gap-1 text-[12px] text-muted">
                     <span>{item.email}</span>
                     <span>·</span>
-                    <span
-                      data-testid="status-badge"
-                      className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                        STATUS_BADGE[item.status] ?? "bg-[#EDEFF3] text-[#5A6472]"
-                      }`}
-                    >
-                      {item.status}
-                    </span>
+                    <StatusBadge status={item.status} testId="status-badge" />
                     <span>·</span>
                     <span>国家 {item.countryCode ?? "-"}</span>
                     <span>·</span>
@@ -576,14 +564,14 @@ function UsersScreen() {
           <button
             disabled={currentPage <= 1 || loading}
             onClick={() => void reload(currentPage - 1)}
-            className="h-9 rounded-xl border border-line px-4 text-[13px] disabled:opacity-40"
+            className="tf-btn"
           >
             上一页
           </button>
           <button
             disabled={currentPage >= totalPages || loading}
             onClick={() => void reload(currentPage + 1)}
-            className="h-9 rounded-xl border border-line px-4 text-[13px] disabled:opacity-40"
+            className="tf-btn"
           >
             下一页
           </button>

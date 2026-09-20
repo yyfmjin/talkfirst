@@ -292,21 +292,24 @@ test.describe("Phase C4 — Blocks", () => {
   });
 
   // ------------------------------------------------------------------ 2
-  test("2. the nav entry sits between 交换 and 审计日志", async ({ page }) => {
+  test("2. the nav entry sits in 用户与关系, directly after 交换", async ({ page }) => {
     await loginAndLand(page, ACCOUNTS.superadmin.email);
 
     // A strict equality, not a subset: the exhaustive nav check is what catches
-    // an unreviewed route appearing anywhere in the console.
+    // an unreviewed route appearing anywhere in the console. The sidebar was
+    // regrouped this phase (总览 / 用户与关系 / 内容治理 / 风险与审计), so 「屏蔽」
+    // moved up next to its sibling relationship screens; the assertion still
+    // covers the whole list, which is what keeps it able to fail.
     const labels = await page.locator("aside nav a").allTextContents();
     expect(labels.map((s) => s.trim())).toEqual([
       "仪表盘",
       "用户",
-      "举报",
-      "审核工作台",
-      "风险中心",
       "连接",
       "交换",
       "屏蔽",
+      "举报",
+      "审核工作台",
+      "风险中心",
       "审计日志",
     ]);
   });

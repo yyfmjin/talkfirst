@@ -27,6 +27,12 @@ const CODE_MESSAGES: Record<string, string> = {
   UNKNOWN_COUNTRY_CODE: "包含无法识别的国家/地区，请重新选择。",
   INVALID_IMAGE: "头像链接无效，请使用 https 图片地址。",
   NETWORK_ERROR: "无法连接服务器，请检查网络后重试。",
+  // PC-2.5.4 — the report endpoint's own refusals, mapped once here rather
+  // than in a second dictionary beside the report dialog.
+  MOMENT_NOT_FOUND: "这条动态不存在或已被删除。",
+  MOMENT_LOCKED: "这条动态暂时无法查看。",
+  CANNOT_REPORT_SELF: "不能举报自己发布的内容。",
+  INVALID_REASON: "请选择一个有效的举报原因。",
 };
 
 export function friendlyErrorMessage(error: unknown, fallback = "操作失败，请稍后再试。"): string {

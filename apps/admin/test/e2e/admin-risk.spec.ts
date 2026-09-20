@@ -55,6 +55,13 @@ import { loginAndLand, openNav } from "../fixtures/browser";
  */
 const RISK_FIXTURE_PREFIX = "PW_RISK_UI_";
 const SELF_REPORT_DESCRIPTION = "phase C1 browser fixture — self report";
+const NORMAL_REPORT_DESCRIPTION = "phase C1 browser fixture — normal report";
+/** PC-2.5.6: a report whose target is a message. */
+const MESSAGE_REPORT_DESCRIPTION = "phase C2.5.6 browser fixture — message report";
+/** PC-2.5.6: a report whose target is a moment. */
+const MOMENT_REPORT_DESCRIPTION = "phase C2.5.6 browser fixture — moment report";
+/** Marks the fixture moment so cleanup can delete exactly it. */
+const FIXTURE_MOMENT_MARKER = "PW_RISK_UI_FIXTURE_MOMENT";
 
 /** The baselines the by-delta tests measure against. */
 type Baselines = {
@@ -70,6 +77,12 @@ type FixtureIds = {
   selfReportId: string;
   /** An ordinary report, used to prove this suite did not disturb real data. */
   normalReportId: string;
+  /** A report about a message: `messageId` set, `momentId` null. */
+  messageReportId: string;
+  /** A report about a moment: `momentId` set, `messageId` null. */
+  momentReportId: string;
+  /** The moment that report points at; cleanup removes it with the report. */
+  fixtureMomentId: string;
   /** A SYSTEM audit row carrying an action from the real risk vocabulary. */
   systemAuditId: string;
   /** The human audit row that must NOT appear in the risk feed. */
@@ -117,8 +130,46 @@ async function seedRiskFixtures(prisma: PrismaClient, ids: SeedIds) {
       reporterId: ids.analyst,
       reportedUserId: ids.victim,
       reason: "OTHER",
-      description: "phase C1 browser fixture — normal report",
+      description: NORMAL_REPORT_DESCRIPTION,
       status: "OPEN",
+    },
+    select: { id: true },
+  });
+
+  // PC-2.5.6: the two content targets. `messageId` and `momentId` are bare
+  // pointers with no foreign key, so a report may outlive its target. That is
+  // why the message fixture needs no real Message row, while the moment one
+  // does — the reported user of a moment report is the moment's author.
+  const messageReport = await prisma.report.create({
+    data: {
+      reporterId: ids.analyst,
+      reportedUserId: ids.victim,
+      reason: "OTHER",
+      description: MESSAGE_REPORT_DESCRIPTION,
+      status: "OPEN",
+      messageId: "8f5a1c2e-3d4b-4a5c-9e6f-7a8b9c0d1e2f",
+    },
+    select: { id: true },
+  });
+
+  const fixtureMoment = await prisma.moment.create({
+    data: {
+      userId: ids.victim,
+      platform: "TALKFIRST",
+      content: FIXTURE_MOMENT_MARKER + " a moment an operator had to look at",
+      source: "USER",
+    },
+    select: { id: true },
+  });
+
+  const momentReport = await prisma.report.create({
+    data: {
+      reporterId: ids.analyst,
+      reportedUserId: ids.victim,
+      reason: "OTHER",
+      description: MOMENT_REPORT_DESCRIPTION,
+      status: "OPEN",
+      momentId: fixtureMoment.id,
     },
     select: { id: true },
   });
@@ -161,6 +212,9 @@ async function seedRiskFixtures(prisma: PrismaClient, ids: SeedIds) {
     fixtureIds: {
       selfReportId: selfReport.id,
       normalReportId: normalReport.id,
+      messageReportId: messageReport.id,
+      momentReportId: momentReport.id,
+      fixtureMomentId: fixtureMoment.id,
       systemAuditId: systemAudit.id,
       noteAuditId: noteAudit.id,
     } satisfies FixtureIds,
@@ -179,9 +233,17 @@ async function cleanupRiskFixtures(prisma: PrismaClient) {
     where: {
       OR: [
         { description: SELF_REPORT_DESCRIPTION },
-        { description: "phase C1 browser fixture — normal report" },
+        { description: NORMAL_REPORT_DESCRIPTION },
+        { description: MESSAGE_REPORT_DESCRIPTION },
+        { description: MOMENT_REPORT_DESCRIPTION },
       ],
     },
+  });
+  // The moment the moment-report points at. `momentId` has no foreign key, so
+  // deleting the report does not delete the moment — and a leaked moment would
+  // pollute every later run, so it is removed by its marker.
+  await prisma.moment.deleteMany({
+    where: { content: { startsWith: FIXTURE_MOMENT_MARKER } },
   });
 }
 
@@ -236,7 +298,7 @@ test.describe("Phase C1 — Risk Center", () => {
   });
 
   // ------------------------------------------------------------------ 2
-  test("the Risk nav entry sits between 审核工作台 and 连接", async ({ page }) => {
+  test("the Risk nav entry sits in 风险与审计, directly after 审核工作台", async ({ page }) => {
     await loginAndLand(page, ACCOUNTS.superadmin.email);
 
     // Order matters: the nav is the console's map, and an entry appearing
@@ -244,19 +306,21 @@ test.describe("Phase C1 — Risk Center", () => {
     // exhaustive equality check lives in `admin-rbac.spec.ts`; this asserts the
     // position specifically so a failure names the risk entry.
     //
-    // Phase C4 added 「屏蔽」, so the list is nine entries: the C2/C3/C4 screens
-    // are all gated on permissions this role holds, and none of them may be
-    // missing from a SUPER_ADMIN's nav.
+    // The sidebar was regrouped this phase (总览 / 用户与关系 / 内容治理 /
+    // 风险与审计), so 「风险中心」 now closes 风险与审计. The list is still nine
+    // entries and still compared as a whole: the C2/C3/C4 screens are all gated
+    // on permissions this role holds, and none of them may be missing from a
+    // SUPER_ADMIN's nav.
     const labels = await page.locator("aside nav a").allTextContents();
     expect(labels.map((s) => s.trim())).toEqual([
       "仪表盘",
       "用户",
-      "举报",
-      "审核工作台",
-      "风险中心",
       "连接",
       "交换",
       "屏蔽",
+      "举报",
+      "审核工作台",
+      "风险中心",
       "审计日志",
     ]);
   });
@@ -409,6 +473,48 @@ test.describe("Phase C1 — Risk Center", () => {
       nodes.map((node) => node.getAttribute("href")!.replace("/reports/", "")),
     );
     expect(links).toEqual(expected.map((row) => row.id));
+  });
+
+  // ------------------------------------------------------- 8b-8d (PC-2.5.6)
+  // The defect this phase fixes: the feed selected no `momentId`, so a report
+  // about a moment was rendered exactly like a report about a person.
+  test("a moment report is labelled 动态举报, not 用户举报", async ({ page }) => {
+    await loginAndLand(page, ACCOUNTS.superadmin.email);
+    await openNav(page, "风险中心");
+
+    const section = page.getByTestId("risk-section-近期举报");
+    await expect(section).toBeVisible();
+
+    const row = section.locator('[data-report-id="' + fixtureIds.momentReportId + '"]');
+    await expect(row).toBeVisible();
+    await expect(row).toHaveAttribute("data-target-type", "MOMENT");
+    await expect(row.getByTestId("report-target-badge")).toHaveText("动态举报");
+    // The negative half is the real assertion: before the fix this row said
+    // 用户举报, which is a false statement about what was reported.
+    await expect(row).not.toContainText("用户举报");
+  });
+
+  test("a message report is still labelled 消息举报", async ({ page }) => {
+    await loginAndLand(page, ACCOUNTS.superadmin.email);
+    await openNav(page, "风险中心");
+
+    const section = page.getByTestId("risk-section-近期举报");
+    const row = section.locator('[data-report-id="' + fixtureIds.messageReportId + '"]');
+    await expect(row).toBeVisible();
+    await expect(row).toHaveAttribute("data-target-type", "MESSAGE");
+    await expect(row.getByTestId("report-target-badge")).toHaveText("消息举报");
+    await expect(row).not.toContainText("用户举报");
+  });
+
+  test("an ordinary person report is still labelled 用户举报", async ({ page }) => {
+    await loginAndLand(page, ACCOUNTS.superadmin.email);
+    await openNav(page, "风险中心");
+
+    const section = page.getByTestId("risk-section-近期举报");
+    const row = section.locator('[data-report-id="' + fixtureIds.normalReportId + '"]');
+    await expect(row).toBeVisible();
+    await expect(row).toHaveAttribute("data-target-type", "USER");
+    await expect(row.getByTestId("report-target-badge")).toHaveText("用户举报");
   });
 
   // ------------------------------------------------------------------ 9

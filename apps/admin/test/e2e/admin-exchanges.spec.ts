@@ -404,19 +404,20 @@ test.describe("Phase C3 — Contact Exchange", () => {
   test("2. the nav entry sits between 连接 and 屏蔽", async ({ page }) => {
     await loginAndLand(page, ACCOUNTS.superadmin.email);
 
-    // Phase C4 inserted 「屏蔽」 between 交换 and 审计日志, so the expected list
-    // grows by one. The assertion stays a strict equality — a subset check would
-    // no longer be able to catch an unauthorised route appearing anywhere.
+    // The sidebar was regrouped this phase, so 「交换」 now sits between 「连接」
+    // and 「屏蔽」 inside 用户与关系. The assertion stays a strict equality over
+    // the whole list — a subset check would no longer be able to catch an
+    // unauthorised route appearing anywhere.
     const labels = await page.locator("aside nav a").allTextContents();
     expect(labels.map((s) => s.trim())).toEqual([
       "仪表盘",
       "用户",
-      "举报",
-      "审核工作台",
-      "风险中心",
       "连接",
       "交换",
       "屏蔽",
+      "举报",
+      "审核工作台",
+      "风险中心",
       "审计日志",
     ]);
   });

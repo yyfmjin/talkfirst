@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -11,12 +12,15 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { NotificationService } from "../notifications/notification.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { SafetyService } from "../safety/safety.service";
 import { CurrentUser, type AuthUser } from "../auth/current-user.decorator";
 import { assertNotBlocked } from "../common/block-guard";
 import { ValidationPipe } from "../common/validation.pipe";
+import { Throttle } from "@nestjs/throttler";
 import { IsOptional, IsString, IsUUID, MaxLength } from "class-validator";
+import { MomentsService } from "../moments/moments.service";
 
 class SendMessageDto {
   @IsString()
@@ -31,8 +35,19 @@ class SendImageDto {
 }
 
 class ReportDto {
+  /**
+   * Exactly one target per request: `userId` reports a person, `momentId`
+   * reports one of their moments. A moment report does **not** carry a user id
+   * — the author is read from the moment server-side, so a client cannot name a
+   * different account than the content's owner.
+   */
+  @IsOptional()
   @IsUUID()
-  userId!: string;
+  userId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  momentId?: string;
 
   @IsString()
   reason!: string;
@@ -61,6 +76,15 @@ export class SocialSafetyController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly safety: SafetyService,
+    private readonly moments: MomentsService,
+    /**
+     * PC-3.1b — the one writer of notifications.
+     *
+     * Named `notificationService` rather than `notifications` because this
+     * controller already has a `notifications()` route method; a field of that
+     * name would be a duplicate identifier.
+     */
+    private readonly notificationService: NotificationService,
   ) {}
 
   @Get("conversations")
@@ -207,13 +231,17 @@ export class SocialSafetyController {
     }
 
     if (peerId) {
-      await this.prisma.notification.create({
+      await this.notificationService.notify({
+        userId: peerId,
+        type: "NEW_MESSAGE",
+        title: "New message",
+        body: dto.content.trim().slice(0, 120),
         data: {
-          userId: peerId,
-          type: "NEW_MESSAGE",
-          title: "New message",
-          body: dto.content.trim().slice(0, 120),
-          data: JSON.stringify({ conversationId: id, messageId: message.id }),
+          actorId: user.id,
+          targetType: "CONVERSATION",
+          targetId: id,
+          conversationId: id,
+          messageId: message.id,
         },
       });
     }
@@ -260,13 +288,17 @@ export class SocialSafetyController {
       return created;
     });
     if (peerId) {
-      await this.prisma.notification.create({
+      await this.notificationService.notify({
+        userId: peerId,
+        type: "NEW_MESSAGE",
+        title: "New image",
+        body: "对方发来一张图片",
         data: {
-          userId: peerId,
-          type: "NEW_MESSAGE",
-          title: "New image",
-          body: "对方发来一张图片",
-          data: JSON.stringify({ conversationId: id, messageId: message.id }),
+          actorId: user.id,
+          targetType: "CONVERSATION",
+          targetId: id,
+          conversationId: id,
+          messageId: message.id,
         },
       });
     }
@@ -334,6 +366,7 @@ export class SocialSafetyController {
   }
 
   @Post("reports")
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   async report(@CurrentUser() user: AuthUser, @Body(new ValidationPipe()) dto: ReportDto) {
     const allowed = [
       "Harassment",
@@ -350,14 +383,65 @@ export class SocialSafetyController {
         error: { code: "INVALID_REASON", message: "Invalid report reason" },
       });
     }
-    if (dto.userId === user.id) {
+    // Reporting a person and reporting their content are different questions,
+    // so a request naming both is rejected rather than silently preferring one.
+    if (dto.userId && dto.momentId) {
+      throw new BadRequestException({
+        success: false,
+        error: {
+          code: "INVALID_REPORT_TARGET",
+          message: "Provide either userId or momentId, not both",
+        },
+      });
+    }
+
+    let reportedUserId: string;
+    if (dto.momentId) {
+      reportedUserId = (await this.resolveMomentTarget(user.id, dto.momentId)).authorId;
+    } else if (dto.userId) {
+      reportedUserId = await this.assertReportableUser(dto.userId);
+    } else {
+      throw new BadRequestException({
+        success: false,
+        error: {
+          code: "INVALID_REPORT_TARGET",
+          message: "Provide either userId or momentId",
+        },
+      });
+    }
+
+    if (reportedUserId === user.id) {
       throw new ForbiddenException({
         success: false,
         error: { code: "CANNOT_REPORT_SELF", message: "You cannot report yourself" },
       });
     }
+
+    const report = await this.prisma.report.create({
+      data: {
+        reporterId: user.id,
+        reportedUserId,
+        momentId: dto.momentId ?? null,
+        // A moment report and a message report are mutually exclusive in
+        // practice, so a moment report never carries a message pointer.
+        messageId: dto.momentId ? null : (dto.messageId ?? null),
+        reason: dto.reason,
+        description: dto.description,
+      },
+    });
+    // Minimal projection: the reporter already knows what they reported, and a
+    // raw report row carries columns (both party ids, the stored pointers) that
+    // are not part of the client contract.
+    return {
+      success: true as const,
+      data: { id: report.id, status: report.status, createdAt: report.createdAt },
+    };
+  }
+
+  /** The reported user's id, or a 404 when no such account exists. */
+  private async assertReportableUser(userId: string): Promise<string> {
     const reported = await this.prisma.user.findUnique({
-      where: { id: dto.userId },
+      where: { id: userId },
       select: { id: true },
     });
     if (!reported) {
@@ -366,16 +450,42 @@ export class SocialSafetyController {
         error: { code: "USER_NOT_FOUND", message: "User not found" },
       });
     }
-    const report = await this.prisma.report.create({
-      data: {
-        reporterId: user.id,
-        reportedUserId: dto.userId,
-        messageId: dto.messageId,
-        reason: dto.reason,
-        description: dto.description,
-      },
+    return reported.id;
+  }
+
+  /**
+   * The moment's author, once the viewer is allowed to see that moment.
+   *
+   * The gate is `MomentsService.resolveMomentAccess` — the same rule the detail,
+   * like and comment endpoints use — so a report can never reach a moment the
+   * viewer could not otherwise open. It covers private moments and both
+   * directions of a block. An unknown moment (or one whose author is no longer
+   * ACTIVE) is a 404 `MOMENT_NOT_FOUND`; an inaccessible one is a 403
+   * `MOMENT_LOCKED`, matching the detail endpoint instead of inventing a second
+   * answer to the same question.
+   */
+  private async resolveMomentTarget(
+    viewerId: string,
+    momentId: string,
+  ): Promise<{ authorId: string }> {
+    const moment = await this.prisma.moment.findUnique({
+      where: { id: momentId },
+      select: { userId: true, user: { select: { status: true } } },
     });
-    return { success: true as const, data: report };
+    if (!moment || moment.user.status !== "ACTIVE") {
+      throw new NotFoundException({
+        success: false,
+        error: { code: "MOMENT_NOT_FOUND", message: "Moment not found" },
+      });
+    }
+    const access = await this.moments.resolveMomentAccess(viewerId, moment.userId);
+    if (access !== "allowed") {
+      throw new ForbiddenException({
+        success: false,
+        error: { code: "MOMENT_LOCKED", message: "Moment is not accessible" },
+      });
+    }
+    return { authorId: moment.userId };
   }
 
   @Post("blocks")

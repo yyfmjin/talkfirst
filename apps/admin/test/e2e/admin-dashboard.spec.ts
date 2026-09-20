@@ -64,6 +64,90 @@ async function readExpected() {
   return { users, active, suspended, banned, todayNewUsers, newUsers7d, reportsOpen, admins };
 }
 
+/**
+ * PC-2.5.6 — one terminal report per target kind, so the 「最近举报处理」 feed can
+ * be checked for all three. The feed shows every terminal report, so without
+ * these fixtures the section is empty and a target could regress silently.
+ *
+ * `messageId` and `momentId` are bare pointers with no foreign key, which is
+ * why the message fixture needs no real Message row, while the moment one does
+ * — the reported user of a moment report is the moment's author.
+ */
+const REPORT_FIXTURE_PREFIX = "PW_DASH_UI_REPORT";
+const REPORT_MOMENT_MARKER = "PW_DASH_UI_FIXTURE_MOMENT";
+
+type ReportFixtureIds = {
+  userReportId: string;
+  messageReportId: string;
+  momentReportId: string;
+};
+
+let reportFixtures: ReportFixtureIds;
+
+/** Removes exactly the rows {@link seedReportFixtures} wrote. */
+async function cleanupReportFixtures(prisma: PrismaClient) {
+  await prisma.report.deleteMany({
+    where: { description: { startsWith: REPORT_FIXTURE_PREFIX } },
+  });
+  // No foreign key from Report to Moment, so the report's removal does not
+  // remove the moment; a leaked one would pollute every later run.
+  await prisma.moment.deleteMany({
+    where: { content: { startsWith: REPORT_MOMENT_MARKER } },
+  });
+}
+
+async function seedReportFixtures(
+  prisma: PrismaClient,
+  ids: { superadmin: string; victim: string },
+): Promise<ReportFixtureIds> {
+  // Idempotent: a crashed previous run must not leave rows behind.
+  await cleanupReportFixtures(prisma);
+
+  const moment = await prisma.moment.create({
+    data: {
+      userId: ids.victim,
+      platform: "TALKFIRST",
+      content: REPORT_MOMENT_MARKER + " a moment an operator had to look at",
+      source: "USER",
+    },
+    select: { id: true },
+  });
+
+  const common = {
+    reporterId: ids.superadmin,
+    reportedUserId: ids.victim,
+    reason: "OTHER",
+    status: "RESOLVED" as const,
+  };
+
+  const userReport = await prisma.report.create({
+    data: { ...common, description: REPORT_FIXTURE_PREFIX + " user" },
+    select: { id: true },
+  });
+  const messageReport = await prisma.report.create({
+    data: {
+      ...common,
+      description: REPORT_FIXTURE_PREFIX + " message",
+      messageId: "8f5a1c2e-3d4b-4a5c-9e6f-7a8b9c0d1e2f",
+    },
+    select: { id: true },
+  });
+  const momentReport = await prisma.report.create({
+    data: {
+      ...common,
+      description: REPORT_FIXTURE_PREFIX + " moment",
+      momentId: moment.id,
+    },
+    select: { id: true },
+  });
+
+  return {
+    userReportId: userReport.id,
+    messageReportId: messageReport.id,
+    momentReportId: momentReport.id,
+  };
+}
+
 test.beforeAll(async () => {
   prisma = new PrismaClient();
   const fixtures = await prisma.user.findMany({
@@ -81,12 +165,19 @@ test.beforeAll(async () => {
   // demand. `seedAuditRows` also writes a human row, so both branches render.
   await seedAuditRows(prisma, { superadmin: superadmin.id, victim: victim.id } as SeedIds);
 
+  // These are terminal reports, so `reportsOpen` is untouched by them.
+  reportFixtures = await seedReportFixtures(prisma, {
+    superadmin: superadmin.id,
+    victim: victim.id,
+  });
+
   expected = await readExpected();
 });
 
 test.afterAll(async () => {
   if (!prisma) return;
   await cleanupAuditRows(prisma);
+  await cleanupReportFixtures(prisma);
   await prisma.$disconnect();
 });
 
@@ -381,6 +472,35 @@ test.describe("dashboard — landing, KPIs and lists", () => {
     await page.getByRole("button", { name: "重试", exact: true }).click();
     await expect(page.getByText("服务暂时不可用")).toHaveCount(0);
     await expectKpi(page, "用户总数", expected.users);
+  });
+
+  // ------------------------------------------------------- Test 14 (PC-2.5.6)
+  test("Test 14: the resolved-reports feed names the target of each report", async ({
+    page,
+  }) => {
+    // Before PC-2.5.6 the feed selected no `momentId`, so a report about a
+    // moment rendered identically to a report about a person — a false
+    // statement about what had been reviewed.
+    await loginAndLand(page, SUPERADMIN_EMAIL);
+
+    const feed = section(page, "最近举报处理");
+    await expect(feed).toBeVisible();
+
+    const momentRow = feed.locator('[data-report-id="' + reportFixtures.momentReportId + '"]');
+    await expect(momentRow).toBeVisible();
+    await expect(momentRow).toHaveAttribute("data-target-type", "MOMENT");
+    await expect(momentRow.getByTestId("dashboard-report-target")).toHaveText("动态举报");
+    // The negative half is the real assertion: before the fix this row claimed
+    // 用户举报, which is a false statement about what had been reviewed.
+    await expect(momentRow).not.toContainText("用户举报");
+
+    const messageRow = feed.locator('[data-report-id="' + reportFixtures.messageReportId + '"]');
+    await expect(messageRow).toHaveAttribute("data-target-type", "MESSAGE");
+    await expect(messageRow.getByTestId("dashboard-report-target")).toHaveText("消息举报");
+
+    const userRow = feed.locator('[data-report-id="' + reportFixtures.userReportId + '"]');
+    await expect(userRow).toHaveAttribute("data-target-type", "USER");
+    await expect(userRow.getByTestId("dashboard-report-target")).toHaveText("用户举报");
   });
 
   test("Test 13b: an unauthenticated dashboard load is sent to the login screen", async ({

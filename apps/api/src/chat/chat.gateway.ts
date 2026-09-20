@@ -8,6 +8,7 @@ import {
   WebSocketServer,
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
+import { NotificationService } from "../notifications/notification.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { SafetyService } from "../safety/safety.service";
 import { ChatAuthService } from "./chat-auth.service";
@@ -42,6 +43,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly prisma: PrismaService,
     private readonly presence: PresenceService,
     private readonly safety: SafetyService,
+    private readonly notifications: NotificationService,
   ) {}
 
   async handleConnection(client: AuthedSocket) {
@@ -211,15 +213,19 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(this.conversationRoom(payload.conversationId)).emit("message.new", event);
 
     if (peerId) {
-      await this.prisma.notification.create({
+      await this.notifications.notify({
+        userId: peerId,
+        type: "NEW_MESSAGE",
+        title: "New message",
+        body: content.slice(0, 120),
         data: {
-          userId: peerId,
-          type: "NEW_MESSAGE",
-          title: "New message",
-          body: content.slice(0, 120),
-          data: JSON.stringify({ conversationId: payload.conversationId, messageId: message.id }),
+          actorId: user.id,
+          targetType: "CONVERSATION",
+          targetId: payload.conversationId,
+          conversationId: payload.conversationId,
+          messageId: message.id,
         },
-      }).catch(() => undefined);
+      });
     }
   }
 

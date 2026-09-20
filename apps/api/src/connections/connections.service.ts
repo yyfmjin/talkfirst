@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { NotificationService } from "../notifications/notification.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { SafetyService } from "../safety/safety.service";
 
@@ -22,6 +23,8 @@ export class ConnectionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly safety: SafetyService,
+    /** PC-3.1b — the one writer of notifications; see `NotificationService`. */
+    private readonly notifications: NotificationService,
   ) {}
 
   listTemplates() {
@@ -153,13 +156,16 @@ export class ConnectionsService {
       });
     }
 
-    await this.prisma.notification.create({
+    await this.notifications.notify({
+      userId: receiverId,
+      type: "SAY_HELLO",
+      title: `${request.sender.nickname ?? "Someone"} said hello`,
+      body: trimmedMessage ?? SAY_HELLO_TEMPLATES.find((t) => t.id === templateId)?.label ?? undefined,
       data: {
-        userId: receiverId,
-        type: "SAY_HELLO",
-        title: `${request.sender.nickname ?? "Someone"} said hello`,
-        body: trimmedMessage ?? SAY_HELLO_TEMPLATES.find((t) => t.id === templateId)?.label ?? undefined,
-        data: JSON.stringify({ requestId: request.id, senderId }),
+        actorId: senderId,
+        targetType: "CONNECTION",
+        targetId: request.id,
+        requestId: request.id,
       },
     });
 
@@ -256,16 +262,26 @@ export class ConnectionsService {
           sender: { select: { id: true, nickname: true, avatarUrl: true, countryCode: true } },
         },
       });
-      await tx.notification.create({
-        data: {
-          userId: request.senderId,
-          type: "REQUEST_ACCEPTED",
-          title: "🎉 It's a connection!",
-          body: "You both want to talk. Start chatting.",
-          data: JSON.stringify({ requestId, connectionId: connection.id, conversationId: conversation.id }),
-        },
-      });
       return { updatedRequest, connection, conversation };
+    });
+
+    // PC-3.1b — the notification is written *after* the commit, never inside the
+    // transaction it describes: a connection that was successfully made must not
+    // be rolled back because a notification could not be stored, and `notify`
+    // never throws.
+    await this.notifications.notify({
+      userId: request.senderId,
+      type: "REQUEST_ACCEPTED",
+      title: "🎉 It's a connection!",
+      body: "You both want to talk. Start chatting.",
+      data: {
+        actorId: userId,
+        targetType: "CONVERSATION",
+        targetId: result.conversation.id,
+        requestId,
+        connectionId: result.connection.id,
+        conversationId: result.conversation.id,
+      },
     });
 
     return {

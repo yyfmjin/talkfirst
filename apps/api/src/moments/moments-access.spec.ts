@@ -23,6 +23,8 @@ function makePrisma(overrides: {
     },
     momentComment: {
       findMany: jest.fn().mockResolvedValue(overrides.comments ?? []),
+      // PC-2.4 — 分页后 total 来自同一个 where 的 count。
+      count: jest.fn().mockResolvedValue((overrides.comments ?? []).length),
     },
   };
 }
@@ -36,6 +38,7 @@ describe("MomentsService.listComments access matrix", () => {
     const service = new MomentsService(
       prisma as never,
       { scanText: () => ({ blocked: false }) } as never,
+      { notify: jest.fn() } as never,
     );
     await expect(service.listComments("stranger", "m1")).rejects.toMatchObject({
       code: "MOMENT_LOCKED",
@@ -53,6 +56,7 @@ describe("MomentsService.listComments access matrix", () => {
     const service = new MomentsService(
       prisma as never,
       { scanText: () => ({ blocked: false }) } as never,
+      { notify: jest.fn() } as never,
     );
     await expect(service.listComments("stranger", "m2")).rejects.toMatchObject({
       code: "MOMENT_LOCKED",
@@ -72,8 +76,10 @@ describe("MomentsService.listComments access matrix", () => {
     const service = new MomentsService(
       prisma as never,
       { scanText: () => ({ blocked: false }) } as never,
+      { notify: jest.fn() } as never,
     );
-    await expect(service.listComments("peer", "m3")).resolves.toEqual(comments);
+    // PC-2.4 — 返回形状变为分页对象，items 仍然是真实读到的评论。
+    await expect(service.listComments("peer", "m3")).resolves.toMatchObject({ items: comments });
     expect(prisma.momentComment.findMany).toHaveBeenCalled();
   });
 
@@ -87,8 +93,9 @@ describe("MomentsService.listComments access matrix", () => {
     const service = new MomentsService(
       prisma as never,
       { scanText: () => ({ blocked: false }) } as never,
+      { notify: jest.fn() } as never,
     );
-    await expect(service.listComments("author", "m4")).resolves.toEqual(comments);
+    await expect(service.listComments("author", "m4")).resolves.toMatchObject({ items: comments });
     expect(prisma.momentComment.findMany).toHaveBeenCalled();
   });
 

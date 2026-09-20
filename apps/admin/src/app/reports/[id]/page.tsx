@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Shell } from "@/components/shell";
+import { StatusBadge } from "@/components/status-badge";
 import { ConfirmDialog, type ConfirmPayload } from "@/components/confirm-dialog";
 import { ApiRequestError, apiFetch, apiSend } from "@/lib/api";
+import { REPORT_TARGET_BADGE_CLASS, REPORT_TARGET_LABELS } from "@/lib/report-target";
 import { useAdminSession } from "@/lib/session";
 
 type Party = { id: string; nickname: string | null; email: string; status?: string };
@@ -20,6 +22,25 @@ type MessageSummary =
       sender: { id: string; nickname: string | null; email: string };
     }
   | { available: false; reason: "NO_MESSAGE" | "DELETED" };
+
+/**
+ * PC-2.5.4 — the reported moment, in the same two-state shape as a message.
+ *
+ * `Report.momentId` carries no foreign key either, so a report can outlive the
+ * moment it points at: `available: false` is an ordinary state the screen
+ * renders rather than an error it fails on.
+ */
+type MomentSummary =
+  | {
+      available: true;
+      id: string;
+      content: string;
+      platform: string;
+      source: string;
+      createdAt: string;
+      author: { id: string; nickname: string | null; email: string };
+    }
+  | { available: false; reason: "NO_MOMENT" | "DELETED" };
 
 type HistoryEntry = {
   id: string;
@@ -40,12 +61,20 @@ type Detail = {
     description: string | null;
     status: string;
     messageId: string | null;
+    momentId: string | null;
     createdAt: string;
   };
   reporter: Party;
   reportedUser: Party;
-  target: { targetType: "USER" | "MESSAGE"; messageId: string | null };
+  // The API states the target type outright, so this screen never re-derives it
+  // and cannot disagree with the queue about the same row.
+  target: {
+    targetType: "USER" | "MESSAGE" | "MOMENT";
+    messageId: string | null;
+    momentId: string | null;
+  };
   message: MessageSummary;
+  moment: MomentSummary;
   history: HistoryEntry[];
 };
 
@@ -69,12 +98,6 @@ const ACTION_LABELS: Record<ReviewAction, { label: string; title: string; descri
   },
 };
 
-const STATUS_BADGE: Record<string, string> = {
-  OPEN: "bg-[#FEF3C7] text-[#92400E]",
-  REVIEWING: "bg-[#DBEAFE] text-[#1E40AF]",
-  RESOLVED: "bg-[#DCFCE7] text-[#166534]",
-  REJECTED: "bg-[#EDEFF3] text-[#5A6472]",
-};
 
 /**
  * Phase B4 — one report, with its target and its full review history.
@@ -93,7 +116,8 @@ const STATUS_BADGE: Record<string, string> = {
  *   2. **Message unavailable** — `Report.messageId` carries no foreign key, so a
  *      report can outlive the message it points at. The two reasons
  *      (`NO_MESSAGE` / `DELETED`) read differently because they mean different
- *      things to someone deciding whether to act.
+ *      things to someone deciding whether to act. PC-2.5.4 adds the identical
+ *      pair for `momentId` (`NO_MOMENT` / `DELETED`).
  *   3. **Load failed** — transient. Offers a retry.
  *
  * ## History is the audit log, not a report field
@@ -187,7 +211,7 @@ function ReportDetailScreen() {
         </p>
         <Link
           href="/reports"
-          className="mt-4 inline-block h-9 rounded-xl border border-line px-4 text-[13px] leading-9"
+          className="mt-4 tf-btn"
         >
           返回举报列表
         </Link>
@@ -207,25 +231,16 @@ function ReportDetailScreen() {
       {data ? (
         <div className="mt-4 space-y-4">
           {/* 举报内容 */}
-          <section data-testid="report-summary" className="rounded-2xl border border-line p-4">
+          <section data-testid="report-summary" className="rounded-2xl border border-line bg-card shadow-card p-4">
             <div className="flex flex-wrap items-center gap-2">
-              <span
-                data-testid="status-badge"
-                className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                  STATUS_BADGE[data.report.status] ?? "bg-[#EDEFF3] text-[#5A6472]"
-                }`}
-              >
-                {data.report.status}
-              </span>
+              <StatusBadge status={data.report.status} testId="status-badge" />
               <span
                 data-testid="report-target-badge"
                 className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                  data.target.targetType === "MESSAGE"
-                    ? "bg-[#EDE9FE] text-[#5B21B6]"
-                    : "bg-[#DBEAFE] text-[#1E40AF]"
+                  REPORT_TARGET_BADGE_CLASS[data.target.targetType]
                 }`}
               >
-                {data.target.targetType === "MESSAGE" ? "消息举报" : "用户举报"}
+                {REPORT_TARGET_LABELS[data.target.targetType]}
               </span>
               <span className="text-[12px] text-muted">{data.report.reason}</span>
               <span className="text-[12px] text-muted">·</span>
@@ -256,7 +271,7 @@ function ReportDetailScreen() {
 
           {/* 被举报的消息 */}
           {data.target.targetType === "MESSAGE" ? (
-            <section data-testid="report-message" className="rounded-2xl border border-line p-4">
+            <section data-testid="report-message" className="rounded-2xl border border-line bg-card shadow-card p-4">
               <p className="text-[14px] font-medium">被举报的消息</p>
               {data.message.available ? (
                 <>
@@ -280,8 +295,35 @@ function ReportDetailScreen() {
             </section>
           ) : null}
 
+          {/* 被举报的动态 */}
+          {data.target.targetType === "MOMENT" ? (
+            <section data-testid="report-moment" className="rounded-2xl border border-line bg-card shadow-card p-4">
+              <p className="text-[14px] font-medium">被举报的动态</p>
+              {data.moment.available ? (
+                <>
+                  <p className="mt-2 whitespace-pre-wrap text-[13px]">{data.moment.content}</p>
+                  <p className="mt-2 text-[12px] text-muted">
+                    {data.moment.platform} · {data.moment.source} ·{" "}
+                    <Link href={`/users/${data.moment.author.id}`} className="underline">
+                      {data.moment.author.nickname ?? data.moment.author.email}
+                    </Link>{" "}
+                    · {formatTime(data.moment.createdAt)}
+                  </p>
+                </>
+              ) : (
+                // No FK backs `momentId` either, so "gone" is normal rather than
+                // exceptional — same contract as the message block above.
+                <p data-testid="report-moment-unavailable" className="mt-2 text-[12px] text-muted">
+                  {data.moment.reason === "DELETED"
+                    ? "该动态已被删除，内容无法查看。"
+                    : "这条举报没有关联动态。"}
+                </p>
+              )}
+            </section>
+          ) : null}
+
           {/* 被举报人现状 */}
-          <section className="rounded-2xl border border-line p-4">
+          <section className="rounded-2xl border border-line bg-card shadow-card p-4">
             <p className="text-[14px] font-medium">被举报人</p>
             <p className="mt-2 text-[13px]">
               <Link href={`/users/${data.reportedUser.id}`} className="underline">
@@ -294,7 +336,7 @@ function ReportDetailScreen() {
           </section>
 
           {/* 审核历史 */}
-          <section data-testid="report-history" className="rounded-2xl border border-line p-4">
+          <section data-testid="report-history" className="rounded-2xl border border-line bg-card shadow-card p-4">
             <p className="text-[14px] font-medium">审核历史</p>
             {data.history.length === 0 ? (
               <p className="mt-2 text-[12px] text-muted">
@@ -303,7 +345,7 @@ function ReportDetailScreen() {
             ) : (
               <ul className="mt-2 space-y-2">
                 {data.history.map((entry) => (
-                  <li key={entry.id} className="rounded-xl border border-line p-3">
+                  <li key={entry.id} className="rounded-xl border border-line bg-[#FBFCFE] p-3">
                     <p className="flex flex-wrap items-center gap-2 text-[12px]">
                       <span className="font-mono">{entry.action}</span>
                       <span className="text-muted">
@@ -332,7 +374,7 @@ function ReportDetailScreen() {
                   key={action}
                   onClick={() => setPending(action)}
                   disabled={acting}
-                  className="h-9 rounded-xl border border-line px-4 text-[13px] disabled:opacity-40"
+                  className="tf-btn"
                 >
                   {ACTION_LABELS[action].label}
                 </button>

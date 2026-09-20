@@ -32,12 +32,12 @@ import { loginAndLand, openNav, submitLogin } from "../fixtures/browser";
 const NAV_LABELS = [
   "仪表盘",
   "用户",
-  "举报",
-  "审核工作台",
-  "风险中心",
   "连接",
   "交换",
   "屏蔽",
+  "举报",
+  "审核工作台",
+  "风险中心",
   "审计日志",
 ];
 

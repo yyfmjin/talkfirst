@@ -262,7 +262,7 @@ test.describe("Phase C2 — Connections", () => {
   });
 
   // ------------------------------------------------------------------ 2
-  test("the Connections nav entry sits between 风险中心 and 交换", async ({ page }) => {
+  test("the Connections nav entry sits in 用户与关系, directly after 用户", async ({ page }) => {
     await loginAndLand(page, ACCOUNTS.superadmin.email);
 
     // Order matters: the nav is the console's map, and an entry appearing
@@ -277,12 +277,12 @@ test.describe("Phase C2 — Connections", () => {
     expect(labels.map((s) => s.trim())).toEqual([
       "仪表盘",
       "用户",
-      "举报",
-      "审核工作台",
-      "风险中心",
       "连接",
       "交换",
       "屏蔽",
+      "举报",
+      "审核工作台",
+      "风险中心",
       "审计日志",
     ]);
   });

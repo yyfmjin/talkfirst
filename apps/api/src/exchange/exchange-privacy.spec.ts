@@ -1,4 +1,5 @@
 import { ExchangeService } from "./exchange.service";
+import { NotificationService } from "../notifications/notification.service";
 import type { SocialPlatform } from "@prisma/client";
 
 /**
@@ -203,7 +204,7 @@ describe("P0-1 ExchangeService cross-conversation privacy", () => {
       ],
     });
 
-    const service = new ExchangeService(prisma as never);
+    const service = new ExchangeService(prisma as never, new NotificationService(prisma as never));
 
     // B looks at the A<->B conversation: must see A's two handles.
     const asB = await service.sharedContacts("B", "convAB");
@@ -236,7 +237,7 @@ describe("P0-1 ExchangeService cross-conversation privacy", () => {
       ],
     });
 
-    const service = new ExchangeService(prisma as never);
+    const service = new ExchangeService(prisma as never, new NotificationService(prisma as never));
 
     // C is in the A<->C conversation, which has no ACCEPTED exchange at all.
     const asC = await service.sharedContacts("C", "convAC");
@@ -280,7 +281,7 @@ describe("P0-1 ExchangeService cross-conversation privacy", () => {
       ],
     });
 
-    const service = new ExchangeService(prisma as never);
+    const service = new ExchangeService(prisma as never, new NotificationService(prisma as never));
 
     const asA = await service.sharedContacts("A", "convAB");
     const handles = asA.contacts.map((c) => c.handle);
@@ -320,7 +321,7 @@ describe("P0-1 ExchangeService cross-conversation privacy", () => {
       ],
     });
 
-    const service = new ExchangeService(prisma as never);
+    const service = new ExchangeService(prisma as never, new NotificationService(prisma as never));
 
     // B's view: only A's handles. Never C's.
     const asB = await service.sharedContacts("B", "convAB");
@@ -386,7 +387,7 @@ describe("P0-1 ExchangeService cross-conversation privacy", () => {
       receiver: { id: "B", nickname: "nick-B", avatarUrl: null, countryCode: null },
     });
 
-    const service = new ExchangeService(prisma as never);
+    const service = new ExchangeService(prisma as never, new NotificationService(prisma as never));
     const result = await service.respond("B", "ex-pending", "accept");
 
     // Exactly 4 grants: 2 platforms x 2 directions.
@@ -423,10 +424,123 @@ describe("P0-1 ExchangeService cross-conversation privacy", () => {
       blocked: true,
     });
 
-    const service = new ExchangeService(prisma as never);
+    const service = new ExchangeService(prisma as never, new NotificationService(prisma as never));
     await expect(service.sharedContacts("B", "convAB")).rejects.toMatchObject({
       status: 403,
     });
     expect(prisma.socialAccount.findMany).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * PC-3.1b — the notification the accept flow writes.
+ *
+ * Accept is one of the flows whose notification used to live *inside* the
+ * transaction, so a failing notification write rolled the exchange back.
+ * These tests pin the new shape: an envelope in data, written after the
+ * transaction commits, and never able to undo a committed exchange.
+ */
+describe("P0-1 ExchangeService notifications", () => {
+  function pendingScenario() {
+    const order: string[] = [];
+    const notificationCreate = jest.fn().mockImplementation(async () => {
+      order.push("notification");
+      return { id: "notif-1" };
+    });
+
+    const prisma = makePrisma({
+      accounts: [
+        account("A", "INSTAGRAM", "@a.insta"),
+        account("A", "TELEGRAM", "@a.tg"),
+        account("B", "INSTAGRAM", "@b.insta"),
+        account("B", "TELEGRAM", "@b.tg"),
+      ],
+      conversations: [conversationRow("convAB", "A", "B")],
+      exchanges: [
+        {
+          id: "ex-pending",
+          connectionId: "conn-convAB",
+          conversationId: "convAB",
+          requesterId: "A",
+          receiverId: "B",
+          platforms: PLATFORMS,
+          message: null,
+          status: "PENDING",
+          createdAt: new Date("2026-09-01T00:00:00Z"),
+          updatedAt: new Date("2026-09-01T00:00:00Z"),
+          requester: { id: "A", nickname: "nick-A", avatarUrl: null, countryCode: null },
+          receiver: { id: "B", nickname: "nick-B", avatarUrl: null, countryCode: null },
+        },
+      ],
+      grants: [],
+    });
+    prisma.exchangeRequest.update = jest.fn().mockResolvedValue({
+      id: "ex-pending",
+      connectionId: "conn-convAB",
+      conversationId: "convAB",
+      requesterId: "A",
+      receiverId: "B",
+      platforms: PLATFORMS,
+      message: null,
+      status: "ACCEPTED",
+      createdAt: new Date("2026-09-01T00:00:00Z"),
+      updatedAt: new Date("2026-09-01T00:00:00Z"),
+      requester: { id: "A", nickname: "nick-A", avatarUrl: null, countryCode: null },
+      receiver: { id: "B", nickname: "nick-B", avatarUrl: null, countryCode: null },
+    });
+    prisma.notification.create = notificationCreate;
+
+    // The commit marker is pushed only once the callback resolved, which is
+    // when the real client would have written the transaction.
+    const transaction = prisma.$transaction;
+    prisma.$transaction = jest.fn(async (callback: (tx: unknown) => Promise<unknown>) => {
+      const value = await transaction(callback);
+      order.push("commit");
+      return value;
+    });
+
+    return { prisma, order, notificationCreate };
+  }
+
+  function makeExchangeService(prisma: unknown) {
+    return new ExchangeService(prisma as never, new NotificationService(prisma as never));
+  }
+
+  it("accept 写 EXCHANGE_ACCEPTED，data 使用统一 envelope", async () => {
+    const { prisma, notificationCreate } = pendingScenario();
+    await makeExchangeService(prisma).respond("B", "ex-pending", "accept");
+
+    expect(notificationCreate).toHaveBeenCalledTimes(1);
+    const row = notificationCreate.mock.calls[0][0].data as {
+      userId: string;
+      type: string;
+      data: string;
+    };
+    expect(row.userId).toBe("A");
+    expect(row.type).toBe("EXCHANGE_ACCEPTED");
+    expect(JSON.parse(row.data)).toEqual({
+      actorId: "B",
+      targetType: "EXCHANGE",
+      targetId: "ex-pending",
+      exchangeId: "ex-pending",
+      conversationId: "convAB",
+    });
+  });
+
+  it("accept 的通知写在事务提交之后", async () => {
+    const { prisma, order } = pendingScenario();
+    await makeExchangeService(prisma).respond("B", "ex-pending", "accept");
+    expect(order).toEqual(["commit", "notification"]);
+  });
+
+  it("accept 在通知写入失败时依然完成交换", async () => {
+    const { prisma, order, notificationCreate } = pendingScenario();
+    notificationCreate.mockRejectedValue(new Error("notification store down"));
+
+    const result = await makeExchangeService(prisma).respond("B", "ex-pending", "accept");
+
+    expect(result.exchange).toMatchObject({ id: "ex-pending", status: "ACCEPTED" });
+    expect(result.shared).toHaveLength(4);
+    expect(order).toEqual(["commit"]);
   });
 });

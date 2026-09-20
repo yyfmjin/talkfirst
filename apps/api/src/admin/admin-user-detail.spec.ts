@@ -3,6 +3,7 @@ import { NotFoundException } from "@nestjs/common";
 import { AdminController } from "./admin.controller";
 import {
   AdminService,
+  CONTENT_REPORT_TARGET,
   USER_DETAIL_AUDIT_SELECT,
   USER_DETAIL_SELECT,
 } from "./admin.service";
@@ -36,6 +37,18 @@ import { PERMISSION_METADATA_KEY } from "./require-permission.decorator";
  * contract update, and the assertions still test exactly what they always did
  * (a found user is returned inside the success envelope, looked up by primary
  * key). Nothing was weakened or removed.
+ *
+ * ## Phase C-c additions
+ *
+ * Two content KPIs joined the aggregate: `contentReportsReceived` and
+ * `contentReportsMade`, the same two totals narrowed to MESSAGE ∪ MOMENT.
+ *
+ * The load-bearing assertions here are the *negative* ones. The existing totals
+ * must keep meaning "every report row naming this user", so their `where` is
+ * pinned verbatim — no `momentId`, no `messageId`, no `OR`. The new pair is
+ * pinned to the shared arm in `CONTENT_REPORT_TARGET`, and that constant is
+ * itself compared against a literal written out in this file, so the definition
+ * cannot drift into something the tests merely agree with.
  */
 
 const USER_ID = "11111111-1111-4111-8111-111111111111";
@@ -158,9 +171,22 @@ type Counts = {
   connection?: number;
   reportsReceived?: number;
   reportsMade?: number;
+  contentReportsReceived?: number;
+  contentReportsMade?: number;
   blocksMade?: number;
   blocksReceived?: number;
   socialAccount?: number;
+};
+
+/**
+ * The content arm, written out rather than imported.
+ *
+ * The assertion below compares the shipped constant against *this* literal, so
+ * the test states the rule in its own words instead of agreeing with whatever
+ * the source happens to say. A tautology would prove nothing.
+ */
+const CONTENT_ARM_LITERAL = {
+  OR: [{ momentId: { not: null } }, { momentId: null, messageId: { not: null } }],
 };
 
 /** The audit row the endpoint's `findMany` returns when none is supplied. */
@@ -207,10 +233,19 @@ function makeService(found: Row | null = userRow, counts: Counts = {}, audit: Ro
     report: {
       count: jest.fn(async (args: Call) => {
         calls.count.push({ ...args, model: "report" });
-        // The two report counts differ only by which column is filtered on.
-        return "reportedUserId" in (args.where ?? {})
-          ? (counts.reportsReceived ?? 0)
-          : (counts.reportsMade ?? 0);
+        // Four report counts share this model: the two totals, keyed by their
+        // single column, and the two content subsets, keyed by that same column
+        // *plus* the arm. Reading the shape is what makes the double dispatch
+        // honest — a count that quietly grew an arm would answer as a total and
+        // the `where` assertions below are what catch it.
+        const where = (args.where ?? {}) as Record<string, unknown>;
+        const isContent = "OR" in where;
+        if ("reportedUserId" in where) {
+          return isContent
+            ? (counts.contentReportsReceived ?? 0)
+            : (counts.reportsReceived ?? 0);
+        }
+        return isContent ? (counts.contentReportsMade ?? 0) : (counts.reportsMade ?? 0);
       }),
     },
     block: {
@@ -288,7 +323,7 @@ describe("GET /admin/users/:id — unknown id", () => {
     const { service, calls } = makeService(null);
 
     await expect(service.userDetail(USER_ID)).rejects.toBeInstanceOf(NotFoundException);
-    // Eight wasted aggregates on a 404 would be a quiet cost on every bad link.
+    // Ten wasted aggregates on a 404 would be a quiet cost on every bad link.
     expect(calls.count).toHaveLength(0);
     expect(calls.findMany).toHaveLength(0);
   });
@@ -427,11 +462,146 @@ describe("GET /admin/users/:id — Phase B3 aggregate", () => {
     expect(detail.reportsMadeCount).toBe(4);
 
     const reportCalls = calls.count.filter((entry) => entry.model === "report");
-    expect(reportCalls).toHaveLength(2);
+    expect(reportCalls).toHaveLength(4);
+    // Order is the `Promise.all` order, and each entry is written out here
+    // rather than imported: the totals must stay armless and the subsets must
+    // stay exactly the arm.
     expect(reportCalls.map((entry) => entry.where)).toEqual([
       { reportedUserId: USER_ID },
       { reporterId: USER_ID },
+      { reportedUserId: USER_ID, ...CONTENT_ARM_LITERAL },
+      { reporterId: USER_ID, ...CONTENT_ARM_LITERAL },
     ]);
+  });
+
+  it("9c. the existing totals carry no target condition at all", async () => {
+    const { service, calls } = makeService(userRow, { reportsReceived: 12, reportsMade: 4 });
+
+    const detail = await service.userDetail(USER_ID);
+
+    // The core PC-2.5.8b lock. `reportsReceivedCount` means "every row naming
+    // this user as reportedUserId" — USER, MESSAGE and MOMENT alike. Narrowing
+    // it to content here would silently redefine a KPI the reports queue and
+    // this page both display, and nothing about the new pair requires it.
+    const wheres = calls.count
+      .filter((entry) => entry.model === "report")
+      .map((entry) => entry.where as Record<string, unknown>);
+    const received = wheres.find((w) => "reportedUserId" in w && !("OR" in w));
+    const made = wheres.find((w) => "reporterId" in w && !("OR" in w));
+
+    expect(received).toEqual({ reportedUserId: USER_ID });
+    expect(made).toEqual({ reporterId: USER_ID });
+    for (const where of [received, made]) {
+      expect(where).not.toHaveProperty("momentId");
+      expect(where).not.toHaveProperty("messageId");
+      expect(where).not.toHaveProperty("OR");
+    }
+    // And the numbers really are the totals, not the subsets.
+    expect(detail.reportsReceivedCount).not.toBe(detail.contentReportsReceived);
+  });
+
+  it("9d. the content KPIs are the same direction filters plus the content arm", async () => {
+    const { service, calls } = makeService(userRow, {
+      reportsReceived: 12,
+      reportsMade: 4,
+      contentReportsReceived: 5,
+      contentReportsMade: 3,
+    });
+
+    const detail = await service.userDetail(USER_ID);
+
+    expect(detail.contentReportsReceived).toBe(5);
+    expect(detail.contentReportsMade).toBe(3);
+
+    const wheres = calls.count
+      .filter((entry) => entry.model === "report")
+      .map((entry) => entry.where as Record<string, unknown>);
+    expect(wheres.find((w) => "reportedUserId" in w && "OR" in w)).toEqual({
+      reportedUserId: USER_ID,
+      ...CONTENT_ARM_LITERAL,
+    });
+    expect(wheres.find((w) => "reporterId" in w && "OR" in w)).toEqual({
+      reporterId: USER_ID,
+      ...CONTENT_ARM_LITERAL,
+    });
+  });
+
+  it("9e. the content arm is exactly MOMENT ∪ MESSAGE, in the frozen priority", async () => {
+    // MOMENT first (`momentId != null`), MESSAGE second and pinned to
+    // `momentId: null`. Without that pin the OR would not be a partition and a
+    // row carrying both pointers would be counted twice.
+    expect(CONTENT_REPORT_TARGET).toEqual(CONTENT_ARM_LITERAL);
+    expect(CONTENT_REPORT_TARGET.OR).toHaveLength(2);
+    expect(CONTENT_REPORT_TARGET.OR?.[0]).toEqual({ momentId: { not: null } });
+    expect(CONTENT_REPORT_TARGET.OR?.[1]).toEqual({ momentId: null, messageId: { not: null } });
+  });
+
+  it("9f. the arms classify the three targets the way the console badges them", async () => {
+    // The arms are read as a predicate over real pointer values, so this is a
+    // statement about rows — not about the shape of the filter object.
+    const arms = CONTENT_REPORT_TARGET.OR as unknown as Array<{
+      momentId?: unknown;
+      messageId?: unknown;
+    }>;
+    const matches = (row: { momentId: string | null; messageId: string | null }) =>
+      arms.some((arm) => {
+        const momentOk = arm.momentId === null ? row.momentId === null : row.momentId !== null;
+        const messageOk =
+          arm.messageId === undefined
+            ? true
+            : arm.messageId === null
+              ? row.messageId === null
+              : row.messageId !== null;
+        return momentOk && messageOk;
+      });
+
+    // USER: neither pointer — excluded, which is what keeps the content pair a
+    // strict subset of the totals.
+    expect(matches({ momentId: null, messageId: null })).toBe(false);
+    // MESSAGE and MOMENT: included.
+    expect(matches({ momentId: null, messageId: "msg-1" })).toBe(true);
+    expect(matches({ momentId: "moment-1", messageId: null })).toBe(true);
+    // Both pointers: still one row, still content, and MOMENT wins the badge.
+    expect(matches({ momentId: "moment-1", messageId: "msg-1" })).toBe(true);
+  });
+
+  it("9g. a deleted moment's report is still counted — the count never leaves Report", async () => {
+    const { service, calls } = makeService(userRow, {
+      contentReportsReceived: 6,
+      contentReportsMade: 2,
+    });
+
+    const detail = await service.userDetail(USER_ID);
+
+    // `Report.momentId` has no foreign key, so the row outlives its moment. A
+    // join would drop it here and the KPI would fall as moments are deleted.
+    expect(detail.contentReportsReceived).toBe(6);
+    expect(detail.contentReportsMade).toBe(2);
+    expect(calls.count.some((entry) => entry.model === "moment")).toBe(false);
+    // The whole aggregate touches four models; `moment` is not among them, which
+    // is the structural half of the same guarantee.
+    expect([...new Set(calls.count.map((entry) => entry.model))].sort()).toEqual([
+      "block",
+      "connection",
+      "report",
+      "socialAccount",
+    ]);
+    for (const where of calls.count.map((entry) => entry.where)) {
+      expect(where ?? {}).not.toHaveProperty("moment");
+    }
+  });
+
+  it("9h. the content pair is a number, and only a number", async () => {
+    const { service } = makeService(userRow, { contentReportsReceived: 5, contentReportsMade: 3 });
+
+    const detail = await service.userDetail(USER_ID);
+
+    expect(typeof detail.contentReportsReceived).toBe("number");
+    expect(typeof detail.contentReportsMade).toBe("number");
+    // No list, no rows, no moment body — the same guarantee `socialAccountCount`
+    // carries: a count cannot leak a target.
+    expect(detail).not.toHaveProperty("contentReports");
+    expect(detail).not.toHaveProperty("moments");
   });
 
   it("9b. a total larger than the recent list is reported honestly", async () => {
@@ -496,6 +666,10 @@ describe("GET /admin/users/:id — Phase B3 aggregate", () => {
     expect(detail.auditSummary).toEqual([]);
     expect(detail.connectionCount).toBe(0);
     expect(detail.reportsReceivedCount).toBe(0);
+    // Zero is a legal value for the content pair too — an absent key would read
+    // as "not measured" on the console.
+    expect(detail.contentReportsReceived).toBe(0);
+    expect(detail.contentReportsMade).toBe(0);
     expect(detail.blocksMadeCount).toBe(0);
     expect(detail.blocksReceivedCount).toBe(0);
     expect(detail.socialAccountCount).toBe(0);
@@ -607,16 +781,16 @@ describe("GET /admin/users/:id — Phase B3 aggregate", () => {
     expect(detail.auditSummary[0]).toMatchObject({ actorType: "USER", adminId: ADMIN_ID });
   });
 
-  it("24b. the aggregate is exactly eight reads, inside one transaction, and no write", async () => {
+  it("24b. the aggregate is exactly ten reads, inside one transaction, and no write", async () => {
     const { service, calls, prisma } = makeService(userRow, {}, [auditRow()]);
 
     await service.userDetail(USER_ID);
 
-    // One user lookup, six counts (connection, two report, two block, social)
+    // One user lookup, eight counts (connection, four report, two block, social)
     // and one audit page. Pinned as an exact number on purpose: if this grows, a
     // mutation or a stray query has crept into a GET.
     expect(calls.findUnique).toHaveLength(1);
-    expect(calls.count).toHaveLength(6);
+    expect(calls.count).toHaveLength(8);
     expect(calls.findMany).toHaveLength(1);
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
   });

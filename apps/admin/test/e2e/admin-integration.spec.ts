@@ -40,12 +40,12 @@ import { loginAndLand, openNav, submitLogin } from "../fixtures/browser";
 const CANONICAL_NAV: Array<{ href: string; label: string; permission: string }> = [
   { href: "/dashboard", label: "仪表盘", permission: "dashboard:read" },
   { href: "/users", label: "用户", permission: "users:read" },
-  { href: "/reports", label: "举报", permission: "reports:read" },
-  { href: "/moderation", label: "审核工作台", permission: "reports:read" },
-  { href: "/risk", label: "风险中心", permission: "risk:read" },
   { href: "/connections", label: "连接", permission: "connections:read" },
   { href: "/exchanges", label: "交换", permission: "exchanges:read" },
   { href: "/blocks", label: "屏蔽", permission: "blocks:read" },
+  { href: "/reports", label: "举报", permission: "reports:read" },
+  { href: "/moderation", label: "审核工作台", permission: "reports:read" },
+  { href: "/risk", label: "风险中心", permission: "risk:read" },
   { href: "/audit", label: "审计日志", permission: "audit:read" },
 ];
 

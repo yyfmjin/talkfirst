@@ -905,16 +905,115 @@ describe("C5 §5 — User Detail ↔ the domain lists", () => {
 
   it("38. every aggregate is a count, never the length of a capped list", async () => {
     const detail = await detailCalls();
-    // Six aggregates, all `count`. The recent lists are `take: 10` windows and
-    // must not be the source of any of these numbers.
+    // Eight aggregates, all `count`: connection, the two report totals, the two
+    // content subsets, the two block sides and social accounts. The recent lists
+    // are `take: 10` windows and must not be the source of any of these numbers.
     const counts = callsOf(detail, "connection", "count").length +
       callsOf(detail, "report", "count").length +
       callsOf(detail, "block", "count").length +
       callsOf(detail, "socialAccount", "count").length;
-    expect(counts).toBe(6);
+    expect(counts).toBe(8);
     for (const feed of callsOf(detail, "adminAuditLog", "findMany")) {
       expect(feed.args.take).toBe(10);
     }
+  });
+
+  // ---------------------------------------------------------------- C-c
+
+  /** The two report counts on the user page that name a single column. */
+  const totalsOf = (calls: Call[]) =>
+    callsOf(calls, "report", "count")
+      .map((c) => (c.args.where ?? {}) as Record<string, unknown>)
+      .filter((w) => !("OR" in w));
+
+  /** The two that carry the content arm. */
+  const contentsOf = (calls: Call[]) =>
+    callsOf(calls, "report", "count")
+      .map((c) => (c.args.where ?? {}) as Record<string, unknown>)
+      .filter((w) => "OR" in w);
+
+  it("39b. the two report totals still name one column and nothing else", async () => {
+    const detail = await detailCalls();
+    const totals = totalsOf(detail);
+
+    // The PC-2.5.8b lock, stated as an exact set: `reportsReceivedCount` counts
+    // every row naming this user (USER, MESSAGE and MOMENT alike) and not one
+    // condition has been added to make the content pair work.
+    expect(totals).toHaveLength(2);
+    expect(totals).toEqual([{ reportedUserId: ALICE_ID }, { reporterId: ALICE_ID }]);
+    for (const where of totals) {
+      expect(Object.keys(where)).toHaveLength(1);
+    }
+  });
+
+  it("39c. the content KPIs are exactly the MOMENT ∪ MESSAGE filters the reports list uses", async () => {
+    const detail = await detailCalls();
+    const moment = makePrisma();
+    await new AdminService(moment.prisma).listReports({ targetType: "MOMENT" });
+    const message = makePrisma();
+    await new AdminService(message.prisma).listReports({ targetType: "MESSAGE" });
+    const user = makePrisma();
+    await new AdminService(user.prisma).listReports({ targetType: "USER" });
+
+    const momentArm = (firstWhere(moment.calls, "report", "count").momentId ?? {}) as object;
+    const messageWhere = firstWhere(message.calls, "report", "count");
+    const userWhere = firstWhere(user.calls, "report", "count");
+
+    const contents = contentsOf(detail);
+    expect(contents).toHaveLength(2);
+
+    for (const where of contents) {
+      // Two arms, in the frozen priority: MOMENT first, MESSAGE second.
+      const [first, second] = where.OR as Array<Record<string, unknown>>;
+      expect(first).toEqual({ momentId: momentArm });
+      expect(second).toEqual({ momentId: messageWhere.momentId, messageId: messageWhere.messageId });
+      // And they partition: a person report, which is what `targetType=USER`
+      // selects, satisfies neither arm.
+      expect(userWhere).toEqual({ messageId: null, momentId: null });
+      // The second arm must pin `momentId: null`. Without it the OR would not be
+      // a partition and a row carrying both pointers would be counted twice.
+      expect(second.momentId).toBeNull();
+    }
+
+    // Direction is preserved: one content KPI is about the reportee, the other
+    // about the reporter — never both, never swapped.
+    expect(contents.find((w) => "reportedUserId" in w)).toMatchObject({
+      reportedUserId: ALICE_ID,
+    });
+    expect(contents.find((w) => "reporterId" in w)).toMatchObject({ reporterId: ALICE_ID });
+  });
+
+  it("39d. the content pair adds no relation filter, so a deleted moment still counts", async () => {
+    const detail = await detailCalls();
+
+    // `Report.momentId` has no foreign key. Any `moment: { ... }` predicate here
+    // would turn the KPI into a join and silently stop counting reports whose
+    // moment has since been removed.
+    for (const where of contentsOf(detail)) {
+      expect(where).not.toHaveProperty("moment");
+      expect(JSON.stringify(where)).not.toContain("deletedAt");
+    }
+    expect(callsOf(detail, "moment", "count")).toEqual([]);
+  });
+
+  it("39e. the risk overview's self-report signal is untouched by the new KPIs", async () => {
+    const risk = makePrisma();
+    await new AdminService(risk.prisma).riskOverview();
+
+    const riskCounts = callsOf(risk.calls, "report", "count");
+    // Six: the unfiltered total, the four statuses, and the column-to-column
+    // self-report comparison. The content KPIs live on the user page only, so
+    // this list must be exactly what it was before.
+    expect(riskCounts).toHaveLength(6);
+
+    const selfReport = riskCounts
+      .map((c) => (c.args.where ?? {}) as Record<string, unknown>)
+      .find((w) => "reporterId" in w);
+    expect(selfReport).toBeDefined();
+    // Still a column reference, and still the only condition on it — the signal
+    // is defined as `reporterId == reportedUserId`, not as anything target-aware.
+    expect(Object.keys(selfReport as object)).toEqual(["reporterId"]);
+    expect((selfReport as { reporterId: { equals: unknown } }).reporterId).toHaveProperty("equals");
   });
 });
 

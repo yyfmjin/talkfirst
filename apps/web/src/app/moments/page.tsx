@@ -7,6 +7,7 @@ import { PhoneShell } from "@/components/phone-shell";
 import { TabBar } from "@/components/tab-bar";
 import { GradientButton, OutlineButton } from "@/components/ui";
 import { ProfilePreviewCard } from "@/components/profile-preview-card";
+import { MomentComments, type MomentComment } from "@/components/moment-comments";
 import { apiFetch } from "@/lib/api";
 import { formatCount, formatDuration, relativeTime } from "@/lib/moments";
 
@@ -31,7 +32,9 @@ type Moment = {
 };
 
 type Feed = { items: Moment[]; nextCursor: string | null };
-type Comment = { id: string; content: string; createdAt: string; user: { id: string; nickname: string | null; avatarUrl: string | null } };
+// PC-2.2: the thread is rendered by the shared comment component, so the feed
+// and Post Detail cannot drift apart.
+type Comment = MomentComment;
 
 const tabItems = [
   ["recommend", "推荐"],
@@ -146,8 +149,9 @@ export default function MomentsPage() {
     setCommenting(momentId);
     if (!comments[momentId]) {
       try {
-        const data = await apiFetch<Comment[]>(`/moments/${momentId}/comments`);
-        setComments((current) => ({ ...current, [momentId]: data }));
+        // PC-2.4 — GET comments 回答的是分页对象；卡片只读首页，不提供加载更多。
+        const data = await apiFetch<{ items: Comment[] }>(`/moments/${momentId}/comments`);
+        setComments((current) => ({ ...current, [momentId]: data.items }));
       } catch {
         setComments((current) => ({ ...current, [momentId]: [] }));
       }
@@ -415,46 +419,54 @@ function MomentCard({
         ) : null}
       </div>
 
-      <div className="px-4 pb-3">
-        <p className="whitespace-pre-line text-[13px] leading-5">{moment.content}</p>
-        {moment.tags.length ? (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {moment.tags.map((tag) => (
-              <span key={tag} className="text-[11px] text-[#6572D8]">
-                #{tag}
+      <Link
+        href={`/moments/${moment.id}`}
+        aria-label={`查看动态详情：${moment.author.nickname ?? "用户"}`}
+        className="block"
+      >
+        <div className="px-4 pb-3">
+          <p className="whitespace-pre-line text-[13px] leading-5">{moment.content}</p>
+          {moment.tags.length ? (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {moment.tags.map((tag) => (
+                <span key={tag} className="text-[11px] text-[#6572D8]">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        {moment.videoUrl ? (
+          <div className="relative bg-black">
+            <video src={moment.videoUrl} poster={moment.images[0]} controls preload="metadata" playsInline className="aspect-video max-h-[420px] w-full" />
+            {moment.durationSec ? (
+              <span className="absolute bottom-2 right-2 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
+                {formatDuration(moment.durationSec)}
               </span>
+            ) : null}
+          </div>
+        ) : moment.images.length === 1 ? (
+          <div className="relative aspect-[4/3] overflow-hidden bg-[#F1F3FF]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={moment.images[0]} alt="动态图片" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+          </div>
+        ) : moment.images.length > 1 ? (
+          <div className="tf-scroll-x flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1">
+            {moment.images.map((src, index) => (
+              <div key={`${src}-${index}`} className="relative aspect-[4/3] w-[78%] shrink-0 snap-center overflow-hidden rounded-2xl bg-[#F1F3FF]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={src} alt={`动态图片${index + 1}`} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+                <span className="absolute right-2 top-2 rounded-full bg-black/50 px-2 py-0.5 text-[10px] text-white">
+                  {index + 1}/{moment.images.length}
+                </span>
+              </div>
             ))}
           </div>
         ) : null}
-      </div>
 
-      {moment.videoUrl ? (
-        <div className="relative bg-black">
-          <video src={moment.videoUrl} poster={moment.images[0]} controls preload="metadata" playsInline className="aspect-video max-h-[420px] w-full" />
-          {moment.durationSec ? (
-            <span className="absolute bottom-2 right-2 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
-              {formatDuration(moment.durationSec)}
-            </span>
-          ) : null}
-        </div>
-      ) : moment.images.length === 1 ? (
-        <div className="relative aspect-[4/3] overflow-hidden bg-[#F1F3FF]">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={moment.images[0]} alt="动态图片" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
-        </div>
-      ) : moment.images.length > 1 ? (
-        <div className="tf-scroll-x flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1">
-          {moment.images.map((src, index) => (
-            <div key={`${src}-${index}`} className="relative aspect-[4/3] w-[78%] shrink-0 snap-center overflow-hidden rounded-2xl bg-[#F1F3FF]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={src} alt={`动态图片${index + 1}`} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
-              <span className="absolute right-2 top-2 rounded-full bg-black/50 px-2 py-0.5 text-[10px] text-white">
-                {index + 1}/{moment.images.length}
-              </span>
-            </div>
-          ))}
-        </div>
-      ) : null}
+
+      </Link>
 
       <div className="flex items-center gap-5 px-4 py-3 text-[12px] text-muted">
         <button onClick={onLike} disabled={liking} aria-label="点赞" className={`flex items-center gap-1.5 transition active:scale-110 ${moment.liked ? "text-red-500" : ""}`}>
@@ -479,51 +491,14 @@ function MomentCard({
 
       {commentsOpen ? (
         <div className="border-t border-line bg-[#FAFBFF] px-4 py-3">
-          {comments?.slice(-8).map((comment) => (
-            <div key={comment.id} className="mb-2.5 flex items-start gap-2">
-              <button
-                type="button"
-                onClick={() => onProfile(comment.user.id)}
-                aria-label={`查看 ${comment.user.nickname ?? "用户"} 的资料卡`}
-                className="grid h-6 w-6 shrink-0 place-items-center overflow-hidden rounded-full bg-[#E4E8FF] text-[10px] font-semibold text-[#6572D8]"
-              >
-                {comment.user.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={comment.user.avatarUrl} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  (comment.user.nickname ?? "?").slice(0, 1).toUpperCase()
-                )}
-              </button>
-              <p className="min-w-0 flex-1 text-[12px] leading-5">
-                <button
-                  type="button"
-                  onClick={() => onProfile(comment.user.id)}
-                  className="font-semibold"
-                >
-                  {comment.user.nickname ?? "用户"}
-                </button>{" "}
-                {comment.content}
-                <span className="ml-2 text-[10px] text-muted">{relativeTime(comment.createdAt)}</span>
-              </p>
-            </div>
-          ))}
-          {(!comments || comments.length === 0) && <p className="mb-2 text-[11px] text-muted">还没有评论，来抢沙发吧。</p>}
-          <div className="flex gap-2">
-            <input
-              value={draft}
-              onChange={(event) => onDraft(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") onComment();
-              }}
-              placeholder="说点什么…"
-              maxLength={500}
-              aria-label="写评论"
-              className="h-9 min-w-0 flex-1 rounded-full border border-line bg-white px-3 text-[12px] outline-none focus:ring-2 focus:ring-indigo-200"
-            />
-            <button onClick={onComment} className="h-9 shrink-0 rounded-full bg-[#6572D8] px-4 text-[12px] text-white">
-              发送
-            </button>
-          </div>
+          <MomentComments
+            comments={comments ?? []}
+            max={8}
+            draft={draft}
+            onDraft={onDraft}
+            onSend={onComment}
+            onProfile={onProfile}
+          />
         </div>
       ) : null}
     </article>

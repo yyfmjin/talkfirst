@@ -144,20 +144,20 @@ function ConnectionsScreen() {
           type="button"
           onClick={() => void load()}
           disabled={loading}
-          className="h-9 shrink-0 rounded-xl border border-line px-4 text-[13px] disabled:opacity-40"
+          className="tf-btn"
         >
           {loading ? "刷新中…" : "刷新"}
         </button>
       </div>
 
       {error ? (
-        <div data-testid="connections-error" className="mt-4 rounded-2xl border border-line p-4">
+        <div data-testid="connections-error" className="mt-4 rounded-2xl border border-line bg-card shadow-card p-4">
           <p className="text-[13px] text-red-500">{error}</p>
           <button
             type="button"
             onClick={() => void load()}
             disabled={loading}
-            className="mt-3 h-9 rounded-xl border border-line px-4 text-[13px] disabled:opacity-40"
+            className="mt-3 tf-btn"
           >
             {loading ? "重试中…" : "重试"}
           </button>
@@ -211,7 +211,7 @@ function ConnectionsScreen() {
           type="button"
           onClick={() => void load()}
           disabled={loading}
-          className="h-9 rounded-xl border border-line px-4 text-[13px] disabled:opacity-40"
+          className="tf-btn"
         >
           筛选
         </button>
@@ -231,7 +231,7 @@ function ConnectionsScreen() {
 
       {data && data.total > 0 ? (
         <>
-          <div className="mt-4 overflow-x-auto">
+          <div className="mt-4 rounded-2xl border border-line bg-card shadow-card overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="border-b border-line text-left text-muted">
@@ -285,7 +285,7 @@ function ConnectionsScreen() {
                 type="button"
                 disabled={data.page <= 1 || loading}
                 onClick={() => void load({ page: data.page - 1 })}
-                className="h-8 rounded-xl border border-line px-3 disabled:opacity-40"
+                className="tf-btn tf-btn-sm"
               >
                 上一页
               </button>
@@ -296,7 +296,7 @@ function ConnectionsScreen() {
                 type="button"
                 disabled={data.page >= data.totalPages || loading}
                 onClick={() => void load({ page: data.page + 1 })}
-                className="h-8 rounded-xl border border-line px-3 disabled:opacity-40"
+                className="tf-btn tf-btn-sm"
               >
                 下一页
               </button>

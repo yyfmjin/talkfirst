@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Shell } from "@/components/shell";
+import { DetailSection } from "@/components/detail-section";
 import { ApiRequestError, apiFetch } from "@/lib/api";
 
 /**
@@ -124,7 +125,7 @@ function BlockDetailScreen() {
         </div>
         <Link
           href="/blocks"
-          className="h-9 shrink-0 rounded-xl border border-line px-4 text-[13px] leading-9"
+          className="tf-btn"
         >
           返回列表
         </Link>
@@ -137,12 +138,12 @@ function BlockDetailScreen() {
       ) : null}
 
       {!loading && error ? (
-        <div data-testid="block-detail-error" className="mt-4 rounded-2xl border border-line p-4">
+        <div data-testid="block-detail-error" className="mt-4 rounded-2xl border border-line bg-card shadow-card p-4">
           <p className="text-[13px] text-red-500">{error}</p>
           <button
             type="button"
             onClick={() => void load()}
-            className="mt-3 h-9 rounded-xl border border-line px-4 text-[13px]"
+            className="mt-3 tf-btn"
           >
             重试
           </button>
@@ -214,7 +215,7 @@ function BlockDetailScreen() {
             ) : (
               <ul data-testid="block-history" className="space-y-2 text-[13px]">
                 {data.history.map((item) => (
-                  <li key={item.id} className="rounded-xl border border-line p-3">
+                  <li key={item.id} className="rounded-xl border border-line bg-[#FBFCFE] p-3">
                     <p className="font-medium">{item.action}</p>
                     <p className="mt-1 text-[12px] text-muted">
                       {item.actorType} · {new Date(item.createdAt).toLocaleString()}
@@ -231,12 +232,12 @@ function BlockDetailScreen() {
   );
 }
 
+/** A titled block on this screen — the console-wide detail section. */
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="mt-6">
-      <h2 className="text-[14px] font-medium">{title}</h2>
-      <div className="mt-2 rounded-2xl border border-line p-4">{children}</div>
-    </section>
+    <DetailSection title={title} className="mt-6">
+      {children}
+    </DetailSection>
   );
 }
 

@@ -1,12 +1,25 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Shell } from "@/components/shell";
+import { StatCard } from "@/components/stat-card";
+import { EmptyState } from "@/components/empty-state";
+import { ErrorState } from "@/components/error-state";
+import { PageHeader } from "@/components/page-header";
+import { StatusBadge } from "@/components/status-badge";
 import { ApiRequestError, apiFetch } from "@/lib/api";
+import {
+  REPORT_TARGET_BADGE_CLASS,
+  REPORT_TARGET_LABELS,
+  deriveReportTargetType,
+} from "@/lib/report-target";
+import { useAdminSession } from "@/lib/session";
+import type { Permission } from "@/lib/permissions";
 
 /**
- * Phase B1 — platform operations dashboard.
+ * Platform operations dashboard.
  *
  * Read-only: every number here comes from `GET /admin/dashboard`, which reads
  * live PostgreSQL. Nothing on this page is hardcoded, sampled or derived on the
@@ -24,6 +37,17 @@ import { ApiRequestError, apiFetch } from "@/lib/api";
  * today (no OPEN reports exist), so an empty section is the *normal* first
  * impression, not an edge case — it must never be shown as a blank gap or as a
  * permanently spinning 「加载中…」.
+ *
+ * ## Layout: four headline figures, then evidence
+ *
+ * The eight account figures were previously one undifferentiated grid of cards,
+ * so the one number an operator acts on (the open-report backlog) sat at the
+ * same weight as the vanity count. They are now tiered: four headline KPIs, a
+ * supporting strip, and then the queues and feeds that explain them.
+ *
+ * No time series exists on the API, so no trend line, sparkline or chart is
+ * drawn here. A fabricated graph would be the single most misleading thing this
+ * screen could do.
  */
 
 type AuditEntry = {
@@ -51,7 +75,10 @@ type ResolvedReport = {
   id: string;
   reason: string;
   status: string;
+  // Both pointers are selected by the API; the target is derived from them,
+  // because a report has no targetType column of its own.
   messageId: string | null;
+  momentId: string | null;
   createdAt: string;
   reporter: { id: string; nickname: string | null; email: string };
   reportedUser: { id: string; nickname: string | null; email: string };
@@ -91,6 +118,7 @@ export default function DashboardPage() {
 
 function DashboardScreen() {
   const router = useRouter();
+  const { can } = useAdminSession();
   const [data, setData] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -120,91 +148,100 @@ function DashboardScreen() {
     void load();
   }, [load]);
 
-  const kpis: Array<[string, number]> = data
-    ? [
-        ["用户总数", data.users],
-        ["ACTIVE", data.active],
-        ["SUSPENDED", data.suspended],
-        ["BANNED", data.banned],
-        ["今日新增", data.todayNewUsers],
-        ["7 日新增", data.newUsers7d],
-        ["待处理举报", data.reportsOpen],
-        ["在线管理员", data.admins],
-      ]
-    : [];
-
-  const secondary: Array<[string, number]> = data
-    ? [
-        ["今日活跃", data.activeToday],
-        ["今日消息", data.messagesToday],
-        ["有效连接", data.connections],
-      ]
-    : [];
-
   return (
     <>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-[20px] font-semibold">仪表盘</h1>
-          <p className="mt-1 text-[13px] text-muted">
-            平台运营状态总览。所有数字直接来自数据库，页面只读、不产生审计记录。
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void load()}
-          // Disabled while in flight, so a second click cannot fire a duplicate
-          // request. No page reload — the same endpoint is re-fetched in place.
-          disabled={loading}
-          className="h-9 shrink-0 rounded-xl border border-line px-4 text-[13px] disabled:opacity-40"
-        >
-          {loading ? "刷新中…" : "刷新"}
-        </button>
-      </div>
-
-      {error ? (
-        <div className="mt-4 rounded-2xl border border-line p-4">
-          <p className="text-[13px] text-red-500">{error}</p>
+      <PageHeader
+        title="仪表盘"
+        description="平台运营状态总览。所有数字直接来自数据库，页面只读、不产生审计记录。"
+        actions={
           <button
             type="button"
             onClick={() => void load()}
+            // Disabled while in flight, so a second click cannot fire a duplicate
+            // request. No page reload — the same endpoint is re-fetched in place.
             disabled={loading}
-            className="mt-3 h-9 rounded-xl border border-line px-4 text-[13px] disabled:opacity-40"
+            className="tf-btn"
           >
-            {loading ? "重试中…" : "重试"}
+            {loading ? "刷新中…" : "刷新"}
           </button>
-        </div>
+        }
+      />
+
+      {error ? (
+        <ErrorState message={error} onRetry={() => void load()} retrying={loading} className="mt-4" />
       ) : null}
 
       {!data && loading ? <p className="mt-4 text-[13px] text-muted">加载中…</p> : null}
 
       {data ? (
         <>
-          <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-            {kpis.map(([label, value]) => (
-              <Kpi key={label} label={label} value={value} />
-            ))}
+          {/* Four headline figures. The backlog comes first because it is the
+              only one of the four an operator has to *do* something about. */}
+          <div className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-4">
+            <StatCard label="用户总数" value={data.users} hint={`其中 ${data.active} 个账号可用`} />
+            <StatCard label="ACTIVE" value={data.active} tone="success" />
+            <StatCard
+              label="SUSPENDED"
+              value={data.suspended}
+              tone={data.suspended > 0 ? "warning" : "default"}
+            />
+            <StatCard
+              label="待处理举报"
+              value={data.reportsOpen}
+              tone={data.reportsOpen > 0 ? "danger" : "default"}
+            />
+          </div>
+
+          {/* The supporting strip: same figures, quieter weight. Each still
+              renders at zero — a blank tile would read as a broken query. */}
+          <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <StatCard size="sm" label="BANNED" value={data.banned} />
+            <StatCard size="sm" label="今日新增" value={data.todayNewUsers} />
+            <StatCard size="sm" label="7 日新增" value={data.newUsers7d} />
+            <StatCard size="sm" label="在线管理员" value={data.admins} />
           </div>
 
           <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
-            {secondary.map(([label, value]) => (
-              <Kpi key={label} label={label} value={value} subtle />
-            ))}
+            <StatCard size="sm" label="今日活跃" value={data.activeToday} />
+            <StatCard size="sm" label="今日消息" value={data.messagesToday} />
+            <StatCard size="sm" label="有效连接" value={data.connections} />
+          </div>
+
+          <div className="mt-6 grid gap-6 lg:grid-cols-3">
+            <PendingWork data={data} can={can} className="lg:col-span-2" />
+            <QuickActions can={can} />
           </div>
 
           <Section title="最近举报处理" count={data.recentResolvedReports.length}>
-            {data.recentResolvedReports.map((report) => (
+            {data.recentResolvedReports.map((report) => {
+              // Same helper as the reports queue and the risk feed, so the
+              // three surfaces cannot disagree about what a report points at.
+              const target = deriveReportTargetType(report);
+              return (
               <Row key={report.id}>
-                <p className="font-medium">
-                  {report.reporter.nickname ?? report.reporter.email} →{" "}
-                  {report.reportedUser.nickname ?? report.reportedUser.email}
-                </p>
-                <p className="mt-1 text-muted">
-                  {report.reason} · {report.status} ·{" "}
-                  {new Date(report.createdAt).toLocaleString()}
-                </p>
+                <div data-target-type={target} data-report-id={report.id}>
+                  <p className="font-medium">
+                    {report.reporter.nickname ?? report.reporter.email} →{" "}
+                    {report.reportedUser.nickname ?? report.reportedUser.email}
+                  </p>
+                  <p className="mt-1 flex flex-wrap items-center gap-1 text-muted">
+                    <span
+                      data-testid="dashboard-report-target"
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${REPORT_TARGET_BADGE_CLASS[target]}`}
+                    >
+                      {REPORT_TARGET_LABELS[target]}
+                    </span>
+                    <span>·</span>
+                    <span>{report.reason}</span>
+                    <span>·</span>
+                    <StatusBadge status={report.status} />
+                    <span>·</span>
+                    <span>{new Date(report.createdAt).toLocaleString()}</span>
+                  </p>
+                </div>
               </Row>
-            ))}
+              );
+            })}
           </Section>
 
           <Section title="最近审计" count={data.recentAudit.length}>
@@ -219,16 +256,14 @@ function DashboardScreen() {
                   <p className="mt-1 text-muted">
                     {new Date(entry.createdAt).toLocaleString()} ·{" "}
                     {isSystem ? (
-                      <span className="rounded-full bg-[#E4EAF7] px-2 py-0.5 text-[11px] font-medium text-[#4A5A7A]">
-                        系统 · 自动
-                      </span>
+                      <SystemBadge />
                     ) : (
                       // Defensive `?.`: `adminId` is nullable at the type level.
                       `admin ${entry.adminId?.slice(0, 8) ?? "-"}`
                     )}{" "}
                     · target {entry.targetId ? entry.targetId.slice(0, 8) : "-"}
                   </p>
-                  {entry.detail ? <p className="mt-1">{entry.detail}</p> : null}
+                  {entry.detail ? <p className="mt-1 text-muted">{entry.detail}</p> : null}
                 </Row>
               );
             })}
@@ -239,13 +274,10 @@ function DashboardScreen() {
               <Row key={event.id}>
                 <p className="font-medium">{event.action}</p>
                 <p className="mt-1 text-muted">
-                  <span className="rounded-full bg-[#E4EAF7] px-2 py-0.5 text-[11px] font-medium text-[#4A5A7A]">
-                    系统 · 自动
-                  </span>{" "}
-                  · {new Date(event.createdAt).toLocaleString()} · target{" "}
+                  <SystemBadge /> · {new Date(event.createdAt).toLocaleString()} · target{" "}
                   {event.targetId ? event.targetId.slice(0, 8) : "-"}
                 </p>
-                {event.detail ? <p className="mt-1">{event.detail}</p> : null}
+                {event.detail ? <p className="mt-1 text-muted">{event.detail}</p> : null}
               </Row>
             ))}
           </Section>
@@ -255,16 +287,115 @@ function DashboardScreen() {
   );
 }
 
-function Kpi({ label, value, subtle }: { label: string; value: number; subtle?: boolean }) {
+/**
+ * What is actually waiting on a human.
+ *
+ * Deliberately *not* an `EmptyState`: the dashboard's three activity feeds own
+ * the 「暂无数据」 phrase, and a fourth copy would make that word ambiguous on
+ * the screen where it matters most. An empty queue states its own, different
+ * sentence instead.
+ */
+function PendingWork({
+  data,
+  can,
+  className = "",
+}: {
+  data: Dashboard;
+  can: (permission: Permission) => boolean;
+  className?: string;
+}) {
   return (
-    <div className="rounded-2xl border border-line p-4">
-      <p className={`font-semibold ${subtle ? "text-[20px]" : "text-[24px]"}`}>{value}</p>
-      <p className="mt-1 text-[12px] text-muted">{label}</p>
-    </div>
+    <section className={`rounded-2xl border border-line bg-card p-4 shadow-card ${className}`}>
+      <h2 className="tf-section-title">待处理事项</h2>
+      <p className="mt-0.5 text-[12px] text-muted">需要管理员决定的内容，全部读取自实时数据库。</p>
+
+      <div className="mt-3 rounded-xl border border-line/60 bg-[#FBFCFE] p-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[13px] font-medium text-ink">举报队列</p>
+            <p className="mt-0.5 text-[12px] text-muted">
+              状态为 OPEN 的举报，等待受理、处理或驳回。
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-3">
+            <span className="text-[18px] font-semibold tabular-nums text-ink">
+              {data.reportsOpen}
+            </span>
+            {can("reports:read") ? (
+              <Link href="/reports" className="tf-btn tf-btn-sm">
+                前往处理
+              </Link>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      {data.reportsOpen === 0 ? (
+        <p className="mt-2 text-[12px] text-muted">队列已清空，当前没有需要立即处置的举报。</p>
+      ) : null}
+
+      <div className="mt-2 rounded-xl border border-line/60 bg-[#FBFCFE] p-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[13px] font-medium text-ink">封禁中账号</p>
+            <p className="mt-0.5 text-[12px] text-muted">
+              临时封禁到期后由系统自动解封；永久封禁不会自动解除。
+            </p>
+          </div>
+          <span className="shrink-0 text-[18px] font-semibold tabular-nums text-ink">
+            {data.suspended + data.banned}
+          </span>
+        </div>
+      </div>
+    </section>
   );
 }
 
-/** A titled block that always states its empty case rather than showing a gap. */
+/**
+ * Role-aware shortcuts.
+ *
+ * Every entry is filtered by the *same* permission the sidebar uses, and the
+ * labels are deliberately not identical to any nav label — `getByRole("link",
+ * { name: "用户", exact: true })` must resolve to the sidebar entry alone, and a
+ * shortcut sharing that name would make navigation ambiguous.
+ */
+const QUICK_ACTIONS: Array<{ href: string; label: string; permission: Permission }> = [
+  { href: "/reports", label: "举报工作台", permission: "reports:read" },
+  { href: "/users", label: "用户目录", permission: "users:read" },
+  { href: "/moderation", label: "审核队列", permission: "reports:read" },
+  { href: "/risk", label: "风险信号总览", permission: "risk:read" },
+  { href: "/audit", label: "审计记录", permission: "audit:read" },
+];
+
+function QuickActions({ can }: { can: (permission: Permission) => boolean }) {
+  const available = QUICK_ACTIONS.filter((action) => can(action.permission));
+
+  return (
+    <section className="rounded-2xl border border-line bg-card p-4 shadow-card">
+      <h2 className="tf-section-title">快捷操作</h2>
+      <p className="mt-0.5 text-[12px] text-muted">只列出当前角色有权限进入的页面。</p>
+      <div className="mt-3 space-y-1.5">
+        {available.map((action) => (
+          <Link
+            key={action.href}
+            href={action.href}
+            className="flex items-center justify-between rounded-xl border border-line/60 bg-[#FBFCFE] px-3 py-2 text-[13px] text-ink transition-colors hover:border-[#D6DAE1] hover:bg-white"
+          >
+            <span>{action.label}</span>
+            <span aria-hidden="true" className="text-muted">
+              →
+            </span>
+          </Link>
+        ))}
+      </div>
+      {available.length === 0 ? (
+        <p className="mt-2 text-[12px] text-muted">当前角色没有可用的操作入口。</p>
+      ) : null}
+    </section>
+  );
+}
+
+/** A titled feed that always states its empty case rather than showing a gap. */
 function Section({
   title,
   count,
@@ -276,9 +407,9 @@ function Section({
 }) {
   return (
     <section className="mt-6">
-      <h2 className="text-[15px] font-semibold">{title}</h2>
+      <h2 className="text-[15px] font-semibold text-ink">{title}</h2>
       {count === 0 ? (
-        <p className="mt-2 rounded-2xl border border-line p-3 text-[12px] text-muted">暂无数据</p>
+        <EmptyState className="mt-2" />
       ) : (
         <div className="mt-2 space-y-2">{children}</div>
       )}
@@ -287,5 +418,18 @@ function Section({
 }
 
 function Row({ children }: { children: React.ReactNode }) {
-  return <div className="rounded-2xl border border-line p-3 text-[12px]">{children}</div>;
+  return (
+    <div className="rounded-2xl border border-line bg-card p-3 text-[12px] shadow-card">
+      {children}
+    </div>
+  );
+}
+
+/** The one rendering of a machine actor. Never accompanied by an admin id. */
+function SystemBadge() {
+  return (
+    <span className="inline-flex items-center rounded-full bg-[#EEF2FF] px-2 py-0.5 text-[11px] font-medium text-[#4338CA]">
+      系统 · 自动
+    </span>
+  );
 }

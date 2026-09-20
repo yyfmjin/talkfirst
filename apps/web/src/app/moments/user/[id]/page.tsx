@@ -101,8 +101,9 @@ export default function UserMomentsPage() {
     setCommenting(momentId);
     if (!comments[momentId]) {
       try {
-        const data = await apiFetch<Comment[]>(`/moments/${momentId}/comments`);
-        setComments((current) => ({ ...current, [momentId]: data }));
+        // PC-2.4 — GET comments 回答的是分页对象：这里只读首页，卡片不提供加载更多也不提供删除。
+        const data = await apiFetch<{ items: Comment[] }>(`/moments/${momentId}/comments`);
+        setComments((current) => ({ ...current, [momentId]: data.items }));
       } catch {
         setComments((current) => ({ ...current, [momentId]: [] }));
       }

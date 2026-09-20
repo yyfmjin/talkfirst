@@ -125,6 +125,7 @@ const REPORT_ROW = {
   reason: "HARASSMENT",
   status: "RESOLVED",
   messageId: null,
+  momentId: null,
   createdAt: new Date("2026-09-17T09:00:00.000Z"),
   reporter: { id: "u-1", nickname: "Ann", email: "ann@example.test" },
   reportedUser: { id: "u-2", nickname: null, email: "bob@example.test" },
@@ -500,6 +501,7 @@ describe("Dashboard — recent resolved reports", () => {
         reason: true,
         status: true,
         messageId: true,
+        momentId: true,
         createdAt: true,
         reporter: { select: { id: true, nickname: true, email: true } },
         reportedUser: { select: { id: true, nickname: true, email: true } },
@@ -517,6 +519,37 @@ describe("Dashboard — recent resolved reports", () => {
     for (const party of [select.reporter, select.reportedUser]) {
       expect(Object.keys(party.select).sort()).toEqual(["email", "id", "nickname"]);
     }
+  });
+
+  // ---- PC-2.5.6: the feed must be able to name the target --------------
+
+  it("selects both target pointers, not just the message one", async () => {
+    // A report has no targetType column, so a feed that omits momentId renders
+    // "reported this person" for a report that was about a moment.
+    const { service, calls } = makeService();
+    await service.dashboard();
+    const select = calls.reportFindMany[0].select as Record<string, unknown>;
+    expect(select.momentId).toBe(true);
+    expect(select.messageId).toBe(true);
+  });
+
+  it("a resolved moment report carries its momentId and a null messageId", async () => {
+    const { service } = makeService({
+      reports: [
+        {
+          ...REPORT_ROW,
+          id: "report-moment-1",
+          momentId: "c1d2e3f4-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
+        },
+      ],
+    });
+    const result = await service.dashboard();
+    const row = result.recentResolvedReports[0] as unknown as {
+      momentId: string | null;
+      messageId: string | null;
+    };
+    expect(row.momentId).toBe("c1d2e3f4-5a6b-4c7d-8e9f-0a1b2c3d4e5f");
+    expect(row.messageId).toBeNull();
   });
 });
 

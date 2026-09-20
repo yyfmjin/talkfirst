@@ -12,6 +12,7 @@ import type {
   ReportStatus,
   UserStatus,
 } from "@prisma/client";
+import { NotificationService } from "../notifications/notification.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { isProfileComplete, profileCompletionOf } from "../users/profile-completion";
 import type { ResolvedAdmin } from "./admin.guard";
@@ -190,6 +191,28 @@ export type ReportMessageSummary =
   | { available: true; id: string; content: string; type: string; createdAt: Date; sender: PartySummary }
   | { available: false; reason: "NO_MESSAGE" | "DELETED" };
 
+/**
+ * PC-2.5.3: what the reported moment looked like, if it still exists.
+ *
+ * The exact counterpart of `ReportMessageSummary`, and for the same reason:
+ * `Report.momentId` carries no foreign key (see the schema note), so a report
+ * can outlive its moment. `available: false` is therefore a normal outcome
+ * rather than an error, and `reason` separates "this report never pointed at a
+ * moment" from "the moment is gone". `source` is carried because a `DEMO`
+ * placeholder must never be reviewed as if it were genuine user activity.
+ */
+export type ReportMomentSummary =
+  | {
+      available: true;
+      id: string;
+      content: string;
+      platform: string;
+      source: string;
+      createdAt: Date;
+      author: PartySummary;
+    }
+  | { available: false; reason: "NO_MOMENT" | "DELETED" };
+
 /** The three columns the reports screens show for a user. */
 export type PartySummary = { id: string; nickname: string | null; email: string };
 
@@ -255,6 +278,21 @@ const STATUS_ACTIONS: readonly UserStatusAction[] = [
   "suspend",
   "unban",
 ];
+
+/**
+ * PC-3.1c — what a user is told when their own account state changes.
+ *
+ * Deliberately silent about *why* and about *who*: the reason and the acting
+ * administrator live in `AdminNote` / `AdminAuditLog`, which the affected
+ * account does not read. A status with no entry yields no body rather than a
+ * fabricated one.
+ */
+const USER_STATUS_BODY: Record<string, string> = {
+  ACTIVE: "你的账号已恢复正常。",
+  DISABLED: "你的账号已被停用。",
+  SUSPENDED: "你的账号已被临时封禁。",
+  BANNED: "你的账号已被封禁。",
+};
 
 /**
  * Phase B2: every sort the users list accepts, mapped to a Prisma `orderBy`.
@@ -860,6 +898,20 @@ const USER_STATUSES: readonly string[] = ["ACTIVE", "DISABLED", "SUSPENDED", "BA
 const REPORT_STATUSES: readonly string[] = ["OPEN", "REVIEWING", "RESOLVED", "REJECTED"];
 
 /**
+ * PC-3.1c — what a reporter is told after their report is reviewed.
+ *
+ * Keyed by the status the review produced. Deliberately says nothing about the
+ * reviewing administrator or the review reason, both of which stay in
+ * `AdminAuditLog`. `OPEN` is absent because no action produces it: a review can
+ * only move a report forward.
+ */
+const REPORT_REVIEW_BODY: Record<string, string> = {
+  REVIEWING: "你提交的举报正在处理中。",
+  RESOLVED: "你提交的举报已处理。",
+  REJECTED: "你提交的举报已审核。",
+};
+
+/**
  * Phase B4: what the reports queue renders per row.
  *
  * An explicit `select` rather than `include` — see the note on
@@ -873,6 +925,7 @@ export const REPORT_LIST_SELECT = {
   description: true,
   status: true,
   messageId: true,
+  momentId: true,
   createdAt: true,
   reporter: { select: { id: true, nickname: true, email: true } },
   reportedUser: { select: { id: true, nickname: true, email: true, status: true } },
@@ -892,6 +945,7 @@ export const REPORT_DETAIL_SELECT = {
   description: true,
   status: true,
   messageId: true,
+  momentId: true,
   createdAt: true,
   reporter: { select: { id: true, nickname: true, email: true, status: true } },
   reportedUser: { select: { id: true, nickname: true, email: true, status: true } },
@@ -932,7 +986,11 @@ export const RISK_RECENT_REPORTS_SELECT = {
   reason: true,
   status: true,
   description: true,
+  // The two target pointers. They are the only way to tell what a report
+  // points at -- Report has no targetType column -- so omitting them made a
+  // moment report indistinguishable from a person report on this surface.
   messageId: true,
+  momentId: true,
   createdAt: true,
   reporter: { select: { id: true, nickname: true, email: true } },
   reportedUser: { select: { id: true, nickname: true, email: true, status: true } },
@@ -992,13 +1050,50 @@ const RISK_ACTION_PREFIXES: readonly string[] = [
 /**
  * The single definition of the derived target type.
  *
- * `Report` has no `targetType` column. This function and the `messageId`
- * predicate in `buildReportWhere` are two readings of one rule, so they are
- * kept adjacent and both are exercised by `admin-reports.spec.ts`.
+ * `Report` has no `targetType` column. This function and the target predicate
+ * in `buildReportWhere` are two readings of one rule, so they are kept adjacent
+ * and both are exercised by `admin-reports.spec.ts`.
+ *
+ * PC-2.5.3 widened this from two states to three, in a fixed priority order:
+ *
+ *     momentId IS NOT NULL  → MOMENT
+ *     messageId IS NOT NULL → MESSAGE
+ *     otherwise             → USER
+ *
+ * `momentId` wins over `messageId` deliberately. A moment report is always
+ * written with `messageId: null`, so a row carrying both is a data question the
+ * product has not answered; labelling it MOMENT keeps the more specific target
+ * visible instead of silently degrading it to a message report.
  */
-function deriveTargetType(messageId: string | null): "USER" | "MESSAGE" {
+function deriveTargetType(
+  momentId: string | null,
+  messageId: string | null,
+): "USER" | "MESSAGE" | "MOMENT" {
+  if (momentId) return "MOMENT";
   return messageId ? "MESSAGE" : "USER";
 }
+
+/**
+ * Phase C-c: the target arm that selects every **content** report.
+ *
+ * "Content" means a report about something a user *published* rather than about
+ * the account itself, so it is MESSAGE ∪ MOMENT and never USER. The two arms are
+ * the exact negation of the USER predicate in `buildReportWhere` and are written
+ * in the same priority order: MOMENT first, then MESSAGE pinned to
+ * `momentId: null` so a moment report can never be counted twice.
+ *
+ * The second arm's `momentId: null` is not redundant with the first. Without it
+ * an OR is not a partition — a row carrying both pointers would satisfy both
+ * arms, and the count would answer a different question than
+ * `targetType ∈ { MOMENT, MESSAGE }`.
+ *
+ * Defined once because two KPIs read it. Duplicating the OR in each `count`
+ * would let one of them drift into a slightly different meaning, which is
+ * exactly the failure this constant exists to prevent.
+ */
+export const CONTENT_REPORT_TARGET: Prisma.ReportWhereInput = {
+  OR: [{ momentId: { not: null } }, { momentId: null, messageId: { not: null } }],
+};
 
 
 /** A well-formed UUID, used to decide whether the keyword can be an exact id. */
@@ -1118,7 +1213,16 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    /**
+     * PC-3.1c — the single notification writer, so a status change and a report
+     * review can tell the affected user. Optional only because the admin specs
+     * construct this service directly with a prisma stub; `NotificationsModule`
+     * is global, so Nest always supplies it in the running application.
+     */
+    private readonly notifications?: NotificationService,
+  ) {}
 
   /**
    * Phase B1: platform-operations summary for the console landing screen.
@@ -1224,7 +1328,10 @@ export class AdminService {
             id: true,
             reason: true,
             status: true,
+            // See RISK_RECENT_REPORTS_SELECT: the target pointers are what
+            // let the feed say "about a moment" instead of "about a person".
             messageId: true,
+            momentId: true,
             createdAt: true,
             reporter: { select: { id: true, nickname: true, email: true } },
             reportedUser: { select: { id: true, nickname: true, email: true } },
@@ -2207,9 +2314,29 @@ export class AdminService {
    *   connectionCount       Connection where the user is A or B and status = ACTIVE
    *   reportsReceivedCount  Report where reportedUserId = user
    *   reportsMadeCount      Report where reporterId = user
+   *   contentReportsReceived  reportsReceivedCount, restricted to content targets
+   *   contentReportsMade      reportsMadeCount, restricted to content targets
    *   blocksMadeCount       Block where blockerId = user
    *   blocksReceivedCount   Block where blockedId = user
    *   socialAccountCount    SocialAccount where userId = user
+   *
+   * ## Why the content KPIs are additions, not redefinitions
+   *
+   * `reportsReceivedCount` counts every row naming this user as `reportedUserId`
+   * — a person report, a report about a message they sent and a report about a
+   * moment they published all land in that one number. That is the meaning the
+   * reports queue's `reportedUser` filter already has, and Phase C5 §5 pins the
+   * two as equivalent, so it is deliberately left alone.
+   *
+   * The content pair answers the narrower question the user page could not ask
+   * before: how much of that total is about things the user published. It is a
+   * strict subset — `contentReportsReceived <= reportsReceivedCount` always — and
+   * the two are never merged, so `existing total != content total` is the
+   * expected reading, not a bug.
+   *
+   * Both content counts read `Report` rows only. `momentId` has no foreign key,
+   * so a report survives its moment's deletion and keeps being counted here; a
+   * join would silently drop it.
    *
    * `ConnectionStatus` is `ACTIVE | REMOVED` and the dashboard already treats
    * `ACTIVE` as "a connection", so a REMOVED row is not counted. That is the
@@ -2230,6 +2357,8 @@ export class AdminService {
         connectionCount,
         reportsReceivedCount,
         reportsMadeCount,
+        contentReportsReceived,
+        contentReportsMade,
         blocksMadeCount,
         blocksReceivedCount,
         socialAccountCount,
@@ -2240,6 +2369,11 @@ export class AdminService {
         }),
         tx.report.count({ where: { reportedUserId: userId } }),
         tx.report.count({ where: { reporterId: userId } }),
+        // The same two totals, narrowed to content targets. `CONTENT_REPORT_TARGET`
+        // is the shared arm — see its definition for why the two are separate
+        // numbers rather than a redefinition of the totals above.
+        tx.report.count({ where: { reportedUserId: userId, ...CONTENT_REPORT_TARGET } }),
+        tx.report.count({ where: { reporterId: userId, ...CONTENT_REPORT_TARGET } }),
         tx.block.count({ where: { blockerId: userId } }),
         tx.block.count({ where: { blockedId: userId } }),
         tx.socialAccount.count({ where: { userId } }),
@@ -2256,6 +2390,8 @@ export class AdminService {
         connectionCount,
         reportsReceivedCount,
         reportsMadeCount,
+        contentReportsReceived,
+        contentReportsMade,
         blocksMadeCount,
         blocksReceivedCount,
         socialAccountCount,
@@ -2284,6 +2420,10 @@ export class AdminService {
       connectionCount: detail.connectionCount,
       reportsReceivedCount: detail.reportsReceivedCount,
       reportsMadeCount: detail.reportsMadeCount,
+      // Content-only subsets of the two totals above. Additive by design: no
+      // existing key changed meaning, so no consumer of this endpoint breaks.
+      contentReportsReceived: detail.contentReportsReceived,
+      contentReportsMade: detail.contentReportsMade,
       blocksMadeCount: detail.blocksMadeCount,
       blocksReceivedCount: detail.blocksReceivedCount,
       socialAccountCount: detail.socialAccountCount,
@@ -2435,6 +2575,30 @@ export class AdminService {
       );
     });
 
+    // PC-3.1c — the account is told its own state changed.
+    //
+    // Written after the commit, never inside the transaction: the status change
+    // is the safety-critical part and must not be held hostage by a notification
+    // insert. A no-op change (the same status saved twice) sends nothing, so
+    // "a real transition happened" and "one message was sent" stay in step.
+    //
+    // No `actorId` and no administrator identity travels with it — who acted is
+    // audit data, not something the affected account is told.
+    if (next.status !== target.status) {
+      await this.notifications?.notify({
+        userId: targetUserId,
+        type: "USER_STATUS",
+        title: "账号状态已更新",
+        body: USER_STATUS_BODY[next.status],
+        data: {
+          targetType: "USER",
+          targetId: targetUserId,
+          status: next.status,
+          ...(next.suspendedUntil ? { suspendedUntil: next.suspendedUntil.toISOString() } : {}),
+        },
+      });
+    }
+
     return this.userDetail(targetUserId);
   }
 
@@ -2443,16 +2607,18 @@ export class AdminService {
    *
    * ## Derived `targetType` — not a column
    *
-   * `Report` has no `targetType`; it has a nullable `messageId`. The console's
-   * USER/MESSAGE distinction is therefore derived, and the *only* definition is:
+   * `Report` has no `targetType`; it has two nullable pointers, `momentId` and
+   * `messageId`. The console's distinction is therefore derived, and the *only*
+   * definition (PC-2.5.3) is:
    *
-   *     messageId IS NULL      → USER
-   *     messageId IS NOT NULL  → MESSAGE
+   *     momentId IS NOT NULL  → MOMENT
+   *     messageId IS NOT NULL → MESSAGE
+   *     otherwise             → USER
    *
    * `buildReportWhere` uses exactly this rule and `deriveTargetType` reads it
    * back, so a filter and the label shown next to a row can never disagree.
    * Adding a `targetType` column would create a second source of truth that
-   * drifts as soon as `messageId` changes.
+   * drifts as soon as either pointer changes.
    *
    * ## Filter policies (deliberately not uniform)
    *
@@ -2498,7 +2664,15 @@ export class AdminService {
     });
   }
 
-  /** Translates the reports query into a `Report` filter. */
+  /**
+   * Translates the reports query into a `Report` filter.
+   *
+   * The `targetType` arm is the query-side twin of `deriveTargetType`, in the
+   * same priority order. MESSAGE and USER both pin `momentId: null` so that a
+   * moment report can never surface under a message or user filter — without it,
+   * a moment report would match `USER` (its `messageId` is null) and the
+   * queue would disagree with the badge beside it.
+   */
   private buildReportWhere(query: AdminReportListQuery): Prisma.ReportWhereInput {
     const {
       status,
@@ -2525,12 +2699,15 @@ export class AdminService {
       ...(normalizedReason
         ? { reason: { equals: normalizedReason, mode: "insensitive" as const } }
         : {}),
-      // The filter and the displayed label share this single rule.
-      ...(normalizedTarget === "USER"
-        ? { messageId: null }
+      // The filter and the displayed label share this single rule, and the
+      // priority order is the one deriveTargetType() reads back.
+      ...(normalizedTarget === "MOMENT"
+        ? { momentId: { not: null } }
         : normalizedTarget === "MESSAGE"
-          ? { messageId: { not: null } }
-          : {}),
+          ? { momentId: null, messageId: { not: null } }
+          : normalizedTarget === "USER"
+            ? { messageId: null, momentId: null }
+            : {}),
       ...(this.partyFilter(reporter) ? { reporter: this.partyFilter(reporter)! } : {}),
       ...(this.partyFilter(reportedUser) ? { reportedUser: this.partyFilter(reportedUser)! } : {}),
       ...(createdFrom || createdTo
@@ -2569,15 +2746,20 @@ export class AdminService {
    *
    * Three things this deliberately does *not* do:
    *
-   *  1. **It does not join the target message.** `Report.messageId` has no
-   *     foreign key (see the schema note), so the row can outlive its message.
-   *     The lookup is a separate, fallible step — see `messageSummary`.
+   *  1. **It does not join the target.** Neither `Report.messageId` nor
+   *     `Report.momentId` carries a foreign key (see the schema note), so the row
+   *     can outlive either of them. Each lookup is a separate, fallible step —
+   *     see `messageSummary` and `momentSummary`.
    *  2. **It does not use `include`.** Every relation is an explicit `select`
    *     constant, so a column added to `User` later cannot appear here by
    *     accident. `passwordHash` and `RefreshToken.tokenHash` are the columns
    *     this protects.
    *  3. **It does not return `null` for a missing id.** An unknown report is a
    *     404 `REPORT_NOT_FOUND`, never `{ success: true, data: null }`.
+   *
+   * The top level mirrors that two-sided approach: `target` states which kind of
+   * thing was reported, while `message` and `moment` each carry their own
+   * "available or not" verdict. Exactly one of them is ever `available: true`.
    */
   async reportDetail(reportId: string) {
     const report = await this.prisma.report.findUnique({
@@ -2592,8 +2774,9 @@ export class AdminService {
       });
     }
 
-    const [message, history] = await Promise.all([
+    const [message, moment, history] = await Promise.all([
       this.messageSummary(report.messageId),
+      this.momentSummary(report.momentId),
       this.prisma.adminAuditLog.findMany({
         where: { targetType: "REPORT", targetId: reportId },
         orderBy: { createdAt: "desc" },
@@ -2608,15 +2791,18 @@ export class AdminService {
         description: report.description,
         status: report.status,
         messageId: report.messageId,
+        momentId: report.momentId,
         createdAt: report.createdAt,
       },
       reporter: report.reporter,
       reportedUser: report.reportedUser,
       target: {
-        targetType: deriveTargetType(report.messageId),
+        targetType: deriveTargetType(report.momentId, report.messageId),
         messageId: report.messageId,
+        momentId: report.momentId,
       },
       message,
+      moment,
       history,
     };
   }
@@ -2665,6 +2851,47 @@ export class AdminService {
   }
 
   /**
+   * PC-2.5.3: the reported moment, or an explicit "not available".
+   *
+   * Same contract as `messageSummary` above, for the same reason: `momentId` is
+   * a bare pointer with no foreign key, so the moment can be gone while the
+   * report remains. That is ordinary, not an error, and this must never throw —
+   * a missing moment would otherwise turn the whole detail page into a 500.
+   *
+   * `Moment` has no `deletedAt`, so unlike messages there is no soft-delete arm
+   * to report: a row either exists or does not.
+   */
+  private async momentSummary(
+    momentId: string | null,
+  ): Promise<ReportMomentSummary> {
+    if (!momentId) return { available: false, reason: "NO_MOMENT" };
+
+    const moment = await this.prisma.moment.findUnique({
+      where: { id: momentId },
+      select: {
+        id: true,
+        content: true,
+        platform: true,
+        source: true,
+        createdAt: true,
+        user: { select: { id: true, nickname: true, email: true } },
+      },
+    });
+
+    if (!moment) return { available: false, reason: "DELETED" };
+
+    return {
+      available: true,
+      id: moment.id,
+      content: moment.content,
+      platform: moment.platform,
+      source: moment.source,
+      createdAt: moment.createdAt,
+      author: moment.user,
+    };
+  }
+
+  /**
    * Phase A: reason is now mandatory, and the audit entry uses proper
    * `targetType`/`targetId` instead of stuffing the reported user's id into the
    * free-text `detail` column.
@@ -2687,7 +2914,7 @@ export class AdminService {
 
     const existing = await this.prisma.report.findUnique({
       where: { id: reportId },
-      select: { id: true, status: true, reportedUserId: true },
+      select: { id: true, status: true, reportedUserId: true, reporterId: true },
     });
     if (!existing) {
       throw new NotFoundException({
@@ -2698,8 +2925,8 @@ export class AdminService {
 
     const status = action === "reviewing" ? "REVIEWING" : action === "resolved" ? "RESOLVED" : "REJECTED";
 
-    return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.report.update({
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.report.update({
         where: { id: reportId },
         data: { status: status as never },
       });
@@ -2711,15 +2938,44 @@ export class AdminService {
           targetId: reportId,
           reason,
           before: { status: existing.status },
-          after: { status: updated.status },
+          after: { status: row.status },
           ip: ip ?? null,
           userAgent: userAgent ?? null,
           detail: reason,
         },
         tx,
       );
-      return updated;
+      return row;
     });
+
+    // PC-3.1c — the reporter learns what happened to what they filed.
+    //
+    // Only a real transition notifies. The endpoint has always allowed the same
+    // action to be submitted twice (it re-writes the same status and appends a
+    // second audit row); a second message claiming something new happened would
+    // be a lie, so an unchanged status sends nothing.
+    //
+    // Written after the commit, never inside the transaction, so a notification
+    // problem cannot undo a review that was successfully recorded. No `actorId`
+    // travels with it: the reviewing administrator and the review reason are
+    // audit data, and the reporter is told *that* their report was looked at —
+    // never by whom, or on what grounds.
+    if (existing.status !== status) {
+      await this.notifications?.notify({
+        userId: existing.reporterId,
+        type: "REPORT_REVIEW",
+        title: "举报处理结果",
+        body: REPORT_REVIEW_BODY[status],
+        data: {
+          targetType: "REPORT",
+          targetId: reportId,
+          reportId,
+          status,
+        },
+      });
+    }
+
+    return updated;
   }
 
   async addNote(userId: string, admin: ResolvedAdmin, body: string, ip?: string | null, userAgent?: string | null) {

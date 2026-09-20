@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { NotificationService } from "../notifications/notification.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { SafetyService } from "../safety/safety.service";
 
@@ -22,6 +23,8 @@ export class MomentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly safety: SafetyService,
+    /** PC-3.1b — the one writer of notifications; see `NotificationService`. */
+    private readonly notifications: NotificationService,
   ) {}
 
   platforms() {
@@ -307,6 +310,53 @@ export class MomentsService {
     };
   }
 
+  /**
+   * PC-2.1 - single-moment read behind the Post Detail screen.
+   *
+   * The detail route is a new entry point into the same data, so it goes
+   * through the same gate as every other interaction (`resolveMomentAccess`):
+   * a private / connections-only / blocked moment stays locked here too.
+   *
+   * The projection is explicit and limited to what the detail card renders -
+   * no author e-mail, no token, no social handle, no admin flag. Media
+   * filtering reuses the viewer's own MomentSetting, exactly like `feed()`.
+   */
+  async getMoment(viewerId: string, momentId: string) {
+    const moment = await this.prisma.moment.findUnique({
+      where: { id: momentId },
+      include: {
+        user: { select: { id: true, nickname: true, avatarUrl: true, countryCode: true, status: true } },
+        likes: { where: { userId: viewerId }, select: { userId: true } },
+      },
+    });
+    if (!moment || moment.user.status !== "ACTIVE") return null;
+    if (viewerId !== moment.userId) await this.assertCanInteract(viewerId, moment.userId);
+    const viewerSetting = await this.prisma.momentSetting.findUnique({ where: { userId: viewerId } });
+    return {
+      id: moment.id,
+      userId: moment.userId,
+      author: {
+        id: moment.user.id,
+        nickname: moment.user.nickname,
+        avatarUrl: moment.user.avatarUrl,
+        countryCode: moment.user.countryCode,
+      },
+      platform: moment.platform,
+      platformName: moment.platformName,
+      content: this.filterContent(moment.content, viewerSetting?.filterSensitive ?? true),
+      images: this.filterMedia(moment.images, moment.platform, viewerSetting),
+      videoUrl: this.filterVideo(moment.videoUrl, viewerSetting),
+      durationSec: moment.durationSec,
+      tags: moment.tags,
+      likeCount: moment.likeCount,
+      commentCount: moment.commentCount,
+      liked: moment.likes.length > 0,
+      source: moment.source,
+      isDemo: moment.source === "DEMO",
+      syncedAt: moment.syncedAt,
+      createdAt: moment.createdAt,
+    };
+  }
   async toggleLike(userId: string, momentId: string) {
     const moment = await this.prisma.moment.findUnique({ where: { id: momentId } });
     if (!moment) return null;
@@ -326,33 +376,87 @@ export class MomentsService {
       this.prisma.moment.update({ where: { id: momentId }, data: { likeCount: { increment: 1 } } }),
     ]);
     if (moment.userId !== userId) {
-      await this.prisma.notification.create({
+      await this.notifications.notify({
+        userId: moment.userId,
+        type: "MOMENT_LIKE",
+        title: "你的动态收到点赞",
+        body: moment.content.slice(0, 120),
         data: {
-          userId: moment.userId,
-          type: "MOMENT_LIKE",
-          title: "你的动态收到点赞",
-          body: moment.content.slice(0, 120),
-          data: JSON.stringify({ momentId }),
+          actorId: userId,
+          targetType: "MOMENT",
+          targetId: momentId,
+          momentId,
         },
-      }).catch(() => undefined);
+      });
     }
     return { liked: true };
   }
 
-  async listComments(viewerId: string, momentId: string, limit = 20) {
+  /**
+   * PC-2.4 — the thread is paginated on top-level comments only. Replies travel
+   * nested under the comment they belong to, so a page boundary can never split
+   * a thread: `pageSize` bounds top-level comments, not rows.
+   *
+   * The shape is the console's list shape (`items` / `total` / `page` /
+   * `pageSize` / `totalPages`) rather than a second, comment-only pagination
+   * contract. `hasMore` is deliberately not added: it is derived from
+   * `page < totalPages` and duplicating it would let the two disagree.
+   *
+   * The order is unchanged (oldest first) so a page stays stable while the
+   * thread grows, and the access check still runs before anything is read: a
+   * locked moment rejects without ever reaching `count`.
+   */
+  async listComments(viewerId: string, momentId: string, page = 1, pageSize = 20) {
     const moment = await this.prisma.moment.findUnique({ where: { id: momentId } });
     if (!moment) return null;
     await this.assertCanInteract(viewerId, moment.userId);
-    const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 50);
-    return this.prisma.momentComment.findMany({
-      where: { momentId },
-      orderBy: { createdAt: "asc" },
-      take: safeLimit,
-      include: { user: { select: { id: true, nickname: true, avatarUrl: true } } },
-    });
+    const safePage = Math.min(Math.max(Number(page) || 1, 1), 1000);
+    // The bound the thread already had before pagination existed, kept so a
+    // request cannot ask for an unbounded slice of 500-char bodies.
+    const safePageSize = Math.min(Math.max(Number(pageSize) || 20, 1), 50);
+    const where = { momentId, parentCommentId: null };
+    // Explicit projection: a comment exposes the author's public identity only.
+    // `momentId` / `userId` are not part of the API contract either, so they are
+    // left out rather than shipped by accident through a default select.
+    // PC-2.3.2 — the thread is one level deep: only top-level comments are
+    // listed and replies travel nested under their parent. A nested select
+    // cannot recurse past the data, and only one level is ever written.
+    // PC-2.4 — replies arrive with their page of parents in the same query, so
+    // a page costs two round trips no matter how many comments it holds.
+    const [total, items] = await Promise.all([
+      this.prisma.momentComment.count({ where }),
+      this.prisma.momentComment.findMany({
+        where,
+        orderBy: { createdAt: "asc" },
+        skip: (safePage - 1) * safePageSize,
+        take: safePageSize,
+        select: {
+          id: true,
+          content: true,
+          createdAt: true,
+          user: { select: { id: true, nickname: true, avatarUrl: true } },
+          replies: {
+            orderBy: { createdAt: "asc" },
+            select: {
+              id: true,
+              content: true,
+              createdAt: true,
+              user: { select: { id: true, nickname: true, avatarUrl: true } },
+            },
+          },
+        },
+      }),
+    ]);
+    return {
+      items,
+      total,
+      page: safePage,
+      pageSize: safePageSize,
+      totalPages: Math.ceil(total / safePageSize),
+    };
   }
 
-  async addComment(userId: string, momentId: string, content: string) {
+  async addComment(userId: string, momentId: string, content: string, parentCommentId?: string | null) {
     const moment = await this.prisma.moment.findUnique({ where: { id: momentId } });
     if (!moment) return null;
     await this.assertCanInteract(userId, moment.userId);
@@ -363,28 +467,143 @@ export class MomentsService {
       throw error;
     }
     const scan = this.safety.scanText(trimmed);
-    if (scan.blocked) {
+    // Same contract as profile attributes: a HIGH signal or an explicit block
+    // stops the write. SafetyService stays the single source of that decision.
+    if (scan.blocked || scan.level === "HIGH") {
       const error = new Error("COMMENT_BLOCKED") as Error & { code?: string };
       error.code = "COMMENT_BLOCKED";
       throw error;
     }
+    // PC-3.1c — who a reply is *for*.
+    //
+    // A reply is addressed to the author of the comment being answered, which is
+    // a different person from the author of the moment. The parent row is
+    // already being read here for the depth check, so its `userId` rides along
+    // and is carried out of the transaction: the notification is written after
+    // the commit, never inside it, so a notification problem cannot roll back a
+    // reply that was successfully stored.
+    let parentAuthorId: string | null = null;
     const comment = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.momentComment.create({ data: { momentId, userId, content: trimmed } });
-      await tx.moment.update({ where: { id: momentId }, data: { commentCount: { increment: 1 } } });
+      // PC-2.3.2 — one reply level. The rule spans two rows, so no CHECK can
+      // express it and the self-FK only proves the parent *exists*: it must
+      // also belong to this moment and itself be top-level. Checked inside the
+      // same transaction as the write, so an illegal reply is never stored.
+      if (parentCommentId) {
+        const parent = await tx.momentComment.findUnique({
+          where: { id: parentCommentId },
+          select: { id: true, momentId: true, parentCommentId: true, userId: true },
+        });
+        if (!parent || parent.momentId !== momentId || parent.parentCommentId !== null) {
+          const error = new Error("COMMENT_PARENT_INVALID") as Error & { code?: string };
+          error.code = "COMMENT_PARENT_INVALID";
+          throw error;
+        }
+        parentAuthorId = parent.userId;
+      }
+      const created = await tx.momentComment.create({
+        data: { momentId, userId, content: trimmed, parentCommentId: parentCommentId ?? null },
+        // The author travels with the created row so the UI can render the new
+        // comment immediately, without a second round trip.
+        select: {
+          id: true,
+          content: true,
+          createdAt: true,
+          parentCommentId: true,
+          user: { select: { id: true, nickname: true, avatarUrl: true } },
+        },
+      });
+      // commentCount counts top-level comments only, so a reply leaves it
+      // untouched: the counter keeps the meaning it had before replies existed.
+      if (!parentCommentId) {
+        await tx.moment.update({ where: { id: momentId }, data: { commentCount: { increment: 1 } } });
+      }
       return created;
     });
-    if (moment.userId !== userId) {
-      await this.prisma.notification.create({
+    if (parentCommentId && parentAuthorId) {
+      // A reply notifies exactly one person: the comment's author. The moment's
+      // author is not told "your moment got a comment" for a reply, because the
+      // comment they would be told about is not addressed to them.
+      //
+      // Self suppression is not repeated here — `NotificationService` owns that
+      // rule, so replying to one's own comment simply produces no row.
+      await this.notifications.notify({
+        userId: parentAuthorId,
+        type: "MOMENT_REPLY",
+        title: "你的评论收到回复",
+        body: trimmed.slice(0, 120),
         data: {
-          userId: moment.userId,
-          type: "MOMENT_COMMENT",
-          title: "你的动态收到评论",
-          body: trimmed.slice(0, 120),
-          data: JSON.stringify({ momentId }),
+          actorId: userId,
+          targetType: "COMMENT",
+          targetId: parentCommentId,
+          momentId,
+          commentId: comment.id,
+          parentCommentId,
         },
-      }).catch(() => undefined);
+      });
+    } else if (moment.userId !== userId) {
+      await this.notifications.notify({
+        userId: moment.userId,
+        type: "MOMENT_COMMENT",
+        title: "你的动态收到评论",
+        body: trimmed.slice(0, 120),
+        data: {
+          actorId: userId,
+          targetType: "MOMENT",
+          targetId: momentId,
+          momentId,
+          commentId: comment.id,
+        },
+      });
     }
     return comment;
+  }
+
+  /**
+   * PC-2.4 — a comment is removed by its owner only.
+   *
+   * Ownership is read from the row itself and never from the request, and the
+   * row must belong to the moment named in the path: without that second check
+   * any readable moment would become a handle on any other moment's thread.
+   *
+   * Deleting a top-level comment takes its replies with it through the
+   * self-relation's ON DELETE CASCADE, and `commentCount` follows it down —
+   * but only from a value above zero, so a counter that already drifted
+   * historically can never be pushed negative. The guard is part of the same
+   * atomic update instead of a read-then-write, so two concurrent deletes
+   * cannot both observe the same non-zero value.
+   */
+  async deleteComment(userId: string, momentId: string, commentId: string) {
+    const moment = await this.prisma.moment.findUnique({ where: { id: momentId } });
+    if (!moment) return null;
+    // The thread is not readable without this, so it is not writable either:
+    // the same gate as listing and commenting, reused rather than re-derived.
+    await this.assertCanInteract(userId, moment.userId);
+    return this.prisma.$transaction(async (tx) => {
+      const comment = await tx.momentComment.findUnique({
+        where: { id: commentId },
+        select: { id: true, momentId: true, userId: true, parentCommentId: true },
+      });
+      if (!comment || comment.momentId !== momentId) {
+        const error = new Error("COMMENT_NOT_FOUND") as Error & { code?: string };
+        error.code = "COMMENT_NOT_FOUND";
+        throw error;
+      }
+      if (comment.userId !== userId) {
+        const error = new Error("COMMENT_FORBIDDEN") as Error & { code?: string };
+        error.code = "COMMENT_FORBIDDEN";
+        throw error;
+      }
+      await tx.momentComment.delete({ where: { id: comment.id } });
+      if (comment.parentCommentId === null) {
+        await tx.moment.updateMany({
+          where: { id: momentId, commentCount: { gt: 0 } },
+          data: { commentCount: { decrement: 1 } },
+        });
+      }
+      // Which level was removed is the server's answer, not the client's
+      // assumption: only a top-level delete moves the counter the card shows.
+      return { deleted: true, parentCommentId: comment.parentCommentId };
+    });
   }
 
   async publish(

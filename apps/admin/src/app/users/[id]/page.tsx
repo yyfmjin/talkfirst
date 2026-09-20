@@ -138,7 +138,7 @@ function UserDetailScreen({ params }: { params: Promise<{ id: string }> }) {
         </p>
         <Link
           href="/users"
-          className="mt-4 inline-block h-9 rounded-xl border border-line px-4 text-[13px] leading-9"
+          className="mt-4 tf-btn"
         >
           返回用户列表
         </Link>
@@ -160,7 +160,7 @@ function UserDetailScreen({ params }: { params: Promise<{ id: string }> }) {
       {data ? (
         <div className="mt-4 space-y-4">
           {/* 基础资料 */}
-          <section className="rounded-2xl border border-line p-4">
+          <section className="rounded-2xl border border-line bg-card shadow-card p-4">
             <p className="text-[15px] font-medium">
               {data.nickname ?? data.email} {data.isAdmin ? "🛡️" : ""}
             </p>
@@ -177,7 +177,7 @@ function UserDetailScreen({ params }: { params: Promise<{ id: string }> }) {
           </section>
 
           {/* 资料完整度 */}
-          <section className="rounded-2xl border border-line p-4" data-testid="profile-completion">
+          <section className="rounded-2xl border border-line bg-card shadow-card p-4" data-testid="profile-completion">
             <h2 className="text-[14px] font-semibold">资料完整度</h2>
             <div className="mt-2 flex items-center gap-3">
               <div className="h-2 w-32 overflow-hidden rounded-full bg-gray-100">
@@ -209,7 +209,7 @@ function UserDetailScreen({ params }: { params: Promise<{ id: string }> }) {
           </section>
 
           {/* 账号操作 */}
-          <section className="rounded-2xl border border-line p-4">
+          <section className="rounded-2xl border border-line bg-card shadow-card p-4">
             <h2 className="text-[14px] font-semibold">账号操作</h2>
             {canWrite ? (
               <div className="mt-2 flex flex-wrap gap-2">
@@ -237,7 +237,7 @@ function UserDetailScreen({ params }: { params: Promise<{ id: string }> }) {
           </section>
 
           {/* 被举报（最近10条） */}
-          <section className="rounded-2xl border border-line p-4">
+          <section className="rounded-2xl border border-line bg-card shadow-card p-4">
             <h2 className="text-[14px] font-semibold">
               被举报（共 {data.reportsReceivedCount} 条，最近 {data.reportsReceived.length} 条）
             </h2>
@@ -253,7 +253,7 @@ function UserDetailScreen({ params }: { params: Promise<{ id: string }> }) {
           </section>
 
           {/* 发出举报（最近10条） */}
-          <section className="rounded-2xl border border-line p-4">
+          <section className="rounded-2xl border border-line bg-card shadow-card p-4">
             <h2 className="text-[14px] font-semibold">
               发出举报（共 {data.reportsMadeCount} 条，最近 {data.reportsMade.length} 条）
             </h2>
@@ -269,7 +269,7 @@ function UserDetailScreen({ params }: { params: Promise<{ id: string }> }) {
           </section>
 
           {/* 审计摘要 */}
-          <section className="rounded-2xl border border-line p-4">
+          <section className="rounded-2xl border border-line bg-card shadow-card p-4">
             <h2 className="text-[14px] font-semibold">管理员操作记录（最近 {data.auditSummary.length} 条）</h2>
             {data.auditSummary.length === 0 ? (
               <p className="mt-1 text-[12px] text-muted">无</p>
@@ -297,7 +297,7 @@ function UserDetailScreen({ params }: { params: Promise<{ id: string }> }) {
           </section>
 
           {/* 内部备注 */}
-          <section className="rounded-2xl border border-line p-4">
+          <section className="rounded-2xl border border-line bg-card shadow-card p-4">
             <h2 className="text-[14px] font-semibold">内部备注（{data.adminNotes.length}）</h2>
             {data.adminNotes.map((item) => (
               <p key={item.id} className="mt-1 text-[12px] text-muted">
@@ -326,7 +326,7 @@ function UserDetailScreen({ params }: { params: Promise<{ id: string }> }) {
 
 function StatCard({ label, value, testId }: { label: string; value: number; testId?: string }) {
   return (
-    <div className="rounded-2xl border border-line p-3" data-testid={testId}>
+    <div className="rounded-2xl border border-line bg-card shadow-card p-3" data-testid={testId}>
       <p className="text-[20px] font-semibold">{value}</p>
       <p className="text-[11px] text-muted">{label}</p>
     </div>

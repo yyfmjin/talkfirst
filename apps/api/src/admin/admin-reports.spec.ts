@@ -22,16 +22,18 @@ import type { ResolvedAdmin } from "./admin.guard";
  * What is pinned here, and why each is not obvious:
  *
  *   1. **`targetType` is derived, and the filter and the label share one rule.**
- *      `Report` has no `targetType` column. `USER` means `messageId IS NULL` and
- *      `MESSAGE` means `messageId IS NOT NULL`. If the filter and the value
- *      shown on the row ever disagreed, an operator would filter for "message
- *      reports" and get rows labelled "user" — so both readings are asserted
- *      against the same fixture.
+ *      `Report` has no `targetType` column; it has two nullable pointers. The
+ *      priority is `MOMENT > MESSAGE > USER` (PC-2.5.3), meaning
+ *      `momentId IS NOT NULL` → `MOMENT`, else `messageId IS NOT NULL` →
+ *      `MESSAGE`, else `USER`. If the filter and the value shown on the row ever
+ *      disagreed, an operator would filter for "moment reports" and get rows
+ *      labelled "user" — so every reading is asserted against the same fixtures.
  *
- *   2. **A missing message is a normal outcome, not a 500.** `Report.messageId`
- *      has no foreign key, so the row can outlive its message. A hard-deleted or
- *      soft-deleted message must produce `available: false`, never a thrown
- *      error and never a raw Prisma message on the wire.
+ *   2. **A missing target is a normal outcome, not a 500.** Neither
+ *      `Report.messageId` nor `Report.momentId` has a foreign key, so a row can
+ *      outlive either. A hard-deleted or soft-deleted message — or a moment that
+ *      is simply gone — must produce `available: false`, never a thrown error
+ *      and never a raw Prisma message on the wire.
  *
  *   3. **`count` and `findMany` see the same filter.** If they diverged, the
  *      total would describe a different result set than the rows and pagination
@@ -89,9 +91,11 @@ const WRITE_ROLES: AdminRole[] = ["SUPER_ADMIN", "MODERATOR"];
 const ADMIN_ID = "9c4e1a52-7b3d-4e6f-8a11-2d5f9c0b7e34";
 const REPORT_ID = "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d";
 const MESSAGE_ID = "7f8e9d0c-1b2a-4c3d-9e8f-7a6b5c4d3e2f";
+const MOMENT_ID = "8e7d6c5b-4a39-4281-9706-5c4d3e2f1a0b";
 const REPORTER_ID = "3f1c0b7e-6a2d-4f8b-9c31-8d5e2a4b7c90";
 const REPORTED_ID = "5a4b3c2d-1e0f-4a9b-8c7d-6e5f4a3b2c1d";
 const GHOST_MESSAGE_ID = "00000000-1111-4222-8333-444444444444";
+const GHOST_MOMENT_ID = "00000000-2222-4333-8444-555555555555";
 
 /** A report row as it comes back with a *wide* select, secrets included. */
 type ReportRow = {
@@ -100,6 +104,7 @@ type ReportRow = {
   description: string | null;
   status: string;
   messageId: string | null;
+  momentId: string | null;
   createdAt: Date;
   reporter: Party;
   reportedUser: Party & { status: string };  // Present on the fixture on purpose: widening the select to include either of
@@ -139,6 +144,7 @@ const USER_REPORT: ReportRow = {
   description: "repeated messages",
   status: "OPEN",
   messageId: null,
+  momentId: null,
   createdAt: new Date("2026-03-04T05:06:07.000Z"),
   reporter: REPORTER,
   reportedUser: REPORTED,
@@ -151,6 +157,40 @@ const MESSAGE_REPORT: ReportRow = {
   id: "2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e",
   reason: "Spam",
   messageId: MESSAGE_ID,
+};
+
+/**
+ * PC-2.5.3: a report on a Moment.
+ *
+ * Written the way the API writes one — `momentId` set and `messageId` null —
+ * because that shape is what the derived label has to survive. `momentId` has
+ * no foreign key, so this row is expected to outlive the moment it points at.
+ */
+const MOMENT_REPORT: ReportRow = {
+  ...USER_REPORT,
+  id: "3c4d5e6f-7a8b-4c9d-8e0f-2a3b4c5d6e7f",
+  reason: "Inappropriate",
+  messageId: null,
+  momentId: MOMENT_ID,
+};
+
+/** The moment row as it comes back with a *wide* select, secrets included. */
+const MOMENT_ROW = {
+  id: MOMENT_ID,
+  content: "testing the new profile layout",
+  platform: "X",
+  source: "USER",
+  createdAt: new Date("2026-03-02T09:08:07.000Z"),
+  // Neither of these is returned by momentSummary. They are here so that
+  // widening its select carries them onto the wire and fails the deep scan
+  // below, rather than passing because the fixture happened to be clean.
+  videoUrl: "https://cdn.example.test/secret-clip.mp4",
+  user: {
+    id: REPORTED_ID,
+    nickname: "Bob",
+    email: "bob@example.test",
+    passwordHash: "$2a$10$zyxwvutsrqponmlkjihgfe",
+  },
 };
 
 /** The argument objects the service hands to Prisma. */
@@ -187,6 +227,8 @@ type HarnessOptions = {
   /** `null` models `findUnique` finding nothing. */
   detailRow?: ReportRow | null;
   message?: Record<string, unknown> | null;
+  /** PC-2.5.3: `null` models the moment having been deleted. */
+  moment?: Record<string, unknown> | null;
   history?: Array<Record<string, unknown>>;
   existingReport?: { id: string; status: string; reportedUserId: string } | null;
 };
@@ -197,6 +239,7 @@ function makeService(opts: HarnessOptions = {}) {
     findMany: [] as Call[],
     detailFindUnique: [] as Call[],
     messageFindUnique: [] as Call[],
+    momentFindUnique: [] as Call[],
     historyFindMany: [] as Call[],
     reportUpdate: [] as Call[],
     auditCreate: [] as Call[],
@@ -228,6 +271,21 @@ function makeService(opts: HarnessOptions = {}) {
       };
     }
     return opts.message;
+  });
+
+  /**
+   * PC-2.5.3: the moment lookup behind the detail page.
+   *
+   * Projected through the caller's `select` exactly as Prisma would, and the
+   * fixture carries `passwordHash` / `videoUrl` on purpose: widening
+   * `momentSummary`'s select would then put them on the wire and the deep scan
+   * in test 39 would fail, instead of passing because the fixture was clean.
+   */
+  const momentFindUnique = jest.fn(async (args: Call) => {
+    calls.momentFindUnique.push(args);
+    const row = opts.moment === undefined ? MOMENT_ROW : opts.moment;
+    if (!row) return null;
+    return project(row as unknown as Record<string, unknown>, args.select ?? {});
   });
 
   const historyFindMany = jest.fn(async (args: Call) => {
@@ -302,6 +360,7 @@ function makeService(opts: HarnessOptions = {}) {
   const tx = {
     report,
     message: { findUnique: messageFindUnique },
+    moment: { findUnique: momentFindUnique },
     adminAuditLog: { create: auditCreate, findMany: historyFindMany },
     user: { count: jest.fn(async () => 0), findMany: jest.fn(async () => []) },
     adminNote: { create: jest.fn(async () => ({ id: "note-1" })) },
@@ -314,6 +373,7 @@ function makeService(opts: HarnessOptions = {}) {
     ...tx,
     report: { ...report, findUnique: reportFindUnique },
     message: { findUnique: messageFindUnique },
+    moment: { findUnique: momentFindUnique },
     $transaction: jest.fn(async (fn: (client: typeof tx) => unknown) => fn(tx)),
   };
 
@@ -478,16 +538,22 @@ describe("Reports — reason filter", () => {
 // ---------------------------------------------------------------------------
 
 describe("Reports — derived targetType", () => {
-  it("11. targetType=USER compiles to `messageId: null`", async () => {
+  it("11. targetType=USER means neither pointer is set", async () => {
     const { calls } = await list({ targetType: "USER" });
-    expect(calls.findMany[0].where?.messageId).toBeNull();
-    expect(calls.count[0].where?.messageId).toBeNull();
+    for (const call of [calls.findMany[0], calls.count[0]]) {
+      expect(call.where?.messageId).toBeNull();
+      expect(call.where?.momentId).toBeNull();
+    }
   });
 
-  it("12. targetType=MESSAGE compiles to `messageId: { not: null }`", async () => {
+  it("12. targetType=MESSAGE means a message and no moment", async () => {
     const { calls } = await list({ targetType: "MESSAGE" });
-    expect(calls.findMany[0].where?.messageId).toEqual({ not: null });
-    expect(calls.count[0].where?.messageId).toEqual({ not: null });
+    for (const call of [calls.findMany[0], calls.count[0]]) {
+      expect(call.where?.messageId).toEqual({ not: null });
+      // Without this, a moment report (messageId null) would answer a message
+      // query — the badge and the filter would describe different rows.
+      expect(call.where?.momentId).toBeNull();
+    }
   });
 
   it("12b. targetType is case-normalised", async () => {
@@ -495,25 +561,67 @@ describe("Reports — derived targetType", () => {
     expect(calls.findMany[0].where?.messageId).toEqual({ not: null });
   });
 
-  it("13. an absent or unknown targetType adds no messageId predicate at all", async () => {
+  it("13. an absent or unknown targetType adds no target predicate at all", async () => {
     for (const query of [{}, { targetType: "ALL" }, { targetType: "WEIRD" }]) {
       const { calls } = await list(query);
-      expect("messageId" in (calls.findMany[0].where ?? {})).toBe(false);
+      const where = calls.findMany[0].where ?? {};
+      expect("messageId" in where).toBe(false);
+      expect("momentId" in where).toBe(false);
     }
   });
 
   it("13b. the filter and the displayed label agree for the same row", async () => {
-    // A USER row: no messageId. The API must both match it under targetType=USER
-    // and label it USER — one rule, read two ways.
+    // A USER row: neither pointer. The API must both match it under
+    // targetType=USER and label it USER — one rule, read two ways.
     const userDetail = await makeService({ detailRow: USER_REPORT }).service.reportDetail(REPORT_ID);
     expect(userDetail.target.targetType).toBe("USER");
     expect(userDetail.report.messageId).toBeNull();
+    expect(userDetail.report.momentId).toBeNull();
 
     const messageDetail = await makeService({ detailRow: MESSAGE_REPORT }).service.reportDetail(
       REPORT_ID,
     );
     expect(messageDetail.target.targetType).toBe("MESSAGE");
     expect(messageDetail.report.messageId).toBe(MESSAGE_ID);
+
+    const momentDetail = await makeService({ detailRow: MOMENT_REPORT }).service.reportDetail(
+      REPORT_ID,
+    );
+    expect(momentDetail.target.targetType).toBe("MOMENT");
+    expect(momentDetail.report.momentId).toBe(MOMENT_ID);
+  });
+
+  it("12c. targetType=MOMENT means a moment, and says nothing about messages", async () => {
+    const { calls } = await list({ targetType: "MOMENT" });
+    for (const call of [calls.findMany[0], calls.count[0]]) {
+      expect(call.where?.momentId).toEqual({ not: null });
+      // The MOMENT arm deliberately does not constrain messageId. A moment
+      // report is always written with messageId null, so pinning it here would
+      // add a condition with no way to be wrong — and would hide a row that
+      // somehow carried both.
+      expect("messageId" in (call.where ?? {})).toBe(false);
+    }
+  });
+
+  it("12d. targetType=MOMENT is case-normalised", async () => {
+    const { calls } = await list({ targetType: "moment" });
+    expect(calls.findMany[0].where?.momentId).toEqual({ not: null });
+  });
+
+  it("12e. the three target predicates are mutually exclusive", async () => {
+    const [user, message, moment] = await Promise.all(
+      (["USER", "MESSAGE", "MOMENT"] as const).map(async (targetType) => {
+        const { calls } = await list({ targetType });
+        return calls.findMany[0].where ?? {};
+      }),
+    );
+
+    // Whatever pointers a row carries, at most one of these three filters can
+    // match it — which is what makes "filter by X" and "labelled X" the same
+    // claim rather than two rules that happen to agree today.
+    expect(user).toEqual({ messageId: null, momentId: null });
+    expect(message).toEqual({ momentId: null, messageId: { not: null } });
+    expect(moment).toEqual({ momentId: { not: null } });
   });
 });
 
@@ -663,6 +771,7 @@ describe("Reports — response shape", () => {
         "description",
         "id",
         "messageId",
+        "momentId",
         "reason",
         "reportedUser",
         "reporter",
@@ -700,11 +809,12 @@ describe("Reports — response shape", () => {
 // ---------------------------------------------------------------------------
 
 describe("Reports — detail", () => {
-  it("29. a known id returns report, reporter, reportedUser, target, message, history", async () => {
+  it("29. a known id returns report, reporter, reportedUser, target, message, moment, history", async () => {
     const detail = await makeService({ detailRow: USER_REPORT }).service.reportDetail(REPORT_ID);
     expect(Object.keys(detail).sort()).toEqual([
       "history",
       "message",
+      "moment",
       "report",
       "reportedUser",
       "reporter",
@@ -719,9 +829,19 @@ describe("Reports — detail", () => {
       "description",
       "id",
       "messageId",
+      "momentId",
       "reason",
       "status",
     ]);
+  });
+
+  it("29c. target names both pointers so the console needs no extra rule", async () => {
+    const detail = await makeService({ detailRow: MOMENT_REPORT }).service.reportDetail(REPORT_ID);
+    expect(detail.target).toEqual({
+      targetType: "MOMENT",
+      messageId: null,
+      momentId: MOMENT_ID,
+    });
   });
 
   it("30. an unknown id is a 404 REPORT_NOT_FOUND, never a 200 with null", async () => {
@@ -820,6 +940,129 @@ describe("Reports — message tolerance", () => {
       message: null,
     });
     await expect(service.reportDetail(REPORT_ID)).resolves.toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 47-53. moment tolerance
+// ---------------------------------------------------------------------------
+
+/**
+ * PC-2.5.3: the moment arm, held to the same contract as the message arm.
+ *
+ * `Report.momentId` is a bare pointer with no foreign key, so a report is
+ * expected to outlive the moment it points at. That makes `available: false` a
+ * routine answer rather than a failure, and the tests below exist mostly to pin
+ * the "never throws" half of that promise — a summary that raised instead would
+ * turn an operator's page into a 500 precisely when the target was gone.
+ */
+describe("Reports — moment tolerance", () => {
+  it("47. a report with no momentId reports available:false / NO_MOMENT and never queries", async () => {
+    const { service, calls } = makeService({ detailRow: USER_REPORT });
+    const detail = await service.reportDetail(REPORT_ID);
+    expect(detail.moment).toEqual({ available: false, reason: "NO_MOMENT" });
+    expect(calls.momentFindUnique).toEqual([]);
+  });
+
+  it("47b. the two arms are independent: a message report is NO_MOMENT and still resolves", async () => {
+    const detail = await makeService({ detailRow: MESSAGE_REPORT }).service.reportDetail(REPORT_ID);
+    expect(detail.moment).toEqual({ available: false, reason: "NO_MOMENT" });
+    expect(detail.message).toMatchObject({ available: true, id: MESSAGE_ID });
+  });
+
+  it("48. an existing moment returns a summary of the reported content", async () => {
+    const detail = await makeService({ detailRow: MOMENT_REPORT }).service.reportDetail(REPORT_ID);
+    expect(detail.moment).toMatchObject({
+      available: true,
+      id: MOMENT_ID,
+      content: "testing the new profile layout",
+      platform: "X",
+    });
+    // A moment report carries no message, so the message arm stays empty.
+    expect(detail.message).toEqual({ available: false, reason: "NO_MESSAGE" });
+  });
+
+  it("48b. the moment summary exposes only the fields the screen renders", async () => {
+    const detail = await makeService({ detailRow: MOMENT_REPORT }).service.reportDetail(REPORT_ID);
+    expect(Object.keys(detail.moment as object).sort()).toEqual([
+      "author",
+      "available",
+      "content",
+      "createdAt",
+      "id",
+      "platform",
+      "source",
+    ]);
+  });
+
+  it("48c. the moment lookup names every column (no bare include)", async () => {
+    const { service, calls } = makeService({ detailRow: MOMENT_REPORT });
+    await service.reportDetail(REPORT_ID);
+    expect(calls.momentFindUnique[0].include).toBeUndefined();
+    expect(Object.keys(calls.momentFindUnique[0].select ?? {}).sort()).toEqual([
+      "content",
+      "createdAt",
+      "id",
+      "platform",
+      "source",
+      "user",
+    ]);
+  });
+
+  it("49. the moment summary leaks no secret at any depth", async () => {
+    const detail = await makeService({ detailRow: MOMENT_REPORT }).service.reportDetail(REPORT_ID);
+    expectNoSecrets(detail.moment);
+  });
+
+  it("49b. an over-wide moment select would be caught (the scan is not vacuous)", async () => {
+    // Guards the guard: the fixture really does carry passwordHash and videoUrl,
+    // so a momentSummary that selected them would fail test 49 rather than pass
+    // because the row happened to be clean.
+    const wide = project(MOMENT_ROW, {
+      id: true,
+      videoUrl: true,
+      user: { select: { id: true, passwordHash: true } },
+    });
+    expect(() => expectNoSecrets(wide)).toThrow();
+  });
+
+  it("50. a moment that no longer exists yields available:false / DELETED and does not throw", async () => {
+    const { service } = makeService({ detailRow: MOMENT_REPORT, moment: null });
+    const detail = await service.reportDetail(REPORT_ID);
+    expect(detail.moment).toEqual({ available: false, reason: "DELETED" });
+  });
+
+  it("50b. a dangling momentId does not turn the detail page into a 500", async () => {
+    const { service } = makeService({
+      detailRow: { ...MOMENT_REPORT, momentId: GHOST_MOMENT_ID },
+      moment: null,
+    });
+    const detail = await service.reportDetail(REPORT_ID);
+    expect(detail.report.momentId).toBe(GHOST_MOMENT_ID);
+    expect(detail.moment).toEqual({ available: false, reason: "DELETED" });
+    expect(detail.target.targetType).toBe("MOMENT");
+  });
+
+  it("51. the moment author is the reported user, never the reporter", async () => {
+    const detail = await makeService({ detailRow: MOMENT_REPORT }).service.reportDetail(REPORT_ID);
+    const moment = detail.moment as { available: true; author: { id: string } };
+    expect(moment.author.id).toBe(REPORTED_ID);
+    expect(detail.reporter.id).toBe(REPORTER_ID);
+  });
+
+  it("52. every list row carries both pointers, so the console can derive the label", async () => {
+    const { result } = await list({}, { rows: [USER_REPORT, MESSAGE_REPORT, MOMENT_REPORT] });
+    const items = result.items as Array<{ messageId: string | null; momentId: string | null }>;
+    // The queue labels rows client-side from these two columns; a moment row
+    // that arrived without momentId would render as a user report.
+    expect(items[0]).toMatchObject({ messageId: null, momentId: null });
+    expect(items[1]).toMatchObject({ messageId: MESSAGE_ID, momentId: null });
+    expect(items[2]).toMatchObject({ messageId: null, momentId: MOMENT_ID });
+  });
+
+  it("52b. the moment summary leaks nothing for a moment report either", async () => {
+    const detail = await makeService({ detailRow: MOMENT_REPORT }).service.reportDetail(REPORT_ID);
+    expectNoSecrets(detail);
   });
 });
 
@@ -945,6 +1188,24 @@ describe("Reports — review", () => {
       await service.reviewReport(REPORT_ID, action, admin("MODERATOR"), "because");
       expect(calls.auditCreate[0].data).toMatchObject({ action: expected });
     }
+  });
+
+  it("45d. a moment report reviews even once its moment is gone", async () => {
+    // momentId has no foreign key, so review must never route through the
+    // moment lookup. A deleted target is exactly when an operator needs to
+    // close the report — that path must not depend on the summary resolving.
+    const { service, calls } = makeService({
+      existingReport: { id: REPORT_ID, status: "OPEN", reportedUserId: REPORTED_ID },
+      moment: null,
+    });
+    await service.reviewReport(REPORT_ID, "resolved", admin("MODERATOR"), "moment removed");
+    expect(calls.reportUpdate[0].data).toEqual({ status: "RESOLVED" });
+    expect(calls.momentFindUnique).toEqual([]);
+    expect(calls.auditCreate[0].data).toMatchObject({
+      action: "REPORT_RESOLVED",
+      targetType: "REPORT",
+      targetId: REPORT_ID,
+    });
   });
 
   it("46. reviewReport never writes a SYSTEM row", async () => {

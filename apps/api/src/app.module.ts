@@ -19,6 +19,7 @@ import { TranslateModule } from "./translate/translate.module";
 import { AdminModule } from "./admin/admin.module";
 import { UploadsModule } from "./uploads/uploads.module";
 import { MomentsModule } from "./moments/moments.module";
+import { NotificationsModule } from "./notifications/notification.module";
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { MomentsModule } from "./moments/moments.module";
     ExchangeModule,
     SafetyModule,
     TranslateModule,
+    NotificationsModule,
     AdminModule,
     UploadsModule,
     MomentsModule,

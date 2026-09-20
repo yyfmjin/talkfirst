@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Shell } from "@/components/shell";
+import { StatusBadge } from "@/components/status-badge";
 import { ConfirmDialog, type ConfirmPayload } from "@/components/confirm-dialog";
 import { ApiRequestError, apiFetch, apiSend } from "@/lib/api";
+import { REPORT_TARGET_BADGE_CLASS, REPORT_TARGET_LABELS } from "@/lib/report-target";
 import { useAdminSession } from "@/lib/session";
 import { canSetUserStatus } from "@/lib/permissions";
 import { ACTION_META, type StatusAction } from "@/lib/status-actions";
@@ -22,6 +24,19 @@ type MessageSummary =
       sender: { id: string; nickname: string | null; email: string };
     }
   | { available: false; reason: "NO_MESSAGE" | "DELETED" };
+
+/** PC-2.5.4 — the reported moment, in the same two-state shape as a message. */
+type MomentSummary =
+  | {
+      available: true;
+      id: string;
+      content: string;
+      platform: string;
+      source: string;
+      createdAt: string;
+      author: { id: string; nickname: string | null; email: string };
+    }
+  | { available: false; reason: "NO_MOMENT" | "DELETED" };
 
 type HistoryEntry = {
   id: string;
@@ -42,12 +57,18 @@ type Detail = {
     description: string | null;
     status: string;
     messageId: string | null;
+    momentId: string | null;
     createdAt: string;
   };
   reporter: Party;
   reportedUser: Party;
-  target: { targetType: "USER" | "MESSAGE"; messageId: string | null };
+  target: {
+    targetType: "USER" | "MESSAGE" | "MOMENT";
+    messageId: string | null;
+    momentId: string | null;
+  };
   message: MessageSummary;
+  moment: MomentSummary;
   history: HistoryEntry[];
 };
 
@@ -71,12 +92,6 @@ const ACTION_LABELS: Record<ReviewAction, { label: string; title: string; descri
   },
 };
 
-const STATUS_BADGE: Record<string, string> = {
-  OPEN: "bg-[#FEF3C7] text-[#92400E]",
-  REVIEWING: "bg-[#DBEAFE] text-[#1E40AF]",
-  RESOLVED: "bg-[#DCFCE7] text-[#166534]",
-  REJECTED: "bg-[#EDEFF3] text-[#5A6472]",
-};
 
 /**
  * The status actions this workbench offers on the reported user. Deliberately a
@@ -251,7 +266,7 @@ function ModerationDetailScreen() {
         </p>
         <Link
           href="/moderation"
-          className="mt-4 inline-block h-9 rounded-xl border border-line px-4 text-[13px] leading-9"
+          className="mt-4 tf-btn"
         >
           返回审核队列
         </Link>
@@ -267,11 +282,11 @@ function ModerationDetailScreen() {
       <h1 className="mt-2 text-[20px] font-semibold">举报处理</h1>
 
       {error ? (
-        <div className="mt-3 rounded-2xl border border-line p-4">
+        <div className="mt-3 rounded-2xl border border-line bg-card shadow-card p-4">
           <p className="text-[13px] text-red-500">{error}</p>
           <button
             onClick={() => void load()}
-            className="mt-3 h-9 rounded-xl border border-line px-4 text-[13px]"
+            className="mt-3 tf-btn"
           >
             重试
           </button>
@@ -282,25 +297,16 @@ function ModerationDetailScreen() {
       {data ? (
         <div className="mt-4 space-y-4">
           {/* 举报概要 */}
-          <section data-testid="moderation-summary-card" className="rounded-2xl border border-line p-4">
+          <section data-testid="moderation-summary-card" className="rounded-2xl border border-line bg-card shadow-card p-4">
             <div className="flex flex-wrap items-center gap-2">
-              <span
-                data-testid="status-badge"
-                className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                  STATUS_BADGE[data.report.status] ?? "bg-[#EDEFF3] text-[#5A6472]"
-                }`}
-              >
-                {data.report.status}
-              </span>
+              <StatusBadge status={data.report.status} testId="status-badge" />
               <span
                 data-testid="moderation-target-badge"
                 className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                  data.target.targetType === "MESSAGE"
-                    ? "bg-[#EDE9FE] text-[#5B21B6]"
-                    : "bg-[#DBEAFE] text-[#1E40AF]"
+                  REPORT_TARGET_BADGE_CLASS[data.target.targetType]
                 }`}
               >
-                {data.target.targetType === "MESSAGE" ? "消息举报" : "用户举报"}
+                {REPORT_TARGET_LABELS[data.target.targetType]}
               </span>
               <span className="text-[12px] text-muted">{data.report.reason}</span>
               <span className="text-[12px] text-muted">·</span>
@@ -332,7 +338,7 @@ function ModerationDetailScreen() {
 
           {/* 被举报的消息 */}
           {data.target.targetType === "MESSAGE" ? (
-            <section data-testid="moderation-message" className="rounded-2xl border border-line p-4">
+            <section data-testid="moderation-message" className="rounded-2xl border border-line bg-card shadow-card p-4">
               <p className="text-[14px] font-medium">被举报的消息</p>
               {data.message.available ? (
                 <>
@@ -356,8 +362,35 @@ function ModerationDetailScreen() {
             </section>
           ) : null}
 
+          {/* 被举报的动态（PC-2.5.4） */}
+          {data.target.targetType === "MOMENT" ? (
+            <section data-testid="moderation-moment" className="rounded-2xl border border-line bg-card shadow-card p-4">
+              <p className="text-[14px] font-medium">被举报的动态</p>
+              {data.moment.available ? (
+                <>
+                  <p className="mt-2 whitespace-pre-wrap text-[13px]">{data.moment.content}</p>
+                  <p className="mt-2 text-[12px] text-muted">
+                    {data.moment.platform} · {data.moment.source} ·{" "}
+                    <Link href={`/users/${data.moment.author.id}`} className="underline">
+                      {data.moment.author.nickname ?? data.moment.author.email}
+                    </Link>{" "}
+                    · {formatTime(data.moment.createdAt)}
+                  </p>
+                </>
+              ) : (
+                // The momentId column has no foreign key either, so "gone" is a normal
+                // state — a moderator should know the evidence was unavailable.
+                <p data-testid="moderation-moment-unavailable" className="mt-2 text-[12px] text-muted">
+                  {data.moment.reason === "DELETED"
+                    ? "该动态已被删除，内容无法查看。"
+                    : "这条举报没有关联动态。"}
+                </p>
+              )}
+            </section>
+          ) : null}
+
           {/* 被举报人 */}
-          <section className="rounded-2xl border border-line p-4">
+          <section className="rounded-2xl border border-line bg-card shadow-card p-4">
             <p className="text-[14px] font-medium">被举报人</p>
             <p className="mt-2 text-[13px]">
               <Link href={`/users/${data.reportedUser.id}`} className="underline">
@@ -370,7 +403,7 @@ function ModerationDetailScreen() {
           </section>
 
           {/* 处理历史（审计日志） */}
-          <section data-testid="moderation-history" className="rounded-2xl border border-line p-4">
+          <section data-testid="moderation-history" className="rounded-2xl border border-line bg-card shadow-card p-4">
             <p className="text-[14px] font-medium">处理历史</p>
             {data.history.length === 0 ? (
               <p className="mt-2 text-[12px] text-muted">
@@ -379,7 +412,7 @@ function ModerationDetailScreen() {
             ) : (
               <ul className="mt-2 space-y-2">
                 {data.history.map((entry) => (
-                  <li key={entry.id} className="rounded-xl border border-line p-3">
+                  <li key={entry.id} className="rounded-xl border border-line bg-[#FBFCFE] p-3">
                     <p className="flex flex-wrap items-center gap-2 text-[12px]">
                       <span className="font-mono">{entry.action}</span>
                       <span className="text-muted">
@@ -403,7 +436,7 @@ function ModerationDetailScreen() {
           </section>
 
           {/* 可用操作 */}
-          <section data-testid="moderation-actions" className="rounded-2xl border border-line p-4">
+          <section data-testid="moderation-actions" className="rounded-2xl border border-line bg-card shadow-card p-4">
             <p className="text-[14px] font-medium">可执行操作</p>
 
             {canReview ? (
@@ -414,7 +447,7 @@ function ModerationDetailScreen() {
                     data-testid={`moderation-review-${action}`}
                     onClick={() => setPendingReview(action)}
                     disabled={acting}
-                    className="h-9 rounded-xl border border-line px-4 text-[13px] disabled:opacity-40"
+                    className="tf-btn"
                   >
                     {ACTION_LABELS[action].label}
                   </button>
@@ -439,7 +472,7 @@ function ModerationDetailScreen() {
                       data-testid={`moderation-status-${action}`}
                       onClick={() => setPendingStatus(action)}
                       disabled={acting}
-                      className="h-9 rounded-xl border border-line px-4 text-[13px] disabled:opacity-40"
+                      className="tf-btn"
                     >
                       {ACTION_META[action].label}
                     </button>

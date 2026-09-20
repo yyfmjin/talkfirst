@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Shell } from "@/components/shell";
 import { ApiRequestError, apiFetch } from "@/lib/api";
+import {
+  REPORT_TARGET_BADGE_CLASS,
+  REPORT_TARGET_LABELS,
+  deriveReportTargetType,
+} from "@/lib/report-target";
 
 /**
  * Phase C1 — the Risk Center.
@@ -47,7 +52,10 @@ type RiskReport = {
   reason: string;
   status: string;
   description: string | null;
+  // Both pointers are selected by the API, because the target of a report is
+  // derived from them -- there is no targetType column to read.
   messageId: string | null;
+  momentId: string | null;
   createdAt: string;
   reporter: Party;
   reportedUser: Party & { status?: string };
@@ -183,20 +191,20 @@ function RiskScreen() {
           // Disabled while in flight so a second click cannot fire a duplicate
           // request. No page reload — the same endpoint is re-fetched in place.
           disabled={loading}
-          className="h-9 shrink-0 rounded-xl border border-line px-4 text-[13px] disabled:opacity-40"
+          className="tf-btn"
         >
           {loading ? "刷新中…" : "刷新"}
         </button>
       </div>
 
       {error ? (
-        <div data-testid="risk-error" className="mt-4 rounded-2xl border border-line p-4">
+        <div data-testid="risk-error" className="mt-4 rounded-2xl border border-line bg-card shadow-card p-4">
           <p className="text-[13px] text-red-500">{error}</p>
           <button
             type="button"
             onClick={() => void load()}
             disabled={loading}
-            className="mt-3 h-9 rounded-xl border border-line px-4 text-[13px] disabled:opacity-40"
+            className="mt-3 tf-btn"
           >
             {loading ? "重试中…" : "重试"}
           </button>
@@ -217,7 +225,7 @@ function RiskScreen() {
                 // grid contains it too — and the assertion would silently read
                 // a neighbouring card's value.
                 data-testid={`risk-kpi-${label}`}
-                className="rounded-2xl border border-line p-4"
+                className="rounded-2xl border border-line bg-card shadow-card p-4"
               >
                 <p data-testid="risk-kpi-value" className="text-[24px] font-semibold">
                   {value}
@@ -237,18 +245,35 @@ function RiskScreen() {
           </p>
 
           <Section title="近期举报" count={data.recentReports.length}>
-            {data.recentReports.map((report) => (
+            {data.recentReports.map((report) => {
+              // Derived with the same helper the reports queue uses, so a row
+              // cannot be labelled one way here and filtered another way there.
+              const target = deriveReportTargetType(report);
+              return (
               <Row key={report.id}>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
+                <div
+                  className="flex items-start justify-between gap-3"
+                  data-target-type={target}
+                  data-report-id={report.id}
+                >
+                  <div className="min-w-0">
                     <p className="font-medium">
                       {report.reporter.nickname ?? report.reporter.email} →{" "}
                       {report.reportedUser.nickname ?? report.reportedUser.email}
                     </p>
-                    <p className="mt-1 text-muted">
-                      {report.reason} ·{" "}
-                      <Badge status={report.status}>{report.status}</Badge> ·{" "}
-                      {new Date(report.createdAt).toLocaleString()}
+                    <p className="mt-1 flex flex-wrap items-center gap-1 text-muted">
+                      <span
+                        data-testid="report-target-badge"
+                        className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${REPORT_TARGET_BADGE_CLASS[target]}`}
+                      >
+                        {REPORT_TARGET_LABELS[target]}
+                      </span>
+                      <span>·</span>
+                      <span>{report.reason}</span>
+                      <span>·</span>
+                      <Badge status={report.status}>{report.status}</Badge>
+                      <span>·</span>
+                      <span>{new Date(report.createdAt).toLocaleString()}</span>
                     </p>
                   </div>
                   <Link
@@ -259,7 +284,8 @@ function RiskScreen() {
                   </Link>
                 </div>
               </Row>
-            ))}
+              );
+            })}
           </Section>
 
           <Section title="近期管理员处理" count={data.recentActions.length}>
@@ -352,7 +378,7 @@ function Section({
     <section className="mt-6" data-testid={`risk-section-${title}`}>
       <h2 className="text-[15px] font-semibold">{title}</h2>
       {count === 0 ? (
-        <p className="mt-2 rounded-2xl border border-line p-3 text-[12px] text-muted">
+        <p className="mt-2 rounded-2xl border border-line bg-card shadow-card p-3 text-[12px] text-muted">
           暂无数据
         </p>
       ) : (
@@ -363,5 +389,5 @@ function Section({
 }
 
 function Row({ children }: { children: React.ReactNode }) {
-  return <div className="rounded-2xl border border-line p-3 text-[12px]">{children}</div>;
+  return <div className="rounded-2xl border border-line bg-card shadow-card p-3 text-[12px]">{children}</div>;
 }

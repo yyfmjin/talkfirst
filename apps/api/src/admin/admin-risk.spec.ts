@@ -94,6 +94,8 @@ const REPORT_ID = "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d";
 const REPORTER_ID = "3f1c0b7e-6a2d-4f8b-9c31-8d5e2a4b7c90";
 const REPORTED_ID = "5a4b3c2d-1e0f-4a9b-8c7d-6e5f4a3b2c1d";
 const SELF_ID = "7c8d9e0f-1a2b-4c3d-8e9f-0a1b2c3d4e5f";
+const MOMENT_ID = "c1d2e3f4-5a6b-4c7d-8e9f-0a1b2c3d4e5f";
+const MESSAGE_ID = "d4e5f6a7-8b9c-4d0e-9f1a-2b3c4d5e6f70";
 
 type Party = {
   id: string;
@@ -124,7 +126,10 @@ type ReportRow = {
   reason: string;
   description: string | null;
   status: string;
+  // The two target pointers. Both are nullable and neither is a foreign key,
+  // which is what lets a report outlive the thing it points at.
   messageId: string | null;
+  momentId: string | null;
   createdAt: Date;
   reporter: Party;
   reportedUser: Party;
@@ -141,6 +146,7 @@ const REPORT_ROW: ReportRow = {
   description: "repeated messages",
   status: "OPEN",
   messageId: null,
+  momentId: null,
   createdAt: new Date("2026-03-04T05:06:07.000Z"),
   reporter: REPORTER,
   reportedUser: REPORTED,
@@ -619,6 +625,48 @@ describe("Risk — recent feeds", () => {
     const { result } = await risk({ signals: [] });
     expect(result.suspiciousSignals).toEqual([]);
     expect(result.recentReports).toHaveLength(1);
+  });
+
+  // ---- PC-2.5.6: the feed must be able to name the target --------------
+
+  it("16c. the feed selects both target pointers", () => {
+    // A report has no targetType column. Without these two the console cannot
+    // tell "reported this person" from "reported this person's moment", so
+    // their presence is the contract, not an implementation detail.
+    const keys = Object.keys(RISK_RECENT_REPORTS_SELECT);
+    expect(keys).toEqual(expect.arrayContaining(["messageId", "momentId"]));
+  });
+
+  it("16d. a moment report carries its momentId and a null messageId", async () => {
+    const { result } = await risk({
+      reports: [{ ...REPORT_ROW, momentId: MOMENT_ID }],
+    });
+    expect(result.recentReports[0].momentId).toBe(MOMENT_ID);
+    expect(result.recentReports[0].messageId).toBeNull();
+  });
+
+  it("16e. a person report keeps both pointers null", async () => {
+    const { result } = await risk();
+    expect(result.recentReports[0].momentId).toBeNull();
+    expect(result.recentReports[0].messageId).toBeNull();
+  });
+
+  it("16f. a message report keeps momentId null", async () => {
+    const { result } = await risk({
+      reports: [{ ...REPORT_ROW, messageId: MESSAGE_ID }],
+    });
+    expect(result.recentReports[0].messageId).toBe(MESSAGE_ID);
+    expect(result.recentReports[0].momentId).toBeNull();
+  });
+
+  it("16g. both pointers survive projection, so the priority rule has data", async () => {
+    // The console resolves MOMENT > MESSAGE > USER; that resolution is only
+    // possible if neither pointer is dropped on the way out.
+    const { result } = await risk({
+      reports: [{ ...REPORT_ROW, messageId: MESSAGE_ID, momentId: MOMENT_ID }],
+    });
+    expect(result.recentReports[0].momentId).toBe(MOMENT_ID);
+    expect(result.recentReports[0].messageId).toBe(MESSAGE_ID);
   });
 });
 

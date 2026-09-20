@@ -48,8 +48,16 @@ let reviewingReportId: string;
 let deletedMessageReportId: string;
 /** A report with a REVIEWING audit row, so history is non-empty on arrival. */
 let historyReportId: string;
+/** PC-2.5.4 — a MOMENT-target report whose moment still exists. */
+let openMomentReportId: string;
+/** PC-2.5.4 — a MOMENT-target report whose momentId resolves to nothing. */
+let goneMomentReportId: string;
+/** The moment the live MOMENT-target report points at. */
+let fixtureMomentId: string;
 
 const MESSAGE_BODY = `${MARKER} — reported message body`;
+/** PC-2.5.4 — the moment the MOMENT-target fixture points at. */
+const MOMENT_BODY = `${MARKER} — reported moment body`;
 
 test.beforeAll(async () => {
   prisma = new PrismaClient();
@@ -108,6 +116,7 @@ test.beforeAll(async () => {
     status: "OPEN" | "REVIEWING" | "RESOLVED" | "REJECTED";
     description: string;
     messageId?: string | null;
+    momentId?: string | null;
   }) =>
     prisma.report.create({
       data: {
@@ -117,6 +126,7 @@ test.beforeAll(async () => {
         description: data.description,
         status: data.status,
         messageId: data.messageId ?? null,
+        momentId: data.momentId ?? null,
       },
       select: { id: true },
     });
@@ -144,6 +154,32 @@ test.beforeAll(async () => {
       status: "OPEN",
       description: `${MARKER} — deleted message target`,
       messageId: deletedMessage.id,
+    })
+  ).id;
+
+  // PC-2.5.4 — the MOMENT target. `Report.momentId` carries no foreign key, so
+  // the "moment is gone" shape is a bare id rather than a deleted row.
+  const reportedMoment = await prisma.moment.create({
+    data: { userId: victimId, platform: "INSTAGRAM", content: MOMENT_BODY, source: "USER" },
+    select: { id: true },
+  });
+  fixtureMomentId = reportedMoment.id;
+
+  openMomentReportId = (
+    await makeReport({
+      reason: "Spam",
+      status: "OPEN",
+      description: `${MARKER} — open moment target`,
+      momentId: reportedMoment.id,
+    })
+  ).id;
+
+  goneMomentReportId = (
+    await makeReport({
+      reason: "Other",
+      status: "OPEN",
+      description: `${MARKER} — dangling moment target`,
+      momentId: "00000000-0000-4000-8000-000000000000",
     })
   ).id;
 
@@ -175,6 +211,8 @@ test.afterAll(async () => {
     reviewingReportId,
     deletedMessageReportId,
     historyReportId,
+    openMomentReportId,
+    goneMomentReportId,
   ].filter(Boolean);
 
   // Audit rows first: `adminId` is RESTRICT, so they block the admin delete.
@@ -187,6 +225,7 @@ test.afterAll(async () => {
     },
   });
   await prisma.report.deleteMany({ where: { id: { in: reportIds } } });
+  await prisma.moment.deleteMany({ where: { content: { startsWith: MARKER } } });
   const messages = await prisma.message.findMany({
     where: { content: { startsWith: MARKER } },
     select: { id: true },
@@ -300,13 +339,14 @@ test.describe("moderation workbench — queue", () => {
     await expect(page.locator(`a[href="/moderation/${openUserReportId}"]`)).toHaveCount(0);
   });
 
-  test("Test 44: target type is derived from messageId, not read from a column", async ({ page }) => {
+  test("Test 44: target type is derived from the pointers, not read from a column", async ({ page }) => {
     await openWorkbench(page);
     await filterToFixture(page);
 
-    // `Report` has no `targetType` column. A row with a messageId is a MESSAGE
-    // report; one without is a USER report. The badge and the filter must agree
-    // because both come from the same rule.
+    // `Report` has no `targetType` column. A row with a momentId is a MOMENT
+    // report, otherwise one with a messageId is a MESSAGE report, otherwise it
+    // is a USER report. The badge and the filter must agree because both come
+    // from the same rule.
     const userRow = page.locator(`[data-testid="moderation-row"]:has(a[href="/moderation/${openUserReportId}"])`);
     await expect(userRow.getByTestId("moderation-target-badge")).toHaveText("用户举报");
 
@@ -314,6 +354,13 @@ test.describe("moderation workbench — queue", () => {
       .locator(`[data-testid="moderation-row"]`)
       .filter({ has: page.locator(`a[href="/moderation/${openMessageReportId}"]`) });
     await expect(messageRow.getByTestId("moderation-target-badge")).toHaveText("消息举报");
+
+    // PC-2.5.4 — the third target. Before this phase this row was badged
+    // 「用户举报」, because only `messageId` was consulted.
+    const momentRow = page
+      .locator(`[data-testid="moderation-row"]`)
+      .filter({ has: page.locator(`a[href="/moderation/${openMomentReportId}"]`) });
+    await expect(momentRow.getByTestId("moderation-target-badge")).toHaveText("动态举报");
   });
 
   test("Test 45: the queue offers no mutation — triage only", async ({ page }) => {
@@ -473,6 +520,41 @@ test.describe("moderation workbench — detail", () => {
 
     // The rest of the page still works.
     await expect(page.getByTestId("moderation-history")).toBeVisible();
+    expect(pageErrors).toEqual([]);
+  });
+
+  // PC-2.5.4 — the MOMENT target on this screen. Numbered after the last test
+  // in the file so that inserting them renumbers nothing.
+  test("Test 72: a MOMENT report shows the moment body and its author", async ({ page }) => {
+    await openDetail(page, openMomentReportId);
+
+    await expect(page.getByTestId("moderation-target-badge")).toHaveText("动态举报");
+    const block = page.getByTestId("moderation-moment");
+    await expect(block).toBeVisible();
+    await expect(block).toContainText(MOMENT_BODY);
+    // The author is named: the fixture moments belong to the reported user.
+    await expect(block).toContainText("PW victim");
+
+    // A moment report carries no message pointer, so there is no message block
+    // to render — the same rule as a USER report.
+    await expect(page.getByTestId("moderation-message")).toHaveCount(0);
+  });
+
+  test("Test 73: a MOMENT report whose moment is gone is stated, not crashed", async ({ page }) => {
+    const pageErrors: string[] = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+
+    await openDetail(page, goneMomentReportId);
+
+    // No FK backs `momentId`, so a report can outlive its moment. Ordinary
+    // state, explicit notice — not a 500 and not a silently blank block.
+    await expect(page.getByTestId("moderation-target-badge")).toHaveText("动态举报");
+    const unavailable = page.getByTestId("moderation-moment-unavailable");
+    await expect(unavailable).toBeVisible();
+    await expect(unavailable).toContainText("该动态已被删除");
+
+    // The report itself is still fully readable.
+    await expect(page.getByTestId("moderation-summary-card")).toBeVisible();
     expect(pageErrors).toEqual([]);
   });
 

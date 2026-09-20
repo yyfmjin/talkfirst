@@ -4,7 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Shell } from "@/components/shell";
+import { StatusBadge } from "@/components/status-badge";
 import { apiFetch } from "@/lib/api";
+import {
+  REPORT_TARGET_BADGE_CLASS,
+  REPORT_TARGET_LABELS,
+  deriveReportTargetType,
+} from "@/lib/report-target";
 import { useAdminSession } from "@/lib/session";
 
 type ReportItem = {
@@ -13,6 +19,7 @@ type ReportItem = {
   status: string;
   description: string | null;
   messageId: string | null;
+  momentId: string | null;
   createdAt: string;
   reporter: { id: string; nickname: string | null; email: string };
   reportedUser: { id: string; nickname: string | null; email: string; status: string };
@@ -77,11 +84,6 @@ export default function ModerationPage() {
   );
 }
 
-/** Mirrors the API's derivation. Never read a `targetType` field — there is none. */
-function targetTypeOf(item: Pick<ReportItem, "messageId">): "USER" | "MESSAGE" {
-  return item.messageId ? "MESSAGE" : "USER";
-}
-
 /** The two statuses that represent outstanding moderation work. */
 type QueueStatus = "OPEN" | "REVIEWING";
 
@@ -129,14 +131,9 @@ const TARGET_OPTIONS = [
   { value: "ALL", label: "全部对象" },
   { value: "USER", label: "用户" },
   { value: "MESSAGE", label: "消息" },
+  { value: "MOMENT", label: "动态" },
 ];
 
-const STATUS_BADGE: Record<string, string> = {
-  OPEN: "bg-[#FEF3C7] text-[#92400E]",
-  REVIEWING: "bg-[#DBEAFE] text-[#1E40AF]",
-  RESOLVED: "bg-[#DCFCE7] text-[#166534]",
-  REJECTED: "bg-[#EDEFF3] text-[#5A6472]",
-};
 
 function hasAnyFilter(filters: Filters): boolean {
   return (
@@ -381,11 +378,11 @@ function ModerationQueueScreen() {
       </div>
 
       {error ? (
-        <div className="mt-3 rounded-2xl border border-line p-4">
+        <div className="mt-3 rounded-2xl border border-line bg-card shadow-card p-4">
           <p className="text-[13px] text-red-500">{error}</p>
           <button
             onClick={() => void reload(page)}
-            className="mt-3 h-9 rounded-xl border border-line px-4 text-[13px]"
+            className="mt-3 tf-btn"
           >
             重试
           </button>
@@ -401,7 +398,7 @@ function ModerationQueueScreen() {
       ) : null}
 
       {result && result.total === 0 ? (
-        <div data-testid="moderation-empty" className="mt-3 rounded-2xl border border-line p-4">
+        <div data-testid="moderation-empty" className="mt-3 rounded-2xl border border-line bg-card shadow-card p-4">
           <p className="text-[13px] font-medium">
             {appliedHasFilters
               ? "没有符合当前筛选条件的举报"
@@ -421,7 +418,7 @@ function ModerationQueueScreen() {
           {appliedHasFilters ? (
             <button
               onClick={() => applyDraft(DEFAULT_FILTERS)}
-              className="mt-3 h-9 rounded-xl border border-line px-4 text-[13px]"
+              className="mt-3 tf-btn"
             >
               清空筛选
             </button>
@@ -431,13 +428,13 @@ function ModerationQueueScreen() {
 
       <div className="mt-3 space-y-3">
         {result?.items.map((item) => {
-          const target = targetTypeOf(item);
+          const target = deriveReportTargetType(item);
           return (
             <div
               key={item.id}
               data-testid="moderation-row"
               data-target-type={target}
-              className="rounded-2xl border border-line p-4"
+              className="rounded-2xl border border-line bg-card shadow-card p-4"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-[14px] font-medium">
@@ -451,27 +448,16 @@ function ModerationQueueScreen() {
                 </p>
                 <span
                   data-testid="moderation-target-badge"
-                  className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                    target === "MESSAGE"
-                      ? "bg-[#EDE9FE] text-[#5B21B6]"
-                      : "bg-[#DBEAFE] text-[#1E40AF]"
-                  }`}
+                  className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${REPORT_TARGET_BADGE_CLASS[target]}`}
                 >
-                  {target === "MESSAGE" ? "消息举报" : "用户举报"}
+                  {REPORT_TARGET_LABELS[target]}
                 </span>
               </div>
 
               <p className="mt-1 flex flex-wrap items-center gap-1 text-[12px] text-muted">
                 <span>{item.reason}</span>
                 <span>·</span>
-                <span
-                  data-testid="status-badge"
-                  className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                    STATUS_BADGE[item.status] ?? "bg-[#EDEFF3] text-[#5A6472]"
-                  }`}
-                >
-                  {item.status}
-                </span>
+                <StatusBadge status={item.status} testId="status-badge" />
                 <span>·</span>
                 <span>被举报人 {item.reportedUser.status}</span>
                 <span>·</span>
@@ -493,13 +479,13 @@ function ModerationQueueScreen() {
                 <Link
                   href={`/moderation/${item.id}`}
                   data-testid="moderation-detail-link"
-                  className="h-9 rounded-xl border border-line px-3 text-[12px] leading-9"
+                  className="tf-btn tf-btn-sm"
                 >
                   处理
                 </Link>
                 <Link
                   href={`/users/${item.reportedUser.id}`}
-                  className="h-9 rounded-xl border border-line px-3 text-[12px] leading-9"
+                  className="tf-btn tf-btn-sm"
                 >
                   查看被举报人
                 </Link>
@@ -516,7 +502,7 @@ function ModerationQueueScreen() {
           <button
             disabled={page <= 1 || loading}
             onClick={() => void reload(page - 1)}
-            className="h-9 rounded-xl border border-line px-4 text-[13px] disabled:opacity-40"
+            className="tf-btn"
           >
             上一页
           </button>
@@ -526,7 +512,7 @@ function ModerationQueueScreen() {
           <button
             disabled={page >= totalPages || loading}
             onClick={() => void reload(page + 1)}
-            className="h-9 rounded-xl border border-line px-4 text-[13px] disabled:opacity-40"
+            className="tf-btn"
           >
             下一页
           </button>

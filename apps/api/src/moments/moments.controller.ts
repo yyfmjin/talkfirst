@@ -13,7 +13,7 @@ import {
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { Throttle } from "@nestjs/throttler";
-import { IsBoolean, IsIn, IsOptional, IsString, MaxLength } from "class-validator";
+import { IsBoolean, IsIn, IsOptional, IsString, IsUUID, MaxLength } from "class-validator";
 import { CurrentUser, type AuthUser } from "../auth/current-user.decorator";
 import { ValidationPipe } from "../common/validation.pipe";
 import { MomentsService } from "./moments.service";
@@ -75,6 +75,12 @@ class CommentDto {
   @IsString()
   @MaxLength(500)
   content!: string;
+
+  // PC-2.3.2 — present means this is a reply to a top-level comment. Optional,
+  // and a uuid so a malformed id is rejected before it reaches the query.
+  @IsOptional()
+  @IsUUID()
+  parentCommentId?: string;
 }
 
 class ComposeDto {
@@ -103,6 +109,17 @@ function normalizeStringArray(value: unknown): string[] | undefined {
 function asError(code: string, message: string) {
   return { success: false, error: { code, message } };
 }
+
+/**
+ * PC-2.3.2 — the comment write path answers one status (403) for every domain
+ * rejection, matching the EMPTY_COMMENT precedent. Only the machine-readable
+ * code and the human-readable message vary, so no new top-level error code is
+ * introduced for replies.
+ */
+const COMMENT_ERROR_MESSAGES: Record<string, string> = {
+  EMPTY_COMMENT: "Comment is empty",
+  COMMENT_PARENT_INVALID: "Parent comment cannot be replied to",
+};
 
 @Controller("moments")
 @UseGuards(JwtAuthGuard)
@@ -232,9 +249,18 @@ export class MomentsController {
   }
 
   @Get(":id/comments")
-  async comments(@CurrentUser() user: AuthUser, @Param("id") id: string, @Query("limit") limit?: string) {
+  async comments(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @Query("page") page?: string,
+    @Query("pageSize") pageSize?: string,
+    // PC-2.4 — `limit` was this route's page size before it was paginated. It is
+    // still honoured when `pageSize` is absent, so an existing caller keeps the
+    // behaviour it had instead of silently falling back to the default.
+    @Query("limit") limit?: string,
+  ) {
     try {
-      const data = await this.moments.listComments(user.id, id, Number(limit ?? 20));
+      const data = await this.moments.listComments(user.id, id, Number(page ?? 1), Number(pageSize ?? limit ?? 20));
       if (!data) {
         throw new NotFoundException(asError("MOMENT_NOT_FOUND", "Moment not found"));
       }
@@ -256,7 +282,7 @@ export class MomentsController {
     @Body(new ValidationPipe()) dto: CommentDto,
   ) {
     try {
-      const data = await this.moments.addComment(user.id, id, dto.content);
+      const data = await this.moments.addComment(user.id, id, dto.content, dto.parentCommentId ?? null);
       if (!data) {
         throw new NotFoundException(asError("MOMENT_NOT_FOUND", "Moment not found"));
       }
@@ -268,7 +294,7 @@ export class MomentsController {
       }
       const code = (error as { code?: string }).code;
       throw new ForbiddenException(
-        asError(code ?? "COMMENT_FAILED", code === "EMPTY_COMMENT" ? "Comment is empty" : "Comment blocked"),
+        asError(code ?? "COMMENT_FAILED", COMMENT_ERROR_MESSAGES[code ?? ""] ?? "Comment blocked"),
       );
     }
   }
@@ -296,6 +322,51 @@ export class MomentsController {
           code === "EMPTY_CONTENT" ? "Content is empty" : code === "CONTENT_BLOCKED" ? "Content blocked" : "Publish failed",
         ),
       );
+    }
+  }
+
+  @Get(":id")
+  async moment(@CurrentUser() user: AuthUser, @Param("id") id: string) {
+    try {
+      const data = await this.moments.getMoment(user.id, id);
+      if (!data) {
+        throw new NotFoundException(asError("MOMENT_NOT_FOUND", "Moment not found"));
+      }
+      return { success: true as const, data };
+    } catch (error) {
+      if ((error as { status?: number }).status === 404) throw error;
+      if ((error as { code?: string }).code === "MOMENT_LOCKED") {
+        throw new ForbiddenException(asError("MOMENT_LOCKED", "This moment is not visible to you"));
+      }
+      throw error;
+    }
+  }
+  /**
+   * PC-2.4 — the owner deletes their own comment. Declared before `@Delete(":id")`
+   * so the two-segment route is never shadowed, and mapped onto the codes the
+   * service raises: a missing comment is a 404, someone else's is a 403, and an
+   * unreachable moment keeps answering MOMENT_LOCKED like the rest of the
+   * thread does.
+   */
+  @Delete(":id/comments/:commentId")
+  async removeComment(@CurrentUser() user: AuthUser, @Param("id") id: string, @Param("commentId") commentId: string) {
+    try {
+      const data = await this.moments.deleteComment(user.id, id, commentId);
+      if (!data) throw new NotFoundException(asError("MOMENT_NOT_FOUND", "Moment not found"));
+      return { success: true as const, data };
+    } catch (error) {
+      if ((error as { status?: number }).status === 404) throw error;
+      const code = (error as { code?: string }).code;
+      if (code === "MOMENT_LOCKED") {
+        throw new ForbiddenException(asError("MOMENT_LOCKED", "This moment is not visible to you"));
+      }
+      if (code === "COMMENT_NOT_FOUND") {
+        throw new NotFoundException(asError("COMMENT_NOT_FOUND", "Comment not found"));
+      }
+      if (code === "COMMENT_FORBIDDEN") {
+        throw new ForbiddenException(asError("COMMENT_FORBIDDEN", "You can only delete your own comment"));
+      }
+      throw error;
     }
   }
 

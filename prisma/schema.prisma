@@ -489,8 +489,17 @@ model MomentComment {
   content   String   @db.VarChar(500)
   createdAt DateTime @default(now())
 
+  // PC-2.3.1 — one reply level only. A top-level comment leaves this NULL; a
+  // reply points at a top-level comment. "No nesting under a reply" spans two
+  // rows, so it stays an application-level rule (the service rejects a parent
+  // whose own parentCommentId is not null).
+  parentCommentId String?        @db.Uuid
+  parentComment   MomentComment? @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies         MomentComment[] @relation("CommentReplies")
+
   @@index([momentId, createdAt])
   @@index([userId])
+  @@index([parentCommentId])
 }
 
 model ConnectionRequest {
@@ -581,6 +590,7 @@ model Report {
   reportedUserId String       @db.Uuid
   reportedUser   User         @relation("ReportsReceived", fields: [reportedUserId], references: [id], onDelete: Cascade)
   messageId      String?      @db.Uuid
+  momentId       String?      @db.Uuid
   reason         String       @db.VarChar(64)
   description    String?      @db.VarChar(1000)
   status         ReportStatus @default(OPEN)
@@ -588,6 +598,7 @@ model Report {
 
   @@index([reportedUserId, status])
   @@index([status, createdAt])
+  @@index([momentId])
 }
 
 model Block {

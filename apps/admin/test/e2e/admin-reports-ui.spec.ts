@@ -25,6 +25,8 @@ import { loginAndLand, openNav } from "../fixtures/browser";
 const MARKER = "phase B4 reports ui fixture";
 const DESCRIPTION_UNIQUE = `${MARKER} — unique row`;
 const DESCRIPTION_SECOND = `${MARKER} — second row`;
+/** PC-2.5.4 — a row whose target is a moment rather than a person. */
+const DESCRIPTION_MOMENT = `${MARKER} — moment row`;
 
 /** The status filter's "all" option — a UI-only value, never sent on the wire. */
 const ALL_STATUSES = "全部状态";
@@ -34,6 +36,9 @@ let superadminId: string;
 let supportId: string;
 let uniqueDescriptionReportId: string;
 let secondReportId: string;
+/** PC-2.5.4 — the MOMENT row and the moment it points at. */
+let momentReportId: string;
+let fixtureMomentId: string;
 
 /**
  * A date far enough in the past that the seeded rows and both fixtures sit well
@@ -87,18 +92,39 @@ test.beforeAll(async () => {
     select: { id: true },
   });
 
+  // PC-2.5.4 — a third row whose target is a moment. `Report.momentId` carries
+  // no foreign key, so the moment row is a fixture of its own.
+  const moment = await prisma.moment.create({
+    data: { userId: supportId, platform: "INSTAGRAM", content: DESCRIPTION_MOMENT, source: "USER" },
+    select: { id: true },
+  });
+  const momentReport = await prisma.report.create({
+    data: {
+      reporterId: superadminId,
+      reportedUserId: supportId,
+      reason: "SCAM",
+      description: DESCRIPTION_MOMENT,
+      status: "OPEN",
+      momentId: moment.id,
+      messageId: null,
+    },
+    select: { id: true },
+  });
+
+  fixtureMomentId = moment.id;
   uniqueDescriptionReportId = unique.id;
   secondReportId = second.id;
+  momentReportId = momentReport.id;
 });
 
 test.afterAll(async () => {
   if (!prisma) return;
+  const reportIds = [uniqueDescriptionReportId, secondReportId, momentReportId];
   await prisma.adminAuditLog.deleteMany({
-    where: { targetType: "REPORT", targetId: { in: [uniqueDescriptionReportId, secondReportId] } },
+    where: { targetType: "REPORT", targetId: { in: reportIds } },
   });
-  await prisma.report.deleteMany({
-    where: { id: { in: [uniqueDescriptionReportId, secondReportId] } },
-  });
+  await prisma.report.deleteMany({ where: { id: { in: reportIds } } });
+  await prisma.moment.deleteMany({ where: { id: fixtureMomentId } });
   await prisma.$disconnect();
 });
 
@@ -158,6 +184,8 @@ test.describe("reports queue", () => {
     await expect(row).toContainText("SPAM");
     // A message-targeting row is impossible to seed without a message, so the
     // MESSAGE branch is asserted in the unit tests instead of fabricated here.
+    // PC-2.5.4 makes the MOMENT branch reachable: the third fixture row below
+    // is a real report pointing at a real moment.
   });
 
   // -------------------------------------------------------------- filters reach the API
@@ -250,6 +278,37 @@ test.describe("reports queue", () => {
   });
 
   // -------------------------------------------------------------- permission gating
+  // -------------------------------------------------------------- the MOMENT target
+  test("Test 28: a moment-targeting row is badged 动态举报, not 用户举报", async ({ page }) => {
+    await openReports(page);
+
+    const row = page
+      .getByText(DESCRIPTION_MOMENT, { exact: true })
+      .locator("xpath=ancestor::div[@data-testid='report-row']");
+    await expect(row).toBeVisible();
+    await expect(row).toHaveAttribute("data-target-type", "MOMENT");
+    await expect(row.getByTestId("report-target-badge")).toHaveText("动态举报");
+  });
+
+  test("Test 29: the 动态 filter finds exactly that row, and 用户 excludes it", async ({ page }) => {
+    await openReports(page);
+
+    // The badge and the filter have to be the same rule: a row that renders as
+    // MOMENT must be reachable by selecting MOMENT, and must not be reachable as
+    // USER. Before PC-2.5.4 this row was badged 用户举报.
+    await page.getByLabel("举报对象类型").selectOption("MOMENT");
+    await applyFiltersAndWait(page, "targetType=MOMENT");
+
+    await expect(page.getByText(DESCRIPTION_MOMENT, { exact: true })).toBeVisible();
+    await expect(page.getByText(DESCRIPTION_UNIQUE, { exact: true })).toHaveCount(0);
+
+    await page.getByLabel("举报对象类型").selectOption("USER");
+    await applyFiltersAndWait(page, "targetType=USER");
+
+    await expect(page.getByText(DESCRIPTION_MOMENT, { exact: true })).toHaveCount(0);
+    await expect(page.getByText(DESCRIPTION_UNIQUE, { exact: true })).toBeVisible();
+  });
+
   test("Test 27: a read-only role sees the queue but no review buttons", async ({ page }) => {
     // ANALYST holds `reports:read` but not `reports:write` — see the permission
     // matrix. It is the fixture that models a genuinely read-only operator.

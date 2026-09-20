@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { PrismaService } from "../prisma/prisma.service";
 import { AdminService } from "../admin/admin.service";
+import { NotificationService } from "../notifications/notification.service";
 
 /**
  * Phase A+: releases temporary suspensions when they expire.
@@ -51,12 +52,13 @@ import { AdminService } from "../admin/admin.service";
  * `after` and a `detail` carrying the count. `targetId` is `null` because a
  * single row cannot honestly name one target when several were released.
  *
- * Per-user rows would require knowing *which* users the statement changed, i.e.
- * replacing `updateMany` with `updateManyAndReturn` (available in the generated
- * Prisma client) or a `findMany` + per-row update loop. That changes the shape
- * of the sweep — and a `findMany`-then-`updateMany` pair is not equivalent
- * either, since the two statements can observe different row sets. It is
- * therefore deliberately **not** done here and is recorded as an open decision.
+ * PC-3.1c did make the sweep return *which* rows it changed, because the user
+ * whose suspension expires has to be told — and a `findMany`-then-`updateMany`
+ * pair cannot answer that, since the two statements can observe different row
+ * sets (the original objection to per-user rows, still valid). The change is a
+ * single statement, `updateManyAndReturn`, selecting only `id`: the update
+ * itself is byte-for-byte the same predicate and payload as before, and the
+ * audit entry stays one per sweep rather than one per user.
  */
 @Injectable()
 export class UserStatusScheduler {
@@ -68,6 +70,8 @@ export class UserStatusScheduler {
   constructor(
     private readonly prisma: PrismaService,
     private readonly admin: AdminService,
+    /** PC-3.1c — how a released user is told their suspension ended. */
+    private readonly notifications: NotificationService,
   ) {}
 
   @Cron(CronExpression.EVERY_MINUTE)
@@ -120,7 +124,7 @@ export class UserStatusScheduler {
     }
     this.running = true;
     try {
-      const { count } = await this.prisma.user.updateMany({
+      const released = await this.prisma.user.updateManyAndReturn({
         where: { status: "SUSPENDED", suspendedUntil: { not: null, lte: now } },
         data: {
           status: "ACTIVE",
@@ -128,15 +132,44 @@ export class UserStatusScheduler {
           bannedAt: null,
           banReason: null,
         },
+        // Only the id is needed — the whole point is to know *who* was released.
+        select: { id: true },
       });
+      const count = released.length;
 
       if (count > 0) {
         this.logger.log(`Auto-released ${count} expired suspension(s)`);
+        await this.notifyReleased(released);
         await this.recordRelease(count);
       }
       return count;
     } finally {
       this.running = false;
+    }
+  }
+
+  /**
+   * PC-3.1c — tells each released user their own account is back.
+   *
+   * Split out for the same reason as `recordRelease`, and best-effort for a
+   * stronger one: the release loop is the whole batch, so one undeliverable
+   * notification must not stop the users after it. `NotificationService.notify`
+   * never throws — it logs and resolves — so this loop cannot break the sweep,
+   * and no per-user transaction is introduced around it.
+   *
+   * The message carries no actor: a timer is nobody. It also describes only the
+   * transition the sweep applied (`SUSPENDED` → `ACTIVE`), which is the same
+   * pair the audit entry records.
+   */
+  private async notifyReleased(released: readonly { id: string }[]): Promise<void> {
+    for (const user of released) {
+      await this.notifications.notify({
+        userId: user.id,
+        type: "USER_STATUS",
+        title: "账号状态已更新",
+        body: "你的临时封禁已到期，账号已恢复。",
+        data: { targetType: "USER", targetId: user.id, status: "ACTIVE" },
+      });
     }
   }
 

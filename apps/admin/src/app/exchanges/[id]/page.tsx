@@ -166,20 +166,20 @@ function ExchangeDetailScreen() {
         </div>
         <Link
           href="/exchanges"
-          className="h-9 shrink-0 rounded-xl border border-line px-4 text-[13px] leading-9"
+          className="tf-btn"
         >
           返回列表
         </Link>
       </div>
 
       {error ? (
-        <div data-testid="exchange-detail-error" className="mt-4 rounded-2xl border border-line p-4">
+        <div data-testid="exchange-detail-error" className="mt-4 rounded-2xl border border-line bg-card shadow-card p-4">
           <p className="text-[13px] text-red-500">{error}</p>
           <button
             type="button"
             onClick={() => void load()}
             disabled={loading}
-            className="mt-3 h-9 rounded-xl border border-line px-4 text-[13px] disabled:opacity-40"
+            className="mt-3 tf-btn"
           >
             {loading ? "重试中…" : "重试"}
           </button>
@@ -194,7 +194,7 @@ function ExchangeDetailScreen() {
 
       {data ? (
         <div className="mt-4 space-y-4">
-          <div className="rounded-2xl border border-line p-4">
+          <div className="rounded-2xl border border-line bg-card shadow-card p-4">
             <h2 className="text-[15px] font-semibold">交换信息</h2>
             <div className="mt-3 grid grid-cols-1 gap-3 text-[13px] md:grid-cols-2">
               <div>
@@ -234,7 +234,7 @@ function ExchangeDetailScreen() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-line p-4">
+          <div className="rounded-2xl border border-line bg-card shadow-card p-4">
             <h2 className="text-[15px] font-semibold">请求方</h2>
             <div className="mt-3 text-[13px]">
               <p>
@@ -250,7 +250,7 @@ function ExchangeDetailScreen() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-line p-4">
+          <div className="rounded-2xl border border-line bg-card shadow-card p-4">
             <h2 className="text-[15px] font-semibold">接收方</h2>
             <div className="mt-3 text-[13px]">
               <p>
@@ -266,7 +266,7 @@ function ExchangeDetailScreen() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-line p-4">
+          <div className="rounded-2xl border border-line bg-card shadow-card p-4">
             <h2 className="text-[15px] font-semibold">平台</h2>
             {data.exchange.platforms.length === 0 ? (
               <p className="mt-2 text-[13px] text-muted">未指定平台</p>
@@ -285,14 +285,14 @@ function ExchangeDetailScreen() {
             )}
           </div>
 
-          <div className="rounded-2xl border border-line p-4">
+          <div className="rounded-2xl border border-line bg-card shadow-card p-4">
             <h2 className="text-[15px] font-semibold">请求留言</h2>
             <p data-testid="exchange-detail-message" className="mt-2 text-[13px]">
               {data.exchange.message ?? <span className="text-muted">无留言</span>}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-line p-4">
+          <div className="rounded-2xl border border-line bg-card shadow-card p-4">
             <h2 className="text-[15px] font-semibold">共享账号</h2>
             <p className="mt-1 text-[12px] text-muted">
               仅展示共享关系，不展示账号标识。
@@ -307,7 +307,7 @@ function ExchangeDetailScreen() {
                   <li
                     key={`${share.ownerId}-${share.viewerId}-${share.platform}`}
                     data-testid={`exchange-share-${share.platform}`}
-                    className="rounded-xl border border-line/60 p-3"
+                    className="rounded-xl border border-line/60 bg-[#FBFCFE] p-3"
                   >
                     <p className="font-medium">
                       {partyLabel(share.ownerId)} → {partyLabel(share.viewerId)}
@@ -324,7 +324,7 @@ function ExchangeDetailScreen() {
             )}
           </div>
 
-          <div className="rounded-2xl border border-line p-4">
+          <div className="rounded-2xl border border-line bg-card shadow-card p-4">
             <h2 className="text-[15px] font-semibold">连接上下文</h2>
             {!data.connectionAvailable || !data.connection ? (
               <p data-testid="exchange-connection-missing" className="mt-2 text-[13px] text-muted">
@@ -358,7 +358,7 @@ function ExchangeDetailScreen() {
             )}
           </div>
 
-          <div className="rounded-2xl border border-line p-4">
+          <div className="rounded-2xl border border-line bg-card shadow-card p-4">
             <h2 className="text-[15px] font-semibold">处理历史</h2>
             {data.history.length === 0 ? (
               <p data-testid="exchange-history-empty" className="mt-2 text-[13px] text-muted">
@@ -367,7 +367,7 @@ function ExchangeDetailScreen() {
             ) : (
               <ul className="mt-2 space-y-2 text-[13px]">
                 {data.history.map((h) => (
-                  <li key={h.id} className="rounded-xl border border-line/60 p-3">
+                  <li key={h.id} className="rounded-xl border border-line/60 bg-[#FBFCFE] p-3">
                     <p className="font-medium">{h.action}</p>
                     <p className="mt-1 text-muted">
                       {new Date(h.createdAt).toLocaleString()} ·{" "}

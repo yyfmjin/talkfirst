@@ -1,4 +1,5 @@
 import { UserStatusScheduler } from "./user-status.scheduler";
+import { NotificationService } from "../notifications/notification.service";
 import type { SystemAuditInput } from "../admin/admin.service";
 
 /**
@@ -51,11 +52,27 @@ type UpdateManyArgs = {
   data: Partial<Row>;
 };
 
+/**
+ * The notification row the real `NotificationService` asks the fake client to
+ * store. Asserting on this (rather than on a mocked `notify`) means the envelope
+ * under test is the one that would reach PostgreSQL.
+ */
+type NotificationRow = {
+  userId: string;
+  type: string;
+  title: string;
+  body: string | null;
+  data: string | null;
+};
+
 function makeStore(rows: Row[]) {
   const store = new Map(rows.map((r) => [r.id, { ...r }]));
 
-  const updateMany = jest.fn(async ({ where, data }: UpdateManyArgs) => {
-    let count = 0;
+  // PC-3.1c — the sweep returns the rows it changed, because each released user
+  // has to be told. Still one statement, and the predicate and payload are the
+  // ones `updateMany` used: the test below pins both exactly.
+  const updateManyAndReturn = jest.fn(async ({ where, data }: UpdateManyArgs) => {
+    const released: { id: string }[] = [];
     for (const current of store.values()) {
       const matches =
         current.status === where.status &&
@@ -64,9 +81,9 @@ function makeStore(rows: Row[]) {
       if (!matches) continue;
       // `updatedAt` is @updatedAt in the schema, so every real write bumps it.
       Object.assign(current, data, { updatedAt: new Date(BASE.getTime() + 1000) });
-      count += 1;
+      released.push({ id: current.id });
     }
-    return { count };
+    return released;
   });
 
   // Stands in for `AdminService`. Records what the scheduler asked it to audit
@@ -79,17 +96,44 @@ function makeStore(rows: Row[]) {
   const recordAudit = jest.fn(async () => ({ id: "human-audit" }));
   const admin = { recordSystemAudit, recordAudit };
 
-  const prisma = { user: { updateMany } };
-  const scheduler = new UserStatusScheduler(prisma as never, admin as never);
-  return { store, updateMany, scheduler, auditCalls, recordSystemAudit, recordAudit };
+  // The real service over the same fake client, so what the tests read is the
+  // row that would be written, not a stand-in for it.
+  const notificationRows: NotificationRow[] = [];
+  const prisma = {
+    user: { updateManyAndReturn },
+    notification: {
+      create: jest.fn(async (args: { data: NotificationRow }) => {
+        notificationRows.push(args.data);
+        return args.data;
+      }),
+    },
+  };
+  const scheduler = new UserStatusScheduler(
+    prisma as never,
+    admin as never,
+    new NotificationService(prisma as never),
+  );
+  return {
+    store,
+    updateManyAndReturn,
+    scheduler,
+    auditCalls,
+    recordSystemAudit,
+    recordAudit,
+    notificationRows,
+  };
 }
 
 /** Builds a scheduler whose AdminService stub is not needed by the test. */
-function makeBareScheduler(prisma: unknown) {
-  return new UserStatusScheduler(prisma as never, {
-    recordSystemAudit: jest.fn(async () => ({ id: "audit" })),
-    recordAudit: jest.fn(async () => ({ id: "human-audit" })),
-  } as never);
+function makeBareScheduler(prisma: unknown, notifications?: { notify: jest.Mock }) {
+  return new UserStatusScheduler(
+    prisma as never,
+    {
+      recordSystemAudit: jest.fn(async () => ({ id: "audit" })),
+      recordAudit: jest.fn(async () => ({ id: "human-audit" })),
+    } as never,
+    (notifications ?? { notify: jest.fn(async () => undefined) }) as never,
+  );
 }
 
 describe("UserStatusScheduler — suspension expiry", () => {
@@ -198,59 +242,60 @@ describe("UserStatusScheduler — suspension expiry", () => {
 
   it("hands Prisma the exact filter and update payload", async () => {
     const past = new Date(BASE.getTime() - 60_000);
-    const { updateMany, scheduler } = makeStore([
+    const { updateManyAndReturn, scheduler } = makeStore([
       row({ id: "contract", status: "SUSPENDED", suspendedUntil: past }),
     ]);
 
     await scheduler.releaseExpiredSuspensions(BASE);
 
-    expect(updateMany).toHaveBeenCalledTimes(1);
-    expect(updateMany.mock.calls[0][0]).toEqual({
+    expect(updateManyAndReturn).toHaveBeenCalledTimes(1);
+    expect(updateManyAndReturn.mock.calls[0][0]).toEqual({
       where: { status: "SUSPENDED", suspendedUntil: { not: null, lte: BASE } },
       data: { status: "ACTIVE", suspendedUntil: null, bannedAt: null, banReason: null },
+      select: { id: true },
     });
   });
 
   it("the cron handler swallows a database error instead of crashing", async () => {
-    const updateMany = jest.fn(async () => {
+    const updateManyAndReturn = jest.fn(async () => {
       throw new Error("connection terminated");
     });
-    const scheduler = makeBareScheduler({ user: { updateMany } });
+    const scheduler = makeBareScheduler({ user: { updateManyAndReturn } });
 
     await expect(scheduler.handleSuspensionExpiry()).resolves.toBeUndefined();
   });
 
   it("a failed sweep still clears the in-flight flag so later ticks run", async () => {
     let call = 0;
-    const updateMany = jest.fn(async (_args: UpdateManyArgs): Promise<{ count: number }> => {
+    const updateManyAndReturn = jest.fn(async (_args: UpdateManyArgs): Promise<{ id: string }[]> => {
       call += 1;
       if (call === 1) throw new Error("transient");
-      return { count: 0 };
+      return [];
     });
-    const scheduler = makeBareScheduler({ user: { updateMany } });
+    const scheduler = makeBareScheduler({ user: { updateManyAndReturn } });
 
     await expect(scheduler.releaseExpiredSuspensions(BASE)).rejects.toThrow("transient");
     // If the in-flight guard leaked, this second call would be skipped and
     // return 0 without ever reaching the database.
     await expect(scheduler.releaseExpiredSuspensions(BASE)).resolves.toBe(0);
-    expect(updateMany).toHaveBeenCalledTimes(2);
+    expect(updateManyAndReturn).toHaveBeenCalledTimes(2);
   });
 
   it("skips a tick that overlaps a sweep which is still running", async () => {
-    let releaseGate: (value: { count: number }) => void = () => undefined;
-    const gate = new Promise<{ count: number }>((resolve) => {
+    let releaseGate: (value: { id: string }[]) => void = () => undefined;
+    const gate = new Promise<{ id: string }[]>((resolve) => {
       releaseGate = resolve;
     });
-    const updateMany = jest.fn(async (_args: UpdateManyArgs) => gate);
-    const scheduler = makeBareScheduler({ user: { updateMany } });
+    const updateManyAndReturn = jest.fn(async (_args: UpdateManyArgs) => gate);
+    const scheduler = makeBareScheduler({ user: { updateManyAndReturn } });
 
     const inFlight = scheduler.releaseExpiredSuspensions(BASE); // parks on the gate
     const overlapped = await scheduler.releaseExpiredSuspensions(BASE);
 
     expect(overlapped).toBe(0);
-    expect(updateMany).toHaveBeenCalledTimes(1); // the second tick never queried
+    expect(updateManyAndReturn).toHaveBeenCalledTimes(1); // the second tick never queried
 
-    releaseGate({ count: 0 });
+    releaseGate([]);
     await expect(inFlight).resolves.toBe(0);
   });
 });
@@ -405,5 +450,120 @@ describe("UserStatusScheduler — SYSTEM audit on release", () => {
 
     // A later tick still runs (the in-flight flag was cleared).
     await expect(scheduler.releaseExpiredSuspensions(BASE)).resolves.toBe(0);
+  });
+});
+
+/**
+ * PC-3.1c — the released user is told, and telling them cannot undo the release.
+ *
+ * The sweep is the whole batch, so the two things that matter are: every released
+ * user is notified (recipient = their own id), and one undeliverable notification
+ * neither fails the sweep nor stops the users after it. The rows below are the
+ * ones the real `NotificationService` hands to the fake client, so the envelope
+ * asserted here is the one that would reach PostgreSQL.
+ */
+describe("UserStatusScheduler — USER_STATUS notification on release", () => {
+  const past = new Date(BASE.getTime() - 60_000);
+
+  it("each released user is notified with targetType USER and status ACTIVE", async () => {
+    const { scheduler, notificationRows } = makeStore([
+      row({ id: "released-1", status: "SUSPENDED", suspendedUntil: past }),
+      row({ id: "released-2", status: "SUSPENDED", suspendedUntil: past }),
+    ]);
+
+    await expect(scheduler.releaseExpiredSuspensions(BASE)).resolves.toBe(2);
+
+    expect(notificationRows).toHaveLength(2);
+    expect(notificationRows.map((r) => r.userId).sort()).toEqual(["released-1", "released-2"]);
+    for (const row of notificationRows) {
+      expect(row.type).toBe("USER_STATUS");
+      expect(row.title).toBe("账号状态已更新");
+      const data = JSON.parse(row.data ?? "{}") as Record<string, unknown>;
+      // The recipient is the target, and there is no actor: a timer is nobody.
+      expect(data).toEqual({ targetType: "USER", targetId: row.userId, status: "ACTIVE" });
+      expect(data).not.toHaveProperty("actorId");
+      expect(data).not.toHaveProperty("suspendedUntil");
+    }
+  });
+
+  it("a user whose deadline has not passed is not notified", async () => {
+    const { scheduler, notificationRows } = makeStore([
+      row({ id: "still-suspended", status: "SUSPENDED", suspendedUntil: new Date(BASE.getTime() + 60_000) }),
+    ]);
+
+    await expect(scheduler.releaseExpiredSuspensions(BASE)).resolves.toBe(0);
+    expect(notificationRows).toEqual([]);
+  });
+
+  it("a BANNED user is not notified", async () => {
+    const { scheduler, notificationRows } = makeStore([
+      row({ id: "banned-1", status: "BANNED", suspendedUntil: past, bannedAt: BASE }),
+    ]);
+
+    await expect(scheduler.releaseExpiredSuspensions(BASE)).resolves.toBe(0);
+    expect(notificationRows).toEqual([]);
+  });
+
+  it("a re-tick does not send a second notification", async () => {
+    const { scheduler, notificationRows } = makeStore([
+      row({ id: "once", status: "SUSPENDED", suspendedUntil: past }),
+    ]);
+
+    await scheduler.releaseExpiredSuspensions(BASE);
+    await scheduler.releaseExpiredSuspensions(BASE);
+
+    expect(notificationRows).toHaveLength(1);
+  });
+
+  it("the notification carries no administrator identity", async () => {
+    const { scheduler, notificationRows } = makeStore([
+      row({ id: "private", status: "SUSPENDED", suspendedUntil: past }),
+    ]);
+
+    await scheduler.releaseExpiredSuspensions(BASE);
+
+    const serialized = JSON.stringify(notificationRows);
+    for (const forbidden of ["email", "passwordHash", "token", "adminId", "adminName", "actorId", "reason"]) {
+      expect(serialized).not.toContain(forbidden);
+    }
+  });
+
+  it("one undeliverable notification neither fails the sweep nor stops the batch", async () => {
+    const rows = [
+      row({ id: "first", status: "SUSPENDED", suspendedUntil: past }),
+      row({ id: "second", status: "SUSPENDED", suspendedUntil: past }),
+    ];
+    const store = new Map(rows.map((r) => [r.id, { ...r }]));
+    const delivered: string[] = [];
+    const prisma = {
+      user: {
+        updateManyAndReturn: jest.fn(async () => {
+          for (const current of store.values()) {
+            Object.assign(current, { status: "ACTIVE", suspendedUntil: null });
+          }
+          return [{ id: "first" }, { id: "second" }];
+        }),
+      },
+      notification: {
+        create: jest.fn(async (args: { data: { userId: string } }) => {
+          // The first delivery fails; the second must still be attempted.
+          if (args.data.userId === "first") throw new Error("notification table unavailable");
+          delivered.push(args.data.userId);
+          return args.data;
+        }),
+      },
+    };
+    const scheduler = new UserStatusScheduler(
+      prisma as never,
+      { recordSystemAudit: jest.fn(async () => ({ id: "a" })), recordAudit: jest.fn() } as never,
+      new NotificationService(prisma as never),
+    );
+
+    // The release is the safety-critical half: it must survive a broken
+    // notification path, and the batch must not stop at the first failure.
+    await expect(scheduler.releaseExpiredSuspensions(BASE)).resolves.toBe(2);
+    expect(store.get("first")!.status).toBe("ACTIVE");
+    expect(store.get("second")!.status).toBe("ACTIVE");
+    expect(delivered).toEqual(["second"]);
   });
 });
