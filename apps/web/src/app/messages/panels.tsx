@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { NotificationItem, useNotificationReader } from "@/components/notification-item";
 import { OutlineButton } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
+import { type NotificationPage, type NotificationRecord } from "@/lib/notifications";
 import { useSession } from "@/lib/session";
 
 type SentRequest = {
@@ -12,23 +14,20 @@ type SentRequest = {
   receiver: { id: string; nickname: string | null; countryCode: string | null } | null;
 };
 
-type Notice = {
-  id: string;
-  type: string;
-  title: string;
-  body: string | null;
-  createdAt: string;
-  readAt: string | null;
-};
-
+/**
+ * PC-3.1e — the hub preview. It renders the same rows as `/notifications`
+ * through the same `NotificationItem`, and it still asks for exactly five: the
+ * hub has never been the place to read a long list, and a member who wants one
+ * taps through to the Notification Center.
+ */
 export function NotificationsPanel({ onRead }: { onRead: () => void }) {
-  const [items, setItems] = useState<Notice[]>([]);
+  const [items, setItems] = useState<NotificationRecord[]>([]);
   const [unread, setUnread] = useState(0);
 
   const load = useCallback(async () => {
     try {
-      const data = await apiFetch<{ items: Notice[]; unread: number }>("/notifications");
-      setItems(data.items.slice(0, 5));
+      const data = await apiFetch<NotificationPage>("/notifications?pageSize=5");
+      setItems(data.items);
       setUnread(data.unread);
     } catch {
       // Notifications are best-effort on the messages hub.
@@ -38,6 +37,15 @@ export function NotificationsPanel({ onRead }: { onRead: () => void }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const onMarked = useCallback((notification: NotificationRecord) => {
+    const readAt = new Date().toISOString();
+    setItems((current) =>
+      current.map((item) => (item.id === notification.id ? { ...item, readAt } : item)),
+    );
+    setUnread((current) => Math.max(0, current - 1));
+  }, []);
+  const { activate, pendingId } = useNotificationReader(onMarked);
 
   async function markRead() {
     try {
@@ -64,12 +72,13 @@ export function NotificationsPanel({ onRead }: { onRead: () => void }) {
       </div>
       <div className="mt-2 space-y-2">
         {items.map((item) => (
-          <div key={item.id} className="text-[12px] leading-5">
-            <span className={item.readAt ? "text-muted" : "font-medium"}>
-              {item.title}
-              {item.body ? `：${item.body.slice(0, 60)}` : ""}
-            </span>
-          </div>
+          <NotificationItem
+            key={item.id}
+            notification={item}
+            compact
+            pending={pendingId === item.id}
+            onActivate={(notification) => void activate(notification)}
+          />
         ))}
       </div>
     </section>
