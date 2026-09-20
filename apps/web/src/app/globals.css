@@ -80,3 +80,42 @@ button {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/*
+ * Discover avatar bubbles.
+ *
+ * The float is deliberately tiny and slow: it should read as breathing, not as
+ * motion. It is applied to the orb inside the tap target and never to the
+ * button, so the hit box is pixel-identical on every frame, and the hover /
+ * focus / press rules freeze the orb under the pointer.
+ */
+@keyframes tf-bubble-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, var(--tf-bubble-rise, -4px), 0) scale(1.02);
+  }
+}
+
+.tf-bubble-orb {
+  animation: tf-bubble-float var(--tf-bubble-duration, 6s) ease-in-out infinite;
+  animation-delay: var(--tf-bubble-delay, 0s);
+  transition: transform 180ms ease-out;
+  will-change: transform;
+}
+
+.tf-bubble:hover .tf-bubble-orb,
+.tf-bubble:focus-within .tf-bubble-orb,
+.tf-bubble:active .tf-bubble-orb {
+  animation: none;
+  transform: scale(1.06);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tf-bubble-orb {
+    animation: none;
+    transition: none;
+  }
+}
