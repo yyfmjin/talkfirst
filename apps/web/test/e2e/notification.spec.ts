@@ -203,16 +203,23 @@ test("类型过滤器使用中文标签，不把 type 枚举暴露给用户", as
 test("点击未读通知：后端 readAt 被写入、行转已读、未读数减一", async ({ page }) => {
   await seedNotices([
     { type: "MOMENT_COMMENT", title: "第一条评论通知", createdAt: minutesAgo(1) },
-    { type: "MOMENT_COMMENT", title: "第二条评论通知", createdAt: minutesAgo(2), readAt: minutesAgo(2) },
+    { type: "MOMENT_COMMENT", title: "第二条评论通知", createdAt: minutesAgo(2) },
+    {
+      type: "MOMENT_COMMENT",
+      title: "已经读过的评论通知",
+      createdAt: minutesAgo(3),
+      readAt: minutesAgo(3),
+    },
   ]);
   await openCenterAs(page, EMAILS.alice);
+  await expect(page.getByTestId("notification-unread-count")).toHaveText("未读 2");
 
   const item = itemTitled(page, "第一条评论通知");
   await expect(item).toHaveAttribute("data-unread", "true");
   await item.click();
 
   await expect(item).toHaveAttribute("data-unread", "false");
-  await expect(page.getByTestId("notification-unread")).toHaveCount(0);
+  await expect(page.getByTestId("notification-unread")).toHaveCount(1);
   await expect(page.getByTestId("notification-unread-count")).toHaveText("未读 1");
 
   const stored = await prisma.notification.findFirst({
@@ -398,7 +405,7 @@ test("切换类型过滤器：清空列表与 cursor，从第一页重新读", a
   await openCenterAs(page, EMAILS.alice);
 
   await page.getByTestId("notification-load-more").click();
-  await expect(page.getByTestId("notification-item")).toHaveCount(25);
+  await expect(page.getByTestId("notification-item")).toHaveCount(28);
 
   await page.getByTestId("notification-filter").selectOption("NEW_MESSAGE");
   await expect(page.getByTestId("notification-item")).toHaveCount(3);
