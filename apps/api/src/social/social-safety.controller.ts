@@ -78,11 +78,12 @@ export class SocialSafetyController {
     private readonly safety: SafetyService,
     private readonly moments: MomentsService,
     /**
-     * PC-3.1b — the one writer of notifications.
+     * PC-3.1b — the one writer of notifications, called by the message routes
+     * below.
      *
-     * Named `notificationService` rather than `notifications` because this
-     * controller already has a `notifications()` route method; a field of that
-     * name would be a duplicate identifier.
+     * The read routes that used to live on this controller moved to
+     * `NotificationsController` in PC-3.1d, so the field no longer has to dodge
+     * a `notifications()` method declared on this class.
      */
     private readonly notificationService: NotificationService,
   ) {}
@@ -547,19 +548,6 @@ export class SocialSafetyController {
     return { success: true as const, data: { blocked: true, hiddenMessages } };
   }
 
-  @Get("notifications")
-  async notifications(@CurrentUser() user: AuthUser) {
-    const items = await this.prisma.notification.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: "desc" },
-      take: 50,
-    });
-    const unread = await this.prisma.notification.count({
-      where: { userId: user.id, readAt: null },
-    });
-    return { success: true as const, data: { items, unread } };
-  }
-
   @Get("blocks")
   async blocks(@CurrentUser() user: AuthUser) {
     const items = await this.prisma.block.findMany({
@@ -595,14 +583,5 @@ export class SocialSafetyController {
       },
     });
     return { success: true as const, data: items };
-  }
-
-  @Post("notifications/read")
-  async markNotificationsRead(@CurrentUser() user: AuthUser) {
-    await this.prisma.notification.updateMany({
-      where: { userId: user.id, readAt: null },
-      data: { readAt: new Date() },
-    });
-    return { success: true as const, data: { read: true } };
   }
 }
