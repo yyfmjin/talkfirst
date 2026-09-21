@@ -73,7 +73,7 @@ export default function RegisterPage() {
         <p className="mt-2 text-center text-[13px] text-muted">加入 TalkFirst，认识更多有趣的人</p>
 
         <form className="mt-8 space-y-4" onSubmit={(event) => void handleSubmit(event)}>
-          <Field label="邮箱地址" placeholder="your@email.com" value={email} onChange={setEmail} />
+          <Field label="邮箱地址" placeholder="请输入邮箱地址" value={email} onChange={setEmail} />
           <Field
             label="密码"
             type="password"

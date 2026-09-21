@@ -22,7 +22,7 @@ export default function WelcomePage() {
         </div>
         <div className="mt-auto px-8 pb-8 pt-8">
           <GradientButton href="/login">开始</GradientButton>
-          <p className="mt-3 text-center text-[12px] text-muted">18+ only</p>
+          <p className="mt-3 text-center text-[12px] text-muted">仅限 18 岁以上使用</p>
         </div>
       </div>
     </PhoneShell>

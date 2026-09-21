@@ -411,7 +411,7 @@ test("Discover：点击头像打开统一的资料卡", async ({ page }) => {
 
   const card = profileCard(page);
   await expect(card).toBeVisible({ timeout: 20_000 });
-  await expect(card.getByRole("button", { name: "Say Hello" })).toBeVisible();
+  await expect(card.getByRole("button", { name: "打招呼" })).toBeVisible();
   await expect(card.getByRole("button", { name: "查看完整资料" })).toBeVisible();
 });
 
@@ -456,7 +456,7 @@ test("连接列表头像：打开统一的资料卡", async ({ page }) => {
   await expect(card.getByRole("button", { name: "已连接" })).toBeVisible();
 });
 
-test("自己的资料卡：显示编辑入口，不显示 Say Hello", async ({ page }) => {
+test("自己的资料卡：显示编辑入口，不显示打招呼", async ({ page }) => {
   await alice(page);
   await page.goto("/moments");
 
@@ -469,7 +469,7 @@ test("自己的资料卡：显示编辑入口，不显示 Say Hello", async ({ p
   await expect(card).toBeVisible({ timeout: 20_000 });
   await expect(card.getByRole("button", { name: "编辑我的资料" })).toBeVisible();
   await expect(card.getByRole("button", { name: "管理标签" })).toBeVisible();
-  await expect(card.getByRole("button", { name: "Say Hello" })).toHaveCount(0);
+  await expect(card.getByRole("button", { name: "打招呼" })).toHaveCount(0);
 });
 
 test("资料卡不泄露邮箱等内部信息", async ({ page }) => {

@@ -85,14 +85,14 @@ test("气泡显示昵称、年龄和国家/地区", async ({ page }) => {
   expect(text).toContain(String(alice?.countryName ?? alice?.countryCode));
 });
 
-test("点击气泡打开现有个人名片，Say Hello 仍在名片里", async ({ page }) => {
+test("点击气泡打开现有个人名片，打招呼 仍在名片里", async ({ page }) => {
   await loginAndLand(page, EMAILS.carol);
   await page.goto("/discover");
 
   const field = page.getByTestId("discover-bubble-field");
   await expect(field).toBeVisible({ timeout: 20_000 });
   // The wall itself never carries Say Hello: the greeting belongs to the card.
-  await expect(field.getByRole("button", { name: "Say Hello", exact: true })).toHaveCount(0);
+  await expect(field.getByRole("button", { name: "打招呼", exact: true })).toHaveCount(0);
 
   const aliceBubble = bubble(page, ALICE_NICKNAME);
   await expect(aliceBubble).toBeVisible({ timeout: 20_000 });
@@ -101,7 +101,7 @@ test("点击气泡打开现有个人名片，Say Hello 仍在名片里", async (
   const card = profileCard(page);
   await expect(card).toBeVisible({ timeout: 20_000 });
   await expect(card).toContainText(ALICE_NICKNAME);
-  await expect(card.getByRole("button", { name: "Say Hello" })).toBeVisible();
+  await expect(card.getByRole("button", { name: "打招呼" })).toBeVisible();
   await expect(card.getByRole("button", { name: "查看完整资料" })).toBeVisible();
 });
 

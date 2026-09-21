@@ -179,9 +179,9 @@ function DashboardScreen() {
               only one of the four an operator has to *do* something about. */}
           <div className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-4">
             <StatCard label="用户总数" value={data.users} hint={`其中 ${data.active} 个账号可用`} />
-            <StatCard label="ACTIVE" value={data.active} tone="success" />
+            <StatCard label="正常账号" value={data.active} tone="success" />
             <StatCard
-              label="SUSPENDED"
+              label="已暂停"
               value={data.suspended}
               tone={data.suspended > 0 ? "warning" : "default"}
             />
@@ -195,7 +195,7 @@ function DashboardScreen() {
           {/* The supporting strip: same figures, quieter weight. Each still
               renders at zero — a blank tile would read as a broken query. */}
           <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-            <StatCard size="sm" label="BANNED" value={data.banned} />
+            <StatCard size="sm" label="已封禁" value={data.banned} />
             <StatCard size="sm" label="今日新增" value={data.todayNewUsers} />
             <StatCard size="sm" label="7 日新增" value={data.newUsers7d} />
             <StatCard size="sm" label="在线管理员" value={data.admins} />
@@ -314,7 +314,7 @@ function PendingWork({
           <div className="min-w-0">
             <p className="text-[13px] font-medium text-ink">举报队列</p>
             <p className="mt-0.5 text-[12px] text-muted">
-              状态为 OPEN 的举报，等待受理、处理或驳回。
+              状态为待处理的举报，等待受理、处理或驳回。
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-3">

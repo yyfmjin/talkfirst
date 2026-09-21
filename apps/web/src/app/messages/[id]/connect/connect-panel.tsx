@@ -153,7 +153,7 @@ export default function ConnectPanel({ conversationId }: { conversationId: strin
 
   return (
     <PhoneShell>
-      <ScreenHeader title="Connect" backHref={`/messages/${conversationId}`} />
+      <ScreenHeader title="交换联系方式" backHref={`/messages/${conversationId}`} />
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-2">
         <p className="text-[13px] leading-5 text-muted">
           这还不是加好友，只是双方愿意继续保持联系。需要先聊天至少 {state?.requiredMessages ?? 5}{" "}

@@ -5,16 +5,7 @@ import { useRouter } from "next/navigation";
 import { GradientButton, OutlineButton } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/cn";
-
-const REPORT_REASONS = [
-  "Harassment",
-  "Spam",
-  "Scam",
-  "Sexual content",
-  "Hate speech",
-  "Fake profile",
-  "Other",
-];
+import { REPORT_REASONS, reportReasonLabel } from "@/lib/report-reasons";
 
 export default function SafetyActions({ peerId, peerName }: { peerId: string | null; peerName: string }) {
   const router = useRouter();
@@ -79,10 +70,10 @@ export default function SafetyActions({ peerId, peerName }: { peerId: string | n
                 <h2 className="text-[15px] font-semibold">聊天设置 · {peerName}</h2>
                 <div className="mt-4 space-y-2">
                   <OutlineButton className="w-full" onClick={() => setMode("report")}>
-                    Report User
+                    举报用户
                   </OutlineButton>
                   <OutlineButton className="w-full" onClick={() => setMode("block")}>
-                    Block
+                    拉黑
                   </OutlineButton>
                   <OutlineButton className="w-full" onClick={() => setOpen(false)}>
                     取消
@@ -96,7 +87,7 @@ export default function SafetyActions({ peerId, peerName }: { peerId: string | n
 
             {mode === "report" ? (
               <>
-                <h2 className="text-[15px] font-semibold">Report User</h2>
+                <h2 className="text-[15px] font-semibold">举报用户</h2>
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   {REPORT_REASONS.map((item) => (
                     <button
@@ -107,7 +98,7 @@ export default function SafetyActions({ peerId, peerName }: { peerId: string | n
                         reason === item ? "border-[#8B6CFF] bg-[#F4F1FF]" : "border-line",
                       )}
                     >
-                      {item}
+                      {reportReasonLabel(item)}
                     </button>
                   ))}
                 </div>
@@ -132,16 +123,16 @@ export default function SafetyActions({ peerId, peerName }: { peerId: string | n
 
             {mode === "block" ? (
               <>
-                <h2 className="text-[15px] font-semibold">Block</h2>
+                <h2 className="text-[15px] font-semibold">拉黑</h2>
                 <p className="mt-2 text-[13px] leading-5 text-muted">
-                  You won&apos;t be able to message each other.
+                  拉黑后你们将无法再互相发送消息。
                 </p>
                 <div className="mt-4 flex gap-2">
                   <OutlineButton className="w-1/3" onClick={() => setMode("menu")}>
                     返回
                   </OutlineButton>
                   <GradientButton className="w-2/3" onClick={() => void confirmBlock()} disabled={busy}>
-                    {busy ? "处理中…" : "Confirm Block"}
+                    {busy ? "处理中…" : "确认拉黑"}
                   </GradientButton>
                 </div>
               </>

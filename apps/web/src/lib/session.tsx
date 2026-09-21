@@ -50,7 +50,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       setUser(data);
     } catch (requestError) {
       setUser(null);
-      setError(requestError instanceof Error ? requestError.message : "Session check failed");
+      setError(requestError instanceof Error ? requestError.message : "登录状态检查失败，请重新登录。");
     } finally {
       setLoading(false);
     }

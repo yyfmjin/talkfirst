@@ -330,7 +330,7 @@ test.describe("Phase C2 — Connections", () => {
     const row = page
       .locator("main table tbody tr")
       .filter({ has: page.locator(`a[href="/connections/${fixtureIds.activeConnectionId}"]`) });
-    await expect(row).toContainText("ACTIVE");
+    await expect(row).toContainText("已连接");
   });
 
   // ------------------------------------------------------------------ 6
@@ -346,7 +346,7 @@ test.describe("Phase C2 — Connections", () => {
     const row = page
       .locator("main table tbody tr")
       .filter({ has: page.locator(`a[href="/connections/${fixtureIds.removedConnectionId}"]`) });
-    await expect(row).toContainText("REMOVED");
+    await expect(row).toContainText("已解除");
   });
 
   // ------------------------------------------------------------------ 7
@@ -547,7 +547,7 @@ test.describe("Phase C2 — Connections", () => {
     // Both fixture participants, in the API's own order.
     await expect(page.getByText(ALICE_NICKNAME)).toBeVisible();
     await expect(page.getByText(BOB_NICKNAME)).toBeVisible();
-    await expect(page.getByText("ACTIVE").first()).toBeVisible();
+    await expect(page.getByText("已连接").first()).toBeVisible();
 
     // The ACTIVE fixture carries a real conversation id, so it must be shown.
     await expect(page.getByText(fixtureIds.conversationId)).toBeVisible();
@@ -564,7 +564,7 @@ test.describe("Phase C2 — Connections", () => {
 
     // A REMOVED connection must not 404: an operator following a link from the
     // list does not expect the row to vanish because it was ended.
-    await expect(page.getByText("REMOVED").first()).toBeVisible();
+    await expect(page.getByText("已解除").first()).toBeVisible();
 
     // `conversationId` is `String? @unique`, so null is legal stored data. It
     // must render as 「未关联」 — never as the literal `null`, and never blanked,

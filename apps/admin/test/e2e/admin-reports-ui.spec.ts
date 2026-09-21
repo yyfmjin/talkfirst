@@ -180,8 +180,8 @@ test.describe("reports queue", () => {
     const row = unique.locator("xpath=ancestor::div[@data-testid='report-row']");
     await expect(row).toHaveAttribute("data-target-type", "USER");
     await expect(row.getByTestId("report-target-badge")).toHaveText("用户举报");
-    await expect(row.getByTestId("status-badge")).toHaveText("OPEN");
-    await expect(row).toContainText("SPAM");
+    await expect(row.getByTestId("status-badge")).toHaveText("待处理");
+    await expect(row).toContainText("垃圾信息");
     // A message-targeting row is impossible to seed without a message, so the
     // MESSAGE branch is asserted in the unit tests instead of fabricated here.
     // PC-2.5.4 makes the MOMENT branch reachable: the third fixture row below
@@ -221,7 +221,7 @@ test.describe("reports queue", () => {
     const count = await badges.count();
     expect(count).toBeGreaterThan(0);
     for (let i = 0; i < count; i += 1) {
-      await expect(badges.nth(i)).toHaveText("RESOLVED");
+      await expect(badges.nth(i)).toHaveText("已处理");
     }
   });
 

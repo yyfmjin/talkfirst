@@ -11,7 +11,7 @@ export function AdminEntry() {
       href="/admin"
       className="rounded-full bg-amber-100 px-3 py-1.5 text-[11px] font-medium text-amber-700"
     >
-      🛡️ Admin
+      🛡️ 后台
     </Link>
   );
 }

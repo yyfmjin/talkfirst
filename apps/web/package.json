@@ -8,7 +8,7 @@
     "start": "next start --port 3000",
     "typecheck": "tsc --noEmit",
     "lint": "next lint",
-    "test": "node --test ./test/smoke.test.mjs",
+    "test": "node --test ./test/smoke.test.mjs ./test/ui-copy.test.mjs",
     "test:e2e": "playwright test",
     "test:e2e:build": "npm run build -w @talkfirst/api && npm run build && playwright test"
   },

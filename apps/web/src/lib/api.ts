@@ -80,7 +80,7 @@ async function doFetch<T>(path: string, options: RequestOptions): Promise<T> {
     throw new ApiRequestError(
       envelope?.error ?? {
         code: "NETWORK_ERROR",
-        message: "Cannot reach TalkFirst API. Is `npm run dev:api` running?",
+        message: "无法连接服务器，请检查网络后重试。",
       },
     );
   }

@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Shell } from "@/components/shell";
-import { StatusBadge } from "@/components/status-badge";
+import { StatusBadge, statusLabel } from "@/components/status-badge";
+import { REPORT_REASONS, reportReasonLabel } from "@/lib/report-reasons";
 import { ConfirmDialog, type ConfirmPayload } from "@/components/confirm-dialog";
 import { apiFetch, apiSend } from "@/lib/api";
 import {
@@ -88,13 +89,7 @@ const STATUS_OPTIONS = [
  */
 const REASON_OPTIONS = [
   { value: "ALL", label: "全部原因" },
-  { value: "Harassment", label: "Harassment" },
-  { value: "Spam", label: "Spam" },
-  { value: "Scam", label: "Scam" },
-  { value: "Sexual content", label: "Sexual content" },
-  { value: "Hate speech", label: "Hate speech" },
-  { value: "Fake profile", label: "Fake profile" },
-  { value: "Other", label: "Other" },
+  ...REPORT_REASONS.map((reason) => ({ value: reason, label: reportReasonLabel(reason) })),
 ];
 
 const TARGET_OPTIONS = [
@@ -338,7 +333,7 @@ function ReportsScreen() {
             value={draft.reporter}
             onChange={(event) => patchDraft({ reporter: event.target.value })}
             onKeyDown={submitOnEnter}
-            placeholder="email / nickname / 用户 ID"
+            placeholder="邮箱 / 昵称 / 用户 ID"
             aria-label="举报人筛选"
             className="h-10 w-56 rounded-xl border border-line px-3 text-[13px] outline-none"
           />
@@ -350,7 +345,7 @@ function ReportsScreen() {
             value={draft.reportedUser}
             onChange={(event) => patchDraft({ reportedUser: event.target.value })}
             onKeyDown={submitOnEnter}
-            placeholder="email / nickname / 用户 ID"
+            placeholder="邮箱 / 昵称 / 用户 ID"
             aria-label="被举报人筛选"
             className="h-10 w-56 rounded-xl border border-line px-3 text-[13px] outline-none"
           />
@@ -471,11 +466,11 @@ function ReportsScreen() {
                 </span>
               </div>
               <p className="mt-1 flex flex-wrap items-center gap-1 text-[12px] text-muted">
-                <span>{item.reason}</span>
+                <span>{reportReasonLabel(item.reason)}</span>
                 <span>·</span>
                 <StatusBadge status={item.status} testId="status-badge" />
                 <span>·</span>
-                <span>被举报人 {item.reportedUser.status}</span>
+                <span>被举报人 {statusLabel(item.reportedUser.status)}</span>
                 <span>·</span>
                 <span>{formatTime(item.createdAt)}</span>
               </p>

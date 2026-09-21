@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Shell } from "@/components/shell";
+import { statusLabel } from "@/components/status-badge";
+import { reportReasonLabel } from "@/lib/report-reasons";
 import { ApiRequestError, apiFetch } from "@/lib/api";
 import {
   REPORT_TARGET_BADGE_CLASS,
@@ -269,9 +271,9 @@ function RiskScreen() {
                         {REPORT_TARGET_LABELS[target]}
                       </span>
                       <span>·</span>
-                      <span>{report.reason}</span>
+                      <span>{reportReasonLabel(report.reason)}</span>
                       <span>·</span>
-                      <Badge status={report.status}>{report.status}</Badge>
+                      <Badge status={report.status}>{statusLabel(report.status)}</Badge>
                       <span>·</span>
                       <span>{new Date(report.createdAt).toLocaleString()}</span>
                     </p>
@@ -328,8 +330,8 @@ function RiskScreen() {
                       举报人与被举报人为同一账号
                     </p>
                     <p className="mt-1 text-muted">
-                      {signal.reason} ·{" "}
-                      <Badge status={signal.status}>{signal.status}</Badge> ·{" "}
+                      {reportReasonLabel(signal.reason)} ·{" "}
+                      <Badge status={signal.status}>{statusLabel(signal.status)}</Badge> ·{" "}
                       {new Date(signal.createdAt).toLocaleString()}
                     </p>
                     <p className="mt-1 text-muted">

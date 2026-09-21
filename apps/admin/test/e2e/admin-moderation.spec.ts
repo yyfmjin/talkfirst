@@ -286,7 +286,7 @@ test.describe("moderation workbench — queue", () => {
     const badges = page.getByTestId("status-badge");
     const count = await badges.count();
     for (let i = 0; i < count; i += 1) {
-      await expect(badges.nth(i)).toHaveText("OPEN");
+      await expect(badges.nth(i)).toHaveText("待处理");
     }
   });
 
@@ -299,8 +299,9 @@ test.describe("moderation workbench — queue", () => {
 
     // Report id (the workbench shows it so an operator can name a row).
     await expect(row.getByTestId("moderation-report-id")).toHaveText(/^[0-9a-f-]{36}$/);
-    // Reason — the fixture rows carry one of the allow-listed reasons.
-    await expect(row).toContainText(/Harassment|Spam|Scam|Sexual content|Hate speech|Fake profile|Other/);
+    // Reason — the fixture rows carry one of the allow-listed reasons, which
+    // PC-3.4 renders in Chinese rather than as the raw code.
+    await expect(row).toContainText(/骚扰|垃圾信息|欺诈|色情内容|仇恨言论|虚假资料|其它/);
     // Target type badge, derived from messageId.
     await expect(row.getByTestId("moderation-target-badge")).toBeVisible();
     // Reporter and reported user, both linked. Scoped by the link text rather
@@ -486,7 +487,7 @@ test.describe("moderation workbench — detail", () => {
     await openDetail(page, openUserReportId);
 
     await expect(page.getByTestId("moderation-summary-card")).toContainText(`${MARKER} — open user target`);
-    await expect(page.getByTestId("status-badge")).toHaveText("OPEN");
+    await expect(page.getByTestId("status-badge")).toHaveText("待处理");
     await expect(page.getByTestId("moderation-target-badge")).toHaveText("用户举报");
     await expect(page.locator(`a[href="/users/${supportId}"]`).first()).toBeVisible();
     await expect(page.locator(`a[href="/users/${victimId}"]`).first()).toBeVisible();
@@ -645,14 +646,14 @@ test.describe("moderation workbench — review", () => {
 
   test("Test 61: SUPER_ADMIN can review, and exactly one audit row is written", async ({ page }) => {
     await openDetail(page, openUserReportId);
-    await expect(page.getByTestId("status-badge")).toHaveText("OPEN");
+    await expect(page.getByTestId("status-badge")).toHaveText("待处理");
 
     await page.getByTestId("moderation-review-reviewing").click();
     const dialog = page.getByRole("dialog");
     await dialog.locator("textarea").fill("b5 superadmin review");
     await dialog.getByRole("button", { name: "受理" }).last().click();
 
-    await expect(page.getByTestId("status-badge")).toHaveText("REVIEWING", { timeout: 15_000 });
+    await expect(page.getByTestId("status-badge")).toHaveText("审核中", { timeout: 15_000 });
     await expect(page.getByTestId("moderation-history")).toContainText("b5 superadmin review");
 
     const rows = await prisma.adminAuditLog.findMany({
@@ -674,7 +675,7 @@ test.describe("moderation workbench — review", () => {
     await dialog.locator("textarea").fill("b5 moderator resolve");
     await dialog.getByRole("button", { name: "处理" }).last().click();
 
-    await expect(page.getByTestId("status-badge")).toHaveText("RESOLVED", { timeout: 15_000 });
+    await expect(page.getByTestId("status-badge")).toHaveText("已处理", { timeout: 15_000 });
 
     const rows = await prisma.adminAuditLog.findMany({
       where: { targetType: "REPORT", targetId: openMessageReportId },

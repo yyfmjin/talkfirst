@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Shell } from "@/components/shell";
+import { statusLabel } from "@/components/status-badge";
 import { ApiRequestError, apiFetch } from "@/lib/api";
 
 /**
@@ -158,7 +159,7 @@ function ConnectionDetailScreen() {
                   <span
                     className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${statusBadge(data.connection.status)}`}
                   >
-                    {data.connection.status}
+                    {statusLabel(data.connection.status)}
                   </span>
                 </p>
               </div>

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Shell } from "@/components/shell";
 import { ConfirmDialog, type ConfirmPayload } from "@/components/confirm-dialog";
+import { statusLabel } from "@/components/status-badge";
+import { reportReasonLabel } from "@/lib/report-reasons";
 import { ApiRequestError, apiFetch, apiSend } from "@/lib/api";
 import { canSetUserStatus } from "@/lib/permissions";
 import { useAdminSession } from "@/lib/session";
@@ -165,7 +167,7 @@ function UserDetailScreen({ params }: { params: Promise<{ id: string }> }) {
               {data.nickname ?? data.email} {data.isAdmin ? "🛡️" : ""}
             </p>
             <p className="mt-1 text-[12px] text-muted">
-              {data.email} · {data.status} · {data.countryCode ?? "-"}
+              {data.email} · {statusLabel(data.status)} · {data.countryCode ?? "-"}
               {data.adminUser ? ` · ${data.adminUser.role}` : ""}
             </p>
             <p className="mt-1 text-[12px] text-muted">封禁原因：{data.banReason ?? "—"}</p>
@@ -205,7 +207,7 @@ function UserDetailScreen({ params }: { params: Promise<{ id: string }> }) {
             <StatCard label="发出举报" value={data.reportsMadeCount} testId="stat-reports-made" />
             <StatCard label="被封锁" value={data.blocksReceivedCount} testId="stat-blocks-received" />
             <StatCard label="封锁他人" value={data.blocksMadeCount} testId="stat-blocks-made" />
-            <StatCard label="Social Accounts" value={data.socialAccountCount} testId="stat-social-accounts" />
+            <StatCard label="社交账号" value={data.socialAccountCount} testId="stat-social-accounts" />
           </section>
 
           {/* 账号操作 */}
@@ -246,7 +248,7 @@ function UserDetailScreen({ params }: { params: Promise<{ id: string }> }) {
             ) : (
               data.reportsReceived.map((item) => (
                 <p key={item.id} className="mt-1 text-[12px] text-muted">
-                  {item.reason} · {item.status}
+                  {reportReasonLabel(item.reason)} · {statusLabel(item.status)}
                 </p>
               ))
             )}
@@ -262,7 +264,7 @@ function UserDetailScreen({ params }: { params: Promise<{ id: string }> }) {
             ) : (
               data.reportsMade.map((item) => (
                 <p key={item.id} className="mt-1 text-[12px] text-muted">
-                  {item.reason} · {item.status}
+                  {reportReasonLabel(item.reason)} · {statusLabel(item.status)}
                 </p>
               ))
             )}

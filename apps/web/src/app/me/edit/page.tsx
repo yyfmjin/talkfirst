@@ -215,7 +215,7 @@ export default function EditProfilePage() {
             <div className="mt-4">
               <Field
                 label={`地区 / 省 / 州（可选，最多 ${REGION_MAX} 字）`}
-                placeholder="Tokyo / California"
+                placeholder="东京 / 加州"
                 value={region}
                 onChange={setRegion}
               />
@@ -223,7 +223,7 @@ export default function EditProfilePage() {
             <div className="mt-4">
               <Field
                 label={`城市（可选，最多 ${CITY_MAX} 字）`}
-                placeholder="Shanghai"
+                placeholder="上海"
                 value={city}
                 onChange={setCity}
               />

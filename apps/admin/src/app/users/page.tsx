@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Shell } from "@/components/shell";
-import { StatusBadge } from "@/components/status-badge";
+import { StatusBadge, statusLabel } from "@/components/status-badge";
 import { ConfirmDialog, type ConfirmPayload } from "@/components/confirm-dialog";
 import { apiFetch, apiSend } from "@/lib/api";
 import { canSetUserStatus } from "@/lib/permissions";
@@ -107,10 +107,10 @@ const DEFAULT_FILTERS: Filters = {
 /** `ALL` is the wire value the API has always understood for "no status filter". */
 const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "ALL", label: "全部" },
-  { value: "ACTIVE", label: "ACTIVE" },
-  { value: "DISABLED", label: "DISABLED" },
-  { value: "SUSPENDED", label: "SUSPENDED" },
-  { value: "BANNED", label: "BANNED" },
+  { value: "ACTIVE", label: statusLabel("ACTIVE") },
+  { value: "DISABLED", label: statusLabel("DISABLED") },
+  { value: "SUSPENDED", label: statusLabel("SUSPENDED") },
+  { value: "BANNED", label: statusLabel("BANNED") },
 ];
 
 /**
@@ -329,7 +329,7 @@ function UsersScreen() {
             value={draft.search}
             onChange={(event) => patchDraft({ search: event.target.value })}
             onKeyDown={submitOnEnter}
-            placeholder="搜索 email / nickname / 用户 ID"
+            placeholder="搜索邮箱 / 昵称 / 用户 ID"
             aria-label="搜索用户"
             className="h-10 w-72 rounded-xl border border-line px-3 text-[13px] outline-none"
           />

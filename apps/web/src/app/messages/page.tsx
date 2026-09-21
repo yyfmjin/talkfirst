@@ -120,7 +120,7 @@ export default function MessagesPage() {
               <h2 className="text-[14px] font-semibold">认识请求（{incoming.length}）</h2>
               {incoming.length === 0 ? (
                 <p className="mt-3 rounded-3xl bg-[#F7F9FF] p-4 text-[12px] leading-5 text-muted">
-                  暂时没有新的 Say Hello。去 Discover 看看吧。
+                  暂时没有新的打招呼请求。去「发现」看看吧。
                 </p>
               ) : (
                 <div className="mt-3 space-y-3">
@@ -135,7 +135,7 @@ export default function MessagesPage() {
                             {request.sender?.nickname ?? "TalkFirst 用户"}
                           </p>
                           <p className="truncate text-[12px] text-muted">
-                            {request.sender?.countryCode ?? "全球"} · {request.message ?? "Say hello!"}
+                            {request.sender?.countryCode ?? "全球"} · {request.message ?? "打了个招呼"}
                           </p>
                         </div>
                       </div>

@@ -74,7 +74,7 @@ export default function MePage() {
         {place ? <p className="mt-1 text-[13px] text-muted">{place}</p> : null}
         {profile?.isAdmin ? (
           <span className="mt-2 rounded-full bg-amber-100 px-3 py-1 text-[11px] font-medium text-amber-700">
-            🛡️ 管理员 Admin
+            🛡️ 管理员
           </span>
         ) : null}
         {profile?.bio ? (
@@ -132,10 +132,10 @@ export default function MePage() {
           ))}
           <GradientButton onClick={() => router.push("/me/password")}>修改密码</GradientButton>
           {profile?.isAdmin ? (
-            <GradientButton onClick={() => router.push("/admin")}>🛡️ Admin 后台</GradientButton>
+            <GradientButton onClick={() => router.push("/admin")}>🛡️ 管理后台</GradientButton>
           ) : (
             <p className="pt-1 text-center text-[11px] leading-4 text-muted">
-              普通账号看不到后台入口。如需开通，请让已有的管理员把你的账号设为 isAdmin。
+              普通账号看不到后台入口。如需要，请联系管理员为你开通。
             </p>
           )}
         </div>

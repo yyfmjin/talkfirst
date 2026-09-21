@@ -9,7 +9,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 test("welcome screen renders TalkFirst branding", () => {
   const source = readFileSync(join(root, "src/app/page.tsx"), "utf8");
   assert.match(source, /Wordmark/);
-  assert.match(source, /18\+ only/);
+  assert.match(source, /仅限 18 岁以上使用/);
   const brand = readFileSync(join(root, "src/components/brand.tsx"), "utf8");
   assert.match(brand, /TalkFirst/);
   assert.match(brand, /先聊聊，再成为朋友/);

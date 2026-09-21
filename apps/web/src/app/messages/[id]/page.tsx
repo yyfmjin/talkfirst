@@ -163,7 +163,7 @@ export default function ChatDetailPage() {
       const dataUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error("read failed"));
+        reader.onerror = () => reject(new Error("读取图片失败"));
         reader.readAsDataURL(file);
       });
       const uploaded = await apiFetch<{ imageUrl: string }>("/uploads/message-image", {
@@ -224,7 +224,7 @@ export default function ChatDetailPage() {
               href={`/messages/${conversationId}/connect`}
               className="rounded-full bg-[#F1F3FF] px-2.5 py-1 text-[#6572D8]"
             >
-              🔗 Connect
+              🔗 交换联系方式
             </a>
           ) : null}
         </div>
@@ -255,7 +255,7 @@ export default function ChatDetailPage() {
         {!loading && !error ? (
           <div className="tf-scroll mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto pr-0.5">
             <p className="sticky top-0 rounded-2xl bg-[#FFF7E6] px-3 py-2 text-center text-[11px] leading-4 text-[#9A6B1A]">
-              ⚠️ Be careful with external links. 请通过 Connect 交换联系方式，不要直接发送账号。
+              ⚠️ 小心外部链接。请通过「交换联系方式」交换账号，不要直接在聊天里发送。
             </p>
             {liveMessages.map((message) => {
               const mine = user ? message.senderId === user.id || message.senderId === "me" : message.senderId === "me";
@@ -312,7 +312,7 @@ export default function ChatDetailPage() {
                 send();
               }
             }}
-            placeholder="Type a message…"
+            placeholder="输入消息…"
             aria-label="输入聊天消息"
             data-testid="chat-input"
             maxLength={2000}

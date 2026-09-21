@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Shell } from "@/components/shell";
+import { StatusBadge, statusLabel } from "@/components/status-badge";
 import { ApiRequestError, apiFetch } from "@/lib/api";
 
 /**
@@ -63,8 +64,8 @@ export default function ConnectionsPage() {
 
 const STATUS_OPTIONS = [
   { value: "", label: "全部" },
-  { value: "ACTIVE", label: "ACTIVE" },
-  { value: "REMOVED", label: "REMOVED" },
+  { value: "ACTIVE", label: statusLabel("ACTIVE") },
+  { value: "REMOVED", label: statusLabel("REMOVED") },
 ];
 
 function ConnectionsScreen() {
@@ -259,7 +260,7 @@ function ConnectionsScreen() {
                       <span
                         className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${statusBadge(item.status)}`}
                       >
-                        {item.status}
+                        {statusLabel(item.status)}
                       </span>
                     </td>
                     <td className="py-2 pr-4 text-muted">

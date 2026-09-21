@@ -253,6 +253,15 @@ test.describe("users list — filters, sort and pagination", () => {
   });
 
   // ------------------------------------------------------------------ 3
+  // PC-3.4 — the console renders statuses in Chinese, so the badge and the
+  // filter label agree. The wire values below are still the raw enums.
+  const STATUS_LABELS: Record<string, string> = {
+    ACTIVE: "正常",
+    DISABLED: "已停用",
+    SUSPENDED: "已暂停",
+    BANNED: "已封禁",
+  };
+
   test("Test 3: the status filter reaches the API and matches the database", async ({ page }) => {
     await loginAndLand(page, "pw.superadmin@example.test");
     await openUsers(page);
@@ -273,8 +282,8 @@ test.describe("users list — filters, sort and pagination", () => {
       // makes the assertion real when two statuses have the same row count.
       const badges = page.getByTestId("status-badge");
       await expect(badges).toHaveCount(Math.min(expected, 20));
-      await expect(badges.first()).toHaveText(status);
-      expect((await badges.allTextContents()).every((text) => text.trim() === status)).toBe(true);
+      await expect(badges.first()).toHaveText(STATUS_LABELS[status]);
+      expect((await badges.allTextContents()).every((text) => text.trim() === STATUS_LABELS[status])).toBe(true);
     }
 
     // 「全部」 restores the unfiltered set for this country.
@@ -622,7 +631,7 @@ test.describe("users list — row content", () => {
 
     const row = userRows(page).first();
     await expect(row).toBeVisible();
-    await expect(row.getByTestId("status-badge")).toHaveText("BANNED");
+    await expect(row.getByTestId("status-badge")).toHaveText("已封禁");
     await expect(row).toContainText("国家 ZZ");
     await expect(row).toContainText("创建 ");
     await expect(row).toContainText("最近活跃 ");

@@ -137,7 +137,7 @@ export function AdminSidebar({
         </span>
         <span className={collapsed ? "lg:sr-only" : ""}>
           <span className="block text-[14px] font-semibold leading-4">TalkFirst</span>
-          <span className="block text-[11px] leading-4 text-muted">Admin Console</span>
+          <span className="block text-[11px] leading-4 text-muted">管理后台</span>
         </span>
       </div>
 

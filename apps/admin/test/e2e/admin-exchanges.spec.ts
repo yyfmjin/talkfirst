@@ -747,7 +747,7 @@ test.describe("Phase C3 — Contact Exchange", () => {
     await openExchanges(page);
     await page.goto(`/exchanges/${fixtureIds.acceptedExchangeId}`);
 
-    await expect(page.getByTestId("exchange-detail-status")).toHaveText("ACCEPTED");
+    await expect(page.getByTestId("exchange-detail-status")).toHaveText("已接受");
     await expect(page.getByTestId("exchange-detail-platform-TELEGRAM")).toBeVisible();
     await expect(page.getByTestId("exchange-detail-message")).toContainText(
       "Let's swap Telegram",
@@ -838,7 +838,7 @@ test.describe("Phase C3 — Contact Exchange", () => {
     const context = page.getByTestId("exchange-connection");
     await expect(context).toBeVisible();
     await expect(context).toContainText(fixtureIds.connectionId);
-    await expect(context).toContainText("ACTIVE");
+    await expect(context).toContainText("已连接");
     await expect(page.getByTestId("exchange-connection-missing")).toHaveCount(0);
   });
 
@@ -849,7 +849,7 @@ test.describe("Phase C3 — Contact Exchange", () => {
 
     // The exchange itself is fully readable — an operator inspecting it must not
     // be blocked because a link is stale.
-    await expect(page.getByTestId("exchange-detail-status")).toHaveText("PENDING");
+    await expect(page.getByTestId("exchange-detail-status")).toHaveText("待响应");
     await expect(page.getByTestId("exchange-connection-missing")).toBeVisible();
     await expect(page.getByTestId("exchange-connection-missing")).toContainText(
       "连接记录不可用",

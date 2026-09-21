@@ -74,7 +74,7 @@ export default function LoginPage() {
         <p className="mt-2 text-center text-[13px] text-muted">很高兴再次见到你</p>
 
         <form className="mt-8 space-y-4" onSubmit={(event) => void handleSubmit(event)}>
-          <Field label="邮箱地址" placeholder="your@email.com" value={email} onChange={setEmail} />
+          <Field label="邮箱地址" placeholder="请输入邮箱地址" value={email} onChange={setEmail} />
           <Field
             label="密码"
             type="password"

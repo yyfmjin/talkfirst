@@ -84,7 +84,7 @@ test.describe("admin user detail — behaviour by role", () => {
     await expect(page.getByRole("dialog")).toHaveCount(0);
 
     // Every dialog above was cancelled, so nothing was written.
-    await expect(page.locator("main")).toContainText("ACTIVE");
+    await expect(page.locator("main")).toContainText("正常");
   });
 
   // ------------------------------------------------------------------ 2
@@ -99,7 +99,7 @@ test.describe("admin user detail — behaviour by role", () => {
     await expect(page.getByRole("button", { name: "永久封禁", exact: true })).toHaveCount(0);
 
     // The member starts ACTIVE, so the change below is a real transition.
-    await expect(page.locator("main")).toContainText("ACTIVE");
+    await expect(page.locator("main")).toContainText("正常");
 
     // An allowed action completes end to end: button → dialog → API → DB → re-render.
     await page.getByRole("button", { name: "停用", exact: true }).click();
@@ -108,7 +108,7 @@ test.describe("admin user detail — behaviour by role", () => {
     await dialog.getByRole("button", { name: "停用", exact: true }).click();
 
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    await expect(page.locator("main")).toContainText("DISABLED");
+    await expect(page.locator("main")).toContainText("已停用");
   });
 
   // ------------------------------------------------------------------ 3

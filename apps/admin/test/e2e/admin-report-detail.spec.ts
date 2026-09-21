@@ -362,7 +362,7 @@ test.describe("report detail", () => {
 
   test("Test 35: reviewing a report writes real history and updates the status", async ({ page }) => {
     await openReport(page, userReportId);
-    await expect(page.getByTestId("status-badge")).toHaveText("OPEN");
+    await expect(page.getByTestId("status-badge")).toHaveText("待处理");
 
     // Drive the real action through the confirmation dialog. The reason is
     // mandatory on the wire, so this also proves the dialog supplies it.
@@ -380,7 +380,7 @@ test.describe("report detail", () => {
     // The screen re-reads after the write, so the badge and the history both
     // have to reflect the new state without a manual reload. Waiting on the
     // response first keeps the assertion from racing the re-fetch.
-    await expect(page.getByTestId("status-badge")).toHaveText("REVIEWING", { timeout: 15_000 });
+    await expect(page.getByTestId("status-badge")).toHaveText("审核中", { timeout: 15_000 });
     const history = page.getByTestId("report-history");
     await expect(history).not.toContainText("还没有审核记录");
     await expect(history).toContainText("browser fixture review");
@@ -450,7 +450,7 @@ test.describe("report detail", () => {
 
   test("Test 42: a MOMENT report is reviewed by the same workflow and audited", async ({ page }) => {
     await openReport(page, momentReportId);
-    await expect(page.getByTestId("status-badge")).toHaveText("OPEN");
+    await expect(page.getByTestId("status-badge")).toHaveText("待处理");
 
     // No MOMENT-specific review path: the buttons and the dialog are the ones a
     // USER or MESSAGE report uses.
@@ -460,7 +460,7 @@ test.describe("report detail", () => {
     await dialog.locator("textarea").fill("moment fixture review");
     await dialog.getByRole("button", { name: "处理" }).last().click();
 
-    await expect(page.getByTestId("status-badge")).toHaveText("RESOLVED", { timeout: 15_000 });
+    await expect(page.getByTestId("status-badge")).toHaveText("已处理", { timeout: 15_000 });
     // The screen re-reads the whole detail after the write, so the evidence has
     // to survive it.
     await expect(page.getByTestId("report-moment")).toContainText(MOMENT_BODY);

@@ -358,9 +358,9 @@ export class SocialSafetyController {
         ...scan,
         links: this.safety.extractLinks(dto.content ?? ""),
         warning: scan.hasExternalLink
-          ? "⚠️ Be careful with external links. TalkFirst will never ask for money or codes."
+          ? "⚠️ 小心外部链接。TalkFirst 不会向你索要钱款或验证码。"
           : scan.hasContactLeak
-            ? "请通过 Connect 交换联系方式，不要直接在聊天里发送账号。"
+            ? "请通过「交换联系方式」交换账号，不要直接在聊天里发送。"
             : null,
       },
     };

@@ -107,7 +107,7 @@ test("user detail renders Phase B3 aggregates and audit actor types", () => {
   assert.match(detail, /发出举报/);
   assert.match(detail, /被封锁/);
   assert.match(detail, /封锁他人/);
-  assert.match(detail, /Social Accounts/);
+  assert.match(detail, /社交账号/);
   // SYSTEM rows render as 「系统 · 自动」; USER rows show the admin id.
   assert.match(detail, /系统 · 自动/);
   assert.match(detail, /actorType === "SYSTEM"/);

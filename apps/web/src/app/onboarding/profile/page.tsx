@@ -151,7 +151,7 @@ export default function BasicInfoPage() {
               </label>
             </div>
             <div className="mt-4">
-              <Field label="城市（可选）" placeholder="Shanghai" value={city} onChange={setCity} />
+              <Field label="城市（可选）" placeholder="上海" value={city} onChange={setCity} />
             </div>
             <p className="mb-2 mt-5 text-[13px] text-muted">性别（可选）</p>
             <div className="grid grid-cols-2 gap-2">

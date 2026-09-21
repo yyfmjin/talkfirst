@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Shell } from "@/components/shell";
+import { statusLabel } from "@/components/status-badge";
 import { ApiRequestError, apiFetch } from "@/lib/api";
 
 /**
@@ -89,10 +90,10 @@ const DEFAULT_FILTERS: Filters = {
  */
 const STATUS_OPTIONS = [
   { value: "", label: "全部" },
-  { value: "PENDING", label: "PENDING" },
-  { value: "ACCEPTED", label: "ACCEPTED" },
-  { value: "REJECTED", label: "REJECTED" },
-  { value: "CANCELLED", label: "CANCELLED" },
+  { value: "PENDING", label: statusLabel("PENDING") },
+  { value: "ACCEPTED", label: statusLabel("ACCEPTED") },
+  { value: "REJECTED", label: statusLabel("REJECTED") },
+  { value: "CANCELLED", label: statusLabel("CANCELLED") },
 ];
 
 /**
@@ -404,7 +405,7 @@ function ExchangesScreen() {
                         data-testid={`exchange-status-${item.status}`}
                         className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${statusBadge(item.status)}`}
                       >
-                        {item.status}
+                        {statusLabel(item.status)}
                       </span>
                     </td>
                     <td className="py-2 pr-4 text-muted">

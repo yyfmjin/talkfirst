@@ -105,7 +105,7 @@ export default function LanguagesPage() {
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="搜索语言 / code，如 中文、en"
+          placeholder="搜索语言或代码，如 中文、en"
           aria-label="搜索语言"
           className="mt-4 h-11 w-full min-w-0 rounded-xl border border-line bg-[#F8FAFF] px-3 text-[13px] outline-none focus:ring-2 focus:ring-indigo-200"
         />

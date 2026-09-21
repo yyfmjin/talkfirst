@@ -3,10 +3,17 @@ import type { ReactNode } from "react";
 /**
  * One pill for every status enum the console renders.
  *
- * The badge shows the **raw status value** unless a `label` is given. That is
- * on purpose: the existing suites assert on `OPEN` / `SUSPENDED` / `RESOLVED`
- * text, and a badge that silently translated those would break them — and would
- * also hide the exact value an operator is cross-checking against the API.
+ * PC-3.4 — the badge shows a Chinese label for the status, not the raw enum.
+ * The console is a Chinese-language product surface, and `OPEN` next to
+ * 「待处理」 in the same row was the clearest example of the mixed-language UI
+ * this phase removes. The status value is untouched: it stays the colour key
+ * here and stays the wire value everywhere else, so an operator still has
+ * exactly one spelling to cross-check against the API.
+ *
+ * The wording is not invented per screen — it matches the labels the filter
+ * dropdowns already used (`reports/page.tsx` had 待处理 / 审核中 / 已处理 /
+ * 已驳回). An unmapped status falls back to the raw value rather than to a
+ * blank pill, so a new enum member is visible instead of invisible.
  *
  * Colour is the only thing this component decides, and it decides it from a
  * single table so two screens can never colour the same status differently.
@@ -55,6 +62,41 @@ export function toneForStatus(status: string | null | undefined): StatusTone {
   return STATUS_TONE[status.toUpperCase()] ?? "neutral";
 }
 
+/**
+ * Status → Chinese label. Mirrors the console's own filter dropdowns, so a row
+ * and the filter that selected it always read the same way.
+ */
+export const STATUS_LABELS: Record<string, string> = {
+  // User / account
+  ACTIVE: "正常",
+  SUSPENDED: "已暂停",
+  BANNED: "已封禁",
+  DISABLED: "已停用",
+  DELETED: "已删除",
+  // Reports & moderation
+  OPEN: "待处理",
+  REVIEWING: "审核中",
+  RESOLVED: "已处理",
+  REJECTED: "已驳回",
+  // Connections & exchanges
+  PENDING: "待响应",
+  ACCEPTED: "已接受",
+  DECLINED: "已拒绝",
+  CANCELLED: "已取消",
+  REMOVED: "已解除",
+  // Risk severities
+  LOW: "低",
+  MEDIUM: "中",
+  HIGH: "高",
+  CRITICAL: "严重",
+};
+
+/** Falls back to the raw value: a new enum member stays visible, not blank. */
+export function statusLabel(status: string | null | undefined): string {
+  if (!status) return "";
+  return STATUS_LABELS[status.toUpperCase()] ?? status;
+}
+
 export type StatusBadgeProps = {
   status: string;
   /** Overrides the visible text while keeping `status` as the colour key. */
@@ -70,7 +112,7 @@ export function StatusBadge({ status, label, testId, className = "" }: StatusBad
       {...(testId ? { "data-testid": testId } : {})}
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${TONE_CLASS[toneForStatus(status)]} ${className}`}
     >
-      {label ?? status}
+      {label ?? statusLabel(status)}
     </span>
   );
 }

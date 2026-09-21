@@ -44,9 +44,9 @@ type RecommendationResponse = {
 };
 
 const FILTERS = [
-  { id: "all", label: "🌎 Everyone" },
-  { id: "language", label: "Language exchange" },
-  { id: "gaming", label: "Gaming" },
+  { id: "all", label: "🌎 全部" },
+  { id: "language", label: "语言交换" },
+  { id: "gaming", label: "游戏搭子" },
 ] as const;
 
 type FilterId = (typeof FILTERS)[number]["id"];
@@ -113,7 +113,7 @@ export default function DiscoverPage() {
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-4">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-[22px] font-semibold">Discover</h1>
+            <h1 className="text-[22px] font-semibold">发现</h1>
             <p className="mt-1 text-[13px] text-muted">先聊聊，再成为朋友。</p>
           </div>
           <div className="flex flex-col items-end gap-2">

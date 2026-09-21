@@ -48,7 +48,7 @@ async function doFetch<T>(path: string, options: RequestInit & { retry?: boolean
   }
 
   if (!response.ok || !payload?.success) {
-    throw new ApiRequestError(payload?.error ?? { code: "NETWORK_ERROR", message: "API unreachable" });
+    throw new ApiRequestError(payload?.error ?? { code: "NETWORK_ERROR", message: "无法连接服务器，请检查网络后重试。" });
   }
   return payload.data as T;
 }

@@ -33,7 +33,7 @@ export default function VerifyPage() {
 
   const maskedEmail = user?.email
     ? user.email.replace(/^(.{2}).*(@.*)$/, (_match, head: string, tail: string) => `${head}***${tail}`)
-    : "your email";
+    : "你的邮箱";
 
   async function sendCode() {
     if (!user?.email) {

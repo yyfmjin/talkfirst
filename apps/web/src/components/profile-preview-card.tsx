@@ -253,9 +253,9 @@ export function ProfilePreviewCard({
                     className="min-h-[2.5rem] flex-[2] text-[13px]"
                     onClick={() => void sayHello()}
                     disabled={helloSending || helloDone}
-                    aria-label="Say Hello"
+                    aria-label="打招呼"
                   >
-                    {helloDone ? "已 Say Hello" : helloSending ? "发送中…" : "Say Hello"}
+                    {helloDone ? "已打招呼" : helloSending ? "发送中…" : "打招呼"}
                   </GradientButton>
                 )}
               </div>

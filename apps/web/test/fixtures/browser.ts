@@ -23,7 +23,7 @@ export async function submitLogin(page: Page, email: string) {
 
 export async function loginAndLand(page: Page, email: string) {
   await submitLogin(page, email);
-  await expect(page.getByRole("heading", { name: "Discover" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("heading", { name: "发现" })).toBeVisible({ timeout: 20_000 });
 }
 
 /** The one shared profile card (`data-testid="profile-preview-card"`). */

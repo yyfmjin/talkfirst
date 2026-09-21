@@ -58,7 +58,7 @@ export default function ConnectionsPage() {
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-6">
         <h1 className="text-[22px] font-semibold">连接</h1>
         <p className="mt-1 text-[13px] text-muted">
-          Connection 不是好友，而是双方愿意继续保持联系的人。双方同意后才会交换社交账号。
+          连接不是好友，而是双方愿意继续保持联系的人。双方同意后才会交换社交账号。
         </p>
 
         {loading ? (
@@ -79,9 +79,9 @@ export default function ConnectionsPage() {
 
         {!loading && !error && items.length === 0 ? (
           <div className="mt-6 rounded-3xl border border-dashed border-indigo-200 bg-[#F7F9FF] p-6 text-center">
-            <p className="text-[15px] font-medium">还没有 Connection</p>
+            <p className="text-[15px] font-medium">还没有连接</p>
             <p className="mt-2 text-[13px] leading-6 text-muted">
-              去 Discover Say Hello，对方接受后，这里会出现你们的连接。
+              去「发现」打招呼，对方接受后，这里会出现你们的连接。
             </p>
           </div>
         ) : null}

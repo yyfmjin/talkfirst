@@ -55,7 +55,7 @@ export default function LoginPage() {
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center p-6">
       <div className="rounded-2xl bg-white p-6 shadow-sm">
-        <h1 className="text-[20px] font-semibold">TalkFirst Admin</h1>
+        <h1 className="text-[20px] font-semibold">TalkFirst 管理后台</h1>
         <p className="mt-1 text-[13px] text-muted">独立后台 · http://localhost:3001</p>
         <label className="mt-5 block text-[12px] text-muted">
           管理员邮箱
@@ -87,7 +87,7 @@ export default function LoginPage() {
           {busy ? "登录中…" : "进入后台"}
         </button>
         <p className="mt-4 text-[12px] leading-5 text-muted">
-          普通用户即使登录成功也会被 /admin/me 拦截。首次开通请用 seed 或 DB 把账号设为 isAdmin。
+          普通用户即使登录成功也会被 /admin/me 拦截。首次开通请先用种子数据或数据库把账号设为 isAdmin。
         </p>
       </div>
     </div>

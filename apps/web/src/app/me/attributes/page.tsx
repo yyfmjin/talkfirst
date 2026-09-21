@@ -203,7 +203,7 @@ export default function ProfileAttributesPage() {
       <ScreenHeader title="交友属性" backHref="/me" />
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-4">
         <p className="text-[13px] leading-6 text-muted">
-          标签让别人更快了解你。每一栏最多 10 个，设为「公开」后也会用于 Discover 的推荐。
+          标签让别人更快了解你。每一栏最多 10 个，设为「公开」后也会用于「发现」的推荐。
         </p>
 
         {loading ? (

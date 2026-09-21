@@ -80,7 +80,7 @@ export default function CountriesPage() {
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="搜索国家，如 Japan、JP"
+            placeholder="搜索国家或地区，如 日本、JP"
             aria-label="搜索国家"
             className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-[#F8FAFF] px-3 text-[13px] outline-none focus:ring-2 focus:ring-indigo-200"
           />

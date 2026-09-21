@@ -4,6 +4,7 @@ import { useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { friendlyErrorMessage } from "@/lib/errors";
+import { REPORT_REASONS, reportReasonLabel } from "@/lib/report-reasons";
 
 /**
  * PC-2.5.4 — reporting one moment, from Post Detail.
@@ -13,7 +14,8 @@ import { friendlyErrorMessage } from "@/lib/errors";
  * free-form column, so the option set can only come from the endpoint that
  * validates it. An option that is not in that list would be rejected with
  * `403 INVALID_REASON`, which is why the codes are sent verbatim and only the
- * labels are translated.
+ * labels are translated (PC-3.4 moved the pair into `@/lib/report-reasons` so
+ * the chat safety menu and this dialog cannot drift apart).
  *
  * The request body carries exactly `{ momentId, reason, description }`. It never
  * names a user: the author is read from the moment server-side, so a client
@@ -26,28 +28,6 @@ import { friendlyErrorMessage } from "@/lib/errors";
  * `403 CANNOT_REPORT_SELF`. The dialog stays open on any of those and says so —
  * a rejection is never rendered as a success.
  */
-
-/** The reason codes the report endpoint accepts, in the order it lists them. */
-export const REPORT_REASONS = [
-  "Harassment",
-  "Spam",
-  "Scam",
-  "Sexual content",
-  "Hate speech",
-  "Fake profile",
-  "Other",
-] as const;
-
-/** The codes have no Chinese mapping server-side, so this is the only one. */
-const REASON_LABELS: Record<string, string> = {
-  Harassment: "骚扰",
-  Spam: "垃圾信息",
-  Scam: "欺诈",
-  "Sexual content": "色情内容",
-  "Hate speech": "仇恨言论",
-  "Fake profile": "虚假资料",
-  Other: "其它",
-};
 
 /** `ReportDto.description` is `@MaxLength(1000)`; the field cannot exceed it. */
 const DESCRIPTION_MAX = 1000;
@@ -117,7 +97,7 @@ export function MomentReportDialog({
                 reason === item ? "border-[#8B6CFF] bg-[#F4F1FF]" : "border-line",
               )}
             >
-              {REASON_LABELS[item] ?? item}
+              {reportReasonLabel(item)}
             </button>
           ))}
         </div>
