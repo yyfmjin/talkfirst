@@ -25,3 +25,5 @@ test-results/
 
 # AI tool session notes (kept local; not part of the product)
 .workbuddy-ai/
+
+talkfirst-*.tar.gz
