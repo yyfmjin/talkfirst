@@ -209,9 +209,17 @@ export function apiReportReasons(repoRoot) {
   return [...block[1].matchAll(/"([^"]+)"/g)].map((match) => match[1]);
 }
 
+/**
+ * The admin console's one exemption: the login screen's operator note names the
+ * guard it explains. `/admin/me` is the route that rejects a non-admin and
+ * `isAdmin` is the column that has to be set, so neither can be translated.
+ * `apps/admin/test/ui-copy.test.mjs` passes the same list.
+ */
+const ADMIN_ALLOWED = ["/admin/me", "isAdmin"];
+
 if (process.argv[1] && process.argv[1].endsWith("ui-copy-scan.mjs")) {
   const findings = scanUiCopy({ root: "apps/web/src" }).concat(
-    scanUiCopy({ root: "apps/admin/src" }),
+    scanUiCopy({ root: "apps/admin/src", allowed: ADMIN_ALLOWED }),
   );
   for (const finding of findings) {
     console.log(`${finding.file}:${finding.line}\t[${finding.kind}]\t${finding.text}`);
