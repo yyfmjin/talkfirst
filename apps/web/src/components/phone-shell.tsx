@@ -1,4 +1,5 @@
 import { cn } from "@/lib/cn";
+import { PhoneStatusBar } from "@/components/phone-status-bar";
 
 export function PhoneShell({
   children,
@@ -16,14 +17,7 @@ export function PhoneShell({
           className,
         )}
       >
-        <div className="pointer-events-none z-10 flex shrink-0 items-center justify-between bg-white/95 px-6 pb-1 pt-3 text-[12px] font-medium text-ink/80">
-          <span>9:41</span>
-          <span className="flex items-center gap-1 text-[11px]">
-            <span>●●●</span>
-            <span>▲</span>
-            <span>■</span>
-          </span>
-        </div>
+        <PhoneStatusBar />
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
       </div>
     </main>
