@@ -239,9 +239,9 @@ test.describe("dashboard — landing, KPIs and lists", () => {
 
     for (const label of [
       "用户总数",
-      "ACTIVE",
-      "SUSPENDED",
-      "BANNED",
+      "正常账号",
+      "已暂停",
+      "已封禁",
       "今日新增",
       "7 日新增",
       "待处理举报",
@@ -259,9 +259,9 @@ test.describe("dashboard — landing, KPIs and lists", () => {
     await loginAndLand(page, SUPERADMIN_EMAIL);
 
     await expectKpi(page, "用户总数", expected.users);
-    await expectKpi(page, "ACTIVE", expected.active);
-    await expectKpi(page, "SUSPENDED", expected.suspended);
-    await expectKpi(page, "BANNED", expected.banned);
+    await expectKpi(page, "正常账号", expected.active);
+    await expectKpi(page, "已暂停", expected.suspended);
+    await expectKpi(page, "已封禁", expected.banned);
     await expectKpi(page, "今日新增", expected.todayNewUsers);
     await expectKpi(page, "7 日新增", expected.newUsers7d);
     await expectKpi(page, "待处理举报", expected.reportsOpen);
@@ -271,8 +271,8 @@ test.describe("dashboard — landing, KPIs and lists", () => {
     // The zero case is asserted explicitly rather than left to chance: such a
     // card is visible and reads "0" instead of being hidden or left blank.
     const statusPairs: Array<[string, number]> = [
-      ["SUSPENDED", expected.suspended],
-      ["BANNED", expected.banned],
+      ["已暂停", expected.suspended],
+      ["已封禁", expected.banned],
     ];
     for (const [label, value] of statusPairs.filter(([, count]) => count === 0)) {
       const card = kpiCard(page, label);
@@ -386,7 +386,7 @@ test.describe("dashboard — landing, KPIs and lists", () => {
 
     // Zeroed KPIs still render rather than collapsing the grid.
     await expectKpi(page, "用户总数", 0);
-    await expectKpi(page, "SUSPENDED", 0);
+    await expectKpi(page, "已暂停", 0);
     await expectKpi(page, "待处理举报", 0);
   });
 
