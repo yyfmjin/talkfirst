@@ -58,7 +58,7 @@ export async function openNav(page: Page, label: string) {
 export async function openUserDetail(page: Page, keyword: string) {
   await openNav(page, "用户");
   await expect(page.getByRole("heading", { name: "用户管理" })).toBeVisible();
-  await page.getByPlaceholder("搜索 email / nickname").fill(keyword);
+  await page.getByPlaceholder("搜索邮箱 / 昵称 / 用户 ID").fill(keyword);
   await page.getByRole("button", { name: "搜索" }).click();
   await page.locator("main a[href^='/users/']").first().click();
   await expect(page).toHaveURL(/\/users\/[0-9a-f-]{36}$/);

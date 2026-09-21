@@ -167,7 +167,7 @@ function UserDetailScreen({ params }: { params: Promise<{ id: string }> }) {
               {data.nickname ?? data.email} {data.isAdmin ? "🛡️" : ""}
             </p>
             <p className="mt-1 text-[12px] text-muted">
-              {data.email} · {statusLabel(data.status)} · {data.countryCode ?? "-"}
+              {data.email} · {statusLabel(data.status, "USER")} · {data.countryCode ?? "-"}
               {data.adminUser ? ` · ${data.adminUser.role}` : ""}
             </p>
             <p className="mt-1 text-[12px] text-muted">封禁原因：{data.banReason ?? "—"}</p>
@@ -248,7 +248,7 @@ function UserDetailScreen({ params }: { params: Promise<{ id: string }> }) {
             ) : (
               data.reportsReceived.map((item) => (
                 <p key={item.id} className="mt-1 text-[12px] text-muted">
-                  {reportReasonLabel(item.reason)} · {statusLabel(item.status)}
+                  {reportReasonLabel(item.reason)} · {statusLabel(item.status, "REPORT")}
                 </p>
               ))
             )}
@@ -264,7 +264,7 @@ function UserDetailScreen({ params }: { params: Promise<{ id: string }> }) {
             ) : (
               data.reportsMade.map((item) => (
                 <p key={item.id} className="mt-1 text-[12px] text-muted">
-                  {reportReasonLabel(item.reason)} · {statusLabel(item.status)}
+                  {reportReasonLabel(item.reason)} · {statusLabel(item.status, "REPORT")}
                 </p>
               ))
             )}

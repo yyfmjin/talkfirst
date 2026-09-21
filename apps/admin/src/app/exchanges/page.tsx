@@ -90,10 +90,10 @@ const DEFAULT_FILTERS: Filters = {
  */
 const STATUS_OPTIONS = [
   { value: "", label: "全部" },
-  { value: "PENDING", label: statusLabel("PENDING") },
-  { value: "ACCEPTED", label: statusLabel("ACCEPTED") },
-  { value: "REJECTED", label: statusLabel("REJECTED") },
-  { value: "CANCELLED", label: statusLabel("CANCELLED") },
+  { value: "PENDING", label: statusLabel("PENDING", "EXCHANGE") },
+  { value: "ACCEPTED", label: statusLabel("ACCEPTED", "EXCHANGE") },
+  { value: "REJECTED", label: statusLabel("REJECTED", "EXCHANGE") },
+  { value: "CANCELLED", label: statusLabel("CANCELLED", "EXCHANGE") },
 ];
 
 /**
@@ -405,7 +405,7 @@ function ExchangesScreen() {
                         data-testid={`exchange-status-${item.status}`}
                         className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${statusBadge(item.status)}`}
                       >
-                        {statusLabel(item.status)}
+                        {statusLabel(item.status, "EXCHANGE")}
                       </span>
                     </td>
                     <td className="py-2 pr-4 text-muted">

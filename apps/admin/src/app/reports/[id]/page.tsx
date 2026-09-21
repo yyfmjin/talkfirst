@@ -233,7 +233,7 @@ function ReportDetailScreen() {
           {/* 举报内容 */}
           <section data-testid="report-summary" className="rounded-2xl border border-line bg-card shadow-card p-4">
             <div className="flex flex-wrap items-center gap-2">
-              <StatusBadge status={data.report.status} testId="status-badge" />
+              <StatusBadge status={data.report.status} domain="REPORT" testId="status-badge" />
               <span
                 data-testid="report-target-badge"
                 className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${

@@ -159,7 +159,7 @@ function ConnectionDetailScreen() {
                   <span
                     className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${statusBadge(data.connection.status)}`}
                   >
-                    {statusLabel(data.connection.status)}
+                    {statusLabel(data.connection.status, "CONNECTION")}
                   </span>
                 </p>
               </div>

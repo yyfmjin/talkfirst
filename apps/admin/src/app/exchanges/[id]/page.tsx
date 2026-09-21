@@ -205,7 +205,7 @@ function ExchangeDetailScreen() {
                     data-testid="exchange-detail-status"
                     className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${statusBadge(data.exchange.status)}`}
                   >
-                    {statusLabel(data.exchange.status)}
+                    {statusLabel(data.exchange.status, "EXCHANGE")}
                   </span>
                 </p>
               </div>
@@ -347,7 +347,7 @@ function ExchangeDetailScreen() {
                   <span
                     className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${statusBadge(data.connection.status)}`}
                   >
-                    {statusLabel(data.connection.status)}
+                    {statusLabel(data.connection.status, "CONNECTION")}
                   </span>
                 </p>
                 <p className="mt-1">

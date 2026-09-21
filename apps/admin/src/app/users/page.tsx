@@ -107,10 +107,10 @@ const DEFAULT_FILTERS: Filters = {
 /** `ALL` is the wire value the API has always understood for "no status filter". */
 const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "ALL", label: "全部" },
-  { value: "ACTIVE", label: statusLabel("ACTIVE") },
-  { value: "DISABLED", label: statusLabel("DISABLED") },
-  { value: "SUSPENDED", label: statusLabel("SUSPENDED") },
-  { value: "BANNED", label: statusLabel("BANNED") },
+  { value: "ACTIVE", label: statusLabel("ACTIVE", "USER") },
+  { value: "DISABLED", label: statusLabel("DISABLED", "USER") },
+  { value: "SUSPENDED", label: statusLabel("SUSPENDED", "USER") },
+  { value: "BANNED", label: statusLabel("BANNED", "USER") },
 ];
 
 /**
@@ -500,7 +500,7 @@ function UsersScreen() {
                   <p className="mt-1 flex flex-wrap items-center gap-1 text-[12px] text-muted">
                     <span>{item.email}</span>
                     <span>·</span>
-                    <StatusBadge status={item.status} testId="status-badge" />
+                    <StatusBadge status={item.status} domain="USER" testId="status-badge" />
                     <span>·</span>
                     <span>国家 {item.countryCode ?? "-"}</span>
                     <span>·</span>

@@ -167,7 +167,7 @@ function rowLinks(page: Page) {
 }
 
 function searchInput(page: Page) {
-  return page.getByPlaceholder("搜索 email / nickname");
+  return page.getByPlaceholder("搜索邮箱 / 昵称 / 用户 ID");
 }
 
 async function applyFilters(page: Page) {

@@ -64,8 +64,8 @@ export default function ConnectionsPage() {
 
 const STATUS_OPTIONS = [
   { value: "", label: "全部" },
-  { value: "ACTIVE", label: statusLabel("ACTIVE") },
-  { value: "REMOVED", label: statusLabel("REMOVED") },
+  { value: "ACTIVE", label: statusLabel("ACTIVE", "CONNECTION") },
+  { value: "REMOVED", label: statusLabel("REMOVED", "CONNECTION") },
 ];
 
 function ConnectionsScreen() {
@@ -260,7 +260,7 @@ function ConnectionsScreen() {
                       <span
                         className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${statusBadge(item.status)}`}
                       >
-                        {statusLabel(item.status)}
+                        {statusLabel(item.status, "CONNECTION")}
                       </span>
                     </td>
                     <td className="py-2 pr-4 text-muted">

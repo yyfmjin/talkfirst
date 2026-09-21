@@ -273,7 +273,7 @@ function RiskScreen() {
                       <span>·</span>
                       <span>{reportReasonLabel(report.reason)}</span>
                       <span>·</span>
-                      <Badge status={report.status}>{statusLabel(report.status)}</Badge>
+                      <Badge status={report.status}>{statusLabel(report.status, "REPORT")}</Badge>
                       <span>·</span>
                       <span>{new Date(report.createdAt).toLocaleString()}</span>
                     </p>
@@ -331,7 +331,7 @@ function RiskScreen() {
                     </p>
                     <p className="mt-1 text-muted">
                       {reportReasonLabel(signal.reason)} ·{" "}
-                      <Badge status={signal.status}>{statusLabel(signal.status)}</Badge> ·{" "}
+                      <Badge status={signal.status}>{statusLabel(signal.status, "REPORT")}</Badge> ·{" "}
                       {new Date(signal.createdAt).toLocaleString()}
                     </p>
                     <p className="mt-1 text-muted">

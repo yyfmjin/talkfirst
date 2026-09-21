@@ -10,10 +10,14 @@ import type { ReactNode } from "react";
  * here and stays the wire value everywhere else, so an operator still has
  * exactly one spelling to cross-check against the API.
  *
- * The wording is not invented per screen — it matches the labels the filter
- * dropdowns already used (`reports/page.tsx` had 待处理 / 审核中 / 已处理 /
- * 已驳回). An unmapped status falls back to the raw value rather than to a
- * blank pill, so a new enum member is visible instead of invisible.
+ * ## Why the label needs a domain
+ *
+ * `ACTIVE` is not one thing: a `User.status` of `ACTIVE` reads 「正常」 while a
+ * `Connection.status` of `ACTIVE` reads 「已连接」. A single flat map cannot hold
+ * both, and picking one silently mislabels the other — so the domain is a
+ * required parameter rather than a default. An unmapped status falls back to
+ * the raw value rather than to a blank pill, so a new enum member is visible
+ * instead of invisible.
  *
  * Colour is the only thing this component decides, and it decides it from a
  * single table so two screens can never colour the same status differently.
@@ -63,42 +67,54 @@ export function toneForStatus(status: string | null | undefined): StatusTone {
 }
 
 /**
- * Status → Chinese label. Mirrors the console's own filter dropdowns, so a row
- * and the filter that selected it always read the same way.
+ * The five enums the console renders. The wording is not invented per screen —
+ * it matches the labels the filter dropdowns already used (`reports/page.tsx`
+ * had 待处理 / 审核中 / 已处理 / 已驳回).
  */
-export const STATUS_LABELS: Record<string, string> = {
-  // User / account
-  ACTIVE: "正常",
-  SUSPENDED: "已暂停",
-  BANNED: "已封禁",
-  DISABLED: "已停用",
-  DELETED: "已删除",
-  // Reports & moderation
-  OPEN: "待处理",
-  REVIEWING: "审核中",
-  RESOLVED: "已处理",
-  REJECTED: "已驳回",
-  // Connections & exchanges
-  PENDING: "待响应",
-  ACCEPTED: "已接受",
-  DECLINED: "已拒绝",
-  CANCELLED: "已取消",
-  REMOVED: "已解除",
-  // Risk severities
-  LOW: "低",
-  MEDIUM: "中",
-  HIGH: "高",
-  CRITICAL: "严重",
+export type StatusDomain = "USER" | "REPORT" | "CONNECTION" | "EXCHANGE" | "RISK";
+
+const STATUS_LABELS: Record<StatusDomain, Record<string, string>> = {
+  USER: {
+    ACTIVE: "正常",
+    SUSPENDED: "已暂停",
+    BANNED: "已封禁",
+    DISABLED: "已停用",
+    DELETED: "已删除",
+  },
+  REPORT: {
+    OPEN: "待处理",
+    REVIEWING: "审核中",
+    RESOLVED: "已处理",
+    REJECTED: "已驳回",
+  },
+  CONNECTION: {
+    ACTIVE: "已连接",
+    REMOVED: "已解除",
+  },
+  EXCHANGE: {
+    PENDING: "待响应",
+    ACCEPTED: "已接受",
+    REJECTED: "已拒绝",
+    CANCELLED: "已取消",
+  },
+  RISK: {
+    LOW: "低",
+    MEDIUM: "中",
+    HIGH: "高",
+    CRITICAL: "严重",
+  },
 };
 
 /** Falls back to the raw value: a new enum member stays visible, not blank. */
-export function statusLabel(status: string | null | undefined): string {
+export function statusLabel(status: string | null | undefined, domain: StatusDomain): string {
   if (!status) return "";
-  return STATUS_LABELS[status.toUpperCase()] ?? status;
+  return STATUS_LABELS[domain][status.toUpperCase()] ?? status;
 }
 
 export type StatusBadgeProps = {
   status: string;
+  /** Which enum `status` belongs to — `ACTIVE` differs between domains. */
+  domain: StatusDomain;
   /** Overrides the visible text while keeping `status` as the colour key. */
   label?: ReactNode;
   /** Pass `"status-badge"` where a suite locates the badge by testid. */
@@ -106,13 +122,13 @@ export type StatusBadgeProps = {
   className?: string;
 };
 
-export function StatusBadge({ status, label, testId, className = "" }: StatusBadgeProps) {
+export function StatusBadge({ status, domain, label, testId, className = "" }: StatusBadgeProps) {
   return (
     <span
       {...(testId ? { "data-testid": testId } : {})}
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${TONE_CLASS[toneForStatus(status)]} ${className}`}
     >
-      {label ?? statusLabel(status)}
+      {label ?? statusLabel(status, domain)}
     </span>
   );
 }

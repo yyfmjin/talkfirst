@@ -234,7 +234,7 @@ function DashboardScreen() {
                     <span>·</span>
                     <span>{report.reason}</span>
                     <span>·</span>
-                    <StatusBadge status={report.status} />
+                    <StatusBadge status={report.status} domain="REPORT" />
                     <span>·</span>
                     <span>{new Date(report.createdAt).toLocaleString()}</span>
                   </p>

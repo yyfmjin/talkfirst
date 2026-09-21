@@ -468,9 +468,9 @@ function ReportsScreen() {
               <p className="mt-1 flex flex-wrap items-center gap-1 text-[12px] text-muted">
                 <span>{reportReasonLabel(item.reason)}</span>
                 <span>·</span>
-                <StatusBadge status={item.status} testId="status-badge" />
+                <StatusBadge status={item.status} domain="REPORT" testId="status-badge" />
                 <span>·</span>
-                <span>被举报人 {statusLabel(item.reportedUser.status)}</span>
+                <span>被举报人 {statusLabel(item.reportedUser.status, "USER")}</span>
                 <span>·</span>
                 <span>{formatTime(item.createdAt)}</span>
               </p>
