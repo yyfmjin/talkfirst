@@ -26,7 +26,14 @@ type RequestOptions = {
 
 let refreshPromise: Promise<boolean> | null = null;
 
-async function tryRefresh(): Promise<boolean> {
+/**
+ * Single-flight access-token refresh.
+ *
+ * Exported because the chat socket needs the same guarantee: concurrent
+ * callers (several HTTP requests, or a socket retry) must share one refresh
+ * instead of each rotating the refresh token on its own.
+ */
+export async function tryRefresh(): Promise<boolean> {
   if (!refreshPromise) {
     refreshPromise = fetch(`${API_BASE_URL}/auth/refresh`, {
       method: "POST",

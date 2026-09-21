@@ -25,7 +25,13 @@ type SendPayload = {
 };
 type TypingPayload = { conversationId: string; typing: boolean };
 
-type AuthedSocket = Socket & { data: { user?: { id: string; email: string } } };
+type AuthedSocket = Socket & {
+  data: {
+    user?: { id: string; email: string };
+    /** Resolves when `handleConnection` has finished authenticating. */
+    authPending?: Promise<boolean>;
+  };
+};
 
 @WebSocketGateway({
   namespace: "/chat",
@@ -47,6 +53,20 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {}
 
   async handleConnection(client: AuthedSocket) {
+    // Authenticating is asynchronous (a DB lookup), but socket.io tells the
+    // client it is connected before this method resolves — and the client emits
+    // `conversation.join` from its own `connect` handler. Without this gate the
+    // join could be handled while `data.user` was still unset, so the socket
+    // was rejected with UNAUTHORIZED and force-disconnected even though its
+    // token was perfectly valid. That rejection was the trigger for the
+    // client's unbounded reconnect loop.
+    const pending = this.authenticate(client);
+    client.data.authPending = pending;
+    await pending;
+  }
+
+  /** Returns false when the socket was rejected and already torn down. */
+  private async authenticate(client: AuthedSocket): Promise<boolean> {
     const token = this.chatAuth.extractToken(
       client.handshake.headers as Record<string, string | string[] | undefined>,
       client.handshake.auth,
@@ -56,7 +76,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const code = failure === "BANNED" ? "USER_BANNED" : failure === "DISABLED" ? "USER_DISABLED" : "UNAUTHORIZED";
       client.emit("error", { code, message: "Invalid or expired access token" });
       client.disconnect(true);
-      return;
+      return false;
     }
     client.data.user = user;
     this.presence.markOnline(user.id, client.id);
@@ -71,6 +91,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       online: true,
       lastSeen: new Date().toISOString(),
     });
+    return true;
   }
 
   handleDisconnect(client: AuthedSocket) {
@@ -89,7 +110,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage("conversation.join")
   async handleJoin(@ConnectedSocket() client: AuthedSocket, @MessageBody() payload: JoinPayload) {
     try {
-      const user = this.requireUser(client);
+      const user = await this.requireUser(client);
       if (!user) return;
       if (!payload?.conversationId) {
         client.emit("error", { code: "INVALID_PAYLOAD", message: "conversationId is required" });
@@ -129,7 +150,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage("message.send")
   async handleSend(@ConnectedSocket() client: AuthedSocket, @MessageBody() payload: SendPayload) {
-    const user = this.requireUser(client);
+    const user = await this.requireUser(client);
     if (!user) return;
     if (this.tooFast(client.id)) {
       client.emit("error", { code: "TOO_FAST", message: "Slow down, you are sending too fast" });
@@ -231,7 +252,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage("typing")
   async handleTyping(@ConnectedSocket() client: AuthedSocket, @MessageBody() payload: TypingPayload) {
-    const user = this.requireUser(client);
+    const user = await this.requireUser(client);
     if (!user) return;
     const membership = await this.prisma.conversationMember.findUnique({
       where: { conversationId_userId: { conversationId: payload.conversationId, userId: user.id } },
@@ -251,7 +272,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage("presence.get")
   async handlePresenceGet(@ConnectedSocket() client: AuthedSocket, @MessageBody() payload: { userIds: string[] }) {
-    const user = this.requireUser(client);
+    const user = await this.requireUser(client);
     if (!user) return;
     const userIds = Array.isArray(payload.userIds) ? payload.userIds.slice(0, 20) : [];
     client.emit(
@@ -335,11 +356,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return null;
   }
 
-  private requireUser(client: AuthedSocket) {
+  private async requireUser(client: AuthedSocket) {
+    // Wait for `handleConnection` to settle first: an event that races the
+    // handshake must not be mistaken for an unauthenticated socket.
+    if (client.data.authPending) await client.data.authPending;
     const user = client.data.user;
     if (!user) {
-      client.emit("error", { code: "UNAUTHORIZED", message: "Not authenticated" });
-      client.disconnect(true);
+      // `authenticate` already reported UNAUTHORIZED and disconnected; only a
+      // socket that never went through `handleConnection` is reported here.
+      if (!client.data.authPending) {
+        client.emit("error", { code: "UNAUTHORIZED", message: "Not authenticated" });
+        client.disconnect(true);
+      }
       return null;
     }
     return user;

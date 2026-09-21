@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
+import { Image as ImageIcon, Send } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
 import { ScreenHeader } from "@/components/screen-header";
-import { GradientButton, OutlineButton } from "@/components/ui";
+import { OutlineButton } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
-import { useChatSocket } from "@/lib/chat-socket";
+import { connectionLabel, useChatSocket } from "@/lib/chat-socket";
 import { useSession } from "@/lib/session";
 import SafetyActions from "./safety-actions";
 import { cn } from "@/lib/cn";
@@ -40,7 +41,9 @@ export default function ChatDetailPage() {
   const [translatingId, setTranslatingId] = useState<string | null>(null);
   const [translations, setTranslations] = useState<Record<string, { text: string; targetLang: string }>>({});
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [keyboardInset, setKeyboardInset] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
 
   async function deleteMessage(messageId: string) {
     if (!user || deleting) return;
@@ -106,6 +109,40 @@ export default function ChatDetailPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [liveMessages.length]);
 
+  /**
+   * Grow the composer with its content, up to a bounded number of lines. The
+   * height is reset to `auto` first so the box can also shrink again — a
+   * `scrollHeight` read on an already-tall element never reports a smaller
+   * value.
+   */
+  useEffect(() => {
+    const element = composerRef.current;
+    if (!element) return;
+    element.style.height = "auto";
+    element.style.height = `${Math.min(element.scrollHeight, 120)}px`;
+  }, [draft]);
+
+  /**
+   * Keep the composer above the on-screen keyboard. `100dvh` does not shrink
+   * for the keyboard on mobile browsers, so the visual viewport is the only
+   * reliable signal for how much of the shell it covers.
+   */
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const update = () => {
+      const covered = window.innerHeight - viewport.height - viewport.offsetTop;
+      setKeyboardInset(covered > 0 ? Math.round(covered) : 0);
+    };
+    update();
+    viewport.addEventListener("resize", update);
+    viewport.addEventListener("scroll", update);
+    return () => {
+      viewport.removeEventListener("resize", update);
+      viewport.removeEventListener("scroll", update);
+    };
+  }, []);
+
   function send() {
     const optimistic = sendMessage(draft);
     if (optimistic) setDraft("");
@@ -144,14 +181,7 @@ export default function ChatDetailPage() {
   }
 
   const peerOnline = peers.length > 0 ? peers.some((peer) => peer.online) : null;
-  const connectionLabel =
-    connectionState === "live"
-      ? "实时连接 · Live"
-      : connectionState === "connecting"
-        ? "正在连接…"
-        : connectionState === "reconnecting"
-          ? "断线重连中…"
-          : "已离线，将自动重连";
+  const connectionText = connectionLabel(connectionState);
 
   return (
     <PhoneShell>
@@ -165,7 +195,10 @@ export default function ChatDetailPage() {
           />
         }
       />
-      <div className="flex min-h-0 flex-1 flex-col px-5 pb-3">
+      <div
+        className="flex min-h-0 flex-1 flex-col px-5 pb-3"
+        style={keyboardInset > 0 ? { paddingBottom: keyboardInset } : undefined}
+      >
         <div className="tf-scroll-x mt-1 flex shrink-0 items-center gap-2 overflow-x-auto pb-1 text-[11px]">
           <span
             className={cn(
@@ -179,7 +212,7 @@ export default function ChatDetailPage() {
                 connectionState === "live" ? "bg-emerald-500" : "bg-amber-500",
               )}
             />
-            {connectionLabel}
+            {connectionText}
           </span>
           {peerOnline !== null ? (
             <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[#6B7CFF]">
@@ -249,34 +282,53 @@ export default function ChatDetailPage() {
           </div>
         ) : null}
 
-        <div className="mt-3 flex shrink-0 gap-2 border-t border-line/70 bg-white pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-3">
-          <input
+        <div className="mt-3 flex shrink-0 items-end gap-2 border-t border-line/70 bg-white pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-3" data-testid="chat-composer">
+          <label
+            data-testid="chat-attach"
+            className="grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-full border border-line bg-[#F8FAFF] text-[#6572D8]"
+            aria-label="发送图片"
+            title="发送图片"
+          >
+            <ImageIcon className="h-[18px] w-[18px]" aria-hidden="true" />
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              aria-label="选择图片"
+              onChange={(event) => void sendImage(event.target.files?.[0])}
+            />
+          </label>
+          <textarea
+            ref={composerRef}
             value={draft}
+            rows={1}
             onChange={(event) => {
               setDraft(event.target.value);
               sendTyping(event.target.value.length > 0);
             }}
             onKeyDown={(event) => {
-              if (event.key === "Enter") send();
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                send();
+              }
             }}
             placeholder="Type a message…"
             aria-label="输入聊天消息"
+            data-testid="chat-input"
             maxLength={2000}
-            className="h-12 min-w-0 flex-1 rounded-full border border-line bg-[#F8FAFF] px-4 text-[13px] outline-none focus:ring-2 focus:ring-indigo-200"
+            className="max-h-[120px] min-h-11 min-w-0 flex-1 resize-none rounded-2xl border border-line bg-[#F8FAFF] px-4 py-2.5 text-[13px] leading-5 outline-none focus:ring-2 focus:ring-indigo-200"
           />
-          <label className="grid h-12 w-12 shrink-0 cursor-pointer place-items-center rounded-full border border-line bg-[#F8FAFF] text-[18px]">
-            🖼️
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="hidden"
-              aria-label="发送图片"
-              onChange={(event) => void sendImage(event.target.files?.[0])}
-            />
-          </label>
-          <GradientButton className="w-20 shrink-0" onClick={send} disabled={!draft.trim()}>
-            发送
-          </GradientButton>
+          <button
+            type="button"
+            onClick={send}
+            disabled={!draft.trim()}
+            aria-label="发送"
+            title="发送"
+            data-testid="chat-send"
+            className="tf-gradient grid h-11 w-11 shrink-0 place-items-center rounded-full text-white shadow-md shadow-indigo-200 transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Send className="h-[18px] w-[18px]" aria-hidden="true" />
+          </button>
         </div>
       </div>
     </PhoneShell>
