@@ -28,7 +28,9 @@ import type { ResolvedAdmin } from "./admin.guard";
 
 const TARGET_ID = "5d4c3b2a-1f0e-4d9c-8b7a-6e5d4c3b2a10";
 const ADMIN_USER_ID = "admin-user-7";
-const EXPIRES_AT = new Date("2026-10-01T00:00:00.000Z");
+// Must stay in the future on any run date: `setStatus` rejects an `expiresAt`
+// that is not ahead of now, so a hardcoded date becomes a time bomb.
+const EXPIRES_AT = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
 const ADMIN: ResolvedAdmin = {
   userId: ADMIN_USER_ID,

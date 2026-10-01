@@ -3,6 +3,8 @@ import { JwtService } from "@nestjs/jwt";
 import {
   BadRequestException,
   ConflictException,
+  HttpException,
+  HttpStatus,
   NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
@@ -25,6 +27,7 @@ import {
 import { reasonCodeOf } from "../security/error-reason";
 import { hashEmail, maskEmail } from "../security/privacy";
 import { ChangePasswordDto, LoginDto, RegisterDto } from "./auth.dto";
+import { LoginAttemptService } from "./login-attempt.service";
 
 @Injectable()
 export class AuthService {
@@ -34,6 +37,9 @@ export class AuthService {
     // Security Audit Center (P1). Optional so an isolated unit test can build the
     // service without pulling in the audit infrastructure.
     private readonly securityEvents?: SecurityEventService,
+    // SEC-001. Optional-with-default for the same reason: a unit test that does
+    // not care about lock-outs can omit it. Nest still injects the singleton.
+    private readonly loginAttempts: LoginAttemptService = new LoginAttemptService(),
   ) {}
 
   async register(dto: RegisterDto) {
@@ -79,26 +85,46 @@ export class AuthService {
   async login(dto: LoginDto) {
     const email = dto.email.trim().toLowerCase();
     try {
+      // SEC-001. Refuse before touching the database: the budget is keyed on the
+      // submitted e-mail and counts unknown addresses the same as real ones, so a
+      // lock says nothing about whether the account exists.
+      const lock = this.loginAttempts.check(email);
+      if (lock.locked) {
+        // The crossing failure already raised BRUTE_FORCE_DETECTED; repeating it
+        // on every blocked retry would be one event per packet. The refusal still
+        // lands in the audit trail via the LOGIN_FAILED written by the catch below.
+        throw new HttpException(
+          {
+            success: false,
+            error: {
+              code: "TOO_MANY_ATTEMPTS",
+              message: "Too many sign-in attempts. Please try again later.",
+            },
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+
       const user = await this.prisma.user.findUnique({ where: { email } });
       if (!user) {
+        await this.recordCredentialFailure(email, false);
         throw new UnauthorizedException({
           success: false,
           error: { code: "INVALID_CREDENTIALS", message: "Email or password is incorrect" },
         });
       }
-      if (user.status === "BANNED") {
-        throw new UnauthorizedException({
-          success: false,
-          error: { code: "USER_BANNED", message: "This account is banned" },
-        });
-      }
+      this.assertSessionable(user.status);
       const valid = await bcrypt.compare(dto.password, user.passwordHash);
       if (!valid) {
+        await this.recordCredentialFailure(email, user.isAdmin);
         throw new UnauthorizedException({
           success: false,
           error: { code: "INVALID_CREDENTIALS", message: "Email or password is incorrect" },
         });
       }
+      // A correct password clears the budget so an honest user is never punished
+      // for earlier typos once they get in.
+      this.loginAttempts.reset(email);
       await this.prisma.user.update({
         where: { id: user.id },
         data: { lastActiveAt: new Date() },
@@ -126,6 +152,54 @@ export class AuthService {
         },
       });
       throw error;
+    }
+  }
+
+  /**
+   * SEC-001 — book one credential failure and raise `BRUTE_FORCE_DETECTED` on
+   * the failure that crosses the threshold (not on every subsequent refusal,
+   * which would flood the log with duplicates of one event).
+   */
+  private async recordCredentialFailure(email: string, isAdmin: boolean) {
+    const outcome = this.loginAttempts.recordFailure(email, isAdmin);
+    if (!outcome.lockedNow) return;
+    await this.securityEvents?.record({
+      type: SecurityEventType.BRUTE_FORCE_DETECTED,
+      source: SecurityEventSource.AUTH,
+      riskLevel: RiskLevel.HIGH,
+      success: false,
+      detail: {
+        emailMasked: maskEmail(email),
+        emailHash: hashEmail(email),
+        reasonCode: "ACCOUNT_LOCKED",
+        failures: outcome.failures,
+        lockMs: outcome.retryAfterMs,
+      },
+    });
+  }
+
+  /**
+   * SEC-002 — the one place that decides whether an account may hold a session.
+   *
+   * `JwtStrategy` already refuses anything that is not `ACTIVE`, so a session
+   * minted for a `DISABLED`/`SUSPENDED` account would authenticate and then 401 on
+   * every subsequent call. Both halves now share this rule: only `ACTIVE` is
+   * sessionable. `BANNED` keeps its dedicated code so the client can say "banned"
+   * rather than the generic "disabled"; the other states collapse to the same
+   * `USER_DISABLED` shape `JwtStrategy` emits.
+   */
+  private assertSessionable(status: User["status"]) {
+    if (status === "BANNED") {
+      throw new UnauthorizedException({
+        success: false,
+        error: { code: "USER_BANNED", message: "This account is banned" },
+      });
+    }
+    if (status !== "ACTIVE") {
+      throw new UnauthorizedException({
+        success: false,
+        error: { code: "USER_DISABLED", message: "This account is disabled" },
+      });
     }
   }
 
@@ -166,12 +240,7 @@ export class AuthService {
           error: { code: "INVALID_REFRESH_TOKEN", message: "Refresh token is invalid or expired" },
         });
       }
-      if (record.user.status === "BANNED") {
-        throw new UnauthorizedException({
-          success: false,
-          error: { code: "USER_BANNED", message: "This account is banned" },
-        });
-      }
+      this.assertSessionable(record.user.status);
       await this.prisma.refreshToken.update({
         where: { id: record.id },
         data: { revokedAt: new Date() },
