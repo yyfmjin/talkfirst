@@ -1,5 +1,21 @@
-import { ExecutionContext, Injectable } from "@nestjs/common";
-import { ThrottlerGuard, ThrottlerRequest } from "@nestjs/throttler";
+import { ExecutionContext, Inject, Injectable } from "@nestjs/common";
+import {
+  ThrottlerGuard,
+  ThrottlerRequest,
+  type ThrottlerLimitDetail,
+} from "@nestjs/throttler";
+import type { Request } from "express";
+import { summarizeQuery } from "./redact";
+import { AccessLogService } from "../security/access-log.service";
+import { deviceHash } from "../security/device-hash";
+import { getRequestContext } from "../security/request-context";
+import { SecurityEventService } from "../security/security-event.service";
+import {
+  RiskLevel,
+  SecurityEventSource,
+  SecurityEventType,
+  accessRiskLevel,
+} from "../security/security.constants";
 
 /**
  * Requests allowed per IP per minute, when a route does not declare its own
@@ -63,6 +79,18 @@ export function throttleMultiplier(): number {
  */
 @Injectable()
 export class HttpThrottlerGuard extends ThrottlerGuard {
+  /**
+   * Observation-only dependencies. Injected as optional properties rather than
+   * constructor parameters so the guard's inherited constructor signature (and
+   * therefore the throttler's own DI contract) stays exactly as it was; a
+   * failure to inject can only *disable auditing*, never break rate limiting.
+   */
+  @Inject(SecurityEventService)
+  private securityEvents?: SecurityEventService;
+
+  @Inject(AccessLogService)
+  private accessLogs?: AccessLogService;
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
     if (context.getType() !== "http") return true;
     return super.canActivate(context);
@@ -86,4 +114,83 @@ export class HttpThrottlerGuard extends ThrottlerGuard {
       limit: Math.max(1, Math.floor(requestProps.limit * multiplier)),
     });
   }
+
+  /**
+   * Security Audit Center (P1): observes the moment a request is actually
+   * blocked. Guards run *before* interceptors, so a 429 never reaches the
+   * access-log interceptor — this hook is the only place that sees it.
+   *
+   * The contract with the throttler is unchanged: the original exception is
+   * still thrown by `super`. Observation is fire-and-forget and wrapped in a
+   * try/catch, so auditing can never turn a 429 into something else.
+   */
+  protected async throwThrottlingException(
+    context: ExecutionContext,
+    throttlerLimitDetail: ThrottlerLimitDetail,
+  ): Promise<void> {
+    this.observeRateLimit(context);
+    return super.throwThrottlingException(context, throttlerLimitDetail);
+  }
+
+  private observeRateLimit(context: ExecutionContext): void {
+    try {
+      if (context.getType() !== "http") return;
+      const request = context.switchToHttp().getRequest<Request>();
+      const ambient = getRequestContext();
+      const path = ambient?.path ?? stripQuery(request.originalUrl ?? request.url ?? "");
+      const userAgent = ambient?.userAgent ?? headerValue(request.headers["user-agent"]);
+      const userId = (request.user as { id?: string } | undefined)?.id;
+      const hash = deviceHash(userAgent);
+
+      void this.securityEvents?.record({
+        type: SecurityEventType.RATE_LIMITED,
+        source: SecurityEventSource.THROTTLE,
+        riskLevel: RiskLevel.MEDIUM,
+        userId,
+        ip: ambient?.ip,
+        userAgent,
+        deviceHash: hash,
+        method: request.method,
+        path,
+        statusCode: 429,
+        requestId: ambient?.requestId,
+        success: false,
+        detail: { reasonCode: "RATE_LIMITED" },
+      });
+
+      void this.accessLogs?.write({
+        requestId: ambient?.requestId ?? "unknown",
+        method: request.method,
+        path,
+        queryDigest: summarizeQuery(request.query),
+        statusCode: 429,
+        // The guard fires before the handler starts, so no measurable duration
+        // exists yet. P2 can thread a start timestamp through if it matters.
+        durationMs: 0,
+        userId,
+        authenticated: Boolean(userId),
+        isAdmin: path.startsWith("/api/v1/admin") || path.startsWith("/admin"),
+        ip: ambient?.ip,
+        deviceHash: hash,
+        userAgent,
+        referer: headerValue(request.headers["referer"]),
+        origin: headerValue(request.headers["origin"]),
+        acceptLanguage: headerValue(request.headers["accept-language"]),
+        contentType: headerValue(request.headers["content-type"]),
+        errorCode: "RATE_LIMITED",
+        riskLevel: accessRiskLevel(429),
+      });
+    } catch {
+      // Observation must never affect throttling.
+    }
+  }
+}
+
+function stripQuery(url: string): string {
+  const queryIndex = url.indexOf("?");
+  return queryIndex === -1 ? url : url.slice(0, queryIndex);
+}
+
+function headerValue(raw: string | string[] | undefined): string | undefined {
+  return Array.isArray(raw) ? raw[0] : raw;
 }

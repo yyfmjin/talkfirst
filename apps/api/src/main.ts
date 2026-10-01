@@ -5,6 +5,8 @@ import { json, urlencoded } from "express";
 import { join } from "path";
 import { AppModule } from "./app.module";
 import { ApiExceptionFilter } from "./common/api-exception.filter";
+import { trustProxySetting } from "./security/client-ip";
+import { createRequestIdMiddleware } from "./security/request-id.middleware";
 
 async function bootstrap() {
   if (process.env.NODE_ENV === "production") {
@@ -22,6 +24,12 @@ async function bootstrap() {
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
   app.setGlobalPrefix("api/v1");
+  // Security Audit Center (P1): the reverse proxy terminates TLS, so Express must
+  // be told how many hops to trust before `req.ip` means anything (see
+  // `client-ip.ts`). Registered first so a requestId exists before any other
+  // middleware, guard or interceptor runs.
+  app.set("trust proxy", trustProxySetting());
+  app.use(createRequestIdMiddleware());
   app.use(cookieParser());
   // Base64 image uploads (avatar / chat image) exceed Express' 100kb default.
   app.use(json({ limit: "8mb" }));

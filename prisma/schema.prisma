@@ -240,6 +240,8 @@ model User {
   notifications    Notification[]
   attributes        UserAttribute[]
   fieldVisibilities ProfileFieldVisibility[]
+  // Security Audit Center (P1): security events attributed to this user.
+  securityEvents    SecurityEvent[]
 
   @@index([status])
   @@index([countryCode])
@@ -779,4 +781,128 @@ model ProfileFieldVisibility {
 
   @@id([userId, fieldKey])
   @@index([fieldKey, visibility])
+}
+
+// ---------------------------------------------------------------------------
+// Security Audit Center (P1)
+//
+// Why a new table instead of AdminAuditLog: `AdminAuditLog` cannot represent an
+// anonymous actor. Its CHECK constraint requires `adminId NOT NULL` whenever
+// `actorType = USER`, and `adminId` is an FK to `User`. Security events are
+// overwhelmingly anonymous (a failed login for an unknown e-mail, a throttled
+// request before authentication), so they need their own table. AdminAuditLog is
+// left untouched and keeps meaning exactly what it did before.
+// ---------------------------------------------------------------------------
+
+/// A security-relevant observation: an auth outcome, a throttle hit, a
+/// suspicious pattern, an admin action, etc.
+model SecurityEvent {
+  id String @id @default(uuid()) @db.Uuid
+
+  // String unions rather than Prisma enums, matching the convention used by
+  // `AdminAuditLog.action` and `ProfileFieldVisibility.fieldKey`. Adding a new
+  // event type or source must not require a database migration.
+  type   String @db.VarChar(48)
+  // AUTH | THROTTLE | ACCESS | MODERATION | ADMIN | SYSTEM
+  source String @db.VarChar(16)
+
+  // LOW | MEDIUM | HIGH | CRITICAL
+  riskLevel String @db.VarChar(8)
+  riskScore Int    @default(0)
+  factors   Json?
+
+  // SetNull rather than Cascade: a deleted account must not erase the security
+  // history that explains what happened before it was deleted.
+  userId String? @db.Uuid
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  ip         String? @db.VarChar(45)
+  // A device *identifier* derived from a salted hash of the User-Agent. It is
+  // not a fingerprint and must never on its own be used to judge a user.
+  deviceHash String? @db.VarChar(64)
+  userAgent  String? @db.VarChar(512)
+  method     String? @db.VarChar(8)
+  path       String? @db.VarChar(256)
+  statusCode Int?
+  // Correlates this event with the AccessLog row for the same request.
+  requestId  String? @db.VarChar(64)
+
+  success Boolean @default(true)
+  // Already redacted by SecurityEventService before it reaches the database.
+  detail  Json?
+
+  handledAt DateTime?
+  handledBy String?   @db.Uuid
+  createdAt DateTime  @default(now())
+
+  @@index([type, createdAt])
+  @@index([ip, createdAt])
+  @@index([userId, createdAt])
+  @@index([deviceHash, createdAt])
+  @@index([riskLevel, createdAt])
+}
+
+/// HTTP access audit. One row per handled request.
+///
+/// Never stores credentials, tokens, cookies or raw bodies. `queryDigest` is a
+/// whitelisted, redacted, size-capped summary — never the raw query string.
+model AccessLog {
+  id        String @id @default(uuid()) @db.Uuid
+  requestId String @db.VarChar(64)
+
+  method String @db.VarChar(8)
+  path   String @db.VarChar(256)
+  queryDigest String? @db.VarChar(512)
+
+  statusCode Int
+  durationMs Int
+
+  userId        String? @db.Uuid
+  authenticated Boolean @default(false)
+  // True when the request targeted an admin route. Resolving the real role
+  // would need a database read on every request, which P1 deliberately avoids.
+  isAdmin       Boolean @default(false)
+
+  ip         String? @db.VarChar(45)
+  deviceHash String? @db.VarChar(64)
+  userAgent  String? @db.VarChar(512)
+  referer    String? @db.VarChar(256)
+  origin     String? @db.VarChar(128)
+  acceptLanguage String? @db.VarChar(64)
+  contentType    String? @db.VarChar(96)
+  errorCode      String? @db.VarChar(48)
+  riskLevel      String  @db.VarChar(8)
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([ip, createdAt])
+  @@index([userId, createdAt])
+  @@index([path, createdAt])
+  @@index([statusCode, createdAt])
+}
+
+/// One row per distinct device identifier seen by the platform.
+model DeviceIdentity {
+  id          String   @id @default(uuid()) @db.Uuid
+  deviceHash  String   @unique @db.VarChar(64)
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+  // Observed User-Agent strings are hashed for correlation, never stored raw.
+  userAgents  Json?
+
+  @@index([lastSeenAt])
+}
+
+/// Association between a device identifier and the accounts seen on it. This is
+/// what makes "one device, many accounts" answerable later.
+model DeviceUser {
+  deviceHash  String   @db.VarChar(64)
+  userId      String   @db.Uuid
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+  loginCount  Int      @default(0)
+
+  @@id([deviceHash, userId])
+  @@index([userId])
 }
