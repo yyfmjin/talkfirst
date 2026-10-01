@@ -7,6 +7,7 @@ import { AppModule } from "./app.module";
 import { ApiExceptionFilter } from "./common/api-exception.filter";
 import { trustProxySetting } from "./security/client-ip";
 import { createRequestIdMiddleware } from "./security/request-id.middleware";
+import { applySecurityHeaders } from "./security/security-headers";
 
 async function bootstrap() {
   if (process.env.NODE_ENV === "production") {
@@ -24,6 +25,8 @@ async function bootstrap() {
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
   app.setGlobalPrefix("api/v1");
+  // SEC-004: registered before any route so error responses get the headers too.
+  applySecurityHeaders(app);
   // Security Audit Center (P1): the reverse proxy terminates TLS, so Express must
   // be told how many hops to trust before `req.ip` means anything (see
   // `client-ip.ts`). Registered first so a requestId exists before any other
