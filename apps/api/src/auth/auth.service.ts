@@ -16,6 +16,14 @@ import {
   REFRESH_TOKEN_TTL_SECONDS,
 } from "./auth.constants";
 import { newRawToken, sha256Hex } from "../common/crypto";
+import { SecurityEventService } from "../security/security-event.service";
+import {
+  RiskLevel,
+  SecurityEventSource,
+  SecurityEventType,
+} from "../security/security.constants";
+import { reasonCodeOf } from "../security/error-reason";
+import { hashEmail, maskEmail } from "../security/privacy";
 import { ChangePasswordDto, LoginDto, RegisterDto } from "./auth.dto";
 
 @Injectable()
@@ -23,51 +31,102 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    // Security Audit Center (P1). Optional so an isolated unit test can build the
+    // service without pulling in the audit infrastructure.
+    private readonly securityEvents?: SecurityEventService,
   ) {}
 
   async register(dto: RegisterDto) {
     const email = dto.email.trim().toLowerCase();
-    const existing = await this.prisma.user.findUnique({ where: { email } });
-    if (existing) {
-      throw new ConflictException({
-        success: false,
-        error: { code: "EMAIL_TAKEN", message: "Email is already registered" },
+    try {
+      const existing = await this.prisma.user.findUnique({ where: { email } });
+      if (existing) {
+        throw new ConflictException({
+          success: false,
+          error: { code: "EMAIL_TAKEN", message: "Email is already registered" },
+        });
+      }
+      const passwordHash = await bcrypt.hash(dto.password, 12);
+      const user = await this.prisma.user.create({
+        data: { email, passwordHash, lastActiveAt: new Date() },
       });
+      const session = await this.issueSession(user);
+      await this.securityEvents?.record({
+        type: SecurityEventType.REGISTER_SUCCESS,
+        source: SecurityEventSource.AUTH,
+        userId: user.id,
+        success: true,
+        detail: { emailMasked: maskEmail(email) },
+      });
+      return session;
+    } catch (error) {
+      // Never the password, and never the raw address — see `privacy.ts`.
+      await this.securityEvents?.record({
+        type: SecurityEventType.REGISTER_FAILED,
+        source: SecurityEventSource.AUTH,
+        riskLevel: RiskLevel.LOW,
+        success: false,
+        detail: {
+          emailMasked: maskEmail(email),
+          emailHash: hashEmail(email),
+          reasonCode: reasonCodeOf(error, "REGISTER_FAILED"),
+        },
+      });
+      throw error;
     }
-    const passwordHash = await bcrypt.hash(dto.password, 12);
-    const user = await this.prisma.user.create({
-      data: { email, passwordHash, lastActiveAt: new Date() },
-    });
-    return this.issueSession(user);
   }
 
   async login(dto: LoginDto) {
     const email = dto.email.trim().toLowerCase();
-    const user = await this.prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      throw new UnauthorizedException({
-        success: false,
-        error: { code: "INVALID_CREDENTIALS", message: "Email or password is incorrect" },
+    try {
+      const user = await this.prisma.user.findUnique({ where: { email } });
+      if (!user) {
+        throw new UnauthorizedException({
+          success: false,
+          error: { code: "INVALID_CREDENTIALS", message: "Email or password is incorrect" },
+        });
+      }
+      if (user.status === "BANNED") {
+        throw new UnauthorizedException({
+          success: false,
+          error: { code: "USER_BANNED", message: "This account is banned" },
+        });
+      }
+      const valid = await bcrypt.compare(dto.password, user.passwordHash);
+      if (!valid) {
+        throw new UnauthorizedException({
+          success: false,
+          error: { code: "INVALID_CREDENTIALS", message: "Email or password is incorrect" },
+        });
+      }
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { lastActiveAt: new Date() },
       });
-    }
-    if (user.status === "BANNED") {
-      throw new UnauthorizedException({
-        success: false,
-        error: { code: "USER_BANNED", message: "This account is banned" },
+      const session = await this.issueSession(user);
+      await this.securityEvents?.record({
+        type: SecurityEventType.LOGIN_SUCCESS,
+        source: SecurityEventSource.AUTH,
+        userId: user.id,
+        success: true,
       });
-    }
-    const valid = await bcrypt.compare(dto.password, user.passwordHash);
-    if (!valid) {
-      throw new UnauthorizedException({
+      return session;
+    } catch (error) {
+      // A failed login deliberately carries no `userId`: the point of the event
+      // is to spot attempts against addresses that may not exist.
+      await this.securityEvents?.record({
+        type: SecurityEventType.LOGIN_FAILED,
+        source: SecurityEventSource.AUTH,
+        riskLevel: RiskLevel.MEDIUM,
         success: false,
-        error: { code: "INVALID_CREDENTIALS", message: "Email or password is incorrect" },
+        detail: {
+          emailMasked: maskEmail(email),
+          emailHash: hashEmail(email),
+          reasonCode: reasonCodeOf(error, "LOGIN_FAILED"),
+        },
       });
+      throw error;
     }
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { lastActiveAt: new Date() },
-    });
-    return this.issueSession(user);
   }
 
   private async issueSession(user: User) {
@@ -90,76 +149,116 @@ export class AuthService {
   }
 
   async rotateRefresh(rawRefreshToken: string | undefined) {
-    if (!rawRefreshToken) {
-      throw new UnauthorizedException({
-        success: false,
-        error: { code: "NO_REFRESH_TOKEN", message: "Missing refresh token" },
+    try {
+      if (!rawRefreshToken) {
+        throw new UnauthorizedException({
+          success: false,
+          error: { code: "NO_REFRESH_TOKEN", message: "Missing refresh token" },
+        });
+      }
+      const record = await this.prisma.refreshToken.findUnique({
+        where: { tokenHash: sha256Hex(rawRefreshToken) },
+        include: { user: true },
       });
-    }
-    const record = await this.prisma.refreshToken.findUnique({
-      where: { tokenHash: sha256Hex(rawRefreshToken) },
-      include: { user: true },
-    });
-    if (!record || record.revokedAt || record.expiresAt < new Date()) {
-      throw new UnauthorizedException({
-        success: false,
-        error: { code: "INVALID_REFRESH_TOKEN", message: "Refresh token is invalid or expired" },
+      if (!record || record.revokedAt || record.expiresAt < new Date()) {
+        throw new UnauthorizedException({
+          success: false,
+          error: { code: "INVALID_REFRESH_TOKEN", message: "Refresh token is invalid or expired" },
+        });
+      }
+      if (record.user.status === "BANNED") {
+        throw new UnauthorizedException({
+          success: false,
+          error: { code: "USER_BANNED", message: "This account is banned" },
+        });
+      }
+      await this.prisma.refreshToken.update({
+        where: { id: record.id },
+        data: { revokedAt: new Date() },
       });
-    }
-    if (record.user.status === "BANNED") {
-      throw new UnauthorizedException({
-        success: false,
-        error: { code: "USER_BANNED", message: "This account is banned" },
+      const session = await this.issueSession(record.user);
+      await this.securityEvents?.record({
+        type: SecurityEventType.TOKEN_REFRESH,
+        source: SecurityEventSource.AUTH,
+        userId: record.user.id,
+        success: true,
       });
+      return session;
+    } catch (error) {
+      // The raw refresh token is never recorded — only that a rotation failed.
+      await this.securityEvents?.record({
+        type: SecurityEventType.TOKEN_REFRESH_FAILED,
+        source: SecurityEventSource.AUTH,
+        riskLevel: RiskLevel.MEDIUM,
+        success: false,
+        detail: { reasonCode: reasonCodeOf(error, "TOKEN_REFRESH_FAILED") },
+      });
+      throw error;
     }
-    await this.prisma.refreshToken.update({
-      where: { id: record.id },
-      data: { revokedAt: new Date() },
-    });
-    return this.issueSession(record.user);
   }
 
   async changePassword(userId: string, dto: ChangePasswordDto) {
-    if (dto.newPassword !== dto.confirmPassword) {
-      throw new BadRequestException({
-        success: false,
-        error: { code: "PASSWORD_MISMATCH", message: "New password and confirmation do not match" },
-      });
-    }
-    if (dto.newPassword === dto.currentPassword) {
-      throw new BadRequestException({
-        success: false,
-        error: { code: "PASSWORD_UNCHANGED", message: "New password must differ from current password" },
-      });
-    }
+    try {
+      if (dto.newPassword !== dto.confirmPassword) {
+        throw new BadRequestException({
+          success: false,
+          error: { code: "PASSWORD_MISMATCH", message: "New password and confirmation do not match" },
+        });
+      }
+      if (dto.newPassword === dto.currentPassword) {
+        throw new BadRequestException({
+          success: false,
+          error: { code: "PASSWORD_UNCHANGED", message: "New password must differ from current password" },
+        });
+      }
 
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) {
-      throw new NotFoundException({
-        success: false,
-        error: { code: "USER_NOT_FOUND", message: "User not found" },
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      if (!user) {
+        throw new NotFoundException({
+          success: false,
+          error: { code: "USER_NOT_FOUND", message: "User not found" },
+        });
+      }
+
+      const valid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
+      if (!valid) {
+        throw new UnauthorizedException({
+          success: false,
+          error: { code: "INVALID_CREDENTIALS", message: "Current password is incorrect" },
+        });
+      }
+
+      const passwordHash = await bcrypt.hash(dto.newPassword, 12);
+      await this.prisma.$transaction([
+        this.prisma.user.update({ where: { id: userId }, data: { passwordHash } }),
+        this.prisma.refreshToken.updateMany({
+          where: { userId, revokedAt: null },
+          data: { revokedAt: new Date() },
+        }),
+      ]);
+
+      const updated = await this.prisma.user.findUnique({ where: { id: userId } });
+      const session = await this.issueSession(updated!);
+      await this.securityEvents?.record({
+        type: SecurityEventType.PASSWORD_CHANGED,
+        source: SecurityEventSource.AUTH,
+        userId,
+        success: true,
       });
-    }
-
-    const valid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
-    if (!valid) {
-      throw new UnauthorizedException({
+      return session;
+    } catch (error) {
+      const reasonCode = reasonCodeOf(error, "PASSWORD_CHANGE_FAILED");
+      await this.securityEvents?.record({
+        type: SecurityEventType.PASSWORD_CHANGE_FAILED,
+        source: SecurityEventSource.AUTH,
+        // A wrong current password is a meaningful signal; a validation slip is not.
+        riskLevel: reasonCode === "INVALID_CREDENTIALS" ? RiskLevel.MEDIUM : RiskLevel.LOW,
+        userId,
         success: false,
-        error: { code: "INVALID_CREDENTIALS", message: "Current password is incorrect" },
+        detail: { reasonCode },
       });
+      throw error;
     }
-
-    const passwordHash = await bcrypt.hash(dto.newPassword, 12);
-    await this.prisma.$transaction([
-      this.prisma.user.update({ where: { id: userId }, data: { passwordHash } }),
-      this.prisma.refreshToken.updateMany({
-        where: { userId, revokedAt: null },
-        data: { revokedAt: new Date() },
-      }),
-    ]);
-
-    const updated = await this.prisma.user.findUnique({ where: { id: userId } });
-    return this.issueSession(updated!);
   }
 
   async logout(rawRefreshToken: string | undefined) {
@@ -169,6 +268,11 @@ export class AuthService {
         data: { revokedAt: new Date() },
       });
     }
+    await this.securityEvents?.record({
+      type: SecurityEventType.LOGOUT,
+      source: SecurityEventSource.AUTH,
+      success: true,
+    });
     return { ok: true };
   }
 

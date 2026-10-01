@@ -6,6 +6,7 @@ import { APP_GUARD } from "@nestjs/core";
 import { HttpThrottlerGuard, globalThrottleLimit } from "./common/http-throttler.guard";
 import { HealthController } from "./health/health.controller";
 import { PrismaModule } from "./prisma/prisma.module";
+import { SecurityModule } from "./security/security.module";
 import { AuthModule } from "./auth/auth.module";
 import { UsersModule } from "./users/users.module";
 import { MetaModule } from "./meta/meta.module";
@@ -33,6 +34,9 @@ import { NotificationsModule } from "./notifications/notification.module";
       { name: "default", ttl: 60000, limit: globalThrottleLimit() },
     ]),
     PrismaModule,
+    // Security Audit Center (P1): provides SecurityEventService/AccessLogService
+    // to every module and registers the global HTTP access-log interceptor.
+    SecurityModule,
     AuthModule,
     UsersModule,
     MetaModule,
