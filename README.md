@@ -18,6 +18,26 @@ Talk First. Connect Later.
 - Node.js 20+
 - Docker Desktop（用于 Postgres 与 Redis），或本机已安装 PostgreSQL
 
+## 邮箱验证（SEC-005）
+
+`ENFORCE_EMAIL_VERIFICATION` 决定账号是否需要先完成邮箱验证才能使用产品：
+
+| 环境 | 取值 | 行为 |
+| --- | --- | --- |
+| development | `false`（默认） | 可直接登录，验证码通过 `devCode` 返回便于本地调试 |
+| test | `false`（默认） | 使用内存 fake 邮件通道，无需真实邮箱 |
+| production | `true`（目标） | 未验证账号登录返回 `403 EMAIL_NOT_VERIFIED`；业务 API 由 JWT 拦截 |
+
+相关变量（见 `.env.example` / `.env.docker.example`）：
+
+- `MAIL_PROVIDER`：`console`（开发，只记录“已发送”不打印验证码）/ `fake`（测试）/ `smtp`（生产）
+- `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_FROM` / `SMTP_SECURE`
+
+> 生产环境若开启 `ENFORCE_EMAIL_VERIFICATION=true` 而 SMTP 配置不完整，API 会**拒绝启动**，
+> 避免用户注册后无邮件可收而被永久锁在系统之外。
+>
+> `REQUIRE_EMAIL_VERIFICATION` 是旧的“注册前验证”开关，**已废弃**，仅保留兼容。
+
 ## 本地启动
 
 ### 方式 A：Docker 一键部署（推荐，无需本机装 Node / PostgreSQL）

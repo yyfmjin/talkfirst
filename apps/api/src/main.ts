@@ -5,6 +5,7 @@ import { json, urlencoded } from "express";
 import { join } from "path";
 import { AppModule } from "./app.module";
 import { ApiExceptionFilter } from "./common/api-exception.filter";
+import { assertMailConfigurationForProduction } from "./mail/mail.config";
 import { trustProxySetting } from "./security/client-ip";
 import { createRequestIdMiddleware } from "./security/request-id.middleware";
 import { applySecurityHeaders } from "./security/security-headers";
@@ -21,6 +22,9 @@ async function bootstrap() {
     if (missing.length > 0) {
       throw new Error(`Missing required production secrets: ${missing.join(", ")}`);
     }
+    // SEC-005: enforcement without a way to deliver the code would lock every new
+    // account out permanently, so refuse to boot instead.
+    assertMailConfigurationForProduction();
   }
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });

@@ -130,6 +130,10 @@ describe("AuthService — 登录事件", () => {
   });
 
   it("被封禁 -> LOGIN_FAILED / USER_BANNED", async () => {
+    // Password is proven first (SEC-005 reordering), so the status verdict is only
+    // reached with a *correct* password. Pin it explicitly: `clearAllMocks` does
+    // not reset a previously installed `mockResolvedValue`.
+    (bcrypt.compare as jest.Mock).mockResolvedValue(true);
     const { service, record } = makeAuth({
       user: {
         findUnique: jest.fn().mockResolvedValue({ ...user, status: "BANNED" }),
@@ -139,6 +143,19 @@ describe("AuthService — 登录事件", () => {
 
     await expect(service.login(LOGIN_DTO)).rejects.toBeDefined();
     expect(firstEvent(record).detail?.reasonCode).toBe("USER_BANNED");
+  });
+
+  it("被封禁且密码错误 -> INVALID_CREDENTIALS（不借状态泄露账号）", async () => {
+    (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+    const { service, record } = makeAuth({
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ ...user, status: "BANNED" }),
+        update: jest.fn(),
+      },
+    });
+
+    await expect(service.login(LOGIN_DTO)).rejects.toBeDefined();
+    expect(firstEvent(record).detail?.reasonCode).toBe("INVALID_CREDENTIALS");
   });
 
   it("审计写入失败不影响登录成功（真实 SecurityEventService + 数据库不可用）", async () => {
@@ -287,13 +304,29 @@ describe("VerificationService — 验证码事件", () => {
 
   function makeVerification(prismaOverride: Record<string, unknown> = {}) {
     const record = makeRecorder();
-    const prisma = {
+    const prisma: {
+      verificationCode: Record<string, jest.Mock>;
+      user: Record<string, jest.Mock>;
+      $transaction: jest.Mock;
+    } = {
       verificationCode: {
         create: jest.fn().mockResolvedValue({ id: "vc-1" }),
         findFirst: jest.fn().mockResolvedValue(null),
         update: jest.fn().mockResolvedValue({}),
+        // SEC-005 send-path: the per-address hourly budget (`count`) and the
+        // cleanup that runs when the transport rejects the message (`delete`).
+        count: jest.fn().mockResolvedValue(0),
+        delete: jest.fn().mockResolvedValue({}),
+        // SEC-005 verify-path: the code is claimed with a conditional `updateMany`.
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         ...prismaOverride,
       },
+      // SEC-005 verify-path: the owner's flag is flipped in the same transaction.
+      user: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+      // Prisma's interactive form, which is what `verifyCode` uses.
+      $transaction: jest.fn(
+        async (callback: (tx: unknown) => Promise<unknown>) => callback(prisma),
+      ),
     };
     const service = new VerificationService(prisma as never, { record } as never);
     return { service, prisma, record };

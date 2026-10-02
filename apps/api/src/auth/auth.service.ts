@@ -8,7 +8,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
-import { PrismaClient, User } from "@prisma/client";
+import { User } from "@prisma/client";
 import * as bcrypt from "bcryptjs";
 import { PrismaService } from "../prisma/prisma.service";
 import { isProfileComplete } from "../users/profile-completion";
@@ -27,7 +27,17 @@ import {
 import { reasonCodeOf } from "../security/error-reason";
 import { hashEmail, maskEmail } from "../security/privacy";
 import { ChangePasswordDto, LoginDto, RegisterDto } from "./auth.dto";
+import { emailVerificationEnforced } from "./email-verification.policy";
 import { LoginAttemptService } from "./login-attempt.service";
+
+/**
+ * SEC-005 — a throwaway bcrypt hash whose only purpose is to make the
+ * "unknown e-mail" branch cost the same as a real password comparison, so
+ * response time cannot be used to enumerate accounts. It is not a credential
+ * for any account; generated once via `bcryptjs.hashSync(..., 12)`.
+ */
+const DUMMY_PASSWORD_HASH =
+  "$2b$12$vpEdu5xYEq4S1poYXQADKOKVaXhNWoRAPKEoExY8JM0IEanOcKo4C";
 
 @Injectable()
 export class AuthService {
@@ -107,13 +117,15 @@ export class AuthService {
 
       const user = await this.prisma.user.findUnique({ where: { email } });
       if (!user) {
+        // SEC-005: spend the same bcrypt work as a real comparison so an unknown
+        // address cannot be distinguished from a wrong password by timing.
+        await bcrypt.compare(dto.password, DUMMY_PASSWORD_HASH);
         await this.recordCredentialFailure(email, false);
         throw new UnauthorizedException({
           success: false,
           error: { code: "INVALID_CREDENTIALS", message: "Email or password is incorrect" },
         });
       }
-      this.assertSessionable(user.status);
       const valid = await bcrypt.compare(dto.password, user.passwordHash);
       if (!valid) {
         await this.recordCredentialFailure(email, user.isAdmin);
@@ -121,6 +133,24 @@ export class AuthService {
           success: false,
           error: { code: "INVALID_CREDENTIALS", message: "Email or password is incorrect" },
         });
+      }
+      // SEC-005: only after the password is proven do we reveal the account-state
+      // verdict. A banned/disabled account reached with a *wrong* password now
+      // stays `INVALID_CREDENTIALS`, so status probing needs a valid password.
+      this.assertSessionable(user.status);
+      if (emailVerificationEnforced() && !user.emailVerified) {
+        // Refused *before* any session exists: no access token and, crucially, no
+        // new refresh-token row is written for an unverified account.
+        throw new HttpException(
+          {
+            success: false,
+            error: {
+              code: "EMAIL_NOT_VERIFIED",
+              message: "Verify your email address to continue",
+            },
+          },
+          HttpStatus.FORBIDDEN,
+        );
       }
       // A correct password clears the budget so an honest user is never punished
       // for earlier typos once they get in.
@@ -376,14 +406,21 @@ export class AuthService {
     };
   }
 
+  /**
+   * SEC-005 — read back the account whose verification just succeeded.
+   *
+   * The `emailVerified` flag is flipped inside `VerificationService.verifyCode`'s
+   * transaction, so this is idempotent and must never throw `P2025`: an address
+   * with no account is not an error, and a 500 here would itself confirm that the
+   * address does not exist.
+   */
   async markEmailVerified(email: string) {
     const normalized = email.trim().toLowerCase();
-    const user = await this.prisma.user.update({
+    await this.prisma.user.updateMany({
       where: { email: normalized },
       data: { emailVerified: true },
     });
-    return this.toPublicUser(user);
+    const user = await this.prisma.user.findUnique({ where: { email: normalized } });
+    return user ? this.toPublicUser(user) : null;
   }
 }
-
-void PrismaClient;

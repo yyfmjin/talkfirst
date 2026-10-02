@@ -6,18 +6,15 @@ import { PhoneShell } from "@/components/phone-shell";
 import { ScreenHeader } from "@/components/screen-header";
 import { GradientButton } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
-import { useSession } from "@/lib/session";
 
 const platforms = ["Instagram", "Telegram", "WhatsApp", "Discord", "X (Twitter)", "TikTok"];
 
 export default function SocialPage() {
   const router = useRouter();
-  const { user, setUser } = useSession();
 
-  async function handleComplete() {
-    if (user) {
-      setUser({ ...user, emailVerified: true });
-    }
+  // Verification state is server-owned. The client must never assert
+  // `emailVerified` itself (see `apps/web/test/email-verification.test.mjs`).
+  function handleComplete() {
     router.push("/onboarding/complete");
   }
 

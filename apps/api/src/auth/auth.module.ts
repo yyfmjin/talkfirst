@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
+import { MailModule } from "../mail/mail.module";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { JwtStrategy } from "./jwt.strategy";
@@ -8,7 +9,12 @@ import { LoginAttemptService } from "./login-attempt.service";
 import { VerificationService } from "./verification.service";
 
 @Module({
-  imports: [PassportModule.register({ defaultStrategy: "jwt" }), JwtModule.register({})],
+  imports: [
+    PassportModule.register({ defaultStrategy: "jwt" }),
+    JwtModule.register({}),
+    // SEC-005: supplies the mail transport `VerificationService` sends codes with.
+    MailModule,
+  ],
   controllers: [AuthController],
   providers: [
     AuthService,

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LogoMark } from "@/components/brand";
 import { PhoneShell } from "@/components/phone-shell";
-import { Field, GradientButton } from "@/components/ui";
+import { Field, GradientButton, SmallButton } from "@/components/ui";
 import { ApiRequestError, apiFetch } from "@/lib/api";
 import { useSession, type SessionUser } from "@/lib/session";
 
@@ -33,12 +33,49 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [needsVerification, setNeedsVerification] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  async function resendVerification() {
+    setError("");
+    setNotice("");
+    try {
+      await apiFetch("/auth/send-verification-code", {
+        method: "POST",
+        body: { email: normalizedEmail },
+      });
+      setNotice("验证码已重新发送，请查收邮箱。");
+    } catch {
+      setError("验证码发送失败，请稍后再试。");
+    }
+  }
+
+  async function recheckVerification() {
+    setError("");
+    setNotice("");
+    try {
+      const profile = await apiFetch<SessionUser>("/users/me");
+      if (profile.emailVerified) {
+        setUser(profile);
+        router.push("/discover");
+        return;
+      }
+    } catch {
+      // Fall through: an unverifiable read is treated as "not verified yet".
+    }
+    setNotice("尚未检测到验证结果，请先输入邮箱验证码。");
+    router.push("/verify");
+  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError("");
-    const trimmed = email.trim().toLowerCase();
+    setNotice("");
+    setNeedsVerification(false);
+    const trimmed = normalizedEmail;
     if (!trimmed || !password) {
       setError("请填写邮箱和密码。");
       return;
@@ -56,9 +93,14 @@ export default function LoginPage() {
       setUser(user);
       router.push("/discover");
     } catch (requestError) {
-      setError(
-        requestError instanceof ApiRequestError ? requestError.message : "登录失败，请稍后再试",
-      );
+      if (requestError instanceof ApiRequestError && requestError.code === "EMAIL_NOT_VERIFIED") {
+        setNeedsVerification(true);
+        setError("邮箱尚未验证，请先完成邮箱验证。");
+      } else {
+        setError(
+          requestError instanceof ApiRequestError ? requestError.message : "登录失败，请稍后再试",
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -87,6 +129,19 @@ export default function LoginPage() {
             {loading ? "登录中…" : "登录"}
           </GradientButton>
         </form>
+
+        {needsVerification ? (
+          <div className="mt-4 space-y-2 rounded-2xl border border-line bg-white p-3">
+            <p className="text-center text-[12px] text-muted">完成邮箱验证后即可正常登录。</p>
+            <SmallButton className="w-full" onClick={() => void resendVerification()}>
+              重新发送验证邮件
+            </SmallButton>
+            <SmallButton className="w-full" onClick={() => void recheckVerification()}>
+              我已完成验证，重新检查
+            </SmallButton>
+          </div>
+        ) : null}
+        {notice ? <p className="mt-3 text-center text-[12px] text-indigo-500">{notice}</p> : null}
 
         <div className="my-6 flex items-center gap-3 text-[12px] text-muted">
           <span className="h-px flex-1 bg-line" />

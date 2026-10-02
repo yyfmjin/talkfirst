@@ -52,7 +52,17 @@ services:
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
+      # SEC-005: post-registration e-mail verification enforcement.
+      ENFORCE_EMAIL_VERIFICATION: ${ENFORCE_EMAIL_VERIFICATION:-false}
+      # Legacy pre-registration gate (deprecated; superseded above).
       REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-false}
+      MAIL_PROVIDER: ${MAIL_PROVIDER:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_SECURE: ${SMTP_SECURE:-}
       ADMIN_BOOTSTRAP_EMAIL: ${ADMIN_BOOTSTRAP_EMAIL:-}
       SEED_ON_BOOT: ${SEED_ON_BOOT:-}
     ports:
