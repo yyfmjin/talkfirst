@@ -33,6 +33,17 @@ class MessageImageDto {
   image!: string;
 }
 
+/**
+ * PC-3.6 — the moment composer picks a file straight off the device, so the
+ * same two checks the avatar/chat endpoints run (mime allow-list plus a magic
+ * byte sniff) now cover video too. One field carries either kind; the service
+ * tries image first and falls back to video.
+ */
+class MomentMediaDto {
+  @IsString()
+  media!: string;
+}
+
 @Controller("uploads")
 @UseGuards(JwtAuthGuard)
 export class UploadsController {
@@ -113,5 +124,33 @@ export class UploadsController {
     }
     const imageUrl = this.uploads.saveLocal("messages", parsed.buffer, parsed.ext);
     return { success: true as const, data: { imageUrl, mime: parsed.mime } };
+  }
+
+  @Post("moment-media")
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  async uploadMomentMedia(@Body(new ValidationPipe()) dto: MomentMediaDto) {
+    if (dto.media.length > 7_000_000) {
+      throw new ForbiddenException({
+        success: false,
+        error: { code: "MEDIA_TOO_LARGE", message: "Media is too large (max 5MB)" },
+      });
+    }
+    const image = this.uploads.parseDataUrl(dto.media);
+    if (image) {
+      const url = this.uploads.saveLocal("moments", image.buffer, image.ext);
+      return { success: true as const, data: { url, mime: image.mime, kind: "image" as const } };
+    }
+    const video = this.uploads.parseVideoDataUrl(dto.media);
+    if (video) {
+      const url = this.uploads.saveLocal("moments", video.buffer, video.ext);
+      return { success: true as const, data: { url, mime: video.mime, kind: "video" as const } };
+    }
+    throw new ForbiddenException({
+      success: false,
+      error: {
+        code: "INVALID_MEDIA",
+        message: "Media must be a jpeg/png/webp image or an mp4/webm/mov video data URL",
+      },
+    });
   }
 }

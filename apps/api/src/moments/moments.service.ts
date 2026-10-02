@@ -611,7 +611,14 @@ export class MomentsService {
     input: { content: string; images?: string[]; videoUrl?: string; tags?: string[] },
   ) {
     const content = input.content.trim().slice(0, 2000);
-    if (!content) {
+    // PC-3.6 — the composer treats a photo or a clip as content of its own, so
+    // an empty body is only `EMPTY_CONTENT` when there is no media attached.
+    const images = Array.isArray(input.images)
+      ? input.images.filter((url) => typeof url === "string" && /^https?:\/\/\S{4,2000}$/.test(url)).slice(0, 9)
+      : [];
+    const videoUrl =
+      typeof input.videoUrl === "string" && /^https?:\/\/\S{4,2000}$/.test(input.videoUrl) ? input.videoUrl : null;
+    if (!content && images.length === 0 && !videoUrl) {
       const error = new Error("EMPTY_CONTENT") as Error & { code?: string };
       error.code = "EMPTY_CONTENT";
       throw error;
@@ -627,11 +634,6 @@ export class MomentsService {
       error.code = "CONTENT_BLOCKED";
       throw error;
     }
-    const images = Array.isArray(input.images)
-      ? input.images.filter((url) => typeof url === "string" && /^https?:\/\/\S{4,2000}$/.test(url)).slice(0, 9)
-      : [];
-    const videoUrl =
-      typeof input.videoUrl === "string" && /^https?:\/\/\S{4,2000}$/.test(input.videoUrl) ? input.videoUrl : null;
     const tags = Array.isArray(input.tags)
       ? input.tags
           .filter((tag) => typeof tag === "string")
