@@ -2,9 +2,15 @@ import { Injectable } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { PrismaService } from "../prisma/prisma.service";
 import { JWT_ACCESS_SECRET } from "../auth/auth.constants";
+import { emailVerificationEnforced } from "../auth/email-verification.policy";
 
 export type SocketAuthUser = { id: string; email: string };
-export type SocketAuthFailure = "MISSING" | "INVALID" | "BANNED" | "DISABLED";
+export type SocketAuthFailure =
+  | "MISSING"
+  | "INVALID"
+  | "BANNED"
+  | "DISABLED"
+  | "EMAIL_VERIFIED_REQUIRED";
 
 @Injectable()
 export class ChatAuthService {
@@ -24,11 +30,22 @@ export class ChatAuthService {
       if (payload.type !== "access") return { user: null, failure: "INVALID" };
       const user = await this.prisma.user.findUnique({
         where: { id: payload.sub },
-        select: { id: true, email: true, status: true },
+        select: { id: true, email: true, status: true, emailVerified: true },
       });
       if (!user) return { user: null, failure: "INVALID" };
       if (user.status === "BANNED") return { user: null, failure: "BANNED" };
       if (user.status !== "ACTIVE") return { user: null, failure: "DISABLED" };
+      // SEC-005 — the Socket.IO handshake must agree with `JwtStrategy`, or an
+      // unverified account locked out of the HTTP business API could still open a
+      // chat socket. The flag is read from the database on every handshake, so a
+      // token minted before verification cannot bypass the gate, and verifying
+      // later makes the same unexpired token work without a re-login. A socket has
+      // no request path, so there is no allow-list here: every unverified account
+      // is refused while enforcement is on. The check runs *after* the status
+      // checks so SEC-002's verdicts are unchanged.
+      if (emailVerificationEnforced() && !user.emailVerified) {
+        return { user: null, failure: "EMAIL_VERIFIED_REQUIRED" };
+      }
       return { user: { id: user.id, email: user.email }, failure: null };
     } catch {
       return { user: null, failure: "INVALID" };

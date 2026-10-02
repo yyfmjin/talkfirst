@@ -11,7 +11,7 @@ import { Server, Socket } from "socket.io";
 import { NotificationService } from "../notifications/notification.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { SafetyService } from "../safety/safety.service";
-import { ChatAuthService } from "./chat-auth.service";
+import { ChatAuthService, type SocketAuthFailure } from "./chat-auth.service";
 import { assertNotBlocked } from "../common/block-guard";
 import { PresenceService } from "./presence.service";
 
@@ -32,6 +32,25 @@ type AuthedSocket = Socket & {
     authPending?: Promise<boolean>;
   };
 };
+
+/**
+ * SEC-005 — maps a socket authentication failure to the client-facing `error`
+ * payload. Pure and exported so the mapping is unit-testable without a live
+ * socket, and so the e-mail gate reports the same code as the HTTP side
+ * (`EMAIL_VERIFIED_REQUIRED`) instead of the generic `UNAUTHORIZED`.
+ */
+export function socketAuthError(failure: SocketAuthFailure | null): { code: string; message: string } {
+  switch (failure) {
+    case "BANNED":
+      return { code: "USER_BANNED", message: "Invalid or expired access token" };
+    case "DISABLED":
+      return { code: "USER_DISABLED", message: "Invalid or expired access token" };
+    case "EMAIL_VERIFIED_REQUIRED":
+      return { code: "EMAIL_VERIFIED_REQUIRED", message: "Verify your email address to continue" };
+    default:
+      return { code: "UNAUTHORIZED", message: "Invalid or expired access token" };
+  }
+}
 
 @WebSocketGateway({
   namespace: "/chat",
@@ -73,8 +92,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     );
     const { user, failure } = await this.chatAuth.verifyAccessToken(token);
     if (!user) {
-      const code = failure === "BANNED" ? "USER_BANNED" : failure === "DISABLED" ? "USER_DISABLED" : "UNAUTHORIZED";
-      client.emit("error", { code, message: "Invalid or expired access token" });
+      client.emit("error", socketAuthError(failure));
       client.disconnect(true);
       return false;
     }
