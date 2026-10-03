@@ -15,7 +15,7 @@ import { loginAndLand, openNav } from "../fixtures/browser";
  * Presentation only, as ever: the API's guards remain the security boundary.
  */
 
-const SECTIONS = ["总览", "用户与关系", "内容治理", "风险与审计"];
+const SECTIONS = ["总览", "用户与关系", "内容治理", "风险与审计", "网站运维"];
 
 const FULL_NAV = [
   "仪表盘",
@@ -27,6 +27,8 @@ const FULL_NAV = [
   "审核工作台",
   "风险中心",
   "审计日志",
+  // Phase O2 — gated on `ops:read` (SUPER_ADMIN + ANALYST).
+  "访问日志",
 ];
 
 /** The sidebar, located by the element the suites already rely on. */
@@ -119,19 +121,21 @@ test.describe("shell — section headings follow the permissions", () => {
       role: "MODERATOR",
       email: ACCOUNTS.moderator.email,
       expected: ["仪表盘", "用户", "举报", "审核工作台", "风险中心", "审计日志"],
-      absent: ["连接", "交换", "屏蔽"],
+      // Phase O2: 访问日志 is gated on `ops:read`, which MODERATOR does not hold —
+      // raw client IP and User-Agent are not part of the moderation surface.
+      absent: ["连接", "交换", "屏蔽", "访问日志"],
     },
     {
       role: "SUPPORT",
       email: ACCOUNTS.support.email,
       expected: ["仪表盘", "用户", "举报", "审核工作台", "审计日志"],
-      absent: ["连接", "交换", "屏蔽", "风险中心"],
+      absent: ["连接", "交换", "屏蔽", "风险中心", "访问日志"],
     },
     {
       role: "CONTENT_MANAGER",
       email: ACCOUNTS.contentManager.email,
       expected: ["仪表盘", "用户", "举报", "审核工作台", "审计日志"],
-      absent: ["连接", "交换", "屏蔽", "风险中心"],
+      absent: ["连接", "交换", "屏蔽", "风险中心", "访问日志"],
     },
   ];
 

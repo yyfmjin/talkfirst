@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PhoneShell } from "@/components/phone-shell";
 import { ScreenHeader } from "@/components/screen-header";
-import { Field, GradientButton } from "@/components/ui";
+import { TFChip, TFInput, TFButton, TFRowSkeleton, TFLoadingRegion } from "@/components/tf";
 import { cn } from "@/lib/cn";
 import { ApiRequestError, apiFetch } from "@/lib/api";
 import { useSession } from "@/lib/session";
@@ -109,70 +109,136 @@ export default function BasicInfoPage() {
   return (
     <PhoneShell>
       <ScreenHeader title="基本信息" backHref="/onboarding/avatar" />
-      <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-4">
+      <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-4">
         {prefilling ? (
-          <div className="animate-pulse space-y-4">
-            <div className="h-16 rounded-2xl bg-indigo-50" />
-            <div className="h-16 rounded-2xl bg-indigo-50" />
-            <div className="h-16 rounded-2xl bg-indigo-50" />
-          </div>
+          <TFLoadingRegion label="正在加载你的资料">
+            <div className="space-y-4">
+              <TFRowSkeleton />
+              <TFRowSkeleton />
+              <TFRowSkeleton />
+            </div>
+          </TFLoadingRegion>
         ) : (
           <>
-            <Field label="昵称" placeholder="大家怎么称呼你" value={nickname} onChange={setNickname} />
+            <div>
+              {/* The label is 「昵称」, which `test/fixtures/browser.ts` and
+                  `profile.spec.ts` both target with `getByLabel("昵称")` on
+                  `/me/edit`. The two pages share the string, so renaming it here
+                  would break those specs. */}
+              <label htmlFor="ob-nickname" className="mb-1.5 block text-caption font-medium text-content-muted">
+                昵称
+              </label>
+              <TFInput
+                id="ob-nickname"
+                autoComplete="nickname"
+                placeholder="大家怎么称呼你"
+                value={nickname}
+                invalid={Boolean(error)}
+                describedBy={error ? "ob-error" : undefined}
+                onChange={(event) => setNickname(event.target.value)}
+              />
+            </div>
+
             <div className="mt-4">
-              <Field
-                label="出生日期"
+              <label htmlFor="ob-birthdate" className="mb-1.5 block text-caption font-medium text-content-muted">
+                出生日期
+              </label>
+              {/* `autoComplete="bday"` is what lets a browser fill a date of birth
+                  from the saved profile instead of making the member hunt for it in
+                  a native date picker. */}
+              <TFInput
+                id="ob-birthdate"
                 type="date"
+                autoComplete="bday"
                 value={birthDate}
-                onChange={setBirthDate}
+                invalid={Boolean(error) && age !== null && age < 18}
+                describedBy="ob-age"
+                onChange={(event) => setBirthDate(event.target.value)}
               />
               {age !== null ? (
-                <p className={cn("mt-1 text-[11px]", age >= 18 ? "text-muted" : "text-red-500")}>
-                  {age >= 18 ? `${age} 岁` : "需要年满 18 岁"}
+                <p
+                  id="ob-age"
+                  className={cn(
+                    "mt-1.5 text-caption",
+                    age >= 18 ? "text-content-muted" : "text-danger-600",
+                  )}
+                >
+                  {age >= 18 ? `已满 ${age} 岁` : "需要年满 18 岁才能使用 TalkFirst"}
                 </p>
               ) : null}
             </div>
+
             <div className="mt-4">
-              <label className="block">
-                <span className="mb-2 block text-[13px] text-muted">所在国家</span>
-                <select
-                  value={countryCode}
-                  onChange={(event) => setCountryCode(event.target.value)}
-                  aria-label="所在国家"
-                  className="h-12 w-full min-w-0 rounded-2xl border border-line bg-[#F8FAFF] px-3 text-[14px] outline-none ring-indigo-200 focus:ring-2"
-                >
-                  <option value="">请选择…</option>
-                  {countries.map((item) => (
-                    <option key={item.code} value={item.code}>
-                      {item.flag ?? ""} {item.name}
-                    </option>
-                  ))}
-                </select>
+              {/* A real `<label for>` replaced a `<label>` that *wrapped* the
+                  select while also carrying `aria-label`. Two labelling
+                  mechanisms on one control is ambiguous; this is the standard one. */}
+              <label htmlFor="ob-country" className="mb-1.5 block text-caption font-medium text-content-muted">
+                所在国家
               </label>
+              <select
+                id="ob-country"
+                value={countryCode}
+                autoComplete="country"
+                onChange={(event) => setCountryCode(event.target.value)}
+                className="h-11 w-full min-w-0 rounded-control border border-border bg-surface-sunken px-3.5 text-ui text-content transition-colors duration-instant ease-out focus:border-brand-500 focus:bg-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-200"
+              >
+                <option value="">请选择…</option>
+                {countries.map((item) => (
+                  <option key={item.code} value={item.code}>
+                    {item.flag ?? ""} {item.name}
+                  </option>
+                ))}
+              </select>
             </div>
+
             <div className="mt-4">
-              <Field label="城市（可选）" placeholder="上海" value={city} onChange={setCity} />
+              <label htmlFor="ob-city" className="mb-1.5 block text-caption font-medium text-content-muted">
+                城市（可选）
+              </label>
+              <TFInput
+                id="ob-city"
+                autoComplete="address-level2"
+                placeholder="上海"
+                value={city}
+                onChange={(event) => setCity(event.target.value)}
+              />
             </div>
-            <p className="mb-2 mt-5 text-[13px] text-muted">性别（可选）</p>
-            <div className="grid grid-cols-2 gap-2">
-              {genders.map((item) => (
-                <button
-                  key={item.value}
-                  onClick={() => setGender(item.value)}
-                  className={cn(
-                    "h-10 rounded-full border border-line text-[13px]",
-                    gender === item.value && "border-transparent tf-gradient text-white",
-                  )}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-            {error ? <p className="mt-4 text-[12px] text-red-500">{error}</p> : null}
-            <div className="mb-1 mt-8">
-              <GradientButton onClick={handleNext} disabled={loading}>
-                {loading ? "保存中…" : "下一步"}
-              </GradientButton>
+
+            {/* `TFChip` carries `aria-pressed`, so a screen reader can tell which
+                gender is selected. The old buttons only differed by a fill colour
+                — exactly the "never colour alone" rule. */}
+            <fieldset className="mt-5">
+              <legend className="mb-2 text-caption font-medium text-content-muted">性别（可选）</legend>
+              <div className="grid grid-cols-2 gap-2">
+                {genders.map((item) => (
+                  <TFChip
+                    key={item.value}
+                    selected={gender === item.value}
+                    onClick={() => setGender(item.value)}
+                    className="w-full justify-center"
+                  >
+                    {item.label}
+                  </TFChip>
+                ))}
+              </div>
+            </fieldset>
+
+            {error ? (
+              <p id="ob-error" role="alert" className="mt-4 break-words text-caption text-danger-600">
+                {error}
+              </p>
+            ) : null}
+
+            <div className="mt-8">
+              <TFButton
+                size="lg"
+                fullWidth
+                onClick={() => void handleNext()}
+                loading={loading}
+                loadingLabel="保存中…"
+              >
+                下一步
+              </TFButton>
             </div>
           </>
         )}

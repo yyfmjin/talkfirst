@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "TalkFirst",
+    "slug": "talkfirst",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "talkfirst",
+    "newArchEnabled": true,
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#6B7CFF"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.talkfirst.app"
+    },
+    "android": {
+      "package": "com.talkfirst.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#6B7CFF"
+      },
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": [
+      "expo-secure-store"
+    ]
+  }
+}

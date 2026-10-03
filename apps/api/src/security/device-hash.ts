@@ -51,3 +51,26 @@ export function deviceHash(userAgent: string | undefined | null): string | undef
 
   return createHash("sha256").update(`${salt}:${normalized}`).digest("hex");
 }
+
+/**
+ * Phase O1 — hash one User-Agent for the bounded correlation list on
+ * `DeviceIdentity.userAgents`.
+ *
+ * Same salt and same normalisation as `deviceHash`, but a different prefix so
+ * the two derivations can never collide: `deviceHash` identifies the *device*
+ * (used as a column and an index key), while this identifies *one UA string
+ * seen on* that device. `DeviceIdentity.userAgents` therefore stores hashes
+ * only — the schema's "observed User-Agent strings are hashed for correlation,
+ * never stored raw" note stays true, and the raw string continues to live solely
+ * on `AccessLog.userAgent` where it is already truncated and short-lived.
+ *
+ * Returns `undefined` without a salt, exactly like `deviceHash`, so the two
+ * agree on when device identification is disabled.
+ */
+export function userAgentFingerprint(userAgent: string | undefined | null): string | undefined {
+  const normalized = normalizeUserAgent(userAgent);
+  if (normalized.length === 0) return undefined;
+  const salt = process.env[SALT_ENV]?.trim();
+  if (!salt) return undefined;
+  return createHash("sha256").update(`${salt}:ua:${normalized}`).digest("hex");
+}

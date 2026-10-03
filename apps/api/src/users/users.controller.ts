@@ -13,6 +13,7 @@ import {
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CurrentUser, type AuthUser } from "../auth/current-user.decorator";
+import { UuidParamPipe } from "../common/uuid-param.pipe";
 import { ValidationPipe } from "../common/validation.pipe";
 import { PrismaService } from "../prisma/prisma.service";
 import {
@@ -100,7 +101,7 @@ export class UsersController {
   }
 
   @Get(":id")
-  async publicProfile(@CurrentUser() user: AuthUser, @Param("id") id: string) {
+  async publicProfile(@CurrentUser() user: AuthUser, @Param("id", UuidParamPipe) id: string) {
     const data = await this.usersService.getPublicProfile(id, user.id);
     return { success: true as const, data };
   }
@@ -153,8 +154,14 @@ export class UsersController {
     try {
       const data = await this.usersService.replaceLanguages(user.id, dto.items);
       return { success: true as const, data };
-    } catch {
-      throw new BadRequestException(asValidationError("UNKNOWN_LANGUAGE_CODE", "Unknown language code"));
+    } catch (error) {
+      // Only a genuinely unknown code is a 400. This used to be a bare `catch`,
+      // which relabelled *every* failure — including a database error — as
+      // "unknown language code" and hid the real cause from the client.
+      if ((error as { message?: string }).message === "UNKNOWN_LANGUAGE_CODE") {
+        throw new BadRequestException(asValidationError("UNKNOWN_LANGUAGE_CODE", "Unknown language code"));
+      }
+      throw error;
     }
   }
 
@@ -166,8 +173,11 @@ export class UsersController {
     try {
       const data = await this.usersService.replaceInterests(user.id, dto.slugs);
       return { success: true as const, data };
-    } catch {
-      throw new BadRequestException(asValidationError("UNKNOWN_INTEREST_SLUG", "Unknown interest slug"));
+    } catch (error) {
+      if ((error as { message?: string }).message === "UNKNOWN_INTEREST_SLUG") {
+        throw new BadRequestException(asValidationError("UNKNOWN_INTEREST_SLUG", "Unknown interest slug"));
+      }
+      throw error;
     }
   }
 
@@ -179,8 +189,11 @@ export class UsersController {
     try {
       const data = await this.usersService.replacePurposes(user.id, dto.slugs);
       return { success: true as const, data };
-    } catch {
-      throw new BadRequestException(asValidationError("UNKNOWN_PURPOSE_SLUG", "Unknown purpose slug"));
+    } catch (error) {
+      if ((error as { message?: string }).message === "UNKNOWN_PURPOSE_SLUG") {
+        throw new BadRequestException(asValidationError("UNKNOWN_PURPOSE_SLUG", "Unknown purpose slug"));
+      }
+      throw error;
     }
   }
 
@@ -192,8 +205,11 @@ export class UsersController {
     try {
       const data = await this.usersService.replacePreferredCountries(user.id, dto.codes);
       return { success: true as const, data };
-    } catch {
-      throw new BadRequestException(asValidationError("UNKNOWN_COUNTRY_CODE", "Unknown country code"));
+    } catch (error) {
+      if ((error as { message?: string }).message === "UNKNOWN_COUNTRY_CODE") {
+        throw new BadRequestException(asValidationError("UNKNOWN_COUNTRY_CODE", "Unknown country code"));
+      }
+      throw error;
     }
   }
 }

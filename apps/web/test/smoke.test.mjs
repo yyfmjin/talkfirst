@@ -10,9 +10,25 @@ test("welcome screen renders TalkFirst branding", () => {
   const source = readFileSync(join(root, "src/app/page.tsx"), "utf8");
   assert.match(source, /Wordmark/);
   assert.match(source, /仅限 18 岁以上使用/);
+  // Phase B: the launch screen owns the product promise as its own <h1>. The
+  // brand lockup below it is decorative, so the sentence moved out of
+  // `brand.tsx` and into the page — the assertion follows the design change
+  // rather than forcing the page to keep a heading-shaped logo caption.
+  assert.match(source, /先聊聊/);
+  assert.match(source, /再成为朋友/);
+  // It must remain a Server Component: this is one of the few routes whose content
+  // is in the first byte of HTML, which is what makes it indexable at all.
+  //
+  // Matched as a DIRECTIVE (own line, quoted, no leading prose) rather than as the
+  // bare substring `"use client"`. The bare form also matches a comment that
+  // explains why the route is not a client component — i.e. it would fail the test
+  // for documenting the very rule the test enforces. `apps/admin/test/smoke.test.mjs`
+  // already matches call positions for exactly this reason; this brings the web
+  // suite in line with it.
+  assert.doesNotMatch(source, /^\s*["']use client["']\s*;?\s*$/m, "must stay a Server Component");
   const brand = readFileSync(join(root, "src/components/brand.tsx"), "utf8");
   assert.match(brand, /TalkFirst/);
-  assert.match(brand, /先聊聊，再成为朋友/);
+  assert.match(brand, /Talk First\. Connect Later\./);
 });
 
 test("login screen offers email sign-in", () => {

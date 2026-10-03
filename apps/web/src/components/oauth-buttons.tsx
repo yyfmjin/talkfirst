@@ -100,12 +100,20 @@ export function OAuthButtons({
         const start = new URL(`${API_BASE_URL}/auth/oauth/${provider.id}/start`);
         if (redirectTo) start.searchParams.set("redirectTo", redirectTo);
 
+        /**
+         * `rel="nofollow"` because this is an action, not a page to index.
+         *
+         * Note for future edits: this comment is a BLOCK comment placed OUTSIDE the
+         * tag. A `//` comment inside a JSX opening tag is still scanned as tag
+         * content by `scripts/tf-prop-check.mjs`, which does not skip comments — so
+         * its English prose gets read as prop names and reported as undeclared
+         * (`does not declare "because"`). Keeping it out here costs nothing.
+         */
         return (
           <a
             key={provider.id}
             href={start.toString()}
             data-testid={`oauth-${provider.id}`}
-            // `rel="nofollow"` because this is an action, not a page to index.
             rel="nofollow"
             className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-control border border-border bg-surface px-4 text-ui font-medium text-content transition-colors duration-instant hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
           >

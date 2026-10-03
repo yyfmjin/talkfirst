@@ -59,7 +59,8 @@ export function platformMeta(platforms: MomentPlatform[], id: string): MomentPla
       id,
       label: id,
       icon: id.slice(0, 2),
-      color: "#6B7CFF",
+      /* Unknown platform: the brand blue, not the old accent purple. */
+      color: "#3B82F6",
       connectedLabel: "",
     }
   );
@@ -75,12 +76,6 @@ export function timeAgo(iso: string) {
   const days = Math.floor(hours / 24);
   if (days < 30) return `${days}天前`;
   return new Date(iso).toLocaleDateString();
-}
-
-export function avatarColor(name: string | null) {
-  const palette = ["#7B86FF", "#F472B6", "#2DD4BF", "#FBBF24", "#60A5FA", "#A78BFA"];
-  const seed = (name ?? "?").charCodeAt(0) || 0;
-  return palette[seed % palette.length];
 }
 
 export function relativeTime(value: string) {

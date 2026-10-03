@@ -351,7 +351,7 @@ function BlocksScreen() {
                     <td className="py-2 pr-4">
                       <span
                         data-testid={`block-direction-${pairKey(item)}`}
-                        className="rounded-full bg-[#FEE2E2] px-2 py-0.5 text-[11px] font-medium text-[#991B1B]"
+                        className="rounded-full bg-danger-wash px-2 py-0.5 text-[11px] font-medium text-danger-ink"
                       >
                         屏蔽 →
                       </span>

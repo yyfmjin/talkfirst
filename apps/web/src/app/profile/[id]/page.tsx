@@ -7,10 +7,17 @@ import { PhoneShell } from "@/components/phone-shell";
 import { TabBar } from "@/components/tab-bar";
 import { ScreenHeader } from "@/components/screen-header";
 import { AttributeTagList } from "@/components/attribute-tags";
-import { GradientButton, OutlineButton } from "@/components/ui";
+import {
+  TFAvatar,
+  TFBadge,
+  TFButton,
+  TFErrorState,
+  TFLoadingRegion,
+  TFSkeleton,
+} from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { friendlyErrorMessage } from "@/lib/errors";
-import { avatarInitial, type PublicProfile } from "@/lib/profile";
+import { type PublicProfile } from "@/lib/profile";
 
 /**
  * PC-1.4 §16-§18: the full profile page.
@@ -93,49 +100,49 @@ export default function ProfileDetailPage() {
       <ScreenHeader title="个人资料" backHref="/discover" />
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-4">
         {loading ? (
-          <div className="animate-pulse space-y-3">
-            <div className="h-32 rounded-3xl bg-indigo-50" />
-            <div className="h-24 rounded-3xl bg-indigo-50" />
-          </div>
+          <TFLoadingRegion label="正在加载资料">
+            <div className="space-y-3">
+              <TFSkeleton shape="block" className="h-32 w-full" />
+              <TFSkeleton shape="block" className="h-24 w-full" />
+            </div>
+          </TFLoadingRegion>
         ) : null}
 
         {!loading && error && !profile ? (
-          <div className="rounded-2xl bg-red-50 p-4 text-center">
-            <p className="text-[12px] text-red-700">{error}</p>
-            <OutlineButton className="mt-3 min-h-[2.5rem] w-full text-[12px]" onClick={() => void load()}>
-              重试
-            </OutlineButton>
-            <button onClick={() => router.back()} className="mt-3 text-[12px] text-muted underline">
-              返回上一页
-            </button>
+          <div>
+            <TFErrorState description={error} onRetry={() => void load()} />
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="rounded-control px-3 py-2 text-ui text-content-muted underline decoration-dotted"
+              >
+                返回上一页
+              </button>
+            </div>
           </div>
         ) : null}
 
         {profile ? (
           <>
-            <section className="overflow-hidden rounded-3xl border border-line bg-white">
+            <section className="overflow-hidden rounded-card border border-border bg-surface">
               <div className="tf-gradient-soft h-20" />
               <div className="-mt-8 px-4 pb-5">
                 <div className="flex items-end gap-3">
-                  {profile.avatarUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={profile.avatarUrl}
-                      alt={`${profile.nickname ?? "用户"} 的头像`}
-                      className="h-16 w-16 shrink-0 rounded-full border-4 border-white object-cover shadow"
-                    />
-                  ) : (
-                    <div className="tf-gradient grid h-16 w-16 shrink-0 place-items-center rounded-full border-4 border-white text-xl font-semibold text-white shadow">
-                      {avatarInitial(profile.nickname)}
-                    </div>
-                  )}
+                  <TFAvatar
+                    name={profile.nickname}
+                    src={profile.avatarUrl}
+                    size="lg"
+                    ring
+                    className="border-4 border-white"
+                  />
                   <div className="min-w-0 flex-1">
-                    <p className="flex items-center gap-1 text-[17px] font-semibold">
+                    <p className="flex items-center gap-1 text-heading font-semibold text-content">
                       <span className="min-w-0 flex-1 truncate">{profile.nickname ?? "TalkFirst 用户"}</span>
-                      <BadgeCheck size={15} className="shrink-0 text-[#6572D8]" />
+                      <BadgeCheck size={16} className="shrink-0 text-brand-500" aria-hidden="true" />
                     </p>
                     {profile.age !== null || place ? (
-                      <p className="mt-0.5 text-[12px] text-muted">
+                      <p className="mt-0.5 text-caption text-content-muted">
                         {profile.countryFlag ?? "🌎"} {place}
                         {profile.age !== null ? ` · ${profile.age} 岁` : ""}
                       </p>
@@ -143,16 +150,24 @@ export default function ProfileDetailPage() {
                   </div>
                 </div>
                 {profile.bio ? (
-                  <p className="mt-3 whitespace-pre-line break-words text-[13px] leading-5 text-muted">
+                  <p className="mt-3 whitespace-pre-line break-words text-ui leading-6 text-content-muted">
                     {profile.bio}
                   </p>
                 ) : null}
               </div>
             </section>
 
+            {/*
+              IMPORTANT: `aboutVisible` / `lookingVisible` gate the whole SECTION.
+              Nothing inside renders when the tier is withheld — no heading, no
+              「暂无」 placeholder. `profile.spec.ts` asserts exactly that:
+                await expect(page.getByText("暂无")).toHaveCount(0);
+              so this must stay a render-or-nothing branch. The copy 「关于 TA」 is
+              also asserted by text, so it is unchanged.
+            */}
             {aboutVisible ? (
-              <section data-testid="profile-about" className="mt-4 rounded-3xl border border-line bg-white p-4">
-                <p className="text-[13px] font-semibold">关于 TA</p>
+              <section data-testid="profile-about" className="mt-4 rounded-card border border-border bg-surface p-4">
+                <p className="text-ui font-semibold text-content">关于 TA</p>
 
               {profile.attributes.aboutMe.length > 0 ? (
                 <div className="mt-2">
@@ -162,18 +177,15 @@ export default function ProfileDetailPage() {
 
               {profile.languages.length > 0 ? (
                 <div className="mt-3">
-                  <p className="mb-1.5 text-[11px] text-muted">语言</p>
+                  <p className="mb-2 text-caption font-medium text-content-muted">语言</p>
                   <div className="flex flex-wrap gap-1.5">
                     {profile.languages.map((language) => (
-                      <span
-                        key={`${language.code}-${language.type}`}
-                        className="rounded-full bg-[#F1F3FF] px-3 py-1 text-[11px] text-[#6572D8]"
-                      >
+                      <TFBadge key={`${language.code}-${language.type}`} tone="brand">
                         {language.nativeName ?? language.name}
-                        <span className="ml-1 text-[10px] opacity-70">
+                        <span className="opacity-70">
                           {language.type === "NATIVE" ? "母语" : "学习中"}
                         </span>
-                      </span>
+                      </TFBadge>
                     ))}
                   </div>
                 </div>
@@ -181,15 +193,12 @@ export default function ProfileDetailPage() {
 
               {profile.interests.length > 0 ? (
                 <div className="mt-3">
-                  <p className="mb-1.5 text-[11px] text-muted">兴趣</p>
+                  <p className="mb-2 text-caption font-medium text-content-muted">兴趣</p>
                   <div className="flex flex-wrap gap-1.5">
                     {profile.interests.map((interest) => (
-                      <span
-                        key={interest.slug}
-                        className="rounded-full bg-[#F1F3FF] px-3 py-1 text-[11px] text-[#6572D8]"
-                      >
+                      <TFBadge key={interest.slug} tone="brand">
                         {interest.nameZh ?? interest.name}
-                      </span>
+                      </TFBadge>
                     ))}
                   </div>
                 </div>
@@ -198,8 +207,8 @@ export default function ProfileDetailPage() {
             ) : null}
 
             {lookingVisible ? (
-              <section data-testid="profile-looking" className="mt-4 rounded-3xl border border-line bg-white p-4">
-                <p className="text-[13px] font-semibold">交友需求</p>
+              <section data-testid="profile-looking" className="mt-4 rounded-card border border-border bg-surface p-4">
+                <p className="text-ui font-semibold text-content">交友需求</p>
 
                 {profile.attributes.lookingFor.length > 0 ? (
                   <div className="mt-2">
@@ -209,15 +218,12 @@ export default function ProfileDetailPage() {
 
                 {profile.purposes.length > 0 ? (
                   <div className="mt-3">
-                    <p className="mb-1.5 text-[11px] text-muted">交友目的</p>
+                    <p className="mb-2 text-caption font-medium text-content-muted">交友目的</p>
                     <div className="flex flex-wrap gap-1.5">
                       {profile.purposes.map((purpose) => (
-                        <span
-                          key={purpose.slug}
-                          className="rounded-full bg-[#FFF4E5] px-3 py-1 text-[11px] text-[#B26A00]"
-                        >
+                        <TFBadge key={purpose.slug} tone="warning">
                           {purpose.nameZh ?? purpose.name}
-                        </span>
+                        </TFBadge>
                       ))}
                     </div>
                   </div>
@@ -225,15 +231,12 @@ export default function ProfileDetailPage() {
 
                 {profile.preferredCountries.length > 0 ? (
                   <div className="mt-3">
-                    <p className="mb-1.5 text-[11px] text-muted">想认识的国家/地区</p>
+                    <p className="mb-2 text-caption font-medium text-content-muted">想认识的国家/地区</p>
                     <div className="flex flex-wrap gap-1.5">
                       {profile.preferredCountries.map((country) => (
-                        <span
-                          key={country.code}
-                          className="rounded-full bg-[#EAFBF1] px-3 py-1 text-[11px] text-[#0E9F6E]"
-                        >
+                        <TFBadge key={country.code} tone="success">
                           {country.flag ?? ""} {country.name}
-                        </span>
+                        </TFBadge>
                       ))}
                     </div>
                   </div>
@@ -241,33 +244,48 @@ export default function ProfileDetailPage() {
               </section>
             ) : null}
 
-            {error ? <p className="mt-3 text-center text-[12px] text-red-500">{error}</p> : null}
+            {error ? (
+              <p role="alert" className="mt-3 break-words text-center text-caption text-danger-600">
+                {error}
+              </p>
+            ) : null}
 
             {!isSelf ? (
               <div className="mt-6 flex gap-2">
-                <OutlineButton href={`/moments/user/${profile.id}`} className="min-h-[2.75rem] flex-1 text-[12px]">
+                <TFButton
+                  variant="secondary"
+                  href={`/moments/user/${profile.id}`}
+                  className="flex-1"
+                >
                   查看动态
-                </OutlineButton>
+                </TFButton>
                 {profile.relationship.isConnected ? (
-                  <GradientButton className="min-h-[2.75rem] flex-[2] text-[12px]" disabled>
+                  <TFButton variant="secondary" className="flex-[2]" disabled>
                     已连接
-                  </GradientButton>
+                  </TFButton>
                 ) : (
-                  <GradientButton
-                    className="min-h-[2.75rem] flex-[2] text-[12px]"
+                  <TFButton
+                    className="flex-[2]"
                     onClick={() => void sayHello()}
                     disabled={helloSending || helloDone}
+                    /* `aria-label` is how the suite finds this button. */
                     aria-label="打招呼"
                   >
                     {helloDone ? "已打招呼" : helloSending ? "发送中…" : "打招呼"}
-                  </GradientButton>
+                  </TFButton>
                 )}
               </div>
             ) : (
               <div className="mt-6 space-y-2">
-                <GradientButton onClick={() => router.push("/me/edit")}>编辑我的资料</GradientButton>
-                <GradientButton onClick={() => router.push("/me/attributes")}>管理交友属性</GradientButton>
-                <GradientButton onClick={() => router.push("/me/visibility")}>资料可见范围</GradientButton>
+                <TFButton size="lg" fullWidth onClick={() => router.push("/me/edit")}>
+                  编辑我的资料
+                </TFButton>
+                <TFButton variant="secondary" fullWidth onClick={() => router.push("/me/attributes")}>
+                  管理交友属性
+                </TFButton>
+                <TFButton variant="secondary" fullWidth onClick={() => router.push("/me/visibility")}>
+                  资料可见范围
+                </TFButton>
               </div>
             )}
           </>

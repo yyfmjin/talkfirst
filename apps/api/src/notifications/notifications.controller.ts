@@ -2,9 +2,9 @@ import { Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/c
 import { Type } from "class-transformer";
 import { IsIn, IsInt, IsOptional, IsString, Min } from "class-validator";
 
-import { UuidParamPipe } from "../admin/uuid-param.pipe";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CurrentUser, type AuthUser } from "../auth/current-user.decorator";
+import { UuidParamPipe } from "../common/uuid-param.pipe";
 import { ValidationPipe } from "../common/validation.pipe";
 import { NotificationCursorPipe } from "./notification-cursor.pipe";
 import type { NotificationCursor } from "./notification-cursor";

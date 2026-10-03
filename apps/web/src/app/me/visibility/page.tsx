@@ -4,7 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import { PhoneShell } from "@/components/phone-shell";
 import { ScreenHeader } from "@/components/screen-header";
 import { VisibilitySelect } from "@/components/visibility-select";
-import { OutlineButton, SmallButton } from "@/components/ui";
+import {
+  TFButton,
+  TFCard,
+  TFErrorState,
+  TFLoadingRegion,
+  TFSkeleton,
+} from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { friendlyErrorMessage } from "@/lib/errors";
 import {
@@ -72,39 +78,41 @@ export default function ProfileVisibilityPage() {
     <PhoneShell>
       <ScreenHeader title="资料可见范围" backHref="/me" />
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-4">
-        <p className="text-[13px] leading-6 text-muted">
+        <p className="text-ui leading-6 text-content-muted">
           这里只控制个人资料的展示范围，不影响社交账号交换，也不影响动态的可见范围。
         </p>
-        <p className="mt-2 rounded-2xl bg-[#F8F9FF] px-3 py-2.5 text-[11px] leading-5 text-muted">
+        <p className="mt-2 rounded-row bg-surface-sunken px-3 py-2.5 text-caption leading-5 text-content-muted">
           拉黑始终优先于这里的设置：被拉黑的人看不到你的任何资料，包括设为「公开」的部分。
         </p>
 
         {loading ? (
-          <div className="mt-5 animate-pulse space-y-3">
-            <div className="h-56 rounded-3xl bg-indigo-50" />
-            <div className="h-24 rounded-3xl bg-indigo-50" />
-          </div>
+          <TFLoadingRegion label="正在加载可见范围设置">
+            <div className="mt-5 space-y-3">
+              <TFSkeleton shape="block" className="h-56 w-full" />
+              <TFSkeleton shape="block" className="h-24 w-full" />
+            </div>
+          </TFLoadingRegion>
         ) : null}
 
         {!loading && error ? (
-          <div className="mt-5 rounded-2xl bg-red-50 p-4 text-center">
-            <p className="text-[12px] text-red-700">{error}</p>
-            <SmallButton className="mt-3 w-full" onClick={() => void load()}>
-              重试
-            </SmallButton>
+          <div className="mt-5">
+            <TFErrorState description={error} onRetry={() => void load()} />
           </div>
         ) : null}
 
+        {/*
+          One card per field. `visibility-row-{fieldKey}` is asserted by
+          `profile.spec.ts` (it uses `visibility-row-bio`), and the ROW must
+          contain the current tier's wording — the test reads 「仅好友/连接可见」
+          from the row before changing it, and 「仅自己可见」 after a reload. Those
+          strings come from `VISIBILITY_LABELS` and are unchanged.
+        */}
         {!loading && rows.length > 0 ? (
           <div className="mt-5 space-y-3">
             {rows.map((row) => (
-              <section
-                key={row.fieldKey}
-                data-testid={`visibility-row-${row.fieldKey}`}
-                className="rounded-3xl border border-line bg-white p-4"
-              >
-                <p className="text-[13px] font-medium">{FIELD_VISIBILITY_LABELS[row.fieldKey]}</p>
-                <p className="mb-2 mt-0.5 text-[11px] text-muted">
+              <TFCard key={row.fieldKey} data-testid={`visibility-row-${row.fieldKey}`}>
+                <p className="text-ui font-medium text-content">{FIELD_VISIBILITY_LABELS[row.fieldKey]}</p>
+                <p className="mb-2.5 mt-0.5 text-caption text-content-muted">
                   当前：{VISIBILITY_LABELS[row.visibility]}
                 </p>
                 <VisibilitySelect
@@ -113,17 +121,21 @@ export default function ProfileVisibilityPage() {
                   label={`${FIELD_VISIBILITY_LABELS[row.fieldKey]} 的可见范围`}
                   onChange={(tier) => void change(row.fieldKey, tier)}
                 />
-              </section>
+              </TFCard>
             ))}
           </div>
         ) : null}
 
-        {notice ? <p className="mt-4 text-center text-[12px] text-emerald-600">{notice}</p> : null}
+        {notice ? (
+          <p role="status" className="mt-4 text-center text-caption text-success-600">
+            {notice}
+          </p>
+        ) : null}
 
-        <div className="mb-1 mt-6">
-          <OutlineButton href="/me" className="min-h-[2.75rem] w-full text-[13px]">
+        <div className="mt-6">
+          <TFButton variant="secondary" fullWidth href="/me">
             返回我的
-          </OutlineButton>
+          </TFButton>
         </div>
       </div>
     </PhoneShell>

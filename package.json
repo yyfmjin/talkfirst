@@ -14,6 +14,8 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
+    "test:static": "npm run test:static --workspaces --if-present",
+    "test:e2e": "npm run test:e2e --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
     "prisma:migrate": "prisma migrate dev --schema prisma/schema.prisma",

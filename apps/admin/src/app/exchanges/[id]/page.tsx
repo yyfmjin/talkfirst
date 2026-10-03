@@ -277,7 +277,7 @@ function ExchangeDetailScreen() {
                   <span
                     key={platform}
                     data-testid={`exchange-detail-platform-${platform}`}
-                    className="rounded-full bg-[#EDEFF3] px-2.5 py-0.5 text-[12px] font-medium text-[#5A6472]"
+                    className="rounded-full bg-neutral-wash px-2.5 py-0.5 text-[12px] font-medium text-neutral-ink"
                   >
                     {platform}
                   </span>
@@ -308,13 +308,13 @@ function ExchangeDetailScreen() {
                   <li
                     key={`${share.ownerId}-${share.viewerId}-${share.platform}`}
                     data-testid={`exchange-share-${share.platform}`}
-                    className="rounded-xl border border-line/60 bg-[#FBFCFE] p-3"
+                    className="rounded-xl border border-line/60 bg-surface p-3"
                   >
                     <p className="font-medium">
                       {partyLabel(share.ownerId)} → {partyLabel(share.viewerId)}
                     </p>
                     <p className="mt-1 text-muted">
-                      <span className="rounded-full bg-[#EDEFF3] px-2 py-0.5 text-[11px] font-medium text-[#5A6472]">
+                      <span className="rounded-full bg-neutral-wash px-2 py-0.5 text-[11px] font-medium text-neutral-ink">
                         {share.platform}
                       </span>
                       <span className="ml-2">{new Date(share.createdAt).toLocaleString()}</span>
@@ -368,7 +368,7 @@ function ExchangeDetailScreen() {
             ) : (
               <ul className="mt-2 space-y-2 text-[13px]">
                 {data.history.map((h) => (
-                  <li key={h.id} className="rounded-xl border border-line/60 bg-[#FBFCFE] p-3">
+                  <li key={h.id} className="rounded-xl border border-line/60 bg-surface p-3">
                     <p className="font-medium">{h.action}</p>
                     <p className="mt-1 text-muted">
                       {new Date(h.createdAt).toLocaleString()} ·{" "}
@@ -394,11 +394,11 @@ function ExchangeDetailScreen() {
  * different things, so they are not collapsed into one grey.
  */
 function statusBadge(status: string): string {
-  if (status === "ACCEPTED") return "bg-[#DCFCE7] text-[#166534]";
-  if (status === "PENDING") return "bg-[#FEF3C7] text-[#92400E]";
-  if (status === "REJECTED") return "bg-[#FEE2E2] text-[#991B1B]";
-  if (status === "CANCELLED") return "bg-[#EDEFF3] text-[#5A6472]";
-  return "bg-[#EDEFF3] text-[#5A6472]";
+  if (status === "ACCEPTED") return "bg-success-wash text-success-ink";
+  if (status === "PENDING") return "bg-warning-wash text-warning-ink";
+  if (status === "REJECTED") return "bg-danger-wash text-danger-ink";
+  if (status === "CANCELLED") return "bg-neutral-wash text-neutral-ink";
+  return "bg-neutral-wash text-neutral-ink";
 }
 
 /**

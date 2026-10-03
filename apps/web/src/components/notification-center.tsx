@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { NotificationItem, useNotificationReader } from "@/components/notification-item";
 import { ScreenHeader } from "@/components/screen-header";
-import { OutlineButton } from "@/components/ui";
+import { TFButton, TFLoadingRegion, TFSkeleton } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { friendlyErrorMessage } from "@/lib/errors";
 import {
@@ -140,7 +140,7 @@ export function NotificationCenter() {
             data-testid="notification-mark-all"
             onClick={() => void markAllRead()}
             disabled={markingAll || unread === 0}
-            className="shrink-0 whitespace-nowrap rounded-full px-1 py-1 text-[12px] text-[#6572D8] underline disabled:opacity-40 disabled:no-underline"
+            className="shrink-0 whitespace-nowrap rounded-control px-2 py-1 text-caption font-medium text-brand-600 underline decoration-dotted transition-colors duration-instant hover:bg-surface-sunken disabled:opacity-40 disabled:no-underline disabled:hover:bg-transparent"
           >
             {markingAll ? "处理中…" : "全部已读"}
           </button>
@@ -149,12 +149,18 @@ export function NotificationCenter() {
 
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-4">
         <div className="flex items-center justify-between gap-3">
+          {/*
+            A NATIVE `<select>` on purpose. `notification.spec.ts` drives it with
+            `selectOption("MOMENT_REPLY")` and reads its `<option>` labels, so
+            replacing it with a custom listbox would break the suite and lose the
+            platform picker for free. Only the palette is tokenised.
+          */}
           <select
             aria-label="通知类型"
             data-testid="notification-filter"
             value={filter}
             onChange={(event) => setFilter(event.target.value as TypeFilter)}
-            className="h-9 min-w-0 max-w-[62%] rounded-full border border-line bg-white px-3 text-[12px] text-ink outline-none focus:ring-2 focus:ring-indigo-200"
+            className="h-9 min-w-0 max-w-[62%] rounded-control border border-border bg-surface px-3 text-caption text-content transition-colors duration-instant focus:border-brand-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-200"
           >
             <option value="ALL">全部</option>
             {NOTIFICATION_TYPES.map((type) => (
@@ -163,34 +169,44 @@ export function NotificationCenter() {
               </option>
             ))}
           </select>
-          <span data-testid="notification-unread-count" className="shrink-0 text-[12px] text-muted">
+          <span data-testid="notification-unread-count" className="shrink-0 text-caption text-content-muted">
             未读 {unread}
           </span>
         </div>
 
+        {/* The `notification-loading` testid must exist *while* the request is in
+            flight — the suite asserts it reaches 0. `TFLoadingRegion` renders its
+            own wrapper, so the testid goes on the inner list. */}
         {loading ? (
-          <div data-testid="notification-loading" className="mt-4 animate-pulse space-y-2">
-            <div className="h-[68px] rounded-3xl bg-indigo-50" />
-            <div className="h-[68px] rounded-3xl bg-indigo-50" />
-            <div className="h-[68px] rounded-3xl bg-indigo-50" />
-          </div>
+          <TFLoadingRegion label="正在加载通知">
+            <div data-testid="notification-loading" className="mt-4 space-y-2">
+              <TFSkeleton shape="block" className="h-[68px] w-full" />
+              <TFSkeleton shape="block" className="h-[68px] w-full" />
+              <TFSkeleton shape="block" className="h-[68px] w-full" />
+            </div>
+          </TFLoadingRegion>
         ) : null}
 
         {!loading && pageError ? (
-          <div className="mt-4 rounded-3xl border border-red-100 bg-red-50 p-5 text-center">
-            <p data-testid="notification-error" role="alert" className="break-words text-[13px] text-red-700">
+          <div className="mt-4">
+            <p data-testid="notification-error" role="alert" className="break-words text-ui font-medium text-danger-700">
               {pageError}
             </p>
-            <OutlineButton className="mt-4 w-full" onClick={() => setReloadKey((key) => key + 1)}>
+            <TFButton
+              variant="secondary"
+              fullWidth
+              className="mt-3"
+              onClick={() => setReloadKey((key) => key + 1)}
+            >
               重试
-            </OutlineButton>
+            </TFButton>
           </div>
         ) : null}
 
         {!loading && !pageError && items.length === 0 ? (
           <p
             data-testid="notification-empty"
-            className="mt-6 rounded-3xl bg-[#F7F9FF] p-5 text-center text-[12px] leading-5 text-muted"
+            className="mt-6 rounded-card bg-surface-sunken p-5 text-center text-ui leading-5 text-content-muted"
           >
             暂无通知
           </p>
@@ -202,7 +218,7 @@ export function NotificationCenter() {
               <p
                 data-testid="notification-mark-all-error"
                 role="alert"
-                className="mt-3 break-words text-[11px] text-red-600"
+                className="mt-3 break-words text-caption text-danger-600"
               >
                 {markAllError}
               </p>
@@ -211,12 +227,15 @@ export function NotificationCenter() {
               <p
                 data-testid="notification-action-error"
                 role="alert"
-                className="mt-3 break-words text-[11px] text-red-600"
+                className="mt-3 break-words text-caption text-danger-600"
               >
                 {actionError}
               </p>
             ) : null}
 
+            {/* `space-y-2`, NOT `divide-y`: `NotificationItem` is itself a bordered
+                card (it has to be — the same component renders standalone in the
+                messages hub), so a hairline between cards would double the edge. */}
             <div className="mt-3 space-y-2">
               {items.map((item) => (
                 <NotificationItem
@@ -232,22 +251,25 @@ export function NotificationCenter() {
               <p
                 data-testid="notification-more-error"
                 role="alert"
-                className="mt-3 break-words text-center text-[11px] text-red-600"
+                className="mt-3 break-words text-center text-caption text-danger-600"
               >
                 {moreError}
               </p>
             ) : null}
 
             {nextCursor ? (
-              <button
-                type="button"
-                data-testid="notification-load-more"
-                onClick={() => void loadMore()}
-                disabled={loadingMore}
-                className="mx-auto mt-3 block rounded-full border border-line bg-white px-4 py-1.5 text-[11px] text-[#3D4663] disabled:opacity-60"
-              >
-                {loadingMore ? "加载中…" : "加载更多"}
-              </button>
+              <div className="mt-4 flex justify-center">
+                <TFButton
+                  variant="secondary"
+                  size="sm"
+                  data-testid="notification-load-more"
+                  onClick={() => void loadMore()}
+                  loading={loadingMore}
+                  loadingLabel="加载中…"
+                >
+                  加载更多
+                </TFButton>
+              </div>
             ) : null}
           </>
         ) : null}

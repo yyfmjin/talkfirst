@@ -1,6 +1,7 @@
 import { Controller, Get, Param, ParseIntPipe, Post, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CurrentUser, type AuthUser } from "../auth/current-user.decorator";
+import { UuidParamPipe } from "../common/uuid-param.pipe";
 import { DiscoverService } from "./discover.service";
 
 @Controller("discover")
@@ -21,7 +22,10 @@ export class DiscoverController {
   }
 
   @Post("views/:userId")
-  async markViewed(@CurrentUser() user: AuthUser, @Param("userId") viewedUserId: string) {
+  async markViewed(
+    @CurrentUser() user: AuthUser,
+    @Param("userId", UuidParamPipe) viewedUserId: string,
+  ) {
     return {
       success: true as const,
       data: await this.discoverService.markViewed(user.id, viewedUserId),

@@ -165,6 +165,6 @@ export function attributeLabel(attribute: Pick<AttributeView, "label" | "labelZh
   return attribute.source === "SYSTEM" ? attribute.labelZh ?? attribute.label : attribute.label;
 }
 
-export function avatarInitial(nickname: string | null): string {
+export function avatarInitial(nickname: string | null | undefined): string {
   return (nickname ?? "?").slice(0, 1).toUpperCase();
 }

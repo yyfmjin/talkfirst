@@ -85,19 +85,19 @@
   .tf-btn {
     @apply inline-flex h-9 shrink-0 select-none items-center justify-center gap-1.5
       rounded-xl border border-line bg-card px-3.5 text-[13px] font-medium text-ink
-      transition-colors hover:bg-[#F3F4F6] disabled:cursor-not-allowed disabled:opacity-40;
+      transition-colors hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40;
   }
 
   .tf-btn-primary {
-    @apply border-transparent bg-primary text-white hover:bg-[#4338CA];
+    @apply border-transparent bg-primary text-white hover:bg-primary-hover;
   }
 
   .tf-btn-danger {
-    @apply border-transparent bg-danger text-white hover:bg-[#B91C1C];
+    @apply border-transparent bg-danger text-white hover:bg-danger-hover;
   }
 
   .tf-btn-ghost {
-    @apply border-transparent bg-transparent hover:bg-[#F3F4F6];
+    @apply border-transparent bg-transparent hover:bg-subtle;
   }
 
   /** A smaller variant for inline row actions. */

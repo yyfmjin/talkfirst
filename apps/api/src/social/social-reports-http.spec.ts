@@ -44,6 +44,7 @@ describe("SocialSafetyController — report HTTP contract", () => {
   let prisma: {
     user: { findUnique: jest.Mock };
     moment: { findUnique: jest.Mock };
+    message: { findUnique: jest.Mock };
     report: { create: jest.Mock };
   };
   let moments: { resolveMomentAccess: jest.Mock };
@@ -55,10 +56,25 @@ describe("SocialSafetyController — report HTTP contract", () => {
     moments.resolveMomentAccess.mockResolvedValue("allowed");
   }
 
+  /**
+   * A message the viewer may legitimately cite (audit P028): it exists, its
+   * sender is the reported user, and the reporter is in its conversation.
+   */
+  function reportableMessage(
+    overrides: { senderId?: string; members?: string[] } = {},
+  ) {
+    prisma.message.findUnique.mockResolvedValue({
+      id: MESSAGE,
+      senderId: overrides.senderId ?? OTHER,
+      conversation: { members: (overrides.members ?? [VIEWER, OTHER]).map((userId) => ({ userId })) },
+    });
+  }
+
   beforeAll(async () => {
     prisma = {
       user: { findUnique: jest.fn() },
       moment: { findUnique: jest.fn() },
+      message: { findUnique: jest.fn() },
       report: {
         create: jest.fn().mockResolvedValue({
           id: "r1",
@@ -96,6 +112,9 @@ describe("SocialSafetyController — report HTTP contract", () => {
         Promise.resolve({ id: args.where.id }),
       );
     visibleMoment();
+    // Default: no message pointer supplied, so the lookup must not silently
+    // return a stale value from a previous test.
+    prisma.message.findUnique.mockReset().mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -229,12 +248,43 @@ describe("SocialSafetyController — report HTTP contract", () => {
   });
 
   it("消息举报无回归：momentId 缺省时 messageId 原样落库", async () => {
+    // FIX (audit P028): a message pointer is now validated — it must exist, the
+    // reporter must be in its conversation, and its sender must be the user the
+    // report names. This fixture is the case that used to be accepted blindly.
+    reportableMessage();
     await post({ userId: OTHER, messageId: MESSAGE, reason: "Scam" });
     expect(prisma.report.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ momentId: null, messageId: MESSAGE }),
       }),
     );
+  });
+
+  it("消息不属于被举报人 -> 404 MESSAGE_NOT_FOUND，且不落库", async () => {
+    // The defect this closes: any UUID could be attached as "evidence", and an
+    // admin opening the report would read that message's content and its
+    // sender's e-mail.
+    reportableMessage({ senderId: "someone-else" });
+    const { response, body } = await post({ userId: OTHER, messageId: MESSAGE, reason: "Scam" });
+    expect(response.status).toBe(404);
+    expect(body.error?.code).toBe("MESSAGE_NOT_FOUND");
+    expect(prisma.report.create).not.toHaveBeenCalled();
+  });
+
+  it("举报人不在该消息所在会话 -> 404 MESSAGE_NOT_FOUND，且不落库", async () => {
+    reportableMessage({ members: ["stranger-a", "stranger-b"] });
+    const { response, body } = await post({ userId: OTHER, messageId: MESSAGE, reason: "Scam" });
+    expect(response.status).toBe(404);
+    expect(body.error?.code).toBe("MESSAGE_NOT_FOUND");
+    expect(prisma.report.create).not.toHaveBeenCalled();
+  });
+
+  it("消息不存在 -> 404 MESSAGE_NOT_FOUND，且不落库", async () => {
+    prisma.message.findUnique.mockResolvedValue(null);
+    const { response, body } = await post({ userId: OTHER, messageId: MESSAGE, reason: "Scam" });
+    expect(response.status).toBe(404);
+    expect(body.error?.code).toBe("MESSAGE_NOT_FOUND");
+    expect(prisma.report.create).not.toHaveBeenCalled();
   });
 
   it("举报不存在的用户 -> 404 USER_NOT_FOUND", async () => {

@@ -70,6 +70,11 @@ COPY --chown=app:app scripts/docker-entrypoint-api.sh ./scripts/docker-entrypoin
 # there. Normalise in-image so a bad checkout cannot break the container.
 RUN sed -i 's/\r$//' ./scripts/docker-entrypoint-api.sh \
   && chmod +x ./scripts/docker-entrypoint-api.sh
+# FIX (audit P004): create the upload directory and hand it to the runtime user
+# BEFORE the volume is mounted. Docker seeds a fresh named volume from the image
+# path, including its ownership — without this the volume would be owned by root
+# and every upload would fail with EACCES for the unprivileged `app` user.
+RUN mkdir -p /app/uploads && chown -R app:app /app/uploads
 USER app
 EXPOSE 4000
 HEALTHCHECK --interval=15s --timeout=5s --start-period=40s --retries=5 \

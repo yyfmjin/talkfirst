@@ -423,7 +423,7 @@ function UsersScreen() {
 
         <button
           onClick={() => applyDraft(draft)}
-          className="h-10 rounded-xl bg-[#16213A] px-4 text-[13px] text-white"
+          className="h-10 rounded-xl bg-primary-ink px-4 text-[13px] text-white"
         >
           搜索
         </button>
@@ -438,7 +438,7 @@ function UsersScreen() {
       </div>
 
       {!canWrite ? (
-        <p className="mt-3 rounded-xl bg-[#F7F9FF] px-3 py-2 text-[12px] text-muted">
+        <p className="mt-3 rounded-xl bg-accent px-3 py-2 text-[12px] text-muted">
           你的角色（{role}）为只读，无法修改用户状态。
         </p>
       ) : null}
@@ -545,7 +545,7 @@ function UsersScreen() {
                   <button
                     onClick={() => void addNote(item.id)}
                     disabled={acting === item.id}
-                    className="h-9 rounded-xl bg-[#16213A] px-3 text-[12px] text-white disabled:opacity-40"
+                    className="h-9 rounded-xl bg-primary-ink px-3 text-[12px] text-white disabled:opacity-40"
                   >
                     备注
                   </button>

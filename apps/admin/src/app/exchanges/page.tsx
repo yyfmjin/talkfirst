@@ -392,7 +392,7 @@ function ExchangesScreen() {
                             <span
                               key={platform}
                               data-testid={`exchange-platform-${platform}`}
-                              className="rounded-full bg-[#EDEFF3] px-2 py-0.5 text-[11px] font-medium text-[#5A6472]"
+                              className="rounded-full bg-neutral-wash px-2 py-0.5 text-[11px] font-medium text-neutral-ink"
                             >
                               {platform}
                             </span>
@@ -460,11 +460,11 @@ function ExchangesScreen() {
  * meaning, so they are not collapsed into one grey.
  */
 function statusBadge(status: string): string {
-  if (status === "ACCEPTED") return "bg-[#DCFCE7] text-[#166534]";
-  if (status === "PENDING") return "bg-[#FEF3C7] text-[#92400E]";
-  if (status === "REJECTED") return "bg-[#FEE2E2] text-[#991B1B]";
-  if (status === "CANCELLED") return "bg-[#EDEFF3] text-[#5A6472]";
-  return "bg-[#EDEFF3] text-[#5A6472]";
+  if (status === "ACCEPTED") return "bg-success-wash text-success-ink";
+  if (status === "PENDING") return "bg-warning-wash text-warning-ink";
+  if (status === "REJECTED") return "bg-danger-wash text-danger-ink";
+  if (status === "CANCELLED") return "bg-neutral-wash text-neutral-ink";
+  return "bg-neutral-wash text-neutral-ink";
 }
 
 /**

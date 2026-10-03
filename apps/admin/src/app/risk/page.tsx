@@ -126,10 +126,10 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 const STATUS_BADGE: Record<string, string> = {
-  OPEN: "bg-[#FEF3C7] text-[#92400E]",
-  REVIEWING: "bg-[#DBEAFE] text-[#1E40AF]",
-  RESOLVED: "bg-[#DCFCE7] text-[#166534]",
-  REJECTED: "bg-[#EDEFF3] text-[#5A6472]",
+  OPEN: "bg-warning-wash text-warning-ink",
+  REVIEWING: "bg-info-wash text-info-ink",
+  RESOLVED: "bg-success-wash text-success-ink",
+  REJECTED: "bg-neutral-wash text-neutral-ink",
 };
 
 function RiskScreen() {
@@ -304,7 +304,7 @@ function RiskScreen() {
                   <p className="mt-1 text-muted">
                     {new Date(entry.createdAt).toLocaleString()} ·{" "}
                     {isSystem ? (
-                      <span className="rounded-full bg-[#E4EAF7] px-2 py-0.5 text-[11px] font-medium text-[#4A5A7A]">
+                      <span className="rounded-full bg-system-wash px-2 py-0.5 text-[11px] font-medium text-system-ink">
                         系统 · 自动
                       </span>
                     ) : (
@@ -358,7 +358,7 @@ function Badge({ status, children }: { status: string; children: React.ReactNode
   return (
     <span
       className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-        STATUS_BADGE[status] ?? "bg-[#EDEFF3] text-[#5A6472]"
+        STATUS_BADGE[status] ?? "bg-neutral-wash text-neutral-ink"
       }`}
     >
       {children}

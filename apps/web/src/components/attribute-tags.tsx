@@ -31,18 +31,20 @@ export function AttributeTagList({
         <span
           key={attribute.id}
           className={cn(
-            "inline-flex max-w-full items-center gap-1 rounded-full px-3 py-1 text-[11px]",
-            tone === "about" ? "bg-[#F1F3FF] text-[#6572D8]" : "bg-[#F4F1FF] text-[#7C5CD6]",
+            "inline-flex max-w-full items-center gap-1 rounded-full px-3 py-1 text-overline",
+            /* Two tones, two meanings: 「关于我」 uses the brand blue, 「交友需求」
+               the accent purple. Both are now tokens rather than one-off hexes. */
+            tone === "about" ? "bg-brand-50 text-brand-600" : "bg-accent-50 text-accent-600",
           )}
         >
           <span className="min-w-0 truncate">{attributeLabel(attribute)}</span>
           {attribute.value ? <span className="min-w-0 truncate opacity-70">· {attribute.value}</span> : null}
           {showRetired && attribute.definitionActive === false ? (
-            <span className="shrink-0 rounded-full bg-white/80 px-1.5 text-[10px] text-[#B26A00]">已停用</span>
+            <span className="shrink-0 rounded-full bg-surface/80 px-1.5 text-overline text-warning-800">已停用</span>
           ) : null}
         </span>
       ))}
-      {overflow > 0 ? <span className="px-1 text-[11px] text-muted">+{overflow}</span> : null}
+      {overflow > 0 ? <span className="px-1 text-overline text-content-muted">+{overflow}</span> : null}
     </div>
   );
 }

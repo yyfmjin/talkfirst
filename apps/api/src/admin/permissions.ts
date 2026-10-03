@@ -38,6 +38,19 @@ export const PERMISSIONS = [
   "audit:read",
   "audit:export",
 
+  /**
+   * Phase O2 — the site-operations surface: HTTP access logs.
+   *
+   * Deliberately its own permission rather than reusing `audit:read`. Access
+   * logs carry **raw client IP and raw User-Agent**, whereas `audit:read` is
+   * held by all five roles. Reusing it would hand every support agent and
+   * content manager the ability to read the raw IP of any visitor. This mirrors
+   * the holder set already used for the other privacy-sensitive read surfaces
+   * (`connections:read` / `exchanges:read` / `blocks:read`): SUPER_ADMIN and
+   * ANALYST only.
+   */
+  "ops:read",
+
   "settings:read",
   "settings:write",
 
@@ -90,6 +103,9 @@ export const ROLE_PERMISSIONS: Record<AdminRole, readonly Permission[]> = {
     "blocks:read",
     "audit:read",
     "settings:read",
+    // Phase O2: the analyst role is the one that reads operational data, and it
+    // is the only non-super role that may see raw IP / User-Agent.
+    "ops:read",
   ],
 
   CONTENT_MANAGER: [

@@ -803,6 +803,73 @@ export const USER_LIST_SELECT = {
 const RECENT_LIMIT = 10;
 
 /**
+ * Phase O2 — the accepted filters for `GET /admin/access-logs`.
+ *
+ * Every field is optional and every one becomes a `where` clause executed by the
+ * database. The controller forwards raw query strings and this service owns the
+ * defaults, coercion and bounds (the pattern the other admin reads already use).
+ */
+export interface AccessLogListQuery {
+  page?: number;
+  pageSize?: number;
+  /** Exact client IP match. Nullable in the schema, so `null` is filterable. */
+  ip?: string;
+  userId?: string;
+  /** Case-insensitive substring match on the request path. */
+  path?: string;
+  statusCode?: number;
+  riskLevel?: string;
+  authenticated?: boolean;
+  isAdmin?: boolean;
+  /** ISO date strings, matching `createdFrom` / `createdTo` on the other reads. */
+  createdFrom?: string;
+  createdTo?: string;
+}
+
+/**
+ * Builds the `where` for every access-log read, so the list and the stats can
+ * never disagree about what "the same filter" means.
+ *
+ * An empty filter set produces `{}`, which Prisma treats as "no predicate" — so
+ * the unfiltered case performs no extra work and cannot accidentally match
+ * nothing.
+ *
+ * Dates come in as strings, exactly like `createdFrom`/`createdTo` on the users
+ * and reports reads. An unparseable date is **ignored**, not widened to the
+ * epoch: a typo must not silently return the entire table as though it were a
+ * filtered result.
+ */
+function accessLogWhere(query: AccessLogListQuery): Prisma.AccessLogWhereInput {
+  const where: Prisma.AccessLogWhereInput = {};
+
+  if (query.ip !== undefined && query.ip !== "") where.ip = query.ip;
+  if (query.userId) where.userId = query.userId;
+  if (query.path) where.path = { contains: query.path, mode: "insensitive" };
+  if (Number.isFinite(query.statusCode)) where.statusCode = query.statusCode;
+  if (query.riskLevel) where.riskLevel = query.riskLevel;
+  if (query.authenticated !== undefined) where.authenticated = query.authenticated;
+  if (query.isAdmin !== undefined) where.isAdmin = query.isAdmin;
+
+  const from = parseOptionalDate(query.createdFrom);
+  const to = parseOptionalDate(query.createdTo);
+  if (from || to) {
+    where.createdAt = {
+      ...(from ? { gte: from } : {}),
+      ...(to ? { lte: to } : {}),
+    };
+  }
+
+  return where;
+}
+
+/** Parses an ISO date string, returning `undefined` for missing or invalid input. */
+function parseOptionalDate(raw?: string): Date | undefined {
+  if (!raw) return undefined;
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
+/**
  * Phase B3: the exact shape `GET /admin/users/:id` returns.
  *
  * ## Why every relation now names its fields
@@ -3021,6 +3088,178 @@ export class AdminService {
       ]);
       return { items, total, page: safePage, pageSize: safeSize };
     });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Phase O2 — site operations: HTTP access logs
+  // ---------------------------------------------------------------------------
+
+  /**
+   * The access-log list projection.
+   *
+   * Explicit `select`, never `include` — the C4 convention, and here it is also
+   * load-bearing for privacy: `AccessLog` has no Prisma relation on `userId`, so
+   * an `include` is not even expressible, and naming the columns is how the
+   * "no body capture, no cookies, no tokens" promise stays checkable by reading
+   * this constant rather than the database.
+   */
+  static readonly ACCESS_LOG_LIST_SELECT = {
+    id: true,
+    requestId: true,
+    method: true,
+    path: true,
+    queryDigest: true,
+    statusCode: true,
+    durationMs: true,
+    userId: true,
+    authenticated: true,
+    isAdmin: true,
+    ip: true,
+    deviceHash: true,
+    userAgent: true,
+    referer: true,
+    origin: true,
+    acceptLanguage: true,
+    contentType: true,
+    errorCode: true,
+    riskLevel: true,
+    createdAt: true,
+  } as const;
+
+  /**
+   * Phase O2 — the access-log list.
+   *
+   * ## Filtering is server-side, always
+   *
+   * Every filter becomes a `where` clause and the page is taken by the database.
+   * The console must never fetch a page and then hide rows: `total` and the page
+   * count would then describe the unfiltered set, which looks correct and lies.
+   *
+   * ## The `userId` join is manual, on purpose
+   *
+   * `AccessLog.userId` deliberately has no foreign key and no Prisma relation
+   * (an audit row must survive the deletion of the account it describes). So the
+   * account is resolved with one extra query over the distinct ids on the page —
+   * one round trip per page, not one per row — and merged in. A deleted account
+   * resolves to `null` and the UI renders a placeholder rather than crashing on
+   * `userId.slice(...)`.
+   */
+  async listAccessLogs(query: AccessLogListQuery = {}) {
+    const page = this.clampPage(query.page);
+    const pageSize = this.clampPageSize(query.pageSize);
+    const where = accessLogWhere(query);
+
+    const [total, items] = await Promise.all([
+      this.prisma.accessLog.count({ where }),
+      this.prisma.accessLog.findMany({
+        where,
+        select: AdminService.ACCESS_LOG_LIST_SELECT,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+    ]);
+
+    const accounts = await this.accountsFor(items.map((item) => item.userId));
+    return {
+      items: items.map((item) => ({
+        ...item,
+        account: item.userId ? (accounts.get(item.userId) ?? null) : null,
+      })),
+      total,
+      page,
+      pageSize,
+    };
+  }
+
+  /** Phase O2 — one access-log row, or a 404 rather than `data: null`. */
+  async accessLogDetail(id: string) {
+    const row = await this.prisma.accessLog.findUnique({
+      where: { id },
+      select: AdminService.ACCESS_LOG_LIST_SELECT,
+    });
+    if (!row) {
+      throw new NotFoundException({
+        success: false,
+        error: { code: "ACCESS_LOG_NOT_FOUND", message: "No such access log entry" },
+      });
+    }
+    const accounts = await this.accountsFor([row.userId]);
+    return { ...row, account: row.userId ? (accounts.get(row.userId) ?? null) : null };
+  }
+
+  /**
+   * Phase O2 — aggregate counters for the ops dashboard.
+   *
+   * Every number is a count of stored facts over the requested window. Deliberately
+   * no derived "threat score": assigning severity is a business rule nobody has
+   * defined, and the Phase C1 precedent (`riskOverview`) is to report facts and
+   * abstain from judgement.
+   *
+   * `distinctIpCount` answers "how many visitors", which `total` cannot: one
+   * client polling a feed inflates `total` without adding a visitor.
+   */
+  async accessLogStats(query: { createdFrom?: string; createdTo?: string } = {}) {
+    const where = accessLogWhere(query);
+    const from = parseOptionalDate(query.createdFrom) ?? null;
+    const to = parseOptionalDate(query.createdTo) ?? null;
+    const [total, distinctIpRows, byStatus, byRisk, topPaths, topIps] = await Promise.all([
+      this.prisma.accessLog.count({ where }),
+      this.prisma.accessLog.findMany({
+        where: { ...where, ip: { not: null } },
+        select: { ip: true },
+        distinct: ["ip"],
+      }),
+      this.prisma.accessLog.groupBy({ by: ["statusCode"], where, _count: { _all: true } }),
+      this.prisma.accessLog.groupBy({ by: ["riskLevel"], where, _count: { _all: true } }),
+      this.prisma.accessLog.groupBy({
+        by: ["path"],
+        where,
+        _count: { _all: true },
+        orderBy: { _count: { path: "desc" } },
+        take: 10,
+      }),
+      this.prisma.accessLog.groupBy({
+        by: ["ip"],
+        where,
+        _count: { _all: true },
+        orderBy: { _count: { ip: "desc" } },
+        take: 10,
+      }),
+    ]);
+
+    return {
+      total,
+      distinctIpCount: distinctIpRows.length,
+      byStatus: byStatus
+        .map((row) => ({ statusCode: row.statusCode, count: row._count._all }))
+        .sort((a, b) => a.statusCode - b.statusCode),
+      byRisk: byRisk.map((row) => ({ riskLevel: row.riskLevel, count: row._count._all })),
+      topPaths: topPaths.map((row) => ({ path: row.path, count: row._count._all })),
+      // `ip` is nullable in the schema, so the null bucket is a real group.
+      topIps: topIps.map((row) => ({ ip: row.ip, count: row._count._all })),
+      from,
+      to,
+    };
+  }
+
+  /**
+   * Resolves the accounts behind a page of access-log rows in one query.
+   *
+   * Only `id` / `nickname` / `email` — the console needs something to label a row
+   * with and link on, nothing more. Unknown ids are simply absent from the map,
+   * which is how a deleted account becomes an honest `null` instead of an error.
+   */
+  private async accountsFor(
+    userIds: Array<string | null>,
+  ): Promise<Map<string, { id: string; nickname: string | null; email: string }>> {
+    const ids = [...new Set(userIds.filter((id): id is string => Boolean(id)))];
+    if (ids.length === 0) return new Map();
+    const rows = await this.prisma.user.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, nickname: true, email: true },
+    });
+    return new Map(rows.map((row) => [row.id, row]));
   }
 
   /**

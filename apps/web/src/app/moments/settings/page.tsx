@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, Link2, ShieldCheck, SlidersHorizontal, Unplug } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
 import { ScreenHeader } from "@/components/screen-header";
-import { GradientButton } from "@/components/ui";
+import { TFBadge, TFButton, TFDialog, TFInput, TFLoadingRegion, TFSkeleton } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 
 type Platform = { id: string; label: string; icon: string; color: string; connectedLabel: string };
@@ -33,6 +33,8 @@ export default function MomentsSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  /** The platform whose unbind is awaiting confirmation. */
+  const [pendingUnbind, setPendingUnbind] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -82,11 +84,25 @@ export default function MomentsSettingsPage() {
     }
   }
 
-  async function unbind(platform: string) {
-    if (!window.confirm("确定解绑该平台吗？已展示的动态会保留。")) return;
+  /**
+   * Unbinding asks first — but through the app's own dialog, not `window.confirm`.
+   *
+   * This was the last `window.confirm` in the member app. It sat inconsistently
+   * next to `/moments`'s post deletion, which already used `TFDialog`, for two
+   * comparably destructive actions. Opening the dialog is all this does; nothing
+   * leaves the server until the confirm button is pressed.
+   */
+  function unbind(platform: string) {
+    setPendingUnbind(platform);
+  }
+
+  async function confirmUnbind() {
+    if (!pendingUnbind) return;
+    const platform = pendingUnbind;
     setActing(platform);
     try {
       await apiFetch(`/moments/bindings/${platform}`, { method: "DELETE" });
+      setPendingUnbind(null);
       await load();
       flashSaved();
     } catch (requestError) {
@@ -131,15 +147,18 @@ export default function MomentsSettingsPage() {
         backHref="/moments"
         action={
           saved ? (
-            <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] text-emerald-600">
-              <Check size={12} />
+            <TFBadge tone="success">
+              <Check size={12} aria-hidden="true" />
               已保存
-            </span>
+            </TFBadge>
           ) : undefined
         }
       />
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-2">
-        <div className="rounded-3xl border border-[#FFE0B2] bg-[#FFF8EC] p-4 text-[12px] leading-5 text-[#8A5A00]">
+        {/* The honesty notice. It states plainly that no platform is actually
+            connected yet and that everything shown is sample data — the kind of
+            claim that should be impossible to miss, so it keeps warning colours. */}
+        <div className="rounded-card border border-warning-200 bg-warning-50 p-4 text-caption leading-5 text-warning-800">
           <p className="font-semibold">示例内容说明</p>
           <p className="mt-1">
             TalkFirst 目前尚未接入 Instagram、X、TikTok 等平台的官方授权，暂不会拉取你的真实动态。
@@ -147,23 +166,29 @@ export default function MomentsSettingsPage() {
             真实同步功能正在开发中。
           </p>
         </div>
-        <div className="mt-3 rounded-3xl bg-[#F7F9FF] p-4 text-[12px] leading-5 text-muted">
+        <p className="mt-3 rounded-card bg-surface-sunken p-4 text-caption leading-5 text-content-muted">
           同步你在其他社交平台的最新动态，让朋友了解真实的你。默认只同步你绑定的平台，可随时关闭。已绑定 {boundCount} 个平台。
-        </div>
-        {error ? <p className="mt-3 text-[12px] text-red-500">{error}</p> : null}
+        </p>
+        {error ? (
+          <p role="alert" className="mt-3 break-words text-caption text-danger-600">
+            {error}
+          </p>
+        ) : null}
 
         {loading ? (
-          <div className="mt-5 animate-pulse space-y-3">
-            <div className="h-20 rounded-2xl bg-indigo-50" />
-            <div className="h-20 rounded-2xl bg-indigo-50" />
-            <div className="h-32 rounded-2xl bg-indigo-50" />
-          </div>
+          <TFLoadingRegion label="正在加载动态设置">
+            <div className="mt-5 space-y-3">
+              <TFSkeleton shape="block" className="h-20 w-full" />
+              <TFSkeleton shape="block" className="h-20 w-full" />
+              <TFSkeleton shape="block" className="h-32 w-full" />
+            </div>
+          </TFLoadingRegion>
         ) : (
           <>
             <section className="mt-5">
               <div className="flex items-center justify-between">
-                <h2 className="flex items-center gap-1.5 text-[14px] font-semibold">
-                  <Link2 size={15} className="text-[#6572D8]" />
+                <h2 className="flex items-center gap-1.5 text-ui font-semibold text-content">
+                  <Link2 size={16} className="text-brand-500" aria-hidden="true" />
                   同步其他社交平台动态
                 </h2>
                 <Toggle
@@ -178,17 +203,18 @@ export default function MomentsSettingsPage() {
                   .map((item) => {
                     const binding = bound(item.id);
                     return (
-                      <div key={item.id} className="rounded-2xl border border-line p-3">
+                      <div key={item.id} className="rounded-card border border-border bg-surface p-3.5">
                         <div className="flex items-center gap-3">
                           <span
-                            className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[12px] font-semibold text-white"
+                            aria-hidden="true"
+                            className="grid h-10 w-10 shrink-0 place-items-center rounded-control text-caption font-semibold text-white"
                             style={{ background: item.color }}
                           >
                             {item.icon}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <p className="text-[13px] font-medium">{item.label}</p>
-                            <p className="truncate text-[11px] text-muted">
+                            <p className="text-ui font-medium text-content">{item.label}</p>
+                            <p className="truncate text-caption text-content-muted">
                               {binding ? `@${binding.handle}` : item.connectedLabel}
                             </p>
                           </div>
@@ -200,14 +226,16 @@ export default function MomentsSettingsPage() {
                               onClick={() => void togglePlatform(item.id, !binding.syncEnabled)}
                             />
                           ) : (
-                            <span className="shrink-0 rounded-full bg-[#F1F3FF] px-3 py-1 text-[11px] text-[#6572D8]">
+                            <TFBadge tone="neutral" className="shrink-0">
                               未绑定
-                            </span>
+                            </TFBadge>
                           )}
                         </div>
                         {!binding ? (
-                          <div className="mt-2 flex gap-2">
-                            <input
+                          <div className="mt-2.5 flex gap-2">
+                            {/* `aria-label="{平台}账号"` is how a member (and any
+                                future test) addresses this field. */}
+                            <TFInput
                               value={handles[item.id] ?? ""}
                               onChange={(event) => setHandles((current) => ({ ...current, [item.id]: event.target.value }))}
                               onKeyDown={(event) => {
@@ -216,22 +244,25 @@ export default function MomentsSettingsPage() {
                               placeholder={`填写${item.label}账号，如 yuki_travel`}
                               maxLength={128}
                               aria-label={`${item.label}账号`}
-                              className="h-10 min-w-0 flex-1 rounded-xl border border-line px-3 text-[12px] outline-none focus:ring-2 focus:ring-indigo-200"
+                              className="min-w-0 flex-1"
                             />
-                            <button
+                            <TFButton
+                              className="shrink-0"
                               onClick={() => void bind(item.id)}
-                              disabled={acting === item.id}
-                              className="h-10 shrink-0 rounded-xl bg-[#6572D8] px-4 text-[12px] text-white disabled:opacity-60"
+                              disabled={acting === item.id && acting !== null}
+                              loading={acting === item.id}
+                              loadingLabel="绑定中…"
                             >
-                              {acting === item.id ? "绑定中…" : "绑定"}
-                            </button>
+                              绑定
+                            </TFButton>
                           </div>
                         ) : (
                           <button
-                            onClick={() => void unbind(item.id)}
-                            className="mt-2 flex items-center gap-1 text-[11px] text-muted"
+                            type="button"
+                            onClick={() => unbind(item.id)}
+                            className="mt-2.5 flex items-center gap-1 rounded-control px-1.5 py-1 text-caption text-content-muted transition-colors duration-instant hover:bg-surface-sunken"
                           >
-                            <Unplug size={12} />
+                            <Unplug size={13} aria-hidden="true" />
                             解绑该平台
                           </button>
                         )}
@@ -244,44 +275,58 @@ export default function MomentsSettingsPage() {
             {setting ? (
               <>
                 <section className="mt-6">
-                  <h2 className="flex items-center gap-1.5 text-[14px] font-semibold">
-                    <ShieldCheck size={15} className="text-[#6572D8]" />
+                  <h2 className="flex items-center gap-1.5 text-ui font-semibold text-content">
+                    <ShieldCheck size={16} className="text-brand-500" aria-hidden="true" />
                     隐私设置
                   </h2>
-                  <p className="mt-1 text-[11px] text-muted">谁可以看到你在 TalkFirst 的动态聚合页。</p>
-                  <div className="mt-3 space-y-1 rounded-2xl border border-line p-2">
+                  <p className="mt-1 text-caption text-content-muted">谁可以看到你在 TalkFirst 的动态聚合页。</p>
+                  {/* A real `radiogroup`: the three options are mutually exclusive,
+                      and each carries `aria-checked` so the state is announced
+                      rather than only tinted. */}
+                  <div role="radiogroup" aria-label="谁能看到你的动态聚合页" className="mt-3 space-y-1 rounded-card border border-border p-2">
                     {(
                       [
                         ["everyone", "所有人可见", "推荐流和个人主页都可见"],
                         ["connections", "仅连接可见", "只有互相连接的朋友可见"],
                         ["private", "仅自己可见", "别人打不开你的动态页"],
                       ] as const
-                    ).map(([value, label, desc]) => (
-                      <button
-                        key={value}
-                        onClick={() => void updateSetting({ visibleTo: value })}
-                        className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[13px] ${setting.visibleTo === value ? "bg-[#F1F3FF]" : ""}`}
-                      >
-                        <span>
-                          <span className="block font-medium">{label}</span>
-                          <span className="block text-[11px] text-muted">{desc}</span>
-                        </span>
-                        <span
-                          className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border ${setting.visibleTo === value ? "border-[#6572D8] bg-[#6572D8] text-white" : "border-line text-transparent"}`}
+                    ).map(([value, label, desc]) => {
+                      const active = setting.visibleTo === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          role="radio"
+                          aria-checked={active}
+                          onClick={() => void updateSetting({ visibleTo: value })}
+                          className={`flex w-full items-center justify-between gap-3 rounded-row px-3 py-2.5 text-left text-ui transition-colors duration-instant focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 ${
+                            active ? "bg-brand-50" : "hover:bg-surface-sunken"
+                          }`}
                         >
-                          <Check size={12} />
-                        </span>
-                      </button>
-                    ))}
+                          <span className="min-w-0">
+                            <span className={`block ${active ? "font-medium text-brand-600" : "text-content"}`}>{label}</span>
+                            <span className="block text-caption text-content-muted">{desc}</span>
+                          </span>
+                          <span
+                            aria-hidden="true"
+                            className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border ${
+                              active ? "border-brand-500 bg-brand-500 text-white" : "border-border text-transparent"
+                            }`}
+                          >
+                            <Check size={12} />
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </section>
 
                 <section className="mt-6">
-                  <h2 className="flex items-center gap-1.5 text-[14px] font-semibold">
-                    <SlidersHorizontal size={15} className="text-[#6572D8]" />
+                  <h2 className="flex items-center gap-1.5 text-ui font-semibold text-content">
+                    <SlidersHorizontal size={16} className="text-brand-500" aria-hidden="true" />
                     动态内容筛选
                   </h2>
-                  <div className="mt-3 divide-y divide-line rounded-2xl border border-line px-4">
+                  <div className="mt-3 divide-y divide-border rounded-card border border-border px-4">
                     {(
                       [
                         ["showPhotos", "照片", "同步 Instagram 等图片"],
@@ -293,9 +338,9 @@ export default function MomentsSettingsPage() {
                       ] as Array<[ToggleKey, string, string]>
                     ).map(([key, label, desc]) => (
                       <div key={key} className="flex items-center justify-between gap-3 py-3">
-                        <span>
-                          <span className="block text-[13px] font-medium">{label}</span>
-                          <span className="block text-[11px] text-muted">{desc}</span>
+                        <span className="min-w-0">
+                          <span className="block text-ui font-medium text-content">{label}</span>
+                          <span className="block text-caption text-content-muted">{desc}</span>
                         </span>
                         <Toggle checked={setting[key]} label={label} onClick={() => void updateSetting({ [key]: !setting[key] } as Partial<Setting>)} />
                       </div>
@@ -307,25 +352,77 @@ export default function MomentsSettingsPage() {
           </>
         )}
 
-        <GradientButton className="mb-1 mt-6" onClick={() => router.push("/moments")}>
+        <TFButton variant="secondary" fullWidth className="mt-6" onClick={() => router.push("/moments")}>
           完成
-        </GradientButton>
+        </TFButton>
       </div>
+
+      {/* The unbind confirmation, in the app's own dialog. Copy is kept verbatim
+          from the `window.confirm` it replaces, because it makes a promise the
+          member relies on: synced posts survive the unbind. */}
+      <TFDialog
+        open={pendingUnbind !== null}
+        onClose={() => setPendingUnbind(null)}
+        title="确定解绑该平台吗？"
+        description="已展示的动态会保留。"
+        footer={
+          <>
+            <TFButton variant="secondary" className="flex-1" onClick={() => setPendingUnbind(null)}>
+              取消
+            </TFButton>
+            <TFButton
+              variant="danger"
+              className="flex-1"
+              onClick={() => void confirmUnbind()}
+              loading={acting === pendingUnbind && pendingUnbind !== null}
+              loadingLabel="解绑中…"
+              data-testid="unbind-confirm"
+            >
+              确认解绑
+            </TFButton>
+          </>
+        }
+      >
+        {pendingUnbind ? (
+          <p className="break-words text-caption leading-5 text-content-muted">
+            将要解绑：
+            {platforms.find((item) => item.id === pendingUnbind)?.label ?? pendingUnbind}
+            {bound(pendingUnbind)?.handle ? `（@${bound(pendingUnbind)?.handle}）` : ""}
+          </p>
+        ) : null}
+      </TFDialog>
     </PhoneShell>
   );
 }
 
+/**
+ * A switch. `role="switch"` + `aria-checked` + a required `aria-label` — the
+ * previous version had the role and the state but no name, so a screen reader
+ * announced an unlabelled switch.
+ *
+ * The knob translates rather than being repositioned with `left-[22px]` /
+ * `left-0.5`, so it animates on the compositor and respects the global
+ * `prefers-reduced-motion` rule.
+ */
 function Toggle({ checked, label, busy, onClick }: { checked: boolean; label: string; busy?: boolean; onClick: () => void }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={busy}
       role="switch"
       aria-checked={checked}
       aria-label={label}
-      className={`relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-60 ${checked ? "bg-[#6572D8]" : "bg-gray-200"}`}
+      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors duration-fast ease-out disabled:opacity-60 ${
+        checked ? "bg-brand-500" : "bg-neutral-300"
+      }`}
     >
-      <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${checked ? "left-[22px]" : "left-0.5"}`} />
+      <span
+        aria-hidden="true"
+        className={`absolute left-0.5 top-0.5 h-6 w-6 rounded-full bg-surface shadow-card transition-transform duration-fast ease-out motion-reduce:transition-none ${
+          checked ? "translate-x-5" : "translate-x-0"
+        }`}
+      />
     </button>
   );
 }

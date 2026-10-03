@@ -290,6 +290,26 @@ export class UsersService {
     return this.getFullCard(user.id);
   }
 
+  /**
+   * Replace the caller's language list.
+   *
+   * SEC/DATA FIX: this used to be `deleteMany()` followed by a bare
+   * `createMany()`, in two autocommit statements. `UserLanguage` is unique on
+   * `(userId, languageCode, type)`, while the pre-check only compared
+   * *distinct codes* — so a payload such as
+   *   [{ code: "en", type: "NATIVE" }, { code: "en", type: "LEARNING" }]
+   * passed validation, the `createMany` then violated the unique index, and the
+   * already-committed `deleteMany` had wiped every language the user had. The
+   * controller's `catch {}` additionally reported that as
+   * `UNKNOWN_LANGUAGE_CODE`, so the failure looked like bad input while the data
+   * was gone.
+   *
+   * Two independent guards now:
+   *  1. the payload is de-duplicated on the real uniqueness key `(code, type)`
+   *     (same code with a different `type` is legitimate and stays), and
+   *  2. the delete + insert pair runs inside one transaction, so a failure can
+   *     never leave the list empty.
+   */
   async replaceLanguages(
     userId: string,
     items: Array<{
@@ -298,61 +318,83 @@ export class UsersService {
       level?: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "NATIVE";
     }>,
   ) {
-    const codes = items.map((item) => item.code.toLowerCase());
+    const deduped = new Map<
+      string,
+      { code: string; type: "NATIVE" | "LEARNING"; level?: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "NATIVE" }
+    >();
+    for (const item of items) {
+      const code = item.code.trim().toLowerCase();
+      deduped.set(`${code}:${item.type}`, { ...item, code });
+    }
+    const rows = [...deduped.values()];
+
+    const codes = [...new Set(rows.map((item) => item.code))];
     const known = await this.prisma.language.findMany({ where: { code: { in: codes } } });
-    if (known.length !== new Set(codes).size) {
+    if (known.length !== codes.length) {
       throw new Error("UNKNOWN_LANGUAGE_CODE");
     }
-    await this.prisma.userLanguage.deleteMany({ where: { userId } });
-    await this.prisma.userLanguage.createMany({
-      data: items.map((item) => ({
-        userId,
-        languageCode: item.code.toLowerCase(),
-        type: item.type,
-        level: item.level ?? (item.type === "NATIVE" ? "NATIVE" : "INTERMEDIATE"),
-      })),
-    });
+
+    await this.prisma.$transaction([
+      this.prisma.userLanguage.deleteMany({ where: { userId } }),
+      this.prisma.userLanguage.createMany({
+        data: rows.map((item) => ({
+          userId,
+          languageCode: item.code,
+          type: item.type,
+          level: item.level ?? (item.type === "NATIVE" ? "NATIVE" : "INTERMEDIATE"),
+        })),
+      }),
+    ]);
     return this.getFullCard(userId);
   }
 
+  /** See `replaceLanguages` — de-duplicated on the real key, and atomic. */
   async replaceInterests(userId: string, slugs: string[]) {
-    const interests = await this.prisma.interest.findMany({ where: { slug: { in: slugs } } });
-    if (interests.length !== new Set(slugs).size) {
+    const unique = [...new Set(slugs)];
+    const interests = await this.prisma.interest.findMany({ where: { slug: { in: unique } } });
+    if (interests.length !== unique.length) {
       throw new Error("UNKNOWN_INTEREST_SLUG");
     }
-    await this.prisma.userInterest.deleteMany({ where: { userId } });
-    await this.prisma.userInterest.createMany({
-      data: interests.map((interest) => ({ userId, interestId: interest.id })),
-    });
+    await this.prisma.$transaction([
+      this.prisma.userInterest.deleteMany({ where: { userId } }),
+      this.prisma.userInterest.createMany({
+        data: interests.map((interest) => ({ userId, interestId: interest.id })),
+      }),
+    ]);
     return this.getFullCard(userId);
   }
 
+  /** See `replaceLanguages` — de-duplicated on the real key, and atomic. */
   async replacePurposes(userId: string, slugs: string[]) {
-    const purposes = await this.prisma.purpose.findMany({ where: { slug: { in: slugs } } });
-    if (purposes.length !== new Set(slugs).size) {
+    const unique = [...new Set(slugs)];
+    const purposes = await this.prisma.purpose.findMany({ where: { slug: { in: unique } } });
+    if (purposes.length !== unique.length) {
       throw new Error("UNKNOWN_PURPOSE_SLUG");
     }
-    await this.prisma.userPurpose.deleteMany({ where: { userId } });
-    await this.prisma.userPurpose.createMany({
-      data: purposes.map((purpose) => ({ userId, purposeId: purpose.id })),
-    });
+    await this.prisma.$transaction([
+      this.prisma.userPurpose.deleteMany({ where: { userId } }),
+      this.prisma.userPurpose.createMany({
+        data: purposes.map((purpose) => ({ userId, purposeId: purpose.id })),
+      }),
+    ]);
     return this.getFullCard(userId);
   }
 
+  /** See `replaceLanguages` — de-duplicated on the real key, and atomic. */
   async replacePreferredCountries(userId: string, codes: string[]) {
-    const normalized = codes.map((code) => code.toUpperCase());
+    const normalized = [...new Set(codes.map((code) => code.trim().toUpperCase()))];
     if (normalized.length > 0) {
       const known = await this.prisma.country.findMany({ where: { code: { in: normalized } } });
-      if (known.length !== new Set(normalized).size) {
+      if (known.length !== normalized.length) {
         throw new Error("UNKNOWN_COUNTRY_CODE");
       }
     }
-    await this.prisma.userPreferredCountry.deleteMany({ where: { userId } });
-    if (normalized.length > 0) {
-      await this.prisma.userPreferredCountry.createMany({
+    await this.prisma.$transaction([
+      this.prisma.userPreferredCountry.deleteMany({ where: { userId } }),
+      this.prisma.userPreferredCountry.createMany({
         data: normalized.map((countryCode) => ({ userId, countryCode })),
-      });
-    }
+      }),
+    ]);
     return this.getFullCard(userId);
   }
 }

@@ -55,6 +55,8 @@ function makeHarness() {
       findFirst: jest.fn(async () => null),
       create: jest.fn(async () => requestRow),
       update: jest.fn(async () => ({ ...requestRow, status: "ACCEPTED" })),
+      updateMany: jest.fn(async () => ({ count: 1 })),
+      findUniqueOrThrow: jest.fn(async () => ({ ...requestRow, status: "ACCEPTED" })),
     },
     connection: {
       findFirst: jest.fn(async () => null),

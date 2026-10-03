@@ -82,7 +82,7 @@ export default function LoginPage() {
         <button
           onClick={() => void submit()}
           disabled={busy || !email || !password}
-          className="mt-5 h-11 w-full rounded-xl bg-[#16213A] text-[14px] font-medium text-white disabled:opacity-50"
+          className="mt-5 h-11 w-full rounded-xl bg-primary-ink text-[14px] font-medium text-white disabled:opacity-50"
         >
           {busy ? "登录中…" : "进入后台"}
         </button>

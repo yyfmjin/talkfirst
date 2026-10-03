@@ -93,6 +93,23 @@ describe("client-ip", () => {
     expect(normalizeIp("2001:db8::1")).toBe("2001:db8::1");
   });
 
+  it("normalizeIp 把 IPv6 回环折到 IPv4 形式，且只匹配精确的 ::1", () => {
+    // Phase O1: live data had `::1` in AccessLog.ip while IPv4 locals were
+    // `127.0.0.1`, so one client was being recorded under two keys.
+    expect(normalizeIp("::1")).toBe("127.0.0.1");
+    expect(normalizeIp("127.0.0.1")).toBe("127.0.0.1");
+    expect(normalizeIp("0:0:0:0:0:0:0:1")).toBe("127.0.0.1");
+    // Anchored: a real IPv6 address that merely ends in `::1` must not be folded.
+    expect(normalizeIp("2001:db8::1")).toBe("2001:db8::1");
+    expect(normalizeIp("fe80::1")).toBe("fe80::1");
+  });
+
+  it("normalizeIp 解开带方括号的 IPv6 主机与端口", () => {
+    expect(normalizeIp("[::1]:1234")).toBe("127.0.0.1");
+    expect(normalizeIp("[2001:db8::1]:443")).toBe("2001:db8::1");
+    expect(normalizeIp("[2001:db8::1]")).toBe("2001:db8::1");
+  });
+
   it("只读取 req.ip，忽略可伪造的转发头", () => {
     const request = {
       ip: "203.0.113.5",

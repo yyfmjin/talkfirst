@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
-import { tryRefresh } from "./api";
+import { UNAUTHORIZED_EVENT, tryRefresh } from "./api";
 
 export const SOCKET_BASE_URL =
   process.env.NEXT_PUBLIC_SOCKET_BASE_URL ?? "http://localhost:4000";
@@ -192,6 +192,16 @@ export function useChatSocket(conversationId: string | undefined) {
       void tryRefresh().then((ok) => {
         if (disposed || stopped) return;
         if (!ok) {
+          /*
+           * The one refresh this session gets did not take, so the failure is
+           * the same dead session `api.ts` reports for HTTP 401s. Broadcasting
+           * the same event keeps the two transports from disagreeing: without
+           * it the socket would just print "连接失败" and sit there offering
+           * nothing, while every request on the page was already dead.
+           */
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+          }
           stop();
           return;
         }

@@ -14,6 +14,7 @@ import {
   type Permission,
 } from "./permissions";
 import { PERMISSION_METADATA_KEY } from "./require-permission.decorator";
+import { ADMIN_PUBLIC_METADATA_KEY } from "./admin-public.decorator";
 import { UuidParamPipe } from "./uuid-param.pipe";
 import type { ResolvedAdmin } from "./admin.guard";
 
@@ -300,7 +301,9 @@ function readSource(...segments: string[]): string {
  *
  * `permission: undefined` is a deliberate, documented exception: `GET /admin/me`
  * is reachable by any authenticated admin because it only reports the caller's
- * own identity. Every other route must declare a gate.
+ * own identity. Because `PermissionGuard` is fail-closed (FIX, audit P006), that
+ * exception is expressed in the code as an explicit `@AdminPublic()` — pinned by
+ * test 3b below — rather than by an absent decorator.
  */
 const ROUTE_TABLE: Array<{
   handler: keyof AdminController;
@@ -317,7 +320,7 @@ const ROUTE_TABLE: Array<{
   { handler: "addNote", method: RequestMethod.POST, path: "users/:id/notes", permission: "users:write" },
   { handler: "reports", method: RequestMethod.GET, path: "reports", permission: "reports:read" },
   { handler: "reportDetail", method: RequestMethod.GET, path: "reports/:id", permission: "reports:read" },
-  { handler: "review", method: RequestMethod.POST, path: "reports/:id/review", permission: "reports:write" },
+  { handler: "review", method: RequestMethod.POST, path: "reports/:id/review", permission: "moderation:write" },
   { handler: "audit", method: RequestMethod.GET, path: "audit", permission: "audit:read" },
   { handler: "risk", method: RequestMethod.GET, path: "risk", permission: "risk:read" },
   { handler: "connections", method: RequestMethod.GET, path: "connections", permission: "connections:read" },
@@ -330,6 +333,27 @@ const ROUTE_TABLE: Array<{
     method: RequestMethod.GET,
     path: "blocks/:blockerId/:blockedId",
     permission: "blocks:read",
+  },
+  // Phase O2 — site operations (HTTP access logs). `ops:read`, not `audit:read`:
+  // these rows carry raw client IP and User-Agent, so the holder set is narrowed
+  // to SUPER_ADMIN and ANALYST.
+  {
+    handler: "accessLogs",
+    method: RequestMethod.GET,
+    path: "access-logs",
+    permission: "ops:read",
+  },
+  {
+    handler: "accessLogStats",
+    method: RequestMethod.GET,
+    path: "access-logs/stats",
+    permission: "ops:read",
+  },
+  {
+    handler: "accessLog",
+    method: RequestMethod.GET,
+    path: "access-logs/:id",
+    permission: "ops:read",
   },
 ];
 
@@ -364,6 +388,28 @@ describe("C5 §1 — the admin route table and its gates", () => {
     expect(ungated[0]?.method).toBe(RequestMethod.GET);
   });
 
+  it("3b. every ungated route is explicitly @AdminPublic(), and nothing else is (fail-closed)", () => {
+    // FIX (audit P006): `PermissionGuard` denies a route that declares neither a
+    // permission nor this marker, so the two sets must line up exactly — an
+    // extra marker would silently open a route, a missing one would 403 it.
+    const declaredPublic = Object.getOwnPropertyNames(AdminController.prototype).filter(
+      (handler) => {
+        // Indexed once into a typed local: `Reflect.getMetadata`'s `target`
+        // parameter is `Object`, and the double cast above yields `unknown`.
+        const member = (AdminController.prototype as unknown as Record<string, unknown>)[handler];
+        return (
+          typeof member === "function" &&
+          Reflect.getMetadata(ADMIN_PUBLIC_METADATA_KEY, member as object) === true
+        );
+      },
+    );
+    expect([...declaredPublic].sort()).toEqual(
+      ROUTE_TABLE.filter((r) => r.permission === undefined)
+        .map((r) => r.handler as string)
+        .sort(),
+    );
+  });
+
   it("4. no route uses a permission outside the real matrix", () => {
     for (const route of ROUTE_TABLE) {
       if (!route.permission) continue;
@@ -379,6 +425,30 @@ describe("C5 §1 — the admin route table and its gates", () => {
       // the phases simply did not ship a mutation. Both halves matter.
       expect(PERMISSIONS).toContain(unused);
     }
+  });
+
+  it("5b. no permission that gates a route is unreachable by every role", () => {
+    // A gate nobody can pass is a dead route, and a gate reached only through
+    // the wrong role is the P013 defect class (审核工作台 open to the
+    // content-moderation role while its one write route demanded a permission
+    // that role never had). Checked over the introspected table, so removing or
+    // re-pointing a gate fails here.
+    for (const route of ROUTE_TABLE) {
+      if (!route.permission) continue;
+      const holders = ALL_ROLES.filter((role) => hasPermission(role, route.permission as Permission));
+      expect({ route: route.path, holders: holders.length > 0 }).toEqual({
+        route: route.path,
+        holders: true,
+      });
+    }
+  });
+
+  it("5c. the two write permissions that gate routes have no third home", () => {
+    // `moderation:write` must be held by exactly the content-facing roles, so
+    // that "who can adjudicate" stays a deliberate list rather than an accident
+    // of the matrix.
+    const moderationWriters = ALL_ROLES.filter((role) => hasPermission(role, "moderation:write"));
+    expect(moderationWriters).toEqual(["SUPER_ADMIN", "MODERATOR", "CONTENT_MANAGER"]);
   });
 
   it("6. there is no Risk mutation route and no risk write permission at all", () => {
@@ -1146,7 +1216,16 @@ describe("C5 §6 — the shared error contract", () => {
   it("41b. the pipe's UUID shape is character-identical to the service's", () => {
     // Two literals, one rule. If they drift, a value the pipe accepts could
     // still reach Prisma and 500 — the exact failure this phase fixed.
-    const pipeSource = readSource("uuid-param.pipe.ts");
+    //
+    // FIX (post-audit): this reads the pipe in its SHARED home
+    // (`common/uuid-param.pipe.ts`), which is where the implementation moved so
+    // the member API could use it too. It previously read the admin module's own
+    // copy; once that became a re-export shim, keeping the assertion pointed at
+    // the shim would have compared `admin.service.ts` against a MIRROR of the
+    // regex rather than the live literal — so an edit to the real pipe alone
+    // would no longer have been caught. Pointing at the implementation keeps the
+    // original guarantee.
+    const pipeSource = readSource("..", "common", "uuid-param.pipe.ts");
     const serviceSource = readSource("admin.service.ts");
     const extract = (source: string) => {
       const match = source.match(/const UUID_RE = (\/.*\/i);/);

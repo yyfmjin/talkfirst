@@ -3,8 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PhoneShell } from "@/components/phone-shell";
 import { ScreenHeader } from "@/components/screen-header";
-import { OutlineButton, SmallButton } from "@/components/ui";
-import { cn } from "@/lib/cn";
+import {
+  TFBadge,
+  TFButton,
+  TFChip,
+  TFErrorState,
+  TFSearch,
+} from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { friendlyErrorMessage } from "@/lib/errors";
 
@@ -197,105 +202,95 @@ export default function MeInterestsPage() {
     <PhoneShell>
       <ScreenHeader title="语言 · 兴趣 · 目的" backHref="/me" />
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-4">
-        <p className="text-[13px] leading-6 text-muted">
+        <p className="text-ui leading-6 text-content-muted">
           这里以前只能在注册时填写，现在随时都能改。改完记得点对应小节的保存。
         </p>
 
         {loading ? (
           <div className="mt-5 animate-pulse space-y-3">
-            <div className="h-40 rounded-3xl bg-indigo-50" />
-            <div className="h-40 rounded-3xl bg-indigo-50" />
-            <div className="h-40 rounded-3xl bg-indigo-50" />
+            <div className="h-40 rounded-card bg-neutral-100" />
+            <div className="h-40 rounded-card bg-neutral-100" />
+            <div className="h-40 rounded-card bg-neutral-100" />
           </div>
         ) : null}
 
         {!loading && error ? (
-          <div className="mt-5 rounded-2xl bg-red-50 p-4 text-center">
-            <p className="text-[12px] text-red-700">{error}</p>
-            <SmallButton className="mt-3 w-full" onClick={() => void load()}>
-              重试
-            </SmallButton>
+          <div className="mt-5">
+            <TFErrorState description={error} onRetry={() => void load()} />
           </div>
         ) : null}
 
         {!loading ? (
           <>
-            <section className="mt-5 rounded-3xl border border-line bg-white p-4">
-              <p className="text-[14px] font-semibold">语言</p>
-              <p className="mt-0.5 text-[11px] leading-4 text-muted">
+            <section className="mt-5 rounded-card border border-border bg-surface p-4">
+              <p className="text-ui font-semibold text-content">语言</p>
+              <p className="mt-0.5 text-caption leading-4 text-content-muted">
                 语言互补是推荐的核心：母语 1 门，正在学习最多 {LANGUAGE_MAX - 1} 门。
               </p>
-              <p className="mb-2 mt-3 text-[12px] font-medium text-muted">母语（单选）</p>
+              <p className="mb-2 mt-3 text-caption font-medium text-content-muted">母语（单选）</p>
               <div data-testid="native-languages" className="flex flex-wrap gap-1.5">
                 {languages.map((item) => (
-                  <button
+                  <TFChip
                     key={item.code}
-                    type="button"
+                    selected={nativeCode === item.code}
                     onClick={() => {
                       setNativeCode(item.code);
                       setLearning((current) => current.filter((code) => code !== item.code));
                     }}
-                    aria-pressed={nativeCode === item.code}
-                    className={cn(
-                      "min-h-[2.25rem] rounded-full border border-line px-3 py-1.5 text-[12px]",
-                      nativeCode === item.code && "border-transparent tf-gradient font-medium text-white",
-                    )}
                   >
                     {item.nativeName ?? item.name}
-                  </button>
+                  </TFChip>
                 ))}
               </div>
-              <p className="mb-2 mt-4 text-[12px] font-medium text-muted">
+              <p className="mb-2 mt-4 text-caption font-medium text-content-muted">
                 正在学习（已选 {learningClean.length}）
               </p>
               <div data-testid="learning-languages" className="flex flex-wrap gap-1.5">
                 {languages
                   .filter((item) => item.code !== nativeCode)
                   .map((item) => (
-                    <button
+                    <TFChip
                       key={item.code}
-                      type="button"
+                      selected={learning.includes(item.code)}
                       onClick={() => setLearning((current) => toggle(current, item.code))}
-                      aria-pressed={learning.includes(item.code)}
-                      className={cn(
-                        "min-h-[2.25rem] rounded-full border border-line px-3 py-1.5 text-[12px]",
-                        learning.includes(item.code) && "border-[#8B6CFF] bg-[#F4F1FF] font-medium",
-                      )}
                     >
                       {item.nativeName ?? item.name}
-                    </button>
+                    </TFChip>
                   ))}
               </div>
-              <p className="mt-3 text-[11px] leading-4 text-muted">
+              <p className="mt-3 text-caption leading-4 text-content-muted">
                 母语：{nativeCode ? languageName(nativeCode) : "未选"}；学习中：
                 {learningClean.length > 0 ? learningClean.map(languageName).join("、") : "暂无"}
               </p>
-              <SmallButton
-                variant="gradient"
-                className="mt-4 w-full"
+              <TFButton
+                size="lg"
+                fullWidth
+                className="mt-4"
                 onClick={() => void saveLanguages()}
-                disabled={saving !== null}
-                ariaLabel="保存语言"
+                disabled={saving !== null && saving !== "languages"}
+                loading={saving === "languages"}
+                loadingLabel="保存中…"
+                aria-label="保存语言"
               >
-                {saving === "languages" ? "保存中…" : "保存语言"}
-              </SmallButton>
+                保存语言
+              </TFButton>
             </section>
 
-            <section className="mt-5 rounded-3xl border border-line bg-white p-4">
+            <section className="mt-5 rounded-card border border-border bg-surface p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-[14px] font-semibold">兴趣</p>
-                  <p className="mt-0.5 text-[11px] leading-4 text-muted">
+                  <p className="text-ui font-semibold text-content">兴趣</p>
+                  <p className="mt-0.5 text-caption leading-4 text-content-muted">
                     至少 {INTEREST_MIN} 个，最多 {INTEREST_MAX} 个。
                   </p>
                 </div>
-                <span className="shrink-0 rounded-full bg-[#F1F3FF] px-2.5 py-1 text-[11px] text-[#6572D8]">
+                <TFBadge tone="brand" className="shrink-0">
                   {interestSlugs.length} / {INTEREST_MAX}
-                </span>
+                </TFBadge>
               </div>
 
               {interestSlugs.length > 0 ? (
-                <div className="mt-3 flex flex-wrap gap-1.5 rounded-2xl bg-[#F7F9FF] p-2.5">
+                <div className="mt-3 flex flex-wrap gap-1.5 rounded-row bg-surface-sunken p-2.5">
                   {interestSlugs.map((slug) => {
                     const found = interests.find((item) => item.slug === slug);
                     return (
@@ -304,38 +299,42 @@ export default function MeInterestsPage() {
                         type="button"
                         onClick={() => setInterestSlugs((current) => toggle(current, slug))}
                         aria-label={`移除 ${found?.nameZh ?? found?.name ?? slug}`}
-                        className="rounded-full bg-white px-3 py-1.5 text-[11px] text-[#6572D8] shadow-sm"
+                        className="inline-flex max-w-full items-center gap-1 rounded-full bg-surface px-2.5 py-1 text-caption text-brand-600 transition-colors duration-instant hover:bg-brand-50"
                       >
-                        {found?.nameZh ?? found?.name ?? slug} ✕
+                        <span className="min-w-0 truncate">{found?.nameZh ?? found?.name ?? slug}</span>
+                        <span aria-hidden="true">✕</span>
                       </button>
                     );
                   })}
                 </div>
               ) : null}
 
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
+              {/* `TFSearch` keeps the accessible name 「搜索兴趣」 and adds the clear
+                  affordance + leading icon. */}
+              <TFSearch
+                className="mt-3"
+                label="搜索兴趣"
                 placeholder="搜索兴趣，如 游戏、音乐、旅行"
-                aria-label="搜索兴趣"
-                className="mt-3 h-11 w-full min-w-0 rounded-2xl border border-line bg-[#F8FAFF] px-3 text-[13px] outline-none focus:ring-2 focus:ring-indigo-200"
+                value={search}
+                onValueChange={setSearch}
+                onClear={() => setSearch("")}
               />
 
               {interestCategories.length === 0 ? (
-                <p className="mt-3 text-[12px] text-muted">没有匹配的兴趣，换个关键词试试。</p>
+                <p className="mt-3 text-caption text-content-muted">没有匹配的兴趣，换个关键词试试。</p>
               ) : (
                 interestCategories.map((category) => (
                   <div key={category} className="mt-4">
-                    <p className="mb-2 text-[11px] font-medium text-muted">{category}</p>
+                    <p className="mb-2 text-caption font-medium text-content-muted">{category}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {filteredInterests
                         .filter((item) => item.category === category)
                         .map((item) => {
                           const active = interestSlugs.includes(item.slug);
                           return (
-                            <button
+                            <TFChip
                               key={item.slug}
-                              type="button"
+                              selected={active}
                               onClick={() =>
                                 setInterestSlugs((current) => {
                                   if (current.includes(item.slug)) {
@@ -345,14 +344,9 @@ export default function MeInterestsPage() {
                                   return [...current, item.slug];
                                 })
                               }
-                              aria-pressed={active}
-                              className={cn(
-                                "min-h-[2.25rem] rounded-full border border-line px-3 py-1.5 text-[12px]",
-                                active && "border-transparent tf-gradient font-medium text-white",
-                              )}
                             >
                               {item.nameZh ?? item.name}
-                            </button>
+                            </TFChip>
                           );
                         })}
                     </div>
@@ -361,39 +355,42 @@ export default function MeInterestsPage() {
               )}
 
               {interestSlugs.length >= INTEREST_MAX ? (
-                <p className="mt-3 text-[11px] text-[#B26A00]">已达上限 {INTEREST_MAX} 个，请先移除再添加。</p>
+                <p className="mt-3 text-caption text-warning-800">已达上限 {INTEREST_MAX} 个，请先移除再添加。</p>
               ) : null}
 
-              <SmallButton
-                variant="gradient"
-                className="mt-4 w-full"
+              <TFButton
+                size="lg"
+                fullWidth
+                className="mt-4"
                 onClick={() => void saveInterests()}
-                disabled={saving !== null}
-                ariaLabel="保存兴趣"
+                disabled={saving !== null && saving !== "interests"}
+                loading={saving === "interests"}
+                loadingLabel="保存中…"
+                aria-label="保存兴趣"
               >
-                {saving === "interests" ? "保存中…" : "保存兴趣"}
-              </SmallButton>
+                保存兴趣
+              </TFButton>
             </section>
 
-            <section className="mt-5 rounded-3xl border border-line bg-white p-4">
+            <section className="mt-5 rounded-card border border-border bg-surface p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-[14px] font-semibold">交友目的</p>
-                  <p className="mt-0.5 text-[11px] leading-4 text-muted">
+                  <p className="text-ui font-semibold text-content">交友目的</p>
+                  <p className="mt-0.5 text-caption leading-4 text-content-muted">
                     你希望在这段关系里得到什么，至少 1 个，最多 {PURPOSE_MAX} 个。
                   </p>
                 </div>
-                <span className="shrink-0 rounded-full bg-[#F1F3FF] px-2.5 py-1 text-[11px] text-[#6572D8]">
+                <TFBadge tone="brand" className="shrink-0">
                   {purposeSlugs.length} / {PURPOSE_MAX}
-                </span>
+                </TFBadge>
               </div>
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {purposes.map((item) => {
                   const active = purposeSlugs.includes(item.slug);
                   return (
-                    <button
+                    <TFChip
                       key={item.slug}
-                      type="button"
+                      selected={active}
                       onClick={() =>
                         setPurposeSlugs((current) => {
                           if (current.includes(item.slug)) {
@@ -403,39 +400,37 @@ export default function MeInterestsPage() {
                           return [...current, item.slug];
                         })
                       }
-                      aria-pressed={active}
-                      className={cn(
-                        "min-h-[2.25rem] rounded-full border border-line px-3 py-1.5 text-[12px]",
-                        active && "border-transparent tf-gradient font-medium text-white",
-                      )}
                     >
                       {item.nameZh ?? item.name}
-                    </button>
+                    </TFChip>
                   );
                 })}
               </div>
-              <SmallButton
-                variant="gradient"
-                className="mt-4 w-full"
+              <TFButton
+                size="lg"
+                fullWidth
+                className="mt-4"
                 onClick={() => void savePurposes()}
-                disabled={saving !== null}
-                ariaLabel="保存交友目的"
+                disabled={saving !== null && saving !== "purposes"}
+                loading={saving === "purposes"}
+                loadingLabel="保存中…"
+                aria-label="保存交友目的"
               >
-                {saving === "purposes" ? "保存中…" : "保存交友目的"}
-              </SmallButton>
+                保存交友目的
+              </TFButton>
             </section>
 
-            <section className="mt-5 rounded-3xl border border-line bg-white p-4">
+            <section className="mt-5 rounded-card border border-border bg-surface p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-[14px] font-semibold">想认识的国家/地区</p>
-                  <p className="mt-0.5 text-[11px] leading-4 text-muted">
+                  <p className="text-ui font-semibold text-content">想认识的国家/地区</p>
+                  <p className="mt-0.5 text-caption leading-4 text-content-muted">
                     可留空，最多 {COUNTRY_MAX} 个。
                   </p>
                 </div>
-                <span className="shrink-0 rounded-full bg-[#F1F3FF] px-2.5 py-1 text-[11px] text-[#6572D8]">
+                <TFBadge tone="brand" className="shrink-0">
                   {countryCodes.length} / {COUNTRY_MAX}
-                </span>
+                </TFBadge>
               </div>
               <div
                 data-testid="country-options"
@@ -444,9 +439,13 @@ export default function MeInterestsPage() {
                 {countries.map((item) => {
                   const active = countryCodes.includes(item.code);
                   return (
-                    <button
+                    /* `w-full justify-start` because this cluster is a two-column
+                       GRID, not a wrapping row: a chip that shrink-wraps would
+                       leave ragged cell widths. `truncate` keeps a long country
+                       name from forcing the column wider. */
+                    <TFChip
                       key={item.code}
-                      type="button"
+                      selected={active}
                       onClick={() =>
                         setCountryCodes((current) => {
                           if (current.includes(item.code)) {
@@ -456,36 +455,41 @@ export default function MeInterestsPage() {
                           return [...current, item.code];
                         })
                       }
-                      aria-pressed={active}
-                      className={cn(
-                        "min-h-[2.25rem] truncate rounded-full border border-line px-3 py-1.5 text-[12px]",
-                        active && "border-transparent tf-gradient font-medium text-white",
-                      )}
+                      className="w-full justify-start"
                     >
-                      {item.flag ?? ""} {item.name}
-                    </button>
+                      <span className="truncate">
+                        {item.flag ?? ""} {item.name}
+                      </span>
+                    </TFChip>
                   );
                 })}
               </div>
-              <SmallButton
-                variant="gradient"
-                className="mt-4 w-full"
+              <TFButton
+                size="lg"
+                fullWidth
+                className="mt-4"
                 onClick={() => void saveCountries()}
-                disabled={saving !== null}
-                ariaLabel="保存想认识的国家地区"
+                disabled={saving !== null && saving !== "countries"}
+                loading={saving === "countries"}
+                loadingLabel="保存中…"
+                aria-label="保存想认识的国家地区"
               >
-                {saving === "countries" ? "保存中…" : "保存国家/地区"}
-              </SmallButton>
+                保存国家/地区
+              </TFButton>
             </section>
           </>
         ) : null}
 
-        {notice ? <p className="mt-4 text-center text-[12px] text-emerald-600">{notice}</p> : null}
+        {notice ? (
+          <p role="status" className="mt-4 text-center text-caption text-success-600">
+            {notice}
+          </p>
+        ) : null}
 
-        <div className="mb-1 mt-6">
-          <OutlineButton href="/me" className="min-h-[2.75rem] w-full text-[13px]">
+        <div className="mt-6">
+          <TFButton variant="secondary" fullWidth href="/me">
             返回我的
-          </OutlineButton>
+          </TFButton>
         </div>
       </div>
     </PhoneShell>

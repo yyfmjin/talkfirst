@@ -375,7 +375,7 @@ function ReportsScreen() {
 
         <button
           onClick={() => applyDraft(draft)}
-          className="h-10 rounded-xl bg-[#16213A] px-4 text-[13px] text-white"
+          className="h-10 rounded-xl bg-primary-ink px-4 text-[13px] text-white"
         >
           搜索
         </button>
@@ -390,7 +390,7 @@ function ReportsScreen() {
       </div>
 
       {!canWrite ? (
-        <p className="mt-3 rounded-xl bg-[#F7F9FF] px-3 py-2 text-[12px] text-muted">
+        <p className="mt-3 rounded-xl bg-accent px-3 py-2 text-[12px] text-muted">
           你的角色（{identity?.role}）对举报只有查看权限，无法审核。
         </p>
       ) : null}

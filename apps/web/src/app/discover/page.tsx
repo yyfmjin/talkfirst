@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Compass } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
 import { TabBar } from "@/components/tab-bar";
-import { SmallButton } from "@/components/ui";
+import { TFBadge, TFButton, TFEmptyState, TFErrorState } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { AdminEntry } from "@/components/admin-entry";
 import { ProfilePreviewCard } from "@/components/profile-preview-card";
@@ -105,6 +106,36 @@ export default function DiscoverPage() {
     void loadRecommendations(next);
   }
 
+  /**
+   * FEATURE (post-audit) — opening a card consumes one of the daily slots.
+   *
+   * `POST /discover/views/:userId` existed on the server, drove the whole
+   * 20-per-day model, and was called by nothing: neither this app nor the native
+   * one ever recorded a view, so 「今日剩余 N」 never moved and the "you have seen
+   * everyone for today" state could not be reached. Opening the full card is the
+   * point at which a recommendation has genuinely been *viewed* — the bubble wall
+   * shows identity only — so that is where the slot is spent.
+   *
+   * The request is fired in the background: a failed bookkeeping call must not
+   * prevent somebody from reading a profile, so a rejection is swallowed on
+   * purpose. When it succeeds the badge is set from the server's own count rather
+   * than from a local `- 1`, which keeps two tabs (or a duplicated request) from
+   * drifting apart.
+   */
+  const openProfile = useCallback(
+    (userId: string) => {
+      setPreviewUserId(userId);
+      void apiFetch<{ remaining: number }>(`/discover/views/${userId}`, { method: "POST" })
+        .then((data) => {
+          if (typeof data?.remaining === "number") setRemaining(data.remaining);
+        })
+        .catch(() => {
+          // Bookkeeping only — never blocks reading a profile.
+        });
+    },
+    [],
+  );
+
   const viewed = Math.min(DAILY_LIMIT, Math.max(0, DAILY_LIMIT - remaining));
   const progress = Math.round((viewed / DAILY_LIMIT) * 100);
 
@@ -113,26 +144,46 @@ export default function DiscoverPage() {
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-4">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-[22px] font-semibold">发现</h1>
-            <p className="mt-1 text-[13px] text-muted">先聊聊，再成为朋友。</p>
+            <h1 className="text-title font-semibold text-content">发现</h1>
+            <p className="mt-1 text-caption text-content-muted">先聊聊，再成为朋友。</p>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <span className="rounded-full bg-indigo-50 px-3 py-1.5 text-[11px] font-medium text-[#6B7CFF]">
-              今日剩余 {remaining}
-            </span>
+            <TFBadge tone="brand">今日剩余 {remaining}</TFBadge>
             <AdminEntry />
           </div>
         </div>
 
+        {/* The daily allowance, as a meter. `neutral-200` track + brand-500 fill
+            rather than `bg-indigo-100` + a gradient: this is a quota indicator, so
+            it should read as one colour at two brightnesses. */}
         <div className="mt-3">
-          <div className="h-1.5 overflow-hidden rounded-full bg-indigo-100">
-            <div className="tf-gradient h-full rounded-full transition-all" style={{ width: `${progress}%` }} />
+          <div
+            className="h-1.5 overflow-hidden rounded-full bg-neutral-200"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={DAILY_LIMIT}
+            aria-valuenow={viewed}
+            aria-label="今日已查看的推荐数"
+          >
+            <div
+              className="h-full rounded-full bg-brand-500 transition-[width] duration-base ease-out"
+              style={{ width: `${progress}%` }}
+            />
           </div>
-          <p className="mt-1.5 text-center text-[11px] text-muted">
+          <p className="mt-1.5 text-center text-caption text-content-muted">
             今日已看 {viewed}/{DAILY_LIMIT}
           </p>
         </div>
 
+        {/*
+          The filter row stays a hand-rolled `role="tab"` list rather than becoming
+          `TFTabs`, because this one scrolls horizontally when the labels are long.
+          `TFTabs` is an equal-width flex row — correct for 推荐/关注/我的 on the
+          feed, wrong here, where forcing five tabs into 390px would truncate the
+          labels. What it gains from the design system is the selected style: a
+          brand border and tint, not a gradient fill (a filter is a state, not a
+          call to action).
+        */}
         <div className="tf-scroll-x mt-4 flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="推荐筛选">
           {FILTERS.map((option) => (
             <button
@@ -143,8 +194,10 @@ export default function DiscoverPage() {
               disabled={switching}
               onClick={() => changeFilter(option.id)}
               className={cn(
-                "min-h-[2.25rem] shrink-0 rounded-full border px-4 py-1.5 text-[12px] transition disabled:opacity-60",
-                filter === option.id ? "border-transparent tf-gradient font-medium text-white" : "border-line text-muted",
+                "inline-flex min-h-9 shrink-0 items-center rounded-full border px-3.5 text-ui transition-[background-color,border-color,color] duration-instant ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 disabled:opacity-60",
+                filter === option.id
+                  ? "border-brand-300 bg-brand-50 font-medium text-brand-600"
+                  : "border-border bg-surface text-content-muted hover:bg-surface-sunken",
               )}
             >
               {option.label}
@@ -152,7 +205,7 @@ export default function DiscoverPage() {
           ))}
         </div>
 
-        <p className="mt-2 text-[11px] text-muted">
+        <p className="mt-2 text-caption leading-5 text-content-muted">
           {filter === "language"
             ? "只看想语言交换的人，点头像看完整资料。"
             : filter === "gaming"
@@ -163,13 +216,12 @@ export default function DiscoverPage() {
         {loading ? <DiscoverBubbleFieldSkeleton /> : null}
 
         {!loading && error ? (
-          <div className="mt-8 rounded-3xl border border-red-100 bg-red-50 p-6 text-center">
-            <p className="text-[14px] font-medium text-red-700">推荐暂时不可用</p>
-            <p className="mt-2 text-[12px] leading-5 text-red-600">{error}</p>
-            <SmallButton variant="gradient" className="mt-5 w-full" onClick={() => void loadRecommendations(filter)}>
-              重试
-            </SmallButton>
-          </div>
+          <TFErrorState
+            className="mt-4"
+            title="推荐暂时不可用"
+            description={error}
+            onRetry={() => void loadRecommendations(filter)}
+          />
         ) : null}
 
         {!loading && !error && switching ? <DiscoverBubbleFieldSkeleton /> : null}
@@ -184,7 +236,7 @@ export default function DiscoverPage() {
         ) : null}
 
         {!loading && !error && !switching && items.length > 0 ? (
-          <DiscoverBubbleField items={items} onOpenProfile={setPreviewUserId} />
+          <DiscoverBubbleField items={items} onOpenProfile={openProfile} />
         ) : null}
       </div>
 
@@ -206,30 +258,48 @@ function DiscoverEmpty({
   onReset: () => void;
 }) {
   return (
-    <div className="mt-8 rounded-3xl border border-dashed border-indigo-200 bg-[#F7F9FF] p-6 text-center">
-      <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-indigo-100 text-2xl">🌎</div>
-      <p className="mt-4 text-[15px] font-medium">
-        {remaining === 0 ? "今天的推荐看完啦" : filter === "all" ? "暂时没有合适的人" : "这个筛选下暂时没有合适的人"}
-      </p>
-      <p className="mt-2 text-[13px] leading-6 text-muted">
-        {remaining === 0
-          ? "明天再来看看，认真认识一个人。"
-          : filter === "all"
-            ? "完善语言、兴趣和目的后，会得到更好的推荐。"
-            : "换个筛选看看，或完善语言和兴趣后会有更多匹配。"}
-      </p>
-      <div className="mt-5 flex gap-2">
-        {filter !== "all" ? (
-          <SmallButton className="flex-1" onClick={onReset}>
-            看全部
-          </SmallButton>
-        ) : null}
-        {remaining > 0 ? (
-          <SmallButton variant="gradient" className="flex-1" onClick={onRetry}>
-            重新加载
-          </SmallButton>
-        ) : null}
-      </div>
+    <div className="mt-4">
+      <TFEmptyState
+        icon={<Compass size={26} />}
+        title={remaining === 0 ? "今天的推荐看完啦" : filter === "all" ? "暂时没有合适的人" : "这个筛选下暂时没有合适的人"}
+        description={
+          remaining === 0
+            ? "明天再来看看，认真认识一个人。"
+            : filter === "all"
+              ? "完善语言、兴趣和目的后，会得到更好的推荐。"
+              : "换个筛选看看，或完善语言和兴趣后会有更多匹配。"
+        }
+        action={
+          /*
+           * One primary action, chosen by what can actually help:
+           *   - a filter that is too narrow  -> 「看全部」 (widening produces results)
+           *   - a filter that is already all -> 「重新加载」
+           *   - an exhausted daily quota     -> neither; it is a wait, not a retry
+           * `filterAll` is derived first so the two branches cannot disagree.
+           */
+          (() => {
+            const filterAll = filter === "all";
+            if (remaining === 0) return undefined;
+            if (filterAll) {
+              return (
+                <TFButton className="w-full" onClick={onRetry}>
+                  重新加载
+                </TFButton>
+              );
+            }
+            return (
+              <div className="flex w-full gap-2">
+                <TFButton className="flex-1" onClick={onReset}>
+                  看全部
+                </TFButton>
+                <TFButton variant="secondary" className="flex-1" onClick={onRetry}>
+                  重新加载
+                </TFButton>
+              </div>
+            );
+          })()
+        }
+      />
     </div>
   );
 }

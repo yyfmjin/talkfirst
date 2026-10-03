@@ -75,11 +75,12 @@ export function MomentReportDialog({
       role="dialog"
       aria-modal="true"
       aria-label="举报这条动态"
-      className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/30 p-5"
+      /* Phase B: `absolute`, not `fixed` — see `moment-comments.tsx` for why. */
+      className="absolute inset-0 z-50 grid place-items-center overflow-y-auto bg-surface-scrim p-5"
     >
-      <div className="w-full max-w-[340px] rounded-3xl bg-white p-5 text-left shadow-xl">
-        <p className="text-[14px] font-semibold">举报这条动态</p>
-        <p className="mt-1 text-[11px] leading-4 text-muted">
+      <div className="w-full max-w-[340px] rounded-sheet bg-surface p-5 text-left shadow-overlay">
+        <p className="text-heading font-semibold text-content">举报这条动态</p>
+        <p className="mt-1 text-caption leading-4 text-content-muted">
           举报会提交人工审核。请选择最接近的原因。
         </p>
 
@@ -93,8 +94,10 @@ export function MomentReportDialog({
               aria-pressed={reason === item}
               onClick={() => setReason(item)}
               className={cn(
-                "block w-full break-words rounded-2xl border px-3 py-2 text-left text-[12px]",
-                reason === item ? "border-[#8B6CFF] bg-[#F4F1FF]" : "border-line",
+                "block w-full break-words rounded-row border px-3 py-2 text-left text-caption transition-colors duration-instant",
+                reason === item
+                  ? "border-brand-500 bg-brand-50 font-medium text-brand-600"
+                  : "border-border text-content hover:bg-surface-sunken",
               )}
             >
               {reportReasonLabel(item)}
@@ -110,22 +113,24 @@ export function MomentReportDialog({
           rows={3}
           aria-label="补充说明（可选）"
           placeholder="补充说明（可选）"
-          className="mt-3 w-full rounded-2xl border border-line bg-[#F8FAFF] p-3 text-[12px] outline-none focus:ring-2 focus:ring-indigo-200"
+          className="mt-3 w-full rounded-control border border-border bg-surface-sunken p-3 text-caption text-content outline-none transition-colors duration-instant placeholder:text-content-subtle focus:border-brand-500 focus-visible:ring-2 focus-visible:ring-brand-200"
         />
 
         {error ? (
-          <p data-testid="moment-report-error" role="alert" className="mt-2 break-words text-[11px] text-red-600">
+          <p data-testid="moment-report-error" role="alert" className="mt-2 break-words text-overline text-danger-600">
             {error}
           </p>
         ) : null}
 
+        {/* `boundingBox()` is asserted on moment-report-cancel / -submit, so the
+            h-9, flex-1 and gap stay exactly as they were. */}
         <div className="mt-4 flex gap-2">
           <button
             type="button"
             data-testid="moment-report-cancel"
             onClick={onCancel}
             disabled={busy}
-            className="h-9 min-w-0 flex-1 rounded-full border border-line text-[12px] text-[#3D4663] disabled:opacity-50"
+            className="h-9 min-w-0 flex-1 rounded-control border border-border text-caption text-content-muted transition-colors duration-instant hover:bg-surface-sunken disabled:opacity-50"
           >
             取消
           </button>
@@ -134,7 +139,7 @@ export function MomentReportDialog({
             data-testid="moment-report-submit"
             onClick={() => void submit()}
             disabled={busy || reason.length === 0}
-            className="h-9 min-w-0 flex-1 rounded-full bg-[#6572D8] text-[12px] text-white disabled:opacity-50"
+            className="h-9 min-w-0 flex-1 rounded-control bg-brand-500 text-caption font-medium text-white transition-colors duration-instant hover:bg-brand-600 disabled:opacity-50"
           >
             {busy ? "提交中…" : "提交举报"}
           </button>

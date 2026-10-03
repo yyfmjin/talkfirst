@@ -345,7 +345,7 @@ function ReportDetailScreen() {
             ) : (
               <ul className="mt-2 space-y-2">
                 {data.history.map((entry) => (
-                  <li key={entry.id} className="rounded-xl border border-line bg-[#FBFCFE] p-3">
+                  <li key={entry.id} className="rounded-xl border border-line bg-surface p-3">
                     <p className="flex flex-wrap items-center gap-2 text-[12px]">
                       <span className="font-mono">{entry.action}</span>
                       <span className="text-muted">
@@ -381,7 +381,7 @@ function ReportDetailScreen() {
               ))}
             </section>
           ) : (
-            <p className="rounded-xl bg-[#F7F9FF] px-3 py-2 text-[12px] text-muted">
+            <p className="rounded-xl bg-accent px-3 py-2 text-[12px] text-muted">
               你的角色（{identity?.role}）对举报只有查看权限，无法审核。
             </p>
           )}

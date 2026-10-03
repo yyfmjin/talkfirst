@@ -149,10 +149,30 @@ export class DiscoverService {
           viewDate: this.startOfToday(),
         },
       },
+      // Idempotent: opening the same card twice does not consume a second slot.
       update: {},
       create: { userId, viewedUserId, viewDate: this.startOfToday() },
     });
-    return { viewed: true };
+
+    /**
+     * FEATURE (post-audit) — the response now carries the quota.
+     *
+     * This route existed, fed the daily limit, and was called by **no client**:
+     * the user app never opened a card through it, so `remaining` could never
+     * fall and 「今日已看 x/20」 was decorative on every platform. Two things were
+     * needed — a caller (see `apps/web/src/app/discover/page.tsx`), and an answer
+     * the caller can use without guessing.
+     *
+     * Returning the authoritative remaining count (rather than letting the client
+     * decrement a local counter and hope) means the number shown is recomputed
+     * from the same query the recommendation list uses, so a re-opened card, a
+     * second tab, or a duplicated request cannot drift the badge.
+     */
+    const viewedCount = await this.prisma.discoverView.count({
+      where: { userId, viewDate: this.startOfToday() },
+    });
+    const remaining = Math.max(DAILY_VIEW_LIMIT - viewedCount, 0);
+    return { viewed: true as const, remaining, limit: DAILY_VIEW_LIMIT, used: viewedCount };
   }
 
   async findUser(userId: string) {

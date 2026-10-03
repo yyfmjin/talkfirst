@@ -25,12 +25,23 @@ import type { ReactNode } from "react";
 export type StatusTone = "neutral" | "info" | "success" | "warning" | "danger" | "accent";
 
 const TONE_CLASS: Record<StatusTone, string> = {
-  neutral: "bg-[#F3F4F6] text-[#4B5563] ring-[#E5E7EB]",
-  info: "bg-[#EFF6FF] text-[#1D4ED8] ring-[#BFDBFE]",
+  /*
+   * Only the tones whose hexes EXACTLY match a token are migrated here.
+   *
+   * `neutral` / `accent` / `info` map to `subtle` / `accent` / `info-wash`
+   * one-for-one, so nothing changes visually. `success` / `warning` / `danger`
+   * are deliberately LEFT as literals: their values are Tailwind's `*-50`/`*-100`
+   * family (`#ECFDF5`, `#FFFBEB`, `#FEF2F2`) which is NOT the same family the
+   * other admin screens use (`#DCFCE7`, `#FEF3C7`, `#FEE2E2`). Renaming them to
+   * the nearest token would change every badge's colour with no build error and
+   * nobody to notice — a silent regression is worse than a remaining literal.
+   */
+  neutral: "bg-subtle text-[#4B5563] ring-[#E5E7EB]",
+  info: "bg-info-wash text-[#1D4ED8] ring-[#BFDBFE]",
   success: "bg-[#ECFDF5] text-[#047857] ring-[#A7F3D0]",
   warning: "bg-[#FFFBEB] text-[#B45309] ring-[#FDE68A]",
   danger: "bg-[#FEF2F2] text-[#B91C1C] ring-[#FECACA]",
-  accent: "bg-[#EEF2FF] text-[#4338CA] ring-[#C7D2FE]",
+  accent: "bg-accent text-[#4338CA] ring-[#C7D2FE]",
 };
 
 /**

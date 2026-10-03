@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PhoneShell } from "@/components/phone-shell";
-import { GradientButton, SmallButton } from "@/components/ui";
+import { TFButton } from "@/components/tf";
 import { ScreenHeader } from "@/components/screen-header";
 import { cn } from "@/lib/cn";
 import { apiFetch } from "@/lib/api";
@@ -115,13 +115,25 @@ export default function VerifyPage() {
   return (
     <PhoneShell>
       <ScreenHeader title="验证码" backHref="/register" />
-      <div className="tf-scroll flex min-h-0 flex-1 flex-col overflow-y-auto px-8 pb-6 pt-6">
-        <p className="text-center text-[14px] leading-6 text-muted">
+      <div className="tf-scroll flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-6 pt-6">
+        <p className="text-center text-ui leading-6 text-content-muted">
           我们已发送验证码到你的邮箱
           <br />
-          {maskedEmail}
+          <span className="font-medium text-content">{maskedEmail}</span>
         </p>
-        <div className="mt-8 flex justify-between gap-2">
+
+        {/*
+          FIX (responsive): the six cells used to be `w-12` inside a `px-8`
+          container, which is 6×48 + 5×8 = 328px of content in
+          `320 − 64 = 256px` of space. On a 320px device (iPhone SE) that
+          overflowed the frame AND the page's horizontal scroll was hidden by
+          `overflow-x: hidden`, so the last digit was simply unreachable.
+
+          `min-w-0 flex-1` with a `max-w-12` cap makes the row fit any width
+          while keeping the cells square-ish at 390px. `gap-1.5` also buys back
+          10px versus `gap-2`.
+        */}
+        <div className="mt-8 flex justify-center gap-1.5">
           {code.map((digit, index) => (
             <input
               key={index}
@@ -136,38 +148,62 @@ export default function VerifyPage() {
               onChange={(event) => updateDigit(index, event.target.value)}
               onKeyDown={(event) => onKeyDown(index, event)}
               className={cn(
-                "h-14 w-12 rounded-2xl border bg-[#F8FAFF] text-center text-xl outline-none focus:ring-2 focus:ring-indigo-200",
-                digit ? "border-[#8B6CFF]" : "border-line",
+                "h-14 min-w-0 flex-1 max-w-12 rounded-control border bg-surface-sunken text-center text-title font-semibold text-content",
+                "transition-colors duration-instant ease-out",
+                "focus:border-brand-500 focus:bg-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-200",
+                digit ? "border-brand-500" : "border-border",
               )}
             />
           ))}
         </div>
-        {error ? <p className="mt-4 text-center text-[12px] text-red-500">{error}</p> : null}
-        {info ? <p className="mt-4 text-center text-[12px] text-indigo-500">{info}</p> : null}
+
+        {error ? (
+          <p role="alert" className="mt-4 break-words text-center text-caption text-danger-600">
+            {error}
+          </p>
+        ) : null}
+        {info ? <p className="mt-4 text-center text-caption text-content-muted">{info}</p> : null}
+
+        {/* Development convenience: only rendered when the API echoed a code back,
+            which `mayExposeVerificationCode()` allows in development only. */}
         {devCode ? (
           <button
+            type="button"
             onClick={() => updateDigit(0, devCode)}
-            className="mt-2 text-center text-[12px] text-amber-500 underline decoration-dotted"
+            className="mt-3 text-center text-caption text-warning-600 underline decoration-dotted"
           >
             开发模式验证码：{devCode}（点击自动填入）
           </button>
         ) : null}
+
+        {/* Resend is a text action, not a button: it is secondary to 下一步 and it
+            is disabled while the cooldown runs, so a filled control would just be
+            a large grey block. */}
         <button
+          type="button"
           onClick={() => {
             if (secondsLeft <= 0) void sendCode();
           }}
           disabled={secondsLeft > 0}
-          className="mt-6 w-full text-center text-[13px] text-muted disabled:opacity-60"
+          className="mt-6 w-full rounded-control py-2 text-center text-ui text-content-muted transition-colors duration-instant hover:bg-surface-sunken disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
         >
           {secondsLeft > 0 ? `重新发送 (${secondsLeft}s)` : "重新发送"}
         </button>
-        <div className="mt-auto pb-1 pt-8">
-          <GradientButton onClick={handleVerify} disabled={loading || code.join("").length !== CODE_LENGTH}>
-            {loading ? "验证中…" : "下一步"}
-          </GradientButton>
-          <SmallButton className="mt-3 w-full" onClick={() => router.push("/login")}>
+
+        <div className="mt-auto pb-1 pt-6">
+          <TFButton
+            onClick={handleVerify}
+            disabled={code.join("").length !== CODE_LENGTH}
+            loading={loading}
+            loadingLabel="验证中…"
+            size="lg"
+            fullWidth
+          >
+            下一步
+          </TFButton>
+          <TFButton variant="ghost" size="md" fullWidth className="mt-1" href="/login">
             返回登录
-          </SmallButton>
+          </TFButton>
         </div>
       </div>
     </PhoneShell>

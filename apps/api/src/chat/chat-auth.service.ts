@@ -3,6 +3,7 @@ import { JwtService } from "@nestjs/jwt";
 import { PrismaService } from "../prisma/prisma.service";
 import { JWT_ACCESS_SECRET } from "../auth/auth.constants";
 import { emailVerificationEnforced } from "../auth/email-verification.policy";
+import { jwtSecretOrDevFallback } from "../common/security-config";
 
 export type SocketAuthUser = { id: string; email: string };
 export type SocketAuthFailure =
@@ -26,7 +27,7 @@ export class ChatAuthService {
         sub: string;
         email: string;
         type: string;
-      }>(raw, { secret: process.env[JWT_ACCESS_SECRET] ?? "change-me-in-development" });
+      }>(raw, { secret: jwtSecretOrDevFallback(JWT_ACCESS_SECRET) });
       if (payload.type !== "access") return { user: null, failure: "INVALID" };
       const user = await this.prisma.user.findUnique({
         where: { id: payload.sub },

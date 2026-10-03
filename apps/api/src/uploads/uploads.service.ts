@@ -95,8 +95,27 @@ export class UploadsService {
     };
   }
 
+  /**
+   * Where local uploads live on disk.
+   *
+   * FIX (audit P004): the directory used to be derived from `process.cwd()`
+   * alone, and `docker-compose.yml` mounted no volume there — so every avatar,
+   * chat image and moment video disappeared the moment the API container was
+   * recreated, while the database kept pointing at the now-dead URLs.
+   *
+   * `UPLOAD_DIR` is now honoured (an absolute path inside the container, backed
+   * by a named volume), and every caller resolves the path through this one
+   * function so the static-file mount in `main.ts` and the writer can never
+   * disagree.
+   */
+  private uploadRoot(): string {
+    const configured = process.env.UPLOAD_DIR?.trim();
+    if (configured) return configured;
+    return join(process.cwd(), ".local-data", "uploads");
+  }
+
   saveLocal(kind: UploadKind, buffer: Buffer, ext: string) {
-    const dir = join(process.cwd(), ".local-data", "uploads", kind);
+    const dir = join(this.uploadRoot(), kind);
     mkdirSync(dir, { recursive: true });
     const name = `${Date.now()}-${randomBytes(8).toString("hex")}.${ext}`;
     writeFileSync(join(dir, name), buffer);
@@ -108,7 +127,7 @@ export class UploadsService {
   }
 
   uploadDir() {
-    const dir = join(process.cwd(), ".local-data", "uploads");
+    const dir = this.uploadRoot();
     mkdirSync(dir, { recursive: true });
     return dir;
   }

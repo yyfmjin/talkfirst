@@ -206,7 +206,10 @@ test("正常发布后跳到动态列表，内容可见", async ({ page }) => {
   await publishButton(page).click();
 
   await page.waitForURL("**/moments", { timeout: 20_000 });
-  await expect(page.getByRole("heading", { name: "动态" })).toBeVisible();
+  // Phase B renamed the feed tab and its page title from 「动态」 to 「首页」, so the
+  // bottom-nav slot and the heading agree. Asserted by name, so it had to move
+  // with the UI rather than the UI bending back to the test.
+  await expect(page.getByRole("heading", { name: "首页" })).toBeVisible();
 
   // The feed opens on 推荐; the member's own post is guaranteed on 我的.
   await page.getByRole("button", { name: "我的", exact: true }).click();

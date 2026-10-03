@@ -2,6 +2,103 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  /*
+   * There was no `:focus-visible` rule anywhere in this app, so a keyboard user
+   * could not see focus on any button, link, tab, chip, avatar or toggle — the
+   * `outline-none` on the inputs and the missing rule together left tabbing
+   * blind.
+   *
+   * Phase A moved the accent onto the brand token: a focus ring is an "active"
+   * affordance, and the design language gives brand blue exactly that job.
+   * `--tf-focus` is a CSS variable rather than a literal so that it can later be
+   * read from the same source as the Tailwind theme without editing this file.
+   *
+   * This is an outline, not a ring: it coexists with the `focus:ring-2
+   * ring-indigo-200` utilities the inputs already carry (box-shadow and outline
+   * are independent), so those fields keep the look they had.
+   */
+  :root {
+    --tf-focus: #3b82f6;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--tf-focus);
+    outline-offset: 2px;
+  }
+
+  /* A pointer press is not keyboard focus: without this, every mouse click on a
+     button would leave the ring behind. */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /**
+   * Phase A — reduced motion.
+   *
+   * Only `.tf-bubble-orb` used to honour `prefers-reduced-motion`, while 18
+   * skeletons pulsed, one spinner span and every `transition` and `active:scale`
+   * ran regardless. Rather than adding `motion-reduce:` to ~500 call sites, the
+   * global default is neutralised here and the primitives opt back in where a
+   * shorter animation is still meaningful (a dialog appearing, for instance).
+   *
+   * `scroll-behavior` matters most of all: a smooth programmatic scroll is the
+   * single worst offender for vestibular sensitivity, and the chat screen does it
+   * on every new message.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+
+    /* Keep the skeleton visible as a static block rather than an invisible one. */
+    .animate-pulse-soft,
+    .animate-pulse,
+    .animate-spin {
+      animation: none !important;
+      opacity: 0.7;
+    }
+  }
+
+  /**
+   * Phase A — the member app must never scroll sideways.
+   *
+   * The brief states the acceptance test as `body.scrollWidth === body.clientWidth`
+   * at 375/390/430 and at desktop widths. Two things make that true, and neither
+   * is `overflow-x: hidden` (which is kept above, but hides an overflow rather
+   * than preventing it):
+   *
+   *  1. A flex or grid item defaults to `min-width: auto`, so it refuses to shrink
+   *     below its content — that is the usual cause of a sideways scroll, and
+   *     `min-w-0` on the item is the fix. Applying it globally to flex/grid
+   *     children makes the default safe; call sites that still need `min-w-0`
+   *     keep it, harmlessly.
+   *  2. Long unbroken tokens (a URL, a handle, a UUID) must be allowed to wrap.
+   *
+   * Deliberately NOT a global `* { min-width: 0 }`: that would also override
+   * `min-w-*` utilities and any intrinsic sizing on a gutter, which is a worse
+   * failure than the one it fixes.
+   */
+  .flex > *,
+  .grid > * {
+    min-width: 0;
+  }
+
+  body,
+  main {
+    overflow-wrap: break-word;
+  }
+}
+
 :root {
   color: #1c2740;
   background: #eef3ff;
@@ -43,17 +140,31 @@ button {
   font: inherit;
 }
 
+/**
+ * The legacy brand gradient.
+ *
+ * Phase B re-points it at the brand blue. This is a ONE-LINE change that moves
+ * 34 call sites at once, which is why it is done here rather than page by page:
+ * leaving it purple while the shell, the tab bar and the new composer CTA turn
+ * blue would have left the product with two competing brand colours side by side
+ * — the exact drift the design system exists to prevent.
+ *
+ * The name is now a lie (it is no longer the brand accent, and several call sites
+ * use it for "selected" rather than for branding). It is kept only until Phases
+ * C–H replace each caller with `bg-brand-500` or a `TFChip`; the Phase A rules
+ * say a legacy token is deleted when its last caller is migrated, not before.
+ */
 .tf-gradient {
-  background-image: linear-gradient(90deg, #6b8cff 0%, #8b6cff 100%);
+  background-image: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
 }
 
 .tf-gradient-soft {
-  background-image: linear-gradient(180deg, #7b9bff 0%, #8b74ff 100%);
+  background-image: linear-gradient(135deg, #7baaf9 0%, #3b82f6 100%);
 }
 
 .tf-scroll {
   scrollbar-width: thin;
-  scrollbar-color: rgba(107, 124, 255, 0.35) transparent;
+  scrollbar-color: rgba(59, 130, 246, 0.3) transparent;
 }
 
 .tf-scroll::-webkit-scrollbar {
@@ -62,7 +173,7 @@ button {
 }
 
 .tf-scroll::-webkit-scrollbar-thumb {
-  background: rgba(107, 124, 255, 0.25);
+  background: rgba(59, 130, 246, 0.22);
   border-radius: 999px;
 }
 

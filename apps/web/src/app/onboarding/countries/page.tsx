@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PhoneShell } from "@/components/phone-shell";
 import { ScreenHeader } from "@/components/screen-header";
-import { GradientButton } from "@/components/ui";
+import { TFRowSkeleton, TFButton, TFLoadingRegion, TFSearch } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/cn";
 
@@ -73,54 +73,64 @@ export default function CountriesPage() {
     <PhoneShell>
       <ScreenHeader title="想认识谁？" backHref="/onboarding/purposes" />
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-2">
-        <p className="text-[13px] text-muted">
+        <p className="text-ui text-content-muted">
           选择你想认识的国家 / 地区（可多选，不选表示全球{selected.length > 0 ? `，已选 ${selected.length}` : ""}）。
         </p>
-        <div className="mt-3 flex gap-2">
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
+        <div className="mt-3 flex items-start gap-2">
+          {/* `TFSearch` is what the two sibling onboarding pickers
+              (`/onboarding/languages`, `/onboarding/interests`) already use, so the
+              three steps now share one search affordance and the clear button.
+              The accessible name 「搜索国家」 is preserved. */}
+          <TFSearch
+            className="min-w-0 flex-1"
+            label="搜索国家"
             placeholder="搜索国家或地区，如 日本、JP"
-            aria-label="搜索国家"
-            className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-[#F8FAFF] px-3 text-[13px] outline-none focus:ring-2 focus:ring-indigo-200"
+            value={search}
+            onValueChange={setSearch}
+            onClear={() => setSearch("")}
           />
           {selected.length > 0 ? (
-            <button
-              onClick={() => setSelected([])}
-              className="h-11 shrink-0 rounded-xl border border-line px-3 text-[12px] text-muted"
-            >
+            <TFButton variant="secondary" size="sm" className="mt-0.5 shrink-0" onClick={() => setSelected([])}>
               全球
-            </button>
+            </TFButton>
           ) : null}
         </div>
         {fetching ? (
-          <div className="mt-5 animate-pulse space-y-2">
-            <div className="h-12 rounded-2xl bg-indigo-50" />
-            <div className="h-12 rounded-2xl bg-indigo-50" />
-            <div className="h-12 rounded-2xl bg-indigo-50" />
-          </div>
+          <TFLoadingRegion label="正在加载国家列表">
+            <div className="mt-5 space-y-2.5">
+              <TFRowSkeleton />
+              <TFRowSkeleton />
+              <TFRowSkeleton />
+            </div>
+          </TFLoadingRegion>
         ) : (
-          <div className="mt-5 space-y-2">
+          <div className="mt-5 space-y-2.5">
             {filtered.map((item) => {
               const active = selected.includes(item.code);
               return (
                 <button
                   key={item.code}
+                  type="button"
                   onClick={() => toggle(item.code)}
                   aria-pressed={active}
                   className={cn(
-                    "flex h-12 w-full items-center justify-between rounded-2xl border border-line px-4 text-left text-[14px]",
-                    active && "border-[#8B6CFF] bg-[#F4F1FF] font-medium",
+                    "flex w-full items-center justify-between gap-3 rounded-row border px-4 py-3 text-left text-ui",
+                    "transition-[background-color,border-color] duration-instant ease-out",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300",
+                    active
+                      ? "border-brand-500 bg-brand-50 font-medium text-content"
+                      : "border-border bg-surface text-content hover:bg-surface-sunken",
                   )}
                 >
-                  <span>
+                  <span className="min-w-0">
                     {item.flag ?? "🌐"} {item.name}
-                    <span className="ml-2 text-[11px] text-muted">{item.code}</span>
+                    <span className="ml-2 text-caption text-content-subtle">{item.code}</span>
                   </span>
                   <span
+                    aria-hidden="true"
                     className={cn(
-                      "grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[11px]",
-                      active ? "border-transparent tf-gradient text-white" : "text-transparent",
+                      "grid h-5 w-5 shrink-0 place-items-center rounded-full text-overline",
+                      active ? "bg-brand-500 text-white" : "border border-border text-transparent",
                     )}
                   >
                     ✓
@@ -129,15 +139,26 @@ export default function CountriesPage() {
               );
             })}
             {filtered.length === 0 ? (
-              <p className="text-[12px] text-muted">没有匹配的国家，换个关键词试试。</p>
+              <p className="text-caption text-content-muted">没有匹配的国家，换个关键词试试。</p>
             ) : null}
           </div>
         )}
-        {error ? <p className="mt-4 text-[12px] text-red-500">{error}</p> : null}
-        <div className="mb-1 mt-8">
-          <GradientButton onClick={handleNext} disabled={loading || fetching}>
-            {loading ? "保存中…" : selected.length > 0 ? `下一步（${selected.length}）` : "全球，下一步"}
-          </GradientButton>
+        {error ? (
+          <p role="alert" className="mt-4 break-words text-caption text-danger-600">
+            {error}
+          </p>
+        ) : null}
+        <div className="mt-8">
+          <TFButton
+            size="lg"
+            fullWidth
+            onClick={() => void handleNext()}
+            disabled={fetching}
+            loading={loading}
+            loadingLabel="保存中…"
+          >
+            {selected.length > 0 ? `下一步（${selected.length}）` : "全球，下一步"}
+          </TFButton>
         </div>
       </div>
     </PhoneShell>

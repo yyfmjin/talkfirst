@@ -182,7 +182,7 @@ function BlockDetailScreen() {
               </Link>
               <span
                 data-testid="block-detail-direction"
-                className="my-1 rounded-full bg-[#FEE2E2] px-2 py-0.5 text-[11px] font-medium text-[#991B1B]"
+                className="my-1 rounded-full bg-danger-wash px-2 py-0.5 text-[11px] font-medium text-danger-ink"
               >
                 屏蔽 ↓
               </span>
@@ -215,7 +215,7 @@ function BlockDetailScreen() {
             ) : (
               <ul data-testid="block-history" className="space-y-2 text-[13px]">
                 {data.history.map((item) => (
-                  <li key={item.id} className="rounded-xl border border-line bg-[#FBFCFE] p-3">
+                  <li key={item.id} className="rounded-xl border border-line bg-surface p-3">
                     <p className="font-medium">{item.action}</p>
                     <p className="mt-1 text-[12px] text-muted">
                       {item.actorType} · {new Date(item.createdAt).toLocaleString()}

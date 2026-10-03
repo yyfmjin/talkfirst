@@ -1,6 +1,7 @@
 import { BadRequestException, HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { newVerificationCode, sha256Hex } from "../common/crypto";
+import { mayExposeVerificationCode } from "../common/security-config";
 import { MailService } from "../mail/mail.service";
 import { SecurityEventService } from "../security/security-event.service";
 import {
@@ -44,9 +45,57 @@ export class VerificationService {
     private readonly mail?: MailService,
   ) {}
 
+  /**
+   * Issue (or re-issue) a verification code.
+   *
+   * ## Why an active code short-circuits the cooldown (post-audit fix)
+   *
+   * `assertSendAllowed` enforces a 60s cooldown between sends and a 5-per-hour
+   * cap per address, which is the right envelope for *mail-bomb* resistance. But
+   * it counted every send against the budget, so a request that could not
+   * actually deliver anything new — because a valid code for this address and
+   * purpose is already sitting unspent — still burned a slot.
+   *
+   * That is harmless for registration (the page sends once on mount) and it is
+   * actively harmful for password reset: `AuthService.resetPassword` calls
+   * `verifyCode` and then this method, so that a failed attempt re-sends a code
+   * rather than leaving the user stuck with one they may not have received or
+   * already mistyped. Under the old rule, five mistyped codes locked the address
+   * out of the reset flow for an hour — a denial of service against the very
+   * user the flow exists to rescue.
+   *
+   * Re-sending the *same* code is also better security: the cooldown and hourly
+   * budget now bound DISTINCT codes (real outbound mail), while retries against
+   * an outstanding code are bounded by `maxAttempts`, which is the counter
+   * designed for that.
+   */
   async sendCode(email: string, purpose = "REGISTER") {
     const normalized = email.trim().toLowerCase();
     const now = Date.now();
+
+    const outstanding = await this.prisma.verificationCode.findFirst({
+      where: {
+        email: normalized,
+        purpose,
+        consumedAt: null,
+        expiresAt: { gt: new Date(now) },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    if (outstanding) {
+      // The code itself is unrecoverable (only its hash is stored), so nothing
+      // is mailed again — the client already has whatever was delivered. The
+      // caller still gets the same success shape, so this cannot be used to
+      // probe how recently a code was requested.
+      return {
+        sent: true,
+        expiresInSeconds: Math.max(
+          0,
+          Math.round((outstanding.expiresAt.getTime() - now) / 1000),
+        ),
+        devCode: undefined,
+      };
+    }
 
     await this.assertSendAllowed(normalized, purpose, now);
 
@@ -83,9 +132,11 @@ export class VerificationService {
       detail: { emailMasked: maskEmail(normalized), purpose },
     });
 
-    // The code is handed back only outside production, so the onboarding flow can
-    // be exercised locally; production never returns it.
-    const devCode = process.env.NODE_ENV === "production" ? undefined : code;
+    // The code is handed back only when this process has explicitly declared
+    // itself a development/test process. It used to be `NODE_ENV !== "production"`,
+    // which handed the code to any UNAUTHENTICATED caller — this endpoint has no
+    // guard — on every deployment that forgot to set NODE_ENV (FIX, audit P007).
+    const devCode = mayExposeVerificationCode() ? code : undefined;
     return { sent: true, expiresInSeconds: EMAIL_VERIFICATION_POLICY.codeTtlMs / 1000, devCode };
   }
 

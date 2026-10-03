@@ -2,6 +2,7 @@ import { Body, Controller, Get, NotFoundException, Param, Post, UseGuards } from
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { Throttle } from "@nestjs/throttler";
 import { CurrentUser, type AuthUser } from "../auth/current-user.decorator";
+import { UuidParamPipe } from "../common/uuid-param.pipe";
 import { ValidationPipe } from "../common/validation.pipe";
 import { IsOptional, IsString } from "class-validator";
 import { TranslateService } from "./translate.service";
@@ -26,7 +27,7 @@ export class TranslateController {
   @Throttle({ default: { limit: 30, ttl: 60000 } })
   async translateMessage(
     @CurrentUser() user: AuthUser,
-    @Param("id") id: string,
+    @Param("id", UuidParamPipe) id: string,
     @Body(new ValidationPipe()) dto: TranslateDto,
   ) {
     const result = await this.translate.translate(id, dto.targetLang, user.id);

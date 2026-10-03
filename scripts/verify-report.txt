@@ -1,0 +1,84 @@
+TalkFirst verification
+Started:        2026-10-02T12:09:08.889Z
+Root:           D:\文件\网站\TalkFirst
+Node:           v22.14.0
+Platform:       win32 x64
+E2E requested:  no
+Postgres:       not required for these steps (see the header of this file)
+
+----------------------------------------------------------------
+ build web
+----------------------------------------------------------------
+$ npm run build -w @talkfirst/web
+
+
+> @talkfirst/web@0.1.0 build
+> next build
+
+   ▲ Next.js 15.5.25
+
+   Creating an optimized production build ...
+ ⚠ You are using a non-standard "NODE_ENV" value in your environment. This creates inconsistencies in the project and is strongly advised against. Read more: https://nextjs.org/docs/messages/non-standard-node-env
+Next.js build worker exited with code: 3221226505 and signal: null
+npm error Lifecycle script `build` failed with error:
+npm error code 3221226505
+npm error path D:\文件\网站\TalkFirst\apps\web
+npm error workspace @talkfirst/web@0.1.0
+npm error location D:\文件\网站\TalkFirst\apps\web
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c next build
+
+*** FAILED *** (exit 3221226505, 45.9s)
+
+----------------------------------------------------------------
+ build api
+----------------------------------------------------------------
+$ npm run build -w @talkfirst/api
+
+
+> @talkfirst/api@0.1.0 build
+> nest build
+
+OK  (126.9s)
+
+----------------------------------------------------------------
+ build admin
+----------------------------------------------------------------
+$ npm run build -w @talkfirst/admin
+
+
+> @talkfirst/admin@0.1.0 build
+> next build
+
+   ▲ Next.js 15.5.25
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 22.8s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/14) ...
+ ⚠ You are using a non-standard "NODE_ENV" value in your environment. This creates inconsistencies in the project and is strongly advised against. Read more: https://nextjs.org/docs/messages/non-standard-node-env
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at x (D:\文件\网站\TalkFirst\apps\admin\.next\server\chunks\383.js:6:1351)
+Error occurred prerendering page "/500". Read more: https://nextjs.org/docs/messages/prerender-error
+Error: <Html> should not be imported outside of pages/_document.
+Read more: https://nextjs.org/docs/messages/no-document-import-in-page
+    at x (D:\文件\网站\TalkFirst\apps\admin\.next\server\chunks\383.js:6:1351)
+Export encountered an error on /_error: /500, exiting the build.
+ ⨯ Next.js build worker exited with code: 1 and signal: null
+npm error Lifecycle script `build` failed with error:
+npm error code 1
+npm error path D:\文件\网站\TalkFirst\apps\admin
+npm error workspace @talkfirst/admin@0.1.0
+npm error location D:\文件\网站\TalkFirst\apps\admin
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c next build
+
+*** FAILED *** (exit 1, 67.2s)
+
+================================================================
+SUMMARY: 2 STEP(S) FAILED
+  - build web
+  - build admin
+================================================================

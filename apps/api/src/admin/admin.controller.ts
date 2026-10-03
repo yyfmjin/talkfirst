@@ -17,6 +17,7 @@ import { IsIn, IsISO8601, IsOptional, IsString, MaxLength } from "class-validato
 import { AdminGuard, type AdminRequest } from "./admin.guard";
 import { PermissionGuard } from "./permission.guard";
 import { RequirePermission } from "./require-permission.decorator";
+import { AdminPublic } from "./admin-public.decorator";
 import { AdminService } from "./admin.service";
 import { UuidParamPipe } from "./uuid-param.pipe";
 
@@ -54,6 +55,30 @@ class AdminNoteDto {
 }
 
 /**
+ * Phase O2 — query-string coercion for the access-log filters.
+ *
+ * A query parameter is always a string, but `statusCode` and the two booleans
+ * are not. `Number("abc")` is `NaN`, which the service's `Number.isFinite` check
+ * then drops — so a typo widens *nothing* rather than matching zero rows and
+ * looking like an honest empty result.
+ *
+ * The booleans accept only the literal `"true"` / `"false"`; anything else is
+ * `undefined` (no filter) rather than a JavaScript truthiness accident, where
+ * `Boolean("false")` is `true` and the filter silently inverts.
+ */
+function optionalNumber(raw?: string): number | undefined {
+  if (raw === undefined || raw === "") return undefined;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function optionalBoolean(raw?: string): boolean | undefined {
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  return undefined;
+}
+
+/**
  * Phase A: every admin route declares the permission it needs.
  *
  * Guard order matters — `JwtAuthGuard` authenticates (401 `UNAUTHORIZED` when the
@@ -79,7 +104,11 @@ export class AdminController {
   }
 
   @Get("me")
-  // Every authenticated admin may read their own identity, so no gate here.
+  // Every authenticated admin may read their own identity and permission list,
+  // so this route requires no *capability* — but `PermissionGuard` is now
+  // fail-closed (audit P006), so the exemption has to be explicit rather than
+  // implied by a missing decorator.
+  @AdminPublic()
   me(@Req() request: AdminRequest) {
     return this.adminService.me(request.admin!).then((data) => ({ success: true as const, data }));
   }
@@ -250,7 +279,14 @@ export class AdminController {
   }
 
   @Post("reports/:id/review")
-  @RequirePermission("reports:write")
+  // FIX (audit P013): the report *queue* is gated on `reports:read`, but
+  // adjudicating a report is content moderation, so the write is gated on
+  // `moderation:write`. It previously required `reports:write`, which
+  // CONTENT_MANAGER does not hold — so the role whose entire purpose is content
+  // moderation could open 审核工作台 and have every action refused. The change
+  // also tightens SUPPORT, which holds `reports:write` but not
+  // `moderation:write`, and should not be banning people.
+  @RequirePermission("moderation:write")
   review(
     @Req() request: AdminRequest & Request,
     @Param("id", UuidParamPipe) id: string,
@@ -273,6 +309,84 @@ export class AdminController {
   audit(@Query("page") page = "1", @Query("pageSize") pageSize = "20") {
     return this.adminService
       .listAudit(Number(page), Number(pageSize))
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  /**
+   * Phase O2 — the HTTP access log ("网站访问日志").
+   *
+   * ## Why this is a new permission rather than `audit:read`
+   *
+   * `GET /admin/audit` returns `AdminAuditLog`: what *administrators* did. This
+   * returns `AccessLog`: what *everyone* did, including anonymous visitors, and
+   * it necessarily carries the raw client IP and raw User-Agent. `audit:read` is
+   * held by all five roles, so reusing it would expose every visitor's IP to
+   * support and content staff. `ops:read` is held by SUPER_ADMIN and ANALYST
+   * only — the same holder set as the other privacy-sensitive read surfaces.
+   *
+   * ## Query handling
+   *
+   * Raw `@Query` strings are forwarded as-is and `AdminService` owns defaults,
+   * coercion and bounds — the established split on this controller, which is why
+   * `Number(...)` is not applied here.
+   */
+  @Get("access-logs")
+  @RequirePermission("ops:read")
+  accessLogs(
+    @Query("ip") ip?: string,
+    @Query("userId") userId?: string,
+    @Query("path") path?: string,
+    @Query("statusCode") statusCode?: string,
+    @Query("riskLevel") riskLevel?: string,
+    @Query("authenticated") authenticated?: string,
+    @Query("isAdmin") isAdmin?: string,
+    @Query("createdFrom") createdFrom?: string,
+    @Query("createdTo") createdTo?: string,
+    @Query("page") page = "1",
+    @Query("pageSize") pageSize = "20",
+  ) {
+    return this.adminService
+      .listAccessLogs({
+        ip,
+        userId,
+        path,
+        statusCode: optionalNumber(statusCode),
+        riskLevel,
+        authenticated: optionalBoolean(authenticated),
+        isAdmin: optionalBoolean(isAdmin),
+        createdFrom,
+        createdTo,
+        page: Number(page),
+        pageSize: Number(pageSize),
+      })
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  /**
+   * Phase O2 — aggregate counters over the same filter set as the list.
+   *
+   * Declared BEFORE `access-logs/:id` because Nest matches routes in declaration
+   * order: with the parameterised route first, `GET /admin/access-logs/stats`
+   * would be captured as `:id = "stats"` and answered with a 404 (or, worse, a
+   * confusing not-found for a route that exists).
+   */
+  @Get("access-logs/stats")
+  @RequirePermission("ops:read")
+  accessLogStats(
+    @Query("createdFrom") createdFrom?: string,
+    @Query("createdTo") createdTo?: string,
+  ) {
+    return this.adminService
+      .accessLogStats({ createdFrom, createdTo })
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  /** Phase O2 — one access-log row, addressed by its own id. */
+  @Get("access-logs/:id")
+  @RequirePermission("ops:read")
+  accessLog(@Param("id", UuidParamPipe) id: string) {
+    return this.adminService
+      .accessLogDetail(id)
       .then((data) => ({ success: true as const, data }));
   }
 

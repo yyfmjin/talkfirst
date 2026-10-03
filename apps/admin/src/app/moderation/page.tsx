@@ -266,7 +266,7 @@ function ModerationQueueScreen() {
             title={option.hint}
             className={`h-10 rounded-xl border px-4 text-[13px] ${
               tab === option.value
-                ? "border-[#16213A] bg-[#16213A] font-medium text-white"
+                ? "border-primary-ink bg-primary-ink font-medium text-white"
                 : "border-line text-ink"
             }`}
           >
@@ -358,7 +358,7 @@ function ModerationQueueScreen() {
 
         <button
           onClick={() => applyDraft(draft)}
-          className="h-10 rounded-xl bg-[#16213A] px-4 text-[13px] text-white"
+          className="h-10 rounded-xl bg-primary-ink px-4 text-[13px] text-white"
         >
           应用筛选
         </button>

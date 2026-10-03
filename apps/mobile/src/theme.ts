@@ -1,0 +1,16 @@
+export const colors = {
+  primary: "#6B7CFF",
+  primaryDark: "#6572D8",
+  gradientFrom: "#6B7CFF",
+  gradientTo: "#9F8BFF",
+  bg: "#FFFFFF",
+  bgSoft: "#F7F9FF",
+  bgTint: "#F1F3FF",
+  ink: "#1B1B2F",
+  muted: "#8A8FA3",
+  line: "#ECEEF5",
+  danger: "#E5484D",
+  dangerSoft: "#FDECEC",
+  success: "#22A06B",
+  white: "#FFFFFF",
+} as const;

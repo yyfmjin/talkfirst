@@ -9,6 +9,13 @@
     "typecheck": "tsc --noEmit",
     "lint": "next lint",
     "test": "node --test ./test/smoke.test.mjs ./test/ui-copy.test.mjs ./test/security-headers.test.mjs ./test/email-verification.test.mjs",
+    "test:static": "node --test ./test/smoke.test.mjs ./test/ui-copy.test.mjs ./test/security-headers.test.mjs ./test/email-verification.test.mjs",
+    "test:contracts": "node ../../scripts/static-contract-check.mjs && node ../../scripts/jsx-balance-check.mjs && node ../../scripts/tf-prop-check.mjs",
+    "test:contracts:selftest": "node ../../scripts/static-contract-check.mjs --self-test && node ../../scripts/jsx-balance-check.mjs --self-test && node ../../scripts/tf-prop-check.mjs --self-test",
+    "test:contracts:selectors": "node ../../scripts/static-contract-check.mjs --self-test && node ../../scripts/static-contract-check.mjs",
+    "test:contracts:jsx": "node ../../scripts/jsx-balance-check.mjs --self-test && node ../../scripts/jsx-balance-check.mjs",
+    "test:contracts:props": "node ../../scripts/tf-prop-check.mjs --self-test && node ../../scripts/tf-prop-check.mjs",
+    "test:all": "npm run test:contracts && npm run test",
     "test:e2e": "playwright test",
     "test:e2e:build": "npm run build -w @talkfirst/api && npm run build && playwright test"
   },

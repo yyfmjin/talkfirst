@@ -5,16 +5,40 @@ import { useRouter } from "next/navigation";
 import { Camera } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
 import { ScreenHeader } from "@/components/screen-header";
-import { GradientButton } from "@/components/ui";
-import { cn } from "@/lib/cn";
+import { TFButton } from "@/components/tf";
 import { ApiRequestError, apiFetch } from "@/lib/api";
 
-const presets = [
-  { id: "purple", color: "#7B86FF" },
-  { id: "pink", color: "#F472B6" },
-  { id: "teal", color: "#2DD4BF" },
-  { id: "amber", color: "#FBBF24" },
-];
+/**
+ * Onboarding step 1 — the avatar.
+ *
+ * ## Two dishonest controls removed (Phase C)
+ *
+ * **1. The colour presets did nothing.** `handleNext()` only ever uploaded an
+ * image; `selected` was never read, never sent, and there is no column to send it
+ * to. So the screen offered four swatches, highlighted the one you tapped, and
+ * threw the choice away on the next tap. A control that appears to save something
+ * and does not is worse than no control, so the picker is gone.
+ *
+ * This is not a loss of function: `TFAvatar` derives a stable tint from the
+ * user's id, so members without a photo already get a deterministic, per-person
+ * colour everywhere in the app — and one that cannot disagree between screens,
+ * which a hand-picked preset could.
+ *
+ * **2. The "或粘贴 https://…" field.** The 「发布动态」 composer is the product's
+ * reference for media input and it deliberately has NO url field: a member picks
+ * a file, or nothing. A raw URL box asks someone to host an image elsewhere and
+ * paste a link at the moment they are least likely to have one. Removed; the file
+ * picker is the only path, exactly as the composer works.
+ *
+ * ## What is unchanged
+ *
+ * The step is still skippable (「稍后再说」), still uploads through
+ * `POST /uploads/avatar`, and still advances to `/onboarding/profile`. The
+ * validation (jpg/png/webp, 5MB) is untouched.
+ */
+
+const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
+const MAX_BYTES = 5 * 1024 * 1024;
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -27,128 +51,106 @@ function fileToDataUrl(file: File): Promise<string> {
 
 export default function AvatarPage() {
   const router = useRouter();
-  const [avatarUrl, setAvatarUrl] = useState("");
   const [preview, setPreview] = useState("");
-  const [selected, setSelected] = useState("purple");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function onPickFile(file: File | undefined) {
     if (!file) return;
     setError("");
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      setError("只支持 jpg / png / webp");
+    if (!ACCEPTED.includes(file.type)) {
+      setError("只支持 jpg / png / webp 格式的图片。");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setError("图片不能超过 5MB");
+    if (file.size > MAX_BYTES) {
+      setError("图片不能超过 5MB。");
       return;
     }
-    const dataUrl = await fileToDataUrl(file);
-    setPreview(dataUrl);
-    setAvatarUrl("");
-  }
-
-  async function uploadPreview(): Promise<string | null> {
-    if (!preview) return avatarUrl || null;
-    setLoading(true);
     try {
-      const result = await apiFetch<{ avatarUrl: string }>("/uploads/avatar", {
-        method: "POST",
-        body: { image: preview },
-      });
-      return result.avatarUrl;
-    } catch (requestError) {
-      setError(requestError instanceof ApiRequestError ? requestError.message : "头像上传失败");
-      return null;
-    } finally {
-      setLoading(false);
+      setPreview(await fileToDataUrl(file));
+    } catch {
+      setError("图片读取失败，请换一张试试。");
     }
   }
 
   async function handleNext() {
     setError("");
-    if (!preview && !avatarUrl) {
+    // Skipping is a legitimate choice, not an error state.
+    if (!preview) {
       router.push("/onboarding/profile");
       return;
     }
-    if (preview) {
-      const uploaded = await uploadPreview();
-      if (!uploaded) return;
-    } else if (avatarUrl) {
-      setLoading(true);
-      try {
-        await apiFetch("/users/me/avatar", { method: "PUT", body: { avatarUrl } });
-      } catch (requestError) {
-        setError(requestError instanceof ApiRequestError ? requestError.message : "头像保存失败");
-        setLoading(false);
-        return;
-      }
+    setLoading(true);
+    try {
+      await apiFetch<{ avatarUrl: string }>("/uploads/avatar", {
+        method: "POST",
+        body: { image: preview },
+      });
+      router.push("/onboarding/profile");
+    } catch (requestError) {
+      // The preview is deliberately kept so a retry does not mean re-picking the
+      // file — the same rule the composer follows for a failed publish.
+      setError(requestError instanceof ApiRequestError ? requestError.message : "头像上传失败，请稍后再试。");
       setLoading(false);
     }
-    router.push("/onboarding/profile");
   }
 
   return (
     <PhoneShell>
       <ScreenHeader title="设置头像" backHref="/register/success" />
-      <div className="tf-scroll flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-8 pb-6 pt-6">
-        <div
-          className="relative grid h-32 w-32 place-items-center overflow-hidden rounded-full text-4xl text-white shadow-xl shadow-indigo-100"
-          style={{ background: presets.find((item) => item.id === selected)?.color ?? "#7B86FF" }}
-        >
-          {preview ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={preview} alt="头像预览" className="h-full w-full object-cover" />
-          ) : (
-            (avatarUrl ? "✓" : "A")
-          )}
-          <span className="absolute bottom-1 right-1 grid h-9 w-9 place-items-center rounded-full bg-white text-indigo-500">
-            <Camera size={16} />
+      <div className="tf-scroll flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-5 pb-6 pt-8">
+        {/* The preview doubles as the picker: the camera badge is inside the
+            circle, so the whole avatar is one tap target instead of a separate
+            "选择图片" row underneath it. */}
+        <label className="relative block cursor-pointer">
+          <span className="grid h-32 w-32 place-items-center overflow-hidden rounded-full bg-brand-100 text-display font-semibold text-brand-600 ring-1 ring-black/5">
+            {preview ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={preview} alt="头像预览" className="h-full w-full object-cover" />
+            ) : (
+              "A"
+            )}
           </span>
-        </div>
-        <p className="mt-6 text-[13px] text-muted">可先跳过，或本地选一张图上传（最大 5MB）</p>
-        <label className="mt-4 block w-full cursor-pointer rounded-2xl border border-dashed border-line bg-[#F8FAFF] px-4 py-3 text-center text-[13px] text-muted">
-          选择图片
+          <span className="absolute bottom-0 right-0 grid h-10 w-10 place-items-center rounded-full bg-brand-500 text-white shadow-brand">
+            <Camera size={17} aria-hidden="true" />
+          </span>
           <input
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept={ACCEPTED.join(",")}
             className="hidden"
             aria-label="选择头像图片"
             onChange={(event) => void onPickFile(event.target.files?.[0])}
           />
         </label>
-        <input
-          value={avatarUrl}
-          onChange={(event) => {
-            setAvatarUrl(event.target.value);
-            setPreview("");
-          }}
-          placeholder="或粘贴 https://…"
-          aria-label="头像图片链接"
-          className="mt-3 h-12 w-full min-w-0 rounded-2xl border border-line bg-[#F8FAFF] px-4 text-[13px] outline-none focus:ring-2 focus:ring-indigo-200"
-        />
-        <div className="mt-8 flex gap-3">
-          {presets.map((item) => (
-            <button
-              key={item.id}
-              aria-label={`选择 ${item.id} 主题色`}
-              onClick={() => setSelected(item.id)}
-              className={cn(
-                "grid h-12 w-12 place-items-center rounded-full text-sm font-medium text-white",
-                selected === item.id && "ring-2 ring-offset-2 ring-[#7B7BFF]",
-              )}
-              style={{ background: item.color }}
-            >
-              ✓
-            </button>
-          ))}
-        </div>
-        {error ? <p className="mt-4 text-[12px] text-red-500">{error}</p> : null}
-        <div className="mb-1 mt-8 w-full">
-          <GradientButton onClick={handleNext} disabled={loading}>
-            {loading ? "保存中…" : "下一步"}
-          </GradientButton>
+
+        <p className="mt-6 max-w-[260px] text-center text-ui leading-6 text-content-muted">
+          点击头像选择一张图片。清楚的正面照片会让别人更愿意和你打招呼。
+        </p>
+        <p className="mt-2 text-center text-caption text-content-subtle">支持 jpg / png / webp，最大 5MB</p>
+
+        {preview ? (
+          <button
+            type="button"
+            onClick={() => setPreview("")}
+            className="mt-4 rounded-control px-3 py-2 text-ui text-content-muted underline decoration-dotted"
+          >
+            移除这张图片
+          </button>
+        ) : null}
+
+        {error ? (
+          <p role="alert" className="mt-4 break-words text-center text-caption text-danger-600">
+            {error}
+          </p>
+        ) : null}
+
+        <div className="mt-auto w-full pt-8">
+          <TFButton onClick={() => void handleNext()} loading={loading} loadingLabel="保存中…" size="lg" fullWidth>
+            下一步
+          </TFButton>
+          <TFButton variant="ghost" size="md" fullWidth className="mt-1" href="/onboarding/profile">
+            稍后再说
+          </TFButton>
         </div>
       </div>
     </PhoneShell>

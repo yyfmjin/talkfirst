@@ -5,7 +5,14 @@ import Link from "next/link";
 import { Bell } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
 import { TabBar } from "@/components/tab-bar";
-import { GradientButton, OutlineButton } from "@/components/ui";
+import {
+  TFAvatar,
+  TFButton,
+  TFCard,
+  TFErrorState,
+  TFLoadingRegion,
+  TFRowSkeleton,
+} from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { NotificationsPanel, SentRequestsPanel } from "./panels";
 
@@ -79,83 +86,85 @@ export default function MessagesPage() {
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-[22px] font-semibold">
+            <h1 className="text-title font-semibold text-content">
               消息{unreadTotal > 0 ? `（${unreadTotal} 未读通知）` : ""}
             </h1>
-            <p className="mt-1 text-[13px] text-muted">先处理认识请求，再开始实时聊天。</p>
+            <p className="mt-1 text-caption text-content-muted">先处理认识请求，再开始实时聊天。</p>
           </div>
           {/* PC-3.1e — the one way into the Notification Center. The tab bar
               badge still counts notifications *and* chats, so this is a link
-              and deliberately not a second badge. */}
+              and deliberately not a second badge. `notification-center-entry` is
+              asserted by `notification.spec.ts`. */}
           <Link
             href="/notifications"
             data-testid="notification-center-entry"
-            className="flex shrink-0 items-center gap-1 rounded-full border border-line bg-white px-3 py-2 text-[12px] text-[#6572D8] transition active:scale-[0.98]"
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-2 text-caption text-brand-600 transition-colors duration-instant hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
           >
-            <Bell size={14} />
+            <Bell size={15} aria-hidden="true" />
             通知中心
           </Link>
         </div>
         {!loading && !error ? <NotificationsPanel onRead={() => setUnreadTotal(0)} /> : null}
 
         {loading ? (
-          <div className="mt-6 animate-pulse space-y-3">
-            <div className="h-28 rounded-3xl bg-indigo-50" />
-            <div className="h-20 rounded-3xl bg-indigo-50" />
-          </div>
+          <TFLoadingRegion label="正在加载消息">
+            <div className="mt-6 divide-y divide-border">
+              <TFRowSkeleton />
+              <TFRowSkeleton />
+              <TFRowSkeleton />
+            </div>
+          </TFLoadingRegion>
         ) : null}
 
         {!loading && error ? (
-          <div className="mt-6 rounded-3xl border border-red-100 bg-red-50 p-5 text-center">
-            <p className="text-[13px] text-red-700">{error}</p>
-            <OutlineButton className="mt-4 w-full" onClick={() => void load()}>
-              重试
-            </OutlineButton>
+          <div className="mt-6">
+            <TFErrorState description={error} onRetry={() => void load()} />
           </div>
         ) : null}
 
         {!loading && !error ? (
           <>
             <section className="mt-6">
-              <h2 className="text-[14px] font-semibold">认识请求（{incoming.length}）</h2>
+              <h2 className="text-ui font-semibold text-content">认识请求（{incoming.length}）</h2>
               {incoming.length === 0 ? (
-                <p className="mt-3 rounded-3xl bg-[#F7F9FF] p-4 text-[12px] leading-5 text-muted">
+                <p className="mt-3 rounded-card bg-surface-sunken p-4 text-caption leading-5 text-content-muted">
                   暂时没有新的打招呼请求。去「发现」看看吧。
                 </p>
               ) : (
                 <div className="mt-3 space-y-3">
                   {incoming.map((request) => (
-                    <article key={request.id} className="rounded-3xl border border-indigo-100 p-4">
+                    <TFCard key={request.id}>
                       <div className="flex items-center gap-3">
-                        <div className="tf-gradient grid h-12 w-12 shrink-0 place-items-center rounded-full text-lg font-semibold text-white">
-                          {(request.sender?.nickname ?? "?").slice(0, 1).toUpperCase()}
-                        </div>
+                        <TFAvatar name={request.sender?.nickname} size="md" />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-[14px] font-semibold">
+                          <p className="truncate text-ui font-semibold text-content">
                             {request.sender?.nickname ?? "TalkFirst 用户"}
                           </p>
-                          <p className="truncate text-[12px] text-muted">
+                          <p className="truncate text-caption text-content-muted">
                             {request.sender?.countryCode ?? "全球"} · {request.message ?? "打了个招呼"}
                           </p>
                         </div>
                       </div>
                       <div className="mt-3 flex gap-2">
-                        <OutlineButton
-                          className="w-1/2"
+                        <TFButton
+                          variant="secondary"
+                          className="flex-1"
                           onClick={() => void respond(request.id, "reject")}
-                          ariaLabel={`拒绝 ${request.sender?.nickname ?? "对方"}`}
+                          loading={actingId === request.id}
+                          loadingLabel="处理中…"
+                          aria-label={`拒绝 ${request.sender?.nickname ?? "对方"}`}
                         >
-                          {actingId === request.id ? "处理中…" : "拒绝"}
-                        </OutlineButton>
-                        <GradientButton
-                          className="w-1/2"
+                          拒绝
+                        </TFButton>
+                        <TFButton
+                          className="flex-1"
                           onClick={() => void respond(request.id, "accept")}
                           disabled={actingId === request.id}
                         >
                           接受并聊天
-                        </GradientButton>
+                        </TFButton>
                       </div>
-                    </article>
+                    </TFCard>
                   ))}
                 </div>
               )}
@@ -164,36 +173,39 @@ export default function MessagesPage() {
             <SentRequestsPanel />
 
             <section className="mt-7">
-              <h2 className="text-[14px] font-semibold">聊天（{conversations.length}）</h2>
+              <h2 className="text-ui font-semibold text-content">聊天（{conversations.length}）</h2>
               {conversations.length === 0 ? (
-                <p className="mt-3 rounded-3xl bg-[#F7F9FF] p-4 text-[12px] leading-5 text-muted">
+                <p className="mt-3 rounded-card bg-surface-sunken p-4 text-caption leading-5 text-content-muted">
                   接受认识请求后，这里会出现实时聊天。
                 </p>
               ) : (
-                <div className="mt-3 space-y-2">
+                /* Conversations as hairline-divided rows rather than one bordered
+                   card each: a list of chats is a list, and the unread count is the
+                   only thing that needs to stand out. */
+                <div className="mt-3 divide-y divide-border overflow-hidden rounded-card border border-border">
                   {conversations.map((conversation) => (
                     <Link
                       key={conversation.id}
                       href={`/messages/${conversation.id}`}
-                      className="block rounded-3xl border border-line p-4 transition active:scale-[0.99]"
+                      className="flex items-center gap-3 bg-surface px-4 py-3.5 transition-colors duration-instant hover:bg-surface-sunken active:bg-surface-sunken"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="tf-gradient grid h-12 w-12 shrink-0 place-items-center rounded-full text-lg font-semibold text-white">
-                          {(conversation.peer?.nickname ?? "?").slice(0, 1).toUpperCase()}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[14px] font-semibold">
-                            {conversation.peer?.nickname ?? "TalkFirst 用户"}
-                            {conversation.unreadCount ? `（${conversation.unreadCount} 未读）` : ""}
-                          </p>
-                          <p className="truncate text-[12px] text-muted">
-                            {conversation.lastMessage?.content ?? "开始聊天吧"}
-                          </p>
-                        </div>
-                        <span className="text-[11px] text-muted">
-                          {new Date(conversation.updatedAt).toLocaleDateString()}
-                        </span>
+                      <TFAvatar name={conversation.peer?.nickname} size="md" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-ui font-semibold text-content">
+                          {conversation.peer?.nickname ?? "TalkFirst 用户"}
+                          {conversation.unreadCount ? (
+                            <span className="ml-1.5 font-normal text-brand-600">
+                              （{conversation.unreadCount} 未读）
+                            </span>
+                          ) : null}
+                        </p>
+                        <p className="truncate text-caption text-content-muted">
+                          {conversation.lastMessage?.content ?? "开始聊天吧"}
+                        </p>
                       </div>
+                      <span className="shrink-0 text-overline text-content-subtle">
+                        {new Date(conversation.updatedAt).toLocaleDateString()}
+                      </span>
                     </Link>
                   ))}
                 </div>

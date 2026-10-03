@@ -4,8 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PhoneShell } from "@/components/phone-shell";
 import { ScreenHeader } from "@/components/screen-header";
-import { GradientButton } from "@/components/ui";
-import { cn } from "@/lib/cn";
+import { TFChip, TFRowSkeleton, TFSearch, TFButton, TFLoadingRegion } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 
 type Interest = { id: string; slug: string; name: string; nameZh: string | null; category: string };
@@ -104,86 +103,105 @@ export default function InterestsPage() {
     <PhoneShell>
       <ScreenHeader title="兴趣标签" backHref="/onboarding/profile" />
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-6 pb-6">
-        <p className="text-[13px] text-muted">
+        <p className="text-ui text-content-muted">
           选择你最感兴趣的内容（至少 3 个，已选 {selected.length}）
         </p>
-        <div className="mt-3 flex gap-2">
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
+        <div className="mt-3">
+          {/* `TFSearch` brings its own clear button, which replaces the separate
+              「清空」 control — one less button, and clearing the *query* is what a
+              search field's ✕ should do. Clearing the *selection* is a different
+              action and is offered explicitly below the selection summary. */}
+          <TFSearch
+            label="搜索兴趣"
             placeholder="搜索兴趣，如 游戏、音乐、旅行"
-            aria-label="搜索兴趣"
-            className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-[#F8FAFF] px-3 text-[13px] outline-none focus:ring-2 focus:ring-indigo-200"
+            value={search}
+            onValueChange={setSearch}
+            onClear={() => setSearch("")}
           />
-          {selected.length > 0 ? (
-            <button
-              onClick={() => setSelected([])}
-              className="h-11 shrink-0 rounded-xl border border-line px-3 text-[12px] text-muted"
-            >
-              清空
-            </button>
-          ) : null}
         </div>
         {fetching ? (
-          <div className="mt-5 animate-pulse space-y-3">
-            <div className="h-20 rounded-2xl bg-indigo-50" />
-            <div className="h-20 rounded-2xl bg-indigo-50" />
-          </div>
+          <TFLoadingRegion label="正在加载兴趣列表">
+            <div className="mt-5 space-y-3">
+              <TFRowSkeleton />
+              <TFRowSkeleton />
+            </div>
+          </TFLoadingRegion>
         ) : (
           <>
             {selected.length > 0 ? (
-              <div className="mt-4 flex flex-wrap gap-2 rounded-2xl bg-[#F7F9FF] p-3">
-                {selected.map((slug) => {
-                  const found = interests.find((item) => item.slug === slug);
-                  return (
-                    <button
-                      key={slug}
-                      onClick={() => toggle(slug)}
-                      className="rounded-full bg-white px-3 py-1.5 text-[12px] text-[#6572D8] shadow-sm"
-                    >
-                      {INTEREST_EMOJI[slug] ? `${INTEREST_EMOJI[slug]} ` : ""}
-                      {found?.nameZh ?? found?.name ?? slug} ✕
-                    </button>
-                  );
-                })}
+              <div className="mt-4 rounded-row bg-surface-sunken p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-caption font-medium text-content-muted">已选 {selected.length} 个</p>
+                  <button
+                    type="button"
+                    onClick={() => setSelected([])}
+                    className="rounded-control px-2 py-1 text-caption text-content-muted underline decoration-dotted"
+                  >
+                    清空选择
+                  </button>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {selected.map((slug) => {
+                    const found = interests.find((item) => item.slug === slug);
+                    return (
+                      <button
+                        key={slug}
+                        type="button"
+                        onClick={() => toggle(slug)}
+                        aria-label={`移除 ${found?.nameZh ?? found?.name ?? slug}`}
+                        className="inline-flex max-w-full items-center gap-1 rounded-full bg-surface px-2.5 py-1 text-caption text-brand-600 transition-colors duration-instant hover:bg-brand-50"
+                      >
+                        <span className="min-w-0 truncate">
+                          {INTEREST_EMOJI[slug] ? `${INTEREST_EMOJI[slug]} ` : ""}
+                          {found?.nameZh ?? found?.name ?? slug}
+                        </span>
+                        <span aria-hidden="true">✕</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             ) : null}
             {categories.length === 0 ? (
-              <p className="mt-4 text-[12px] text-muted">没有匹配的兴趣，换个关键词试试。</p>
+              <p className="mt-4 text-caption text-content-muted">没有匹配的兴趣，换个关键词试试。</p>
             ) : null}
             {categories.map((category) => (
               <section key={category} className="mt-5">
-                <h2 className="mb-3 text-[13px] font-medium text-muted">{category}</h2>
+                <h2 className="mb-2.5 text-caption font-medium text-content-muted">{category}</h2>
                 <div className="flex flex-wrap gap-2">
                   {filtered
                     .filter((item) => item.category === category)
-                    .map((item) => {
-                      const active = selected.includes(item.slug);
-                      return (
-                        <button
-                          key={item.slug}
-                          onClick={() => toggle(item.slug)}
-                          aria-pressed={active}
-                          className={cn(
-                            "min-h-[2.25rem] rounded-full border border-line px-4 py-1.5 text-[13px]",
-                            active && "border-transparent tf-gradient font-medium text-white",
-                          )}
-                        >
-                          {INTEREST_EMOJI[item.slug] ? `${INTEREST_EMOJI[item.slug]} ` : ""}
-                          {item.nameZh ?? item.name}
-                        </button>
-                      );
-                    })}
+                    .map((item) => (
+                      <TFChip
+                        key={item.slug}
+                        selected={selected.includes(item.slug)}
+                        onClick={() => toggle(item.slug)}
+                      >
+                        {INTEREST_EMOJI[item.slug] ? `${INTEREST_EMOJI[item.slug]} ` : ""}
+                        {item.nameZh ?? item.name}
+                      </TFChip>
+                    ))}
                 </div>
               </section>
             ))}
           </>
         )}
-        {error ? <p className="mt-4 text-[12px] text-red-500">{error}</p> : null}
-        <div className="mb-1 mt-8">
-          <GradientButton onClick={handleNext} disabled={loading || fetching}>
-            {loading ? "保存中…" : selected.length >= 3 ? `下一步（${selected.length}）` : "下一步"}
-          </GradientButton>
+        {error ? (
+          <p role="alert" className="mt-4 break-words text-caption text-danger-600">
+            {error}
+          </p>
+        ) : null}
+        <div className="mt-8">
+          <TFButton
+            size="lg"
+            fullWidth
+            onClick={() => void handleNext()}
+            disabled={fetching}
+            loading={loading}
+            loadingLabel="保存中…"
+          >
+            {selected.length >= 3 ? `下一步（${selected.length}）` : "下一步"}
+          </TFButton>
         </div>
       </div>
     </PhoneShell>

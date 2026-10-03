@@ -239,13 +239,18 @@ export default function ChangePasswordPage() {
             </p>
           ) : null}
 
+          {/*
+            `disabled` while the account's login methods are still unknown — see
+            `Mode`. Kept as a JSX comment (not `//` inside the tag) because
+            `scripts/tf-prop-check.mjs` scans tag content without skipping comments,
+            so English prose in there is reported as undeclared props.
+          */}
           <TFButton
             type="submit"
             size="lg"
             fullWidth
             loading={loading}
             loadingLabel={settingFirstPassword ? "设置中…" : "修改中…"}
-            // Disabled until the account's login methods are known — see `Mode`.
             disabled={mode === "loading"}
             data-testid="password-submit"
           >

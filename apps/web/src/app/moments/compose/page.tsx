@@ -710,7 +710,7 @@ export default function ComposePage() {
                   onClick={() => void chooseVisibility(option.value)}
                   className={cn(
                     "flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition disabled:opacity-60",
-                    active ? "border-[#8B6CFF] bg-[#F4F1FF]" : "border-line",
+                    active ? "border-brand-500 bg-brand-50" : "border-line",
                   )}
                 >
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-[#6572D8]">

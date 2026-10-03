@@ -233,6 +233,31 @@ export class ConnectionsService {
 
     const [userAId, userBId] = [request.senderId, request.receiverId].sort();
     const result = await this.prisma.$transaction(async (tx) => {
+      /**
+       * RACE FIX (audit P004).
+       *
+       * The `PENDING` check above runs *outside* the transaction, so two
+       * concurrent "accept" requests for the same row both passed it. Each one
+       * then created a conversation, two membership rows and a SYSTEM message
+       * before hitting the `Connection(userAId, userBId)` unique index — the
+       * loser took the `update` branch and re-pointed `conversationId`, leaving
+       * an orphan conversation and a duplicate system message behind.
+       *
+       * The claim is now a conditional update *inside* the transaction: exactly
+       * one caller can flip the row, and the conversation is only created by the
+       * caller that flipped it (`count === 1`).
+       */
+      const claimed = await tx.connectionRequest.updateMany({
+        where: { id: requestId, status: "PENDING" },
+        data: { status: "ACCEPTED" },
+      });
+      if (claimed.count !== 1) {
+        throw new ForbiddenException({
+          success: false,
+          error: { code: "REQUEST_HANDLED", message: "This request was already handled" },
+        });
+      }
+
       const conversation = await tx.conversation.create({ data: {} });
       await tx.conversationMember.createMany({
         data: [
@@ -255,9 +280,10 @@ export class ConnectionsService {
         update: { status: "ACTIVE", conversationId: conversation.id },
         create: { userAId, userBId, status: "ACTIVE", conversationId: conversation.id },
       });
-      const updatedRequest = await tx.connectionRequest.update({
+      // The row was already flipped by the claim above; this read only re-loads
+      // it in its new state for the response payload.
+      const updatedRequest = await tx.connectionRequest.findUniqueOrThrow({
         where: { id: requestId },
-        data: { status: "ACCEPTED" },
         include: {
           sender: { select: { id: true, nickname: true, avatarUrl: true, countryCode: true } },
         },

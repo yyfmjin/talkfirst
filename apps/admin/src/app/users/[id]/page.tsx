@@ -232,7 +232,7 @@ function UserDetailScreen({ params }: { params: Promise<{ id: string }> }) {
                 ) : null}
               </div>
             ) : (
-              <p className="mt-2 rounded-xl bg-[#F7F9FF] px-3 py-2 text-[12px] text-muted">
+              <p className="mt-2 rounded-xl bg-accent px-3 py-2 text-[12px] text-muted">
                 你的角色（{role}）为只读，无法修改用户状态。
               </p>
             )}

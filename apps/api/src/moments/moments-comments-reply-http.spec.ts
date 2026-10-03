@@ -21,6 +21,14 @@ import { MomentsService } from "./moments.service";
 
 const VIEWER = "u-viewer";
 
+/**
+ * A real UUID. These routes carry `UuidParamPipe` now, and the pipe is right:
+ * `moment.id` is a `uuid` column, so a malformed path id is a client error
+ * rather than the 500 Prisma's P2023 produced. The service is still mocked, so
+ * the id only has to satisfy the wire format — but it has to satisfy it.
+ */
+const MOMENT = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+
 class AlwaysSignedInStrategy extends PassportStrategyBase {
   name = "jwt";
 
@@ -51,7 +59,7 @@ describe("MomentsController — comment reply HTTP contract", () => {
     app.useGlobalFilters(new ApiExceptionFilter());
     await app.listen(0);
     const url = await app.getUrl();
-    base = `http://127.0.0.1:${url.slice(url.lastIndexOf(":") + 1)}/api/v1/moments/m1/comments`;
+    base = `http://127.0.0.1:${url.slice(url.lastIndexOf(":") + 1)}/api/v1/moments/${MOMENT}/comments`;
   });
 
   afterEach(() => {
@@ -94,19 +102,19 @@ describe("MomentsController — comment reply HTTP contract", () => {
     const parent = "3f1a2b4c-5d6e-4f70-8a9b-0c1d2e3f4a5b";
     const { response } = await post({ content: "我也是", parentCommentId: parent });
     expect(response.status).toBe(201);
-    expect(service.addComment).toHaveBeenCalledWith(VIEWER, "m1", "我也是", parent);
+    expect(service.addComment).toHaveBeenCalledWith(VIEWER, MOMENT, "我也是", parent);
   });
 
   it("未带 parentCommentId 的一级评论：缺省透传 null", async () => {
     const { response } = await post({ content: "很喜欢这个地方！" });
     expect(response.status).toBe(201);
-    expect(service.addComment).toHaveBeenCalledWith(VIEWER, "m1", "很喜欢这个地方！", null);
+    expect(service.addComment).toHaveBeenCalledWith(VIEWER, MOMENT, "很喜欢这个地方！", null);
   });
 
   it("parentCommentId 显式为 null 时按一级评论处理", async () => {
     const { response } = await post({ content: "hi", parentCommentId: null });
     expect(response.status).toBe(201);
-    expect(service.addComment).toHaveBeenCalledWith(VIEWER, "m1", "hi", null);
+    expect(service.addComment).toHaveBeenCalledWith(VIEWER, MOMENT, "hi", null);
   });
 
   it("父评论不可回复 -> 403 COMMENT_PARENT_INVALID，且不泄漏内部错误", async () => {

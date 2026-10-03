@@ -20,6 +20,11 @@ apps/admin/.playwright/
 
 # Docker env file with generated secrets (template lives in .env.docker.example)
 .env.docker
+# The LOCAL docker env file holds the same generated secrets (JWT_SECRET,
+# POSTGRES_PASSWORD, ...). It was staged for commit once, which is exactly the
+# mistake this line prevents: `.env.docker` was covered but `.env.docker.local`
+# was not, and the file's own comment says "generated secrets".
+.env.docker.local
 # Root Playwright artifact dir (admin one is ignored above)
 test-results/
 

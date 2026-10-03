@@ -4,9 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PhoneShell } from "@/components/phone-shell";
 import { ScreenHeader } from "@/components/screen-header";
-import { GradientButton } from "@/components/ui";
+import { TFChip, TFRowSkeleton, TFSearch, TFButton, TFLoadingRegion } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
-import { cn } from "@/lib/cn";
 
 type Language = { code: string; name: string; nativeName: string | null };
 type MeResponse = {
@@ -100,79 +99,88 @@ export default function LanguagesPage() {
   return (
     <PhoneShell>
       <ScreenHeader title="语言设置" backHref="/onboarding/interests" />
-      <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-2">
-        <p className="text-[13px] text-muted">语言互补是推荐的核心，先告诉我们你的语言。</p>
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
+      <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-2">
+        <p className="text-ui leading-6 text-content-muted">语言互补是推荐的核心，先告诉我们你的语言。</p>
+        <TFSearch
+          className="mt-4"
+          label="搜索语言"
           placeholder="搜索语言或代码，如 中文、en"
-          aria-label="搜索语言"
-          className="mt-4 h-11 w-full min-w-0 rounded-xl border border-line bg-[#F8FAFF] px-3 text-[13px] outline-none focus:ring-2 focus:ring-indigo-200"
+          value={search}
+          onValueChange={setSearch}
+          onClear={() => setSearch("")}
         />
         {fetching ? (
-          <div className="mt-5 animate-pulse space-y-3">
-            <div className="h-16 rounded-2xl bg-indigo-50" />
-            <div className="h-24 rounded-2xl bg-indigo-50" />
-          </div>
+          <TFLoadingRegion label="正在加载语言列表">
+            <div className="mt-5 space-y-3">
+              <TFRowSkeleton />
+              <TFRowSkeleton />
+            </div>
+          </TFLoadingRegion>
         ) : (
           <>
-            <div className="mt-5">
-              <p className="mb-2 text-[13px] text-muted">母语（单选）</p>
+            <fieldset className="mt-5">
+              <legend className="mb-2 text-caption font-medium text-content-muted">母语（单选）</legend>
               <div className="flex flex-wrap gap-2">
                 {filtered.slice(0, 20).map((item) => (
-                  <button
+                  <TFChip
                     key={item.code}
+                    selected={native === item.code}
                     onClick={() => {
                       setNative(item.code);
                       setLearning((current) => current.filter((code) => code !== item.code));
                     }}
-                    className={cn(
-                      "min-h-[2.25rem] rounded-full border border-line px-4 py-1.5 text-[13px]",
-                      native === item.code && "border-transparent tf-gradient text-white",
-                    )}
                   >
                     {item.nativeName ?? item.name}
-                  </button>
+                  </TFChip>
                 ))}
               </div>
               {filtered.length === 0 ? (
-                <p className="mt-2 text-[12px] text-muted">没有匹配的语言，换个关键词试试。</p>
+                <p className="mt-2 text-caption text-content-muted">没有匹配的语言，换个关键词试试。</p>
               ) : null}
-            </div>
-            <div className="mt-6">
-              <p className="mb-2 text-[13px] text-muted">
+            </fieldset>
+
+            <fieldset className="mt-6">
+              <legend className="mb-2 text-caption font-medium text-content-muted">
                 正在学习（可多选，已选 {learning.filter((code) => code !== native).length}）
-              </p>
+              </legend>
               <div className="flex flex-wrap gap-2">
                 {filtered.map((item) => {
+                  // The native language cannot also be a language you are learning.
                   if (item.code === native) return null;
-                  const active = learning.includes(item.code);
                   return (
-                    <button
+                    <TFChip
                       key={item.code}
+                      selected={learning.includes(item.code)}
                       onClick={() => toggleLearning(item.code)}
-                      className={cn(
-                        "min-h-[2.25rem] rounded-full border border-line px-4 py-1.5 text-[13px]",
-                        active && "border-[#8B6CFF] bg-[#F4F1FF] font-medium",
-                      )}
                     >
                       {item.nativeName ?? item.name}
-                    </button>
+                    </TFChip>
                   );
                 })}
               </div>
-              <p className="mt-3 text-[12px] text-muted">
+              <p className="mt-3 text-caption leading-5 text-content-muted">
                 母语：{native ? nameOf(native) : "未选"}；学习中：
                 {learning.length > 0 ? learning.map(nameOf).join("、") : "暂无"}
               </p>
-            </div>
+            </fieldset>
           </>
         )}
-        {error ? <p className="mt-4 text-[12px] text-red-500">{error}</p> : null}
-        <div className="mb-1 mt-8">
-          <GradientButton onClick={handleNext} disabled={loading || fetching}>
-            {loading ? "保存中…" : "下一步"}
-          </GradientButton>
+        {error ? (
+          <p className="mt-4 break-words text-caption text-danger-600" role="alert">
+            {error}
+          </p>
+        ) : null}
+        <div className="mt-8">
+          <TFButton
+            size="lg"
+            fullWidth
+            onClick={() => void handleNext()}
+            disabled={fetching}
+            loading={loading}
+            loadingLabel="保存中…"
+          >
+            下一步
+          </TFButton>
         </div>
       </div>
     </PhoneShell>

@@ -17,9 +17,12 @@ import { PrismaService } from "../prisma/prisma.service";
 import { SafetyService } from "../safety/safety.service";
 import { CurrentUser, type AuthUser } from "../auth/current-user.decorator";
 import { assertNotBlocked } from "../common/block-guard";
+import { assertConnectionActive, requireActiveAccount } from "../common/connection-guard";
+import { keysetFilterAfter, keysetNextCursor, keysetOrderBy, parseKeysetCursor } from "../common/keyset-cursor";
+import { UuidParamPipe } from "../common/uuid-param.pipe";
 import { ValidationPipe } from "../common/validation.pipe";
 import { Throttle } from "@nestjs/throttler";
-import { IsOptional, IsString, IsUUID, MaxLength } from "class-validator";
+import { IsBoolean, IsOptional, IsString, IsUUID, MaxLength } from "class-validator";
 import { MomentsService } from "../moments/moments.service";
 
 class SendMessageDto {
@@ -63,10 +66,16 @@ class ReportDto {
 }
 
 class BlockDto {
-  @IsString()
+  /**
+   * FIX (audit P031): this used to be a bare `@IsString()`, so a non-UUID or a
+   * non-existent id reached `block.upsert()` and tripped the `Block.blockedId`
+   * foreign key, which surfaced as a 500 `INTERNAL_ERROR` instead of a 404.
+   */
+  @IsUUID()
   userId!: string;
 
   @IsOptional()
+  @IsBoolean()
   hideHistory?: boolean;
 }
 
@@ -147,7 +156,7 @@ export class SocialSafetyController {
   @Get("conversations/:id/messages")
   async messages(
     @CurrentUser() user: AuthUser,
-    @Param("id") id: string,
+    @Param("id", UuidParamPipe) id: string,
     @Query("limit") limitRaw?: string,
     @Query("cursor") cursor?: string,
   ) {
@@ -161,20 +170,44 @@ export class SocialSafetyController {
       });
     }
     const limit = Math.min(Math.max(Number(limitRaw ?? 30) || 30, 1), 100);
-    const messages = await this.prisma.message.findMany({
+    /**
+     * FIX (audit P021 / P030) — chat history paginates on the shared
+     * `(createdAt, id)` keyset cursor.
+     *
+     * Three defects here:
+     *
+     *  1. `createdAt` alone, so two messages sent in the same millisecond could
+     *     not be ordered against the cursor and one of the pair was skipped.
+     *     `POST /conversations/:id/messages` plus a fast client, or a WebSocket
+     *     burst, makes that reachable rather than theoretical.
+     *  2. `nextCursor` was emitted whenever the page was *full*
+     *     (`messages.length === limit`), with no look-ahead. A conversation whose
+     *     length was an exact multiple of `limit` therefore advertised one extra,
+     *     empty page.
+     *  3. A malformed cursor reached Prisma as `new Date("garbage")` → an
+     *     `Invalid Date` → a `500 INTERNAL_ERROR` for a plainly bad request.
+     *
+     * The page is returned oldest-first (the caller is a chat view), so the
+     * cursor row is the LAST element of the returned array — that is the oldest
+     * row of the page, which is where a descending walk resumes.
+     */
+    const cursorPosition = parseKeysetCursor(cursor);
+    const rows = await this.prisma.message.findMany({
       where: {
         conversationId: id,
         deletedAt: null,
-        ...(cursor ? { createdAt: { lt: new Date(cursor) } } : {}),
+        ...keysetFilterAfter(cursorPosition),
       },
-      orderBy: { createdAt: "desc" },
-      take: limit,
+      orderBy: keysetOrderBy,
+      take: limit + 1,
     });
+    const page = rows.slice(0, limit);
+    const items = [...page].reverse();
     return {
       success: true as const,
       data: {
-        items: [...messages].reverse(),
-        nextCursor: messages.length === limit ? messages[messages.length - 1].createdAt : null,
+        items,
+        nextCursor: keysetNextCursor(rows.length, limit, items),
       },
     };
   }
@@ -182,25 +215,13 @@ export class SocialSafetyController {
   @Post("conversations/:id/messages")
   async sendMessage(
     @CurrentUser() user: AuthUser,
-    @Param("id") id: string,
+    @Param("id", UuidParamPipe) id: string,
     @Body(new ValidationPipe()) dto: SendMessageDto,
   ) {
-    const membership = await this.prisma.conversationMember.findUnique({
-      where: { conversationId_userId: { conversationId: id, userId: user.id } },
-    });
-    if (!membership) {
-      throw new NotFoundException({
-        success: false,
-        error: { code: "CONVERSATION_NOT_FOUND", message: "Conversation not found" },
-      });
-    }
-    const conversation = await this.prisma.conversation.findUnique({
-      where: { id },
-      include: { members: true },
-    });
-    const peerId = conversation?.members.find((member) => member.userId !== user.id)?.userId;
-    // P0-2: unified block check — any-direction block rejects with BLOCKED.
-    await assertNotBlocked(this.prisma, user.id, peerId);
+    // P002/P003/P0-2: membership + live account status + ACTIVE connection +
+    // no block in either direction. All three rules live in one place so the
+    // text path cannot drift from the image path.
+    const { peerId } = await this.assertCanSendInConversation(user.id, id);
 
     const message = await this.prisma.$transaction(async (tx) => {
       const created = await tx.message.create({
@@ -256,7 +277,7 @@ export class SocialSafetyController {
   @Post("conversations/:id/messages/image")
   async sendImageMessage(
     @CurrentUser() user: AuthUser,
-    @Param("id") id: string,
+    @Param("id", UuidParamPipe) id: string,
     @Body(new ValidationPipe()) dto: SendImageDto,
   ) {
     const membership = await this.prisma.conversationMember.findUnique({
@@ -281,6 +302,11 @@ export class SocialSafetyController {
     const peerId = conversation?.members.find((member) => member.userId !== user.id)?.userId;
     // P0-2: same guard as the text path — an image must not bypass a block.
     await assertNotBlocked(this.prisma, user.id, peerId);
+    // P002/P003: an image must not bypass the account or connection rule either.
+    await requireActiveAccount(this.prisma, user.id);
+    if (peerId) {
+      await assertConnectionActive(this.prisma, id, user.id, peerId);
+    }
     const message = await this.prisma.$transaction(async (tx) => {
       const created = await tx.message.create({
         data: { conversationId: id, senderId: user.id, type: "IMAGE", content: dto.imageUrl },
@@ -307,7 +333,7 @@ export class SocialSafetyController {
   }
 
   @Delete("messages/:id")
-  async deleteMessage(@CurrentUser() user: AuthUser, @Param("id") id: string) {
+  async deleteMessage(@CurrentUser() user: AuthUser, @Param("id", UuidParamPipe) id: string) {
     const message = await this.prisma.message.findUnique({
       where: { id },
       include: { conversation: { include: { members: { select: { userId: true } } } } },
@@ -418,6 +444,25 @@ export class SocialSafetyController {
       });
     }
 
+    /**
+     * FIX (audit P028) — a message pointer must be one the reporter can
+     * actually see, and it must belong to the reported user.
+     *
+     * `messageId` was stored verbatim after nothing more than an `@IsUUID()`
+     * check. An admin opening the report sees that message's `content` and its
+     * sender's e-mail (`AdminService.reportDetail`), so anyone could attach an
+     * arbitrary third party's message id as "evidence" and have a moderator read
+     * a conversation they were never part of. Nothing leaked to the *reporter*
+     * directly, which is why this is an integrity defect rather than an
+     * exfiltration one — but it corrupts exactly the queue a moderator trusts.
+     *
+     * The rule now: the message must exist, the reporter must be a participant of
+     * its conversation, and its sender must be the user being reported. A
+     * mismatch is a 404 on the message, which also avoids confirming that an id
+     * the caller cannot see exists.
+     */
+    const messageId = dto.momentId ? null : await this.assertReportableMessage(user.id, reportedUserId, dto.messageId);
+
     const report = await this.prisma.report.create({
       data: {
         reporterId: user.id,
@@ -425,7 +470,7 @@ export class SocialSafetyController {
         momentId: dto.momentId ?? null,
         // A moment report and a message report are mutually exclusive in
         // practice, so a moment report never carries a message pointer.
-        messageId: dto.momentId ? null : (dto.messageId ?? null),
+        messageId,
         reason: dto.reason,
         description: dto.description,
       },
@@ -437,6 +482,35 @@ export class SocialSafetyController {
       success: true as const,
       data: { id: report.id, status: report.status, createdAt: report.createdAt },
     };
+  }
+
+  /**
+   * Validates a `messageId` pointer (audit P028) — see the call site for why.
+   * Returns `null` when no pointer was supplied.
+   */
+  private async assertReportableMessage(
+    reporterId: string,
+    reportedUserId: string,
+    messageId: string | undefined,
+  ): Promise<string | null> {
+    if (!messageId) return null;
+    const message = await this.prisma.message.findUnique({
+      where: { id: messageId },
+      select: {
+        id: true,
+        senderId: true,
+        conversation: { select: { members: { select: { userId: true } } } },
+      },
+    });
+    const memberIds = message?.conversation.members.map((member) => member.userId) ?? [];
+    const reporterIsMember = memberIds.includes(reporterId);
+    if (!message || !reporterIsMember || message.senderId !== reportedUserId) {
+      throw new NotFoundException({
+        success: false,
+        error: { code: "MESSAGE_NOT_FOUND", message: "Message not found" },
+      });
+    }
+    return message.id;
   }
 
   /** The reported user's id, or a 404 when no such account exists. */
@@ -563,7 +637,7 @@ export class SocialSafetyController {
   }
 
   @Delete("blocks/:userId")
-  async unblock(@CurrentUser() user: AuthUser, @Param("userId") blockedId: string) {
+  async unblock(@CurrentUser() user: AuthUser, @Param("userId", UuidParamPipe) blockedId: string) {
     await this.prisma.block.deleteMany({
       where: { blockerId: user.id, blockedId },
     });
@@ -583,5 +657,55 @@ export class SocialSafetyController {
       },
     });
     return { success: true as const, data: items };
+  }
+
+  /**
+   * FIX (audit P002/P003) — the one gate every message send passes through.
+   *
+   * Three independent rules, in the order that matters:
+   *   1. the caller must be a member of this conversation;
+   *   2. the caller's account must still be ACTIVE — HTTP already re-read the
+   *      row in `JwtStrategy`, but doing it here keeps the rule with the data
+   *      instead of depending on a token minted minutes ago;
+   *   3. the connection behind the conversation must still be ACTIVE, and no
+   *      block may exist in either direction.
+   *
+   * Rule 3 is what was missing: removing a connection left the conversation (and
+   * its membership rows) intact, so the pair could keep messaging forever after
+   * the relationship had visibly ended.
+   *
+   * Throws the canonical `CONVERSATION_NOT_FOUND` (404), `USER_DISABLED`-family
+   * (403), `CONNECTION_REMOVED` (403) or `BLOCKED` (403) errors.
+   */
+  private async assertCanSendInConversation(userId: string, conversationId: string) {
+    const membership = await this.prisma.conversationMember.findUnique({
+      where: { conversationId_userId: { conversationId, userId } },
+    });
+    if (!membership) {
+      throw new NotFoundException({
+        success: false,
+        error: { code: "CONVERSATION_NOT_FOUND", message: "Conversation not found" },
+      });
+    }
+
+    await requireActiveAccount(this.prisma, userId);
+
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { members: { select: { userId: true } } },
+    });
+    const peerId = conversation?.members.find((member) => member.userId !== userId)?.userId;
+    if (!peerId) {
+      throw new NotFoundException({
+        success: false,
+        error: { code: "CONVERSATION_NOT_FOUND", message: "Conversation not found" },
+      });
+    }
+
+    await assertConnectionActive(this.prisma, conversationId, userId, peerId);
+    // P0-2: unified block check — any-direction block rejects with BLOCKED.
+    await assertNotBlocked(this.prisma, userId, peerId);
+
+    return { peerId };
   }
 }

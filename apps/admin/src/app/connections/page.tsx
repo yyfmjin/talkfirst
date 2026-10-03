@@ -127,9 +127,9 @@ function ConnectionsScreen() {
   }, [load]);
 
   const statusBadge = (s: string) => {
-    if (s === "ACTIVE") return "bg-[#DCFCE7] text-[#166534]";
-    if (s === "REMOVED") return "bg-[#EDEFF3] text-[#5A6472]";
-    return "bg-[#FEF3C7] text-[#92400E]";
+    if (s === "ACTIVE") return "bg-success-wash text-success-ink";
+    if (s === "REMOVED") return "bg-neutral-wash text-neutral-ink";
+    return "bg-warning-wash text-warning-ink";
   };
 
   return (

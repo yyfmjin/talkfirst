@@ -66,6 +66,22 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
       { href: "/audit", label: "审计日志", permission: "audit:read" },
     ],
   },
+  {
+    /**
+     * Phase O2 — site operations.
+     *
+     * A section of its own rather than another item under 风险与审计, because the
+     * two answer different questions: 审计日志 is what *administrators* did
+     * (`AdminAuditLog`), while 访问日志 is what *everyone* did, including
+     * anonymous visitors, and carries raw client IP and User-Agent.
+     *
+     * It therefore has its own narrower gate — `ops:read`, held by SUPER_ADMIN
+     * and ANALYST only — instead of `audit:read`, which all five roles hold. The
+     * nav filter drops this whole section for every other role.
+     */
+    title: "网站运维",
+    items: [{ href: "/ops/access-logs", label: "访问日志", permission: "ops:read" }],
+  },
 ];
 
 /** Stroke icons, 16px, no text — the link's accessible name stays the label. */
@@ -79,6 +95,8 @@ const NAV_ICONS: Record<string, string> = {
   "/moderation": "M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9",
   "/risk": "M12 3 3 7v6c0 5 3.8 8.4 9 9 5.2-.6 9-4 9-9V7l-9-4Z",
   "/audit": "M12 8v4l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z",
+  // Phase O2 — a server rack / traffic glyph for the operations section.
+  "/ops/access-logs": "M4 5h16v5H4V5Zm0 9h16v5H4v-5Zm3-6.5h.01M7 13.5h.01",
 };
 
 function NavIcon({ href }: { href: string }) {
@@ -165,8 +183,8 @@ export function AdminSidebar({
                         "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-colors",
                         collapsed ? "lg:justify-center lg:px-0" : "",
                         active
-                          ? "bg-[#EEF2FF] font-medium text-primary"
-                          : "text-[#374151] hover:bg-[#F3F4F6] hover:text-ink",
+                          ? "bg-accent font-medium text-primary"
+                          : "text-body hover:bg-subtle hover:text-ink",
                       ].join(" ")}
                     >
                       <NavIcon href={item.href} />
@@ -211,7 +229,7 @@ function LogoutButton({ collapsed }: { collapsed: boolean }) {
       type="button"
       onClick={() => void logout()}
       className={[
-        "mt-2 flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] text-[#374151] transition-colors hover:bg-[#F3F4F6] hover:text-ink",
+        "mt-2 flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] text-body transition-colors hover:bg-subtle hover:text-ink",
         collapsed ? "lg:justify-center lg:px-0" : "",
       ].join(" ")}
     >
@@ -313,13 +331,13 @@ export function AdminHeader({
                 {identity.user.nickname ?? identity.user.email}
               </p>
               <p className="text-[11px] leading-4 text-muted">
-                <span className="font-medium text-[#374151]">{identity.role}</span>
+                <span className="font-medium text-body">{identity.role}</span>
                 <span> · </span>
                 <span>{ROLE_LABELS[identity.role]}</span>
               </p>
             </div>
             <span
-              className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#EEF2FF] text-[11px] font-semibold text-primary"
+              className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent text-[11px] font-semibold text-primary"
               aria-hidden="true"
             >
               {(identity.user.nickname ?? identity.user.email).slice(0, 1).toUpperCase()}

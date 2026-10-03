@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "next lint",
     "test": "node --test ./test/smoke.test.mjs ./test/ui-copy.test.mjs ./test/security-headers.test.mjs && playwright test",
+    "test:static": "node --test ./test/smoke.test.mjs ./test/ui-copy.test.mjs ./test/security-headers.test.mjs",
     "test:e2e": "playwright test",
     "test:e2e:build": "npm run build -w @talkfirst/api && npm run build && playwright test"
   },

@@ -57,17 +57,21 @@ export function NotificationItem({
       aria-busy={pending || undefined}
       onClick={onActivate ? () => onActivate(notification) : undefined}
       className={cn(
-        "flex w-full items-start gap-3 rounded-3xl border bg-white p-3 text-left transition active:scale-[0.99]",
-        unread ? "border-indigo-100 shadow-sm shadow-indigo-100/60" : "border-line",
+        "flex w-full items-start gap-3 rounded-card border bg-surface p-3 text-left transition-colors duration-instant",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300",
+        /* Unread is conveyed by the icon tint plus a weight change on the title —
+           and by `data-unread`, which the suite reads. The border alone was the
+           only visual difference before, which is "colour alone". */
+        unread ? "border-brand-200 bg-brand-50/40" : "border-border",
         pending && "opacity-60",
       )}
     >
       <span
-        aria-hidden
+        aria-hidden="true"
         className={cn(
           "grid shrink-0 place-items-center rounded-full",
           compact ? "h-7 w-7" : "h-9 w-9",
-          unread ? "bg-[#E4E8FF] text-[#6572D8]" : "bg-[#F3F4F9] text-muted",
+          unread ? "bg-brand-100 text-brand-600" : "bg-surface-sunken text-content-muted",
         )}
       >
         <Icon size={compact ? 14 : 16} />
@@ -76,8 +80,8 @@ export function NotificationItem({
       <span className="min-w-0 flex-1">
         <span
           className={cn(
-            "block break-words text-[13px] leading-5",
-            unread ? "font-semibold" : "font-medium text-ink/80",
+            "block break-words text-ui leading-5",
+            unread ? "font-semibold text-content" : "font-medium text-content-muted",
           )}
         >
           {title}
@@ -85,14 +89,14 @@ export function NotificationItem({
         {notification.body ? (
           <span
             className={cn(
-              "mt-0.5 block break-words text-[12px] leading-5 text-muted",
+              "mt-0.5 block break-words text-caption leading-5 text-content-muted",
               compact && "line-clamp-2",
             )}
           >
             {notification.body}
           </span>
         ) : null}
-        <span className="mt-1 block text-[11px] text-muted">
+        <span className="mt-1 block text-overline text-content-subtle">
           {relativeTime(notification.createdAt)}
         </span>
       </span>
@@ -100,8 +104,8 @@ export function NotificationItem({
       {unread ? (
         <span
           data-testid="notification-unread"
-          aria-hidden
-          className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#6B7CFF]"
+          aria-hidden="true"
+          className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-500"
         />
       ) : null}
     </button>

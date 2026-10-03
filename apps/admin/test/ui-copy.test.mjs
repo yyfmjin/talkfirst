@@ -21,12 +21,16 @@ const appRoot = join(here, "..");
 const repoRoot = join(here, "..", "..", "..");
 
 /**
- * The one exemption, and why: the login screen's operator note names the guard
- * it explains. `/admin/me` is the route that rejects a non-admin and `isAdmin`
- * is the column that has to be set — both are code an operator has to type, so
- * neither can be translated.
+ * The exemptions, and why: the login screen's operator note names the guard it
+ * explains — `/admin/me` is the route that rejects a non-admin and `isAdmin` is
+ * the column that has to be set, so both are code an operator has to type. The
+ * Phase O2 operations console adds `HTTP` (a protocol name with no Chinese form
+ * an operator would recognise) and `ops:read` (the permission it is gated on).
+ *
+ * Bare `admin` is deliberately absent: it is too common a substring and would
+ * stop `admin@example.com` from being recognised as an e-mail address.
  */
-const ALLOWED = ["/admin/me", "isAdmin"];
+const ALLOWED = ["/admin/me", "isAdmin", "HTTP", "ops:read"];
 
 test("admin console has no untranslated English UI copy", () => {
   const findings = scanUiCopy({ root: join(appRoot, "src"), allowed: ALLOWED });

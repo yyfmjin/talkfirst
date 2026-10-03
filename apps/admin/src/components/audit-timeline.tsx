@@ -34,7 +34,7 @@ export type AuditTimelineItem = {
 export function SystemActorBadge() {
   return (
     <span
-      className="inline-flex items-center rounded-full bg-[#EEF2FF] px-2 py-0.5 text-[11px] font-medium text-[#4338CA]"
+      className="inline-flex items-center rounded-full bg-system-wash px-2 py-0.5 text-[11px] font-medium text-system-ink"
       title="平台自动执行，没有人工操作者"
     >
       系统 · 自动

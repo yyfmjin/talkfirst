@@ -108,9 +108,9 @@ function ConnectionDetailScreen() {
   }, [load]);
 
   const statusBadge = (s: string) => {
-    if (s === "ACTIVE") return "bg-[#DCFCE7] text-[#166534]";
-    if (s === "REMOVED") return "bg-[#EDEFF3] text-[#5A6472]";
-    return "bg-[#FEF3C7] text-[#92400E]";
+    if (s === "ACTIVE") return "bg-success-wash text-success-ink";
+    if (s === "REMOVED") return "bg-neutral-wash text-neutral-ink";
+    return "bg-warning-wash text-warning-ink";
   };
 
   return (
@@ -217,7 +217,7 @@ function ConnectionDetailScreen() {
             ) : (
               <ul className="mt-2 space-y-2 text-[13px]">
                 {data.history.map((h) => (
-                  <li key={h.id} className="rounded-xl border border-line/60 bg-[#FBFCFE] p-3">
+                  <li key={h.id} className="rounded-xl border border-line/60 bg-surface p-3">
                     <p className="font-medium">{h.action}</p>
                     <p className="mt-1 text-muted">
                       {new Date(h.createdAt).toLocaleString()} ·{" "}

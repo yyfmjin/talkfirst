@@ -10,6 +10,7 @@ import {
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CurrentUser, type AuthUser } from "../auth/current-user.decorator";
+import { UuidParamPipe } from "../common/uuid-param.pipe";
 import { ValidationPipe } from "../common/validation.pipe";
 import { PrismaService } from "../prisma/prisma.service";
 import {
@@ -72,7 +73,7 @@ export class ExchangeController {
   }
 
   @Get("conversations/:id/exchange")
-  eligibility(@CurrentUser() user: AuthUser, @Param("id") id: string) {
+  eligibility(@CurrentUser() user: AuthUser, @Param("id", UuidParamPipe) id: string) {
     return this.exchangeService
       .eligibility(user.id, id)
       .then((data) => ({ success: true as const, data }));
@@ -81,7 +82,7 @@ export class ExchangeController {
   @Post("conversations/:id/exchange")
   request(
     @CurrentUser() user: AuthUser,
-    @Param("id") id: string,
+    @Param("id", UuidParamPipe) id: string,
     @Body(new ValidationPipe()) dto: CreateExchangeDto,
   ) {
     return this.exchangeService
@@ -90,7 +91,7 @@ export class ExchangeController {
   }
 
   @Get("conversations/:id/exchange/contacts")
-  contacts(@CurrentUser() user: AuthUser, @Param("id") id: string) {
+  contacts(@CurrentUser() user: AuthUser, @Param("id", UuidParamPipe) id: string) {
     return this.exchangeService
       .sharedContacts(user.id, id)
       .then((data) => ({ success: true as const, data }));
@@ -99,7 +100,7 @@ export class ExchangeController {
   @Post("exchange/:id/respond")
   respond(
     @CurrentUser() user: AuthUser,
-    @Param("id") id: string,
+    @Param("id", UuidParamPipe) id: string,
     @Body(new ValidationPipe()) dto: RespondExchangeDto,
   ) {
     return this.exchangeService
@@ -108,7 +109,7 @@ export class ExchangeController {
   }
 
   @Post("exchange/:id/cancel")
-  cancel(@CurrentUser() user: AuthUser, @Param("id") id: string) {
+  cancel(@CurrentUser() user: AuthUser, @Param("id", UuidParamPipe) id: string) {
     return this.exchangeService
       .cancel(user.id, id)
       .then((data) => ({ success: true as const, data }));

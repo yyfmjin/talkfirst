@@ -91,7 +91,7 @@ export function DiscoverAvatarBubble({
         type="button"
         onClick={() => onOpenProfile(user.id)}
         aria-label={`查看 ${name} 的资料卡`}
-        className="tf-bubble grid place-items-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+        className="tf-bubble grid place-items-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
         style={{ width: orbSize + ORB_SLACK * 2, height: orbSize + ORB_SLACK * 2 }}
       >
         {user.avatarUrl ? (
@@ -114,8 +114,8 @@ export function DiscoverAvatarBubble({
         )}
       </button>
 
-      <p className="mt-1.5 w-full truncate text-center text-[12px] font-medium leading-4">{name}</p>
-      <p className="mt-0.5 w-full truncate text-center text-[11px] leading-4 text-muted">
+      <p className="mt-1.5 w-full truncate text-center text-caption font-medium leading-4 text-content">{name}</p>
+      <p className="mt-0.5 w-full truncate text-center text-overline leading-4 text-content-muted">
         {meta ? `${user.countryFlag ?? "🌎"} ${meta}` : "\u00a0"}
       </p>
     </div>

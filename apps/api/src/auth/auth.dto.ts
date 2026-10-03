@@ -50,3 +50,40 @@ export class ChangePasswordDto {
   @MaxLength(72, { message: "Password must be 8-72 characters" })
   confirmPassword!: string;
 }
+
+/**
+ * FEATURE (post-audit) — "I forgot my password", step 1.
+ *
+ * Only the address is taken. The response is deliberately identical whether or
+ * not it belongs to an account (see `AuthService.requestPasswordReset`), so this
+ * DTO must not add anything that could turn the endpoint into an oracle — for
+ * example a "create the account if missing" flag.
+ */
+export class RequestPasswordResetDto {
+  @IsEmail({}, { message: "Invalid email address" })
+  email!: string;
+}
+
+/**
+ * FEATURE (post-audit) — "I forgot my password", step 2.
+ *
+ * `newPassword` is length-bounded exactly like `RegisterDto` (8-72): 72 is
+ * bcrypt's input limit, and silently truncating beyond it would mean a long
+ * passphrase protected less than its owner believed. There is no
+ * `confirmPassword` field — the confirmation is a client-side concern for a
+ * single-use form, and duplicating it here would only give one more place for the
+ * two to disagree.
+ */
+export class ResetPasswordDto {
+  @IsEmail({}, { message: "Invalid email address" })
+  email!: string;
+
+  @IsString()
+  @Matches(/^\d{6}$/, { message: "Verification code must be 6 digits" })
+  code!: string;
+
+  @IsString()
+  @MinLength(8, { message: "Password must be 8-72 characters" })
+  @MaxLength(72, { message: "Password must be 8-72 characters" })
+  newPassword!: string;
+}

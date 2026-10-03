@@ -7,12 +7,14 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from "@nestjs/websockets";
+import { HttpException } from "@nestjs/common";
 import { Server, Socket } from "socket.io";
 import { NotificationService } from "../notifications/notification.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { SafetyService } from "../safety/safety.service";
 import { ChatAuthService, type SocketAuthFailure } from "./chat-auth.service";
 import { assertNotBlocked } from "../common/block-guard";
+import { assertConnectionActive, requireActiveAccount } from "../common/connection-guard";
 import { PresenceService } from "./presence.service";
 
 type JoinPayload = { conversationId: string };
@@ -50,6 +52,21 @@ export function socketAuthError(failure: SocketAuthFailure | null): { code: stri
     default:
       return { code: "UNAUTHORIZED", message: "Invalid or expired access token" };
   }
+}
+
+/**
+ * Pulls the domain `error.code` out of an `HttpException` thrown by the shared
+ * guards (`BLOCKED`, `CONNECTION_REMOVED`, `USER_BANNED`, …), so the socket
+ * reports the *same* code the REST transport would instead of a generic
+ * "something failed". Returns `null` for anything that is not a shaped
+ * HttpException.
+ */
+function errorCodeOf(error: unknown): string | null {
+  if (!(error instanceof HttpException)) return null;
+  const payload = error.getResponse();
+  if (typeof payload !== "object" || payload === null) return null;
+  const code = (payload as { error?: { code?: unknown } }).error?.code;
+  return typeof code === "string" ? code : null;
 }
 
 @WebSocketGateway({
@@ -194,13 +211,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     const peerId = membership.conversation.members.find((member) => member.userId !== user.id)?.userId;
-    // P0-2: unified block check on the WebSocket text path.
-    try {
-      await assertNotBlocked(this.prisma, user.id, peerId);
-    } catch {
-      client.emit("error", { code: "BLOCKED", message: "You cannot message each other" });
-      return;
-    }
+    if (!(await this.assertSendAllowed(client, user, payload.conversationId, peerId, "TEXT"))) return;
 
     const message = await this.prisma.$transaction(async (tx) => {
       const created = await tx.message.create({
@@ -317,6 +328,64 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return false;
   }
 
+  /**
+   * FIX (audit P002 / P003) — the one gate both WebSocket send paths pass.
+   *
+   * `chat-auth.service.ts` reads the account status exactly once, at handshake
+   * time. A user banned, suspended or disabled *after* connecting kept a fully
+   * working socket: the HTTP transport was safe because `JwtStrategy.validate()`
+   * re-reads the row per request, but the socket had no equivalent. The same
+   * omission applied to the connection: removing a connection left the
+   * conversation and its members in place, so the pair could keep messaging over
+   * the socket forever after the relationship visibly ended.
+   *
+   * Returns `false` after emitting the canonical error, so call sites read as
+   * `if (!(await this.assertSendAllowed(...))) return;`.
+   *
+   * A non-ACTIVE account additionally has its socket disconnected: continuing to
+   * hold the connection open would let it keep *receiving* messages it is no
+   * longer allowed to see.
+   */
+  private async assertSendAllowed(
+    client: AuthedSocket,
+    user: { id: string },
+    conversationId: string,
+    peerId: string | undefined,
+    kind: "TEXT" | "IMAGE",
+  ): Promise<boolean> {
+    try {
+      await requireActiveAccount(this.prisma, user.id);
+    } catch (error) {
+      const code = errorCodeOf(error) ?? "USER_DISABLED";
+      client.emit("error", { code, message: "Your account may not send messages right now" });
+      client.disconnect(true);
+      return false;
+    }
+
+    try {
+      if (peerId) {
+        await assertConnectionActive(this.prisma, conversationId, user.id, peerId);
+      }
+      await assertNotBlocked(this.prisma, user.id, peerId);
+    } catch (error) {
+      const code = errorCodeOf(error) ?? "BLOCKED";
+      const message =
+        code === "CONNECTION_REMOVED"
+          ? "This connection was removed, so this conversation is closed"
+          : "You cannot message each other";
+      // A dropped connection/block also removes the socket from the room, so a
+      // stale client cannot keep receiving what it may no longer see.
+      if (code === "CONNECTION_REMOVED" || code === "BLOCKED") {
+        await client.leave(this.conversationRoom(conversationId));
+      }
+      client.emit("error", { code, message });
+      return false;
+    }
+
+    void kind;
+    return true;
+  }
+
   private async handleImageSend(
     client: AuthedSocket,
     user: { id: string; email: string },
@@ -338,13 +407,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
     // P0-2: the image path used to skip the block check entirely, so a blocked
     // user could still push images over WebSocket. Guard it the same way.
+    // P002/P003: and it must not bypass the account or connection rule either.
     const peerId = membership.conversation.members.find((member) => member.userId !== user.id)?.userId;
-    try {
-      await assertNotBlocked(this.prisma, user.id, peerId);
-    } catch {
-      client.emit("error", { code: "BLOCKED", message: "You cannot message each other" });
-      return;
-    }
+    if (!(await this.assertSendAllowed(client, user, payload.conversationId, peerId, "IMAGE"))) return;
     const message = await this.prisma.$transaction(async (tx) => {
       const created = await tx.message.create({
         data: { conversationId: payload.conversationId, senderId: user.id, type: "IMAGE", content: imageUrl },

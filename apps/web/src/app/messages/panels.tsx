@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { NotificationItem, useNotificationReader } from "@/components/notification-item";
-import { OutlineButton } from "@/components/ui";
+import { TFButton } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { type NotificationPage, type NotificationRecord } from "@/lib/notifications";
 import { useSession } from "@/lib/session";
@@ -61,11 +61,17 @@ export function NotificationsPanel({ onRead }: { onRead: () => void }) {
   if (items.length === 0 && unread === 0) return null;
 
   return (
-    <section className="mt-4 rounded-3xl bg-[#F7F9FF] p-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-[13px] font-semibold">通知{unread > 0 ? `（${unread} 未读）` : ""}</h2>
+    <section className="mt-4 rounded-card bg-surface-sunken p-4">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-ui font-semibold text-content">
+          通知{unread > 0 ? `（${unread} 未读）` : ""}
+        </h2>
         {unread > 0 ? (
-          <button onClick={() => void markRead()} className="text-[12px] text-[#6572D8] underline">
+          <button
+            type="button"
+            onClick={() => void markRead()}
+            className="rounded-control px-1.5 py-1 text-caption font-medium text-brand-600 underline decoration-dotted"
+          >
             全部已读
           </button>
         ) : null}
@@ -122,21 +128,32 @@ export function SentRequestsPanel() {
 
   return (
     <section className="mt-6">
-      <h2 className="text-[14px] font-semibold">我发出的请求（{items.length}）</h2>
-      <div className="mt-3 space-y-2">
+      <h2 className="text-ui font-semibold text-content">我发出的请求（{items.length}）</h2>
+      <div className="mt-3 divide-y divide-border overflow-hidden rounded-card border border-border">
         {items.map((item) => (
-          <div key={item.id} className="flex items-center justify-between rounded-2xl border border-line p-3">
-            <div>
-              <p className="text-[13px] font-medium">{item.receiver?.nickname ?? "对方"}</p>
-              <p className="text-[11px] text-muted">等待对方接受 · 可随时取消</p>
+          <div key={item.id} className="flex items-center justify-between gap-3 bg-surface px-4 py-3">
+            <div className="min-w-0">
+              <p className="truncate text-ui font-medium text-content">{item.receiver?.nickname ?? "对方"}</p>
+              <p className="text-caption text-content-muted">等待对方接受 · 可随时取消</p>
             </div>
-            <OutlineButton className="h-9 w-20 text-[12px]" onClick={() => void cancel(item.id)}>
-              {acting === item.id ? "…" : "取消"}
-            </OutlineButton>
+            <TFButton
+              variant="secondary"
+              size="sm"
+              className="shrink-0"
+              onClick={() => void cancel(item.id)}
+              loading={acting === item.id}
+              loadingLabel="…"
+            >
+              取消
+            </TFButton>
           </div>
         ))}
       </div>
-      {error ? <p className="mt-2 text-[12px] text-red-500">{error}</p> : null}
+      {error ? (
+        <p role="alert" className="mt-2 break-words text-caption text-danger-600">
+          {error}
+        </p>
+      ) : null}
     </section>
   );
 }

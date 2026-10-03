@@ -1,0 +1,27 @@
+{
+  "name": "@talkfirst/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "typecheck": "tsc --noEmit",
+    "build": "expo export --platform android --output-dir dist",
+    "test": "npm run typecheck && node -e \"console.log('mobile: no automated behavioural tests exist yet; this only ran tsc --noEmit (static types). Nothing was executed on a device or emulator.')\""
+  },
+  "dependencies": {
+    "expo": "~52.0.37",
+    "expo-secure-store": "~14.0.1",
+    "expo-status-bar": "~2.0.1",
+    "react": "18.3.1",
+    "react-native": "0.76.7",
+    "react-native-safe-area-context": "4.12.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@types/react": "~18.3.12",
+    "typescript": "~5.3.3"
+  }
+}

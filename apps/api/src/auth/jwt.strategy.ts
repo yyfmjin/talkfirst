@@ -5,6 +5,7 @@ import { JWT_ACCESS_SECRET, jwtFromRequest } from "./auth.constants";
 import { PrismaService } from "../prisma/prisma.service";
 import { getRequestContext } from "../security/request-context";
 import { emailVerificationEnforced, isEmailVerificationAllowedPath } from "./email-verification.policy";
+import { jwtSecretOrDevFallback } from "../common/security-config";
 
 export type AccessTokenPayload = { sub: string; email: string; type: "access" };
 
@@ -13,7 +14,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, "jwt") {
   constructor(private readonly prisma: PrismaService) {
     super({
       jwtFromRequest,
-      secretOrKey: process.env[JWT_ACCESS_SECRET] ?? "change-me-in-development",
+      secretOrKey: jwtSecretOrDevFallback(JWT_ACCESS_SECRET),
       ignoreExpiration: false,
     });
   }

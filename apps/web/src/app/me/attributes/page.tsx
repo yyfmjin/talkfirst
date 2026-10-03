@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { PhoneShell } from "@/components/phone-shell";
 import { ScreenHeader } from "@/components/screen-header";
 import { VisibilitySelect } from "@/components/visibility-select";
-import { OutlineButton, SmallButton } from "@/components/ui";
+import { TFBadge, TFButton, TFChip, TFErrorState, TFInput, TFLoadingRegion, TFSkeleton } from "@/components/tf";
 import { cn } from "@/lib/cn";
 import { apiFetch } from "@/lib/api";
 import { friendlyErrorMessage } from "@/lib/errors";
@@ -202,23 +202,22 @@ export default function ProfileAttributesPage() {
     <PhoneShell>
       <ScreenHeader title="交友属性" backHref="/me" />
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-4">
-        <p className="text-[13px] leading-6 text-muted">
+        <p className="text-ui leading-6 text-content-muted">
           标签让别人更快了解你。每一栏最多 10 个，设为「公开」后也会用于「发现」的推荐。
         </p>
 
         {loading ? (
-          <div className="mt-5 animate-pulse space-y-3">
-            <div className="h-40 rounded-3xl bg-indigo-50" />
-            <div className="h-40 rounded-3xl bg-indigo-50" />
-          </div>
+          <TFLoadingRegion label="正在加载交友属性">
+            <div className="mt-5 space-y-3">
+              <TFSkeleton shape="block" className="h-40 w-full" />
+              <TFSkeleton shape="block" className="h-40 w-full" />
+            </div>
+          </TFLoadingRegion>
         ) : null}
 
         {!loading && error ? (
-          <div className="mt-5 rounded-2xl bg-red-50 p-4 text-center">
-            <p className="text-[12px] text-red-700">{error}</p>
-            <SmallButton className="mt-3 w-full" onClick={() => void load()}>
-              重试
-            </SmallButton>
+          <div className="mt-5">
+            <TFErrorState description={error} onRetry={() => void load()} />
           </div>
         ) : null}
 
@@ -240,13 +239,15 @@ export default function ProfileAttributesPage() {
           : null}
 
         {notice ? (
-          <p className="mt-4 text-center text-[12px] text-emerald-600">{notice}</p>
+          <p role="status" className="mt-4 text-center text-caption text-success-600">
+            {notice}
+          </p>
         ) : null}
 
-        <div className="mb-1 mt-6">
-          <OutlineButton href="/me" className="min-h-[2.75rem] w-full text-[13px]">
+        <div className="mt-6">
+          <TFButton variant="secondary" fullWidth href="/me">
             返回我的
-          </OutlineButton>
+          </TFButton>
         </div>
       </div>
 
@@ -301,49 +302,47 @@ function AttributeSection({
   return (
     <section
       data-testid={`attribute-section-${kind}`}
-      className="mt-5 rounded-3xl border border-line bg-white p-4"
+      className="mt-5 rounded-card border border-border bg-surface p-4"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[14px] font-semibold">{title}</p>
-          <p className="mt-0.5 text-[11px] leading-4 text-muted">{hint}</p>
+          <p className="text-ui font-semibold text-content">{title}</p>
+          <p className="mt-0.5 text-caption leading-4 text-content-muted">{hint}</p>
         </div>
-        <span
+        {/* `attribute-count-{kind}` is how `profile.spec.ts` waits for this page to
+            load, so the testid stays on the visible count pill. */}
+        <TFBadge
+          tone={full ? "warning" : "brand"}
+          className="shrink-0"
           data-testid={`attribute-count-${kind}`}
-          className={cn(
-            "shrink-0 rounded-full px-2.5 py-1 text-[11px]",
-            full ? "bg-[#FFF4E5] text-[#B26A00]" : "bg-[#F1F3FF] text-[#6572D8]",
-          )}
         >
           {attributes.length} / {MAX_PER_KIND}
-        </span>
+        </TFBadge>
       </div>
 
       {attributes.length === 0 ? (
-        <p className="mt-3 rounded-2xl bg-[#F8F9FF] px-3 py-3 text-[11px] leading-5 text-muted">{example}</p>
+        <p className="mt-3 rounded-row bg-surface-sunken px-3 py-3 text-caption leading-5 text-content-muted">
+          {example}
+        </p>
       ) : (
         <ul className="mt-3 space-y-2">
           {attributes.map((attribute, index) => (
             <li
               key={attribute.id}
               data-testid={`attribute-row-${attribute.id}`}
-              className="flex items-center gap-2 rounded-2xl bg-[#F8F9FF] px-3 py-2"
+              className="flex items-center gap-2 rounded-row bg-surface-sunken px-3 py-2"
             >
               <button type="button" onClick={() => onSelect(attribute)} className="min-w-0 flex-1 text-left">
-                <span className="flex flex-wrap items-center gap-1 text-[13px]">
+                <span className="flex flex-wrap items-center gap-1 text-ui">
                   <span className="min-w-0 break-words">{attributeLabel(attribute)}</span>
                   {attribute.source === "CUSTOM" ? (
-                    <span className="shrink-0 rounded-full bg-white px-1.5 py-0.5 text-[10px] text-muted">
-                      自定义
-                    </span>
+                    <TFBadge tone="neutral">自定义</TFBadge>
                   ) : null}
                   {attribute.definitionActive === false ? (
-                    <span className="shrink-0 rounded-full bg-white px-1.5 py-0.5 text-[10px] text-[#B26A00]">
-                      已停用
-                    </span>
+                    <TFBadge tone="warning">已停用</TFBadge>
                   ) : null}
                 </span>
-                <span className="mt-0.5 block break-words text-[10px] text-muted">
+                <span className="mt-0.5 block break-words text-overline text-content-muted">
                   {attribute.value ? `${attribute.value} · ` : ""}
                   {VISIBILITY_LABELS[attribute.visibility]}
                 </span>
@@ -354,7 +353,7 @@ function AttributeSection({
                   onClick={() => onMove(index, -1)}
                   disabled={index === 0 || busy}
                   aria-label={`把 ${attributeLabel(attribute)} 上移`}
-                  className="grid h-5 w-7 place-items-center rounded bg-white text-[10px] text-muted disabled:opacity-40"
+                  className="grid h-6 w-7 place-items-center rounded-control bg-surface text-overline text-content-muted transition-colors duration-instant hover:bg-surface-sunken disabled:opacity-40"
                 >
                   ▲
                 </button>
@@ -363,7 +362,7 @@ function AttributeSection({
                   onClick={() => onMove(index, 1)}
                   disabled={index === attributes.length - 1 || busy}
                   aria-label={`把 ${attributeLabel(attribute)} 下移`}
-                  className="grid h-5 w-7 place-items-center rounded bg-white text-[10px] text-muted disabled:opacity-40"
+                  className="grid h-6 w-7 place-items-center rounded-control bg-surface text-overline text-content-muted transition-colors duration-instant hover:bg-surface-sunken disabled:opacity-40"
                 >
                   ▼
                 </button>
@@ -373,14 +372,20 @@ function AttributeSection({
         </ul>
       )}
 
-      <SmallButton
-        className="mt-3 w-full"
+      {/* `aria-label="添加到{title}"` is how `profile.spec.ts` opens the picker:
+          it looks for `添加到我的介绍` / `添加到交友需求`, so the label stays on the
+          control and keeps the `{title}` interpolation. */}
+      <TFButton
+        variant="secondary"
+        size="sm"
+        fullWidth
+        className="mt-3"
         onClick={onAdd}
         disabled={full || busy}
-        ariaLabel={`添加到${title}`}
+        aria-label={`添加到${title}`}
       >
         {full ? `已达上限 ${MAX_PER_KIND} 个` : "+ 添加"}
-      </SmallButton>
+      </TFButton>
     </section>
   );
 }
@@ -406,15 +411,17 @@ function SheetShell({
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className="tf-scroll max-h-[88%] w-full overflow-y-auto rounded-t-[28px] bg-white p-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:max-w-[390px] sm:rounded-[28px]">
+      <div className="tf-scroll max-h-[88%] w-full overflow-y-auto rounded-t-sheet bg-surface p-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:max-w-[390px] sm:rounded-sheet">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <h2 className="text-[16px] font-semibold">{title}</h2>
-            {description ? <p className="mt-1 text-[12px] leading-5 text-muted">{description}</p> : null}
+            <h2 className="text-heading font-semibold text-content">{title}</h2>
+            {description ? (
+              <p className="mt-1 text-caption leading-5 text-content-muted">{description}</p>
+            ) : null}
           </div>
-          <SmallButton size="sm" className="h-8 shrink-0 px-3 text-[11px]" onClick={onClose} ariaLabel="关闭面板">
+          <TFButton variant="ghost" size="sm" className="shrink-0" onClick={onClose} aria-label="关闭面板">
             关闭
-          </SmallButton>
+          </TFButton>
         </div>
         {children}
       </div>
@@ -483,7 +490,10 @@ function PickerSheet({
       description="系统标签直接选择；系统没有收录的说法可以自己写。"
       onClose={onClose}
     >
-      <div className="mt-4 grid grid-cols-2 gap-1.5 rounded-full bg-[#F1F3FF] p-1">
+      {/* A two-option segmented control. `role="tablist"` is NOT used here: these
+          switch what the sheet below shows, and the sheet is not a tabpanel with
+          an id, so `aria-pressed` on a toggle pair is the honest description. */}
+      <div className="mt-4 grid grid-cols-2 gap-1.5 rounded-control bg-surface-sunken p-1">
         {([
           ["system", "系统标签"],
           ["custom", "自定义"],
@@ -497,8 +507,10 @@ function PickerSheet({
               setLocalError("");
             }}
             className={cn(
-              "min-h-[2rem] rounded-full text-[12px] transition",
-              tab === id ? "bg-white font-medium text-[#6572D8] shadow-sm" : "text-muted",
+              "min-h-[2rem] rounded-control text-caption transition-colors duration-instant",
+              tab === id
+                ? "bg-surface font-medium text-brand-600 shadow-card"
+                : "text-content-muted hover:text-content",
             )}
           >
             {text}
@@ -509,26 +521,24 @@ function PickerSheet({
       {tab === "system" ? (
         <div className="mt-4" data-testid="system-picker">
           {available.length === 0 ? (
-            <p className="rounded-2xl bg-[#F8F9FF] px-3 py-3 text-[12px] text-muted">
+            <p className="rounded-row bg-surface-sunken px-3 py-3 text-caption text-content-muted">
               系统标签都已经用过了，试试自定义标签。
             </p>
           ) : (
             categories.map((category) => (
               <div key={category} className="mb-4">
-                <p className="mb-2 text-[11px] font-medium text-muted">{category}</p>
+                <p className="mb-2 text-caption font-medium text-content-muted">{category}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {available
                     .filter((definition) => definition.category === category)
                     .map((definition) => (
-                      <button
+                      <TFChip
                         key={definition.id}
-                        type="button"
                         disabled={busy}
                         onClick={() => onPickSystem(definition)}
-                        className="min-h-[2.25rem] max-w-full rounded-full border border-line px-3 py-1.5 text-[12px] transition disabled:opacity-50"
                       >
                         {definition.labelZh ?? definition.label}
-                      </button>
+                      </TFChip>
                     ))}
                 </div>
               </div>
@@ -537,45 +547,56 @@ function PickerSheet({
         </div>
       ) : (
         <div className="mt-4" data-testid="custom-picker">
-          <label className="block">
-            <span className="mb-1.5 block text-[12px] text-muted">
+          <div>
+            <label htmlFor="custom-attr-label" className="mb-1.5 block text-caption font-medium text-content-muted">
               标签名称（必填，最多 {LABEL_MAX} 字）
-            </span>
-            <input
+            </label>
+            {/* `aria-label="自定义标签名称"` / `"自定义标签补充说明"` are asserted by
+                `profile.spec.ts`, so they stay on the controls. */}
+            <TFInput
+              id="custom-attr-label"
               value={label}
               onChange={(event) => setLabel(event.target.value)}
               maxLength={LABEL_MAX}
               placeholder={section?.example.replace("例如：", "") ?? "例如：夜猫子"}
               aria-label="自定义标签名称"
-              className="h-11 w-full min-w-0 rounded-2xl border border-line bg-[#F8FAFF] px-3 text-[13px] outline-none focus:ring-2 focus:ring-indigo-200"
+              invalid={Boolean(localError)}
             />
-          </label>
-          <label className="mt-3 block">
-            <span className="mb-1.5 block text-[12px] text-muted">
+          </div>
+          <div className="mt-3">
+            <label htmlFor="custom-attr-value" className="mb-1.5 block text-caption font-medium text-content-muted">
               补充说明（可选，最多 {VALUE_MAX} 字）
-            </span>
-            <input
+            </label>
+            <TFInput
+              id="custom-attr-value"
               value={value}
               onChange={(event) => setValue(event.target.value)}
               maxLength={VALUE_MAX}
               placeholder="例如：想认识会日语的人"
               aria-label="自定义标签补充说明"
-              className="h-11 w-full min-w-0 rounded-2xl border border-line bg-[#F8FAFF] px-3 text-[13px] outline-none focus:ring-2 focus:ring-indigo-200"
+              invalid={Boolean(localError)}
             />
-          </label>
-          <p className="mt-2 text-[11px] leading-4 text-muted">
+          </div>
+          <p className="mt-2 text-caption leading-4 text-content-muted">
             名称会由服务器统一规格化（去空格、大小写不敏感）后判重，重复会提示已存在。
           </p>
-          {localError ? <p className="mt-2 text-[12px] text-red-500">{localError}</p> : null}
-          <SmallButton
-            variant="gradient"
-            className="mt-4 w-full"
+          {localError ? (
+            <p role="alert" className="mt-2 break-words text-caption text-danger-600">
+              {localError}
+            </p>
+          ) : null}
+          <TFButton
+            size="lg"
+            fullWidth
+            className="mt-4"
             disabled={busy}
+            loading={busy}
+            loadingLabel="添加中…"
             onClick={submitCustom}
-            ariaLabel="添加自定义标签"
+            aria-label="添加自定义标签"
           >
-            {busy ? "添加中…" : "添加"}
-          </SmallButton>
+            添加
+          </TFButton>
         </div>
       )}
     </SheetShell>
@@ -640,9 +661,9 @@ function AttributeEditorSheet({
       }
       onClose={onClose}
     >
-      <div className="mt-4 rounded-2xl bg-[#F8F9FF] px-3 py-2.5">
-        <p className="text-[13px] font-medium">{attributeLabel(attribute)}</p>
-        <p className="mt-0.5 text-[11px] text-muted">
+      <div className="mt-4 rounded-row bg-surface-sunken px-3 py-2.5">
+        <p className="text-ui font-medium text-content">{attributeLabel(attribute)}</p>
+        <p className="mt-0.5 text-caption text-content-muted">
           {attribute.source === "SYSTEM" ? `系统标签 · ${attribute.key ?? ""}` : "自定义标签"}
           {attribute.definitionActive === false ? " · 已停用" : ""}
         </p>
@@ -650,35 +671,37 @@ function AttributeEditorSheet({
 
       {isCustom ? (
         <>
-          <label className="mt-4 block">
-            <span className="mb-1.5 block text-[12px] text-muted">
+          <div className="mt-4">
+            <label htmlFor="edit-attr-label" className="mb-1.5 block text-caption font-medium text-content-muted">
               标签名称（最多 {LABEL_MAX} 字）
-            </span>
-            <input
+            </label>
+            {/* `aria-label="标签名称"` / `"补充说明"` are the accessible names the
+                editor's own flow uses; `TFInput` forwards them. */}
+            <TFInput
+              id="edit-attr-label"
               value={label}
               onChange={(event) => setLabel(event.target.value)}
               maxLength={LABEL_MAX}
               aria-label="标签名称"
-              className="h-11 w-full min-w-0 rounded-2xl border border-line bg-[#F8FAFF] px-3 text-[13px] outline-none focus:ring-2 focus:ring-indigo-200"
             />
-          </label>
-          <label className="mt-3 block">
-            <span className="mb-1.5 block text-[12px] text-muted">
+          </div>
+          <div className="mt-3">
+            <label htmlFor="edit-attr-value" className="mb-1.5 block text-caption font-medium text-content-muted">
               补充说明（可选，最多 {VALUE_MAX} 字）
-            </span>
-            <input
+            </label>
+            <TFInput
+              id="edit-attr-value"
               value={value}
               onChange={(event) => setValue(event.target.value)}
               maxLength={VALUE_MAX}
               aria-label="补充说明"
-              className="h-11 w-full min-w-0 rounded-2xl border border-line bg-[#F8FAFF] px-3 text-[13px] outline-none focus:ring-2 focus:ring-indigo-200"
             />
-          </label>
+          </div>
         </>
       ) : null}
 
       <div className="mt-4">
-        <p className="mb-1.5 text-[12px] text-muted">谁能看到这个标签</p>
+        <p className="mb-1.5 text-caption font-medium text-content-muted">谁能看到这个标签</p>
         <VisibilitySelect
           value={visibility}
           onChange={setVisibility}
@@ -687,40 +710,55 @@ function AttributeEditorSheet({
         />
       </div>
 
-      {localError ? <p className="mt-3 text-[12px] text-red-500">{localError}</p> : null}
+      {localError ? (
+        <p role="alert" className="mt-3 break-words text-caption text-danger-600">
+          {localError}
+        </p>
+      ) : null}
 
       <div className="mt-5 flex gap-2">
-        <SmallButton className="flex-1" onClick={onClose} disabled={busy}>
+        <TFButton variant="secondary" className="flex-1" onClick={onClose} disabled={busy}>
           取消
-        </SmallButton>
-        <SmallButton
-          variant="gradient"
+        </TFButton>
+        <TFButton
           className="flex-[2]"
           onClick={submit}
           disabled={busy}
-          ariaLabel="保存标签"
+          loading={busy}
+          loadingLabel="保存中…"
+          aria-label="保存标签"
         >
-          {busy ? "保存中…" : "保存"}
-        </SmallButton>
+          保存
+        </TFButton>
       </div>
 
-      <div className="mt-4 border-t border-line pt-3">
+      {/* In-sheet delete confirmation. Deliberately still a nested confirm rather
+          than a `TFDialog`: the sheet already owns the screen and the focus trap,
+          and stacking two trapped overlays is how a keyboard user gets stuck. */}
+      <div className="mt-4 border-t border-border pt-3">
         {confirmingDelete ? (
-          <div className="rounded-2xl bg-red-50 p-3">
-            <p className="text-[12px] text-red-700">确定删除「{attributeLabel(attribute)}」？</p>
+          <div className="rounded-row bg-danger-50 p-3">
+            <p className="text-caption text-danger-700">确定删除「{attributeLabel(attribute)}」？</p>
             <div className="mt-2 flex gap-2">
-              <SmallButton className="flex-1" onClick={() => setConfirmingDelete(false)} disabled={busy}>
+              <TFButton
+                variant="secondary"
+                className="flex-1"
+                onClick={() => setConfirmingDelete(false)}
+                disabled={busy}
+              >
                 再想想
-              </SmallButton>
-              <SmallButton
-                variant="gradient"
+              </TFButton>
+              <TFButton
+                variant="danger"
                 className="flex-1"
                 onClick={onDelete}
                 disabled={busy}
-                ariaLabel="确认删除标签"
+                loading={busy}
+                loadingLabel="删除中…"
+                aria-label="确认删除标签"
               >
-                {busy ? "删除中…" : "确认删除"}
-              </SmallButton>
+                确认删除
+              </TFButton>
             </div>
           </div>
         ) : (
@@ -728,7 +766,7 @@ function AttributeEditorSheet({
             type="button"
             onClick={() => setConfirmingDelete(true)}
             disabled={busy}
-            className="w-full text-center text-[12px] text-red-500 disabled:opacity-50"
+            className="w-full rounded-control px-3 py-2 text-center text-ui text-danger-600 transition-colors duration-instant hover:bg-danger-50 disabled:opacity-50"
           >
             删除这个标签
           </button>

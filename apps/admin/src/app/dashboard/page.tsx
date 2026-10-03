@@ -309,7 +309,7 @@ function PendingWork({
       <h2 className="tf-section-title">待处理事项</h2>
       <p className="mt-0.5 text-[12px] text-muted">需要管理员决定的内容，全部读取自实时数据库。</p>
 
-      <div className="mt-3 rounded-xl border border-line/60 bg-[#FBFCFE] p-3">
+      <div className="mt-3 rounded-xl border border-line/60 bg-surface p-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[13px] font-medium text-ink">举报队列</p>
@@ -334,7 +334,7 @@ function PendingWork({
         <p className="mt-2 text-[12px] text-muted">队列已清空，当前没有需要立即处置的举报。</p>
       ) : null}
 
-      <div className="mt-2 rounded-xl border border-line/60 bg-[#FBFCFE] p-3">
+      <div className="mt-2 rounded-xl border border-line/60 bg-surface p-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[13px] font-medium text-ink">封禁中账号</p>
@@ -379,7 +379,7 @@ function QuickActions({ can }: { can: (permission: Permission) => boolean }) {
           <Link
             key={action.href}
             href={action.href}
-            className="flex items-center justify-between rounded-xl border border-line/60 bg-[#FBFCFE] px-3 py-2 text-[13px] text-ink transition-colors hover:border-[#D6DAE1] hover:bg-white"
+            className="flex items-center justify-between rounded-xl border border-line/60 bg-surface px-3 py-2 text-[13px] text-ink transition-colors hover:border-[#D6DAE1] hover:bg-white"
           >
             <span>{action.label}</span>
             <span aria-hidden="true" className="text-muted">
@@ -428,7 +428,7 @@ function Row({ children }: { children: React.ReactNode }) {
 /** The one rendering of a machine actor. Never accompanied by an admin id. */
 function SystemBadge() {
   return (
-    <span className="inline-flex items-center rounded-full bg-[#EEF2FF] px-2 py-0.5 text-[11px] font-medium text-[#4338CA]">
+    <span className="inline-flex items-center rounded-full bg-system-wash px-2 py-0.5 text-[11px] font-medium text-system-ink">
       系统 · 自动
     </span>
   );

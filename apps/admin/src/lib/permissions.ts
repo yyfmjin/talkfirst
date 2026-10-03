@@ -35,6 +35,8 @@ export type Permission =
   | "blocks:write"
   | "audit:read"
   | "audit:export"
+  /** Phase O2 — site operations (HTTP access logs). Carries raw IP / UA. */
+  | "ops:read"
   | "settings:read"
   | "settings:write"
   | "admins:read"
@@ -57,6 +59,7 @@ const ALL: readonly Permission[] = [
   "blocks:write",
   "audit:read",
   "audit:export",
+  "ops:read",
   "settings:read",
   "settings:write",
   "admins:read",
@@ -87,6 +90,9 @@ export const ROLE_PERMISSIONS: Record<AdminRole, readonly Permission[]> = {
     "blocks:read",
     "audit:read",
     "settings:read",
+    // Phase O2: mirrors the backend — ANALYST is the only non-super role allowed
+    // to read raw access-log data (IP / User-Agent).
+    "ops:read",
   ],
   CONTENT_MANAGER: [
     "dashboard:read",

@@ -29,13 +29,40 @@ export function trustProxySetting(): number | boolean {
   return Number.isInteger(hops) && hops >= 0 ? hops : false;
 }
 
-/** Strips an IPv4 port or an IPv4-mapped IPv6 prefix, and caps the length. */
+/**
+ * Normalises a socket peer address for storage: strips an IPv4 port or an
+ * IPv4-mapped IPv6 prefix, unwraps a bracketed IPv6 host, folds the IPv6
+ * loopback onto its IPv4 form, and caps the length.
+ *
+ * ## Why `::1` is folded to `127.0.0.1` (Phase O1)
+ *
+ * They are the same interface, and without this the audit trail recorded a
+ * single local client under two different keys depending on which stack the
+ * connection arrived on. Live data showed `::1` in `AccessLog.ip`, so every
+ * localhost query — "what has this client been doing?" — silently missed the
+ * rows written as `127.0.0.1`, and vice versa. Folding them makes IP grouping
+ * correct rather than half-correct.
+ *
+ * The match is anchored to the exact `::1` address, so a real IPv6 client such
+ * as `2001:db8::1` is left untouched.
+ */
 export function normalizeIp(raw: string): string {
   let ip = raw.trim();
+
+  // `[::1]:1234` / `[2001:db8::1]:443` — the bracketed IPv6-with-port form.
+  const bracketed = /^\[([^\]]+)\](?::\d+)?$/.exec(ip);
+  if (bracketed) ip = bracketed[1];
+
   const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(ip);
   if (mapped) ip = mapped[1];
+
   const withPort = /^(\d{1,3}(?:\.\d{1,3}){3}):\d+$/.exec(ip);
   if (withPort) ip = withPort[1];
+
+  // Exact loopback only — never a prefix match, which would also rewrite
+  // addresses like `2001:db8::1`.
+  if (ip === "::1" || ip === "0:0:0:0:0:0:0:1") ip = "127.0.0.1";
+
   return ip.slice(0, 45);
 }
 
