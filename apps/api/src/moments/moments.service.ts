@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { NotificationService } from "../notifications/notification.service";
+import { keysetFilterAfter, keysetNextCursor, keysetOrderBy, parseKeysetCursor } from "../common/keyset-cursor";
 import { PrismaService } from "../prisma/prisma.service";
 import { SafetyService } from "../safety/safety.service";
 
@@ -161,9 +162,32 @@ export class MomentsService {
     });
   }
 
+  /**
+   * FIX (audit P021 / P030) — the feed and the per-user feed both walk with the
+   * shared `(createdAt, id)` keyset cursor in `../common/keyset-cursor` instead
+   * of a `createdAt`-only comparison.
+   *
+   * Two defects lived here:
+   *
+   *  1. The cursor was `createdAt` alone, so two moments written in the same
+   *     millisecond could not be ordered against it: the next page used
+   *     `createdAt: { lt: cursor }` and skipped the other row of the pair.
+   *  2. `nextCursor` was derived from an index into the *pre-filter* array
+   *     (`moments[limit - 1]`) while the returned page was the *filtered* slice,
+   *     so any moment dropped by the visibility filter shifted that index and
+   *     the cursor pointed at a row the client never saw.
+   *
+   * Visibility filtering still applies to the page; because the underlying query
+   * is not visibility-aware, a page can come back shorter than `limit` (the
+   * client sees fewer items and, once the cursor is null, stops) — preferable to
+   * the previous behaviour, which either duplicated or skipped real rows.
+   *
+   * A malformed cursor is now a `400 VALIDATION_ERROR` rather than the
+   * `new Date("garbage")` → `Invalid Date` → `500` it used to produce.
+   */
   async feed(viewerId: string, query: { tab?: string; platform?: string; limit?: number; cursor?: string }) {
     const limit = Math.min(Math.max(Number(query.limit ?? 20) || 20, 1), 50);
-    const cursor = query.cursor ? new Date(query.cursor) : null;
+    const cursor = parseKeysetCursor(query.cursor);
     const tab = (query.tab ?? "recommend").toLowerCase();
     const platform = query.platform ? query.platform.toUpperCase() : null;
     if (platform) this.assertPlatform(platform);
@@ -196,12 +220,12 @@ export class MomentsService {
 
     const moments = await this.prisma.moment.findMany({
       where: {
-        ...(cursor ? { createdAt: { lt: cursor } } : {}),
+        ...keysetFilterAfter(cursor),
         ...(platform ? { platform: platform as never } : {}),
         ...(authorIds ? { userId: { in: authorIds } } : {}),
         ...(blockedIds.size > 0 ? { userId: { notIn: [...blockedIds] } } : {}),
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: keysetOrderBy,
       take: limit + 1,
       include: {
         user: { select: { id: true, nickname: true, avatarUrl: true, countryCode: true } },
@@ -224,7 +248,8 @@ export class MomentsService {
     });
 
     const viewerSetting = await this.prisma.momentSetting.findUnique({ where: { userId: viewerId } });
-    const items = visibleMoments.slice(0, limit).map((moment) => ({
+    const page = visibleMoments.slice(0, limit);
+    const items = page.map((moment) => ({
       id: moment.id,
       userId: moment.userId,
       author: moment.user,
@@ -235,7 +260,7 @@ export class MomentsService {
       videoUrl: this.filterVideo(moment.videoUrl, viewerSetting),
       durationSec: moment.durationSec,
       tags: moment.tags,
-      likeCount: moment.likeCount,
+      likeCount: this.reportedLikeCount(moment),
       commentCount: moment.commentCount,
       liked: moment.likes.length > 0,
       source: moment.source,
@@ -243,8 +268,9 @@ export class MomentsService {
       syncedAt: moment.syncedAt,
       createdAt: moment.createdAt,
     }));
-    const nextCursor =
-      visibleMoments.length > limit ? visibleMoments[limit - 1].createdAt : null;
+    // The cursor is the LAST ITEM OF THE RETURNED PAGE (audit P021) — never an
+    // index into the pre-filter array, and never a row the client did not see.
+    const nextCursor = keysetNextCursor(moments.length, limit, page);
     return { items, nextCursor };
   }
 
@@ -260,16 +286,17 @@ export class MomentsService {
       return { author, setting: { visibleTo }, items: [], nextCursor: null, locked: true };
     }
     const limit = Math.min(Math.max(Number(query.limit ?? 20) || 20, 1), 50);
-    const cursor = query.cursor ? new Date(query.cursor) : null;
+    // Same `(createdAt, id)` cursor as `feed` (audit P021/P030).
+    const cursor = parseKeysetCursor(query.cursor);
     const platform = query.platform ? query.platform.toUpperCase() : null;
     if (platform) this.assertPlatform(platform);
     const moments = await this.prisma.moment.findMany({
       where: {
         userId: authorId,
-        ...(cursor ? { createdAt: { lt: cursor } } : {}),
+        ...keysetFilterAfter(cursor),
         ...(platform ? { platform: platform as never } : {}),
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: keysetOrderBy,
       take: limit + 1,
       include: { likes: { where: { userId: viewerId }, select: { userId: true } } },
     });
@@ -283,7 +310,7 @@ export class MomentsService {
       videoUrl: this.filterVideo(moment.videoUrl, setting),
       durationSec: moment.durationSec,
       tags: moment.tags,
-      likeCount: moment.likeCount,
+      likeCount: this.reportedLikeCount(moment),
       commentCount: moment.commentCount,
       liked: moment.likes.length > 0,
       source: moment.source,
@@ -305,7 +332,8 @@ export class MomentsService {
         syncEnabled: binding.syncEnabled,
       })),
       items,
-      nextCursor: moments.length > limit ? moments[limit - 1].createdAt : null,
+      // Cursor from the last row actually returned (audit P021).
+      nextCursor: keysetNextCursor(moments.length, limit, items),
       locked: false,
     };
   }
@@ -348,7 +376,7 @@ export class MomentsService {
       videoUrl: this.filterVideo(moment.videoUrl, viewerSetting),
       durationSec: moment.durationSec,
       tags: moment.tags,
-      likeCount: moment.likeCount,
+      likeCount: this.reportedLikeCount(moment),
       commentCount: moment.commentCount,
       liked: moment.likes.length > 0,
       source: moment.source,
@@ -606,6 +634,60 @@ export class MomentsService {
     });
   }
 
+  async updateComment(userId: string, momentId: string, commentId: string, newContent: string) {
+    const trimmed = (newContent || "").trim().slice(0, 500);
+    if (!trimmed) {
+      const error = new Error("EMPTY_COMMENT") as Error & { code?: string };
+      error.code = "EMPTY_COMMENT";
+      throw error;
+    }
+    const moment = await this.prisma.moment.findUnique({ where: { id: momentId } });
+    if (!moment) return null;
+    await this.assertCanInteract(userId, moment.userId);
+
+    const comment = await this.prisma.momentComment.findUnique({
+      where: { id: commentId },
+    });
+    if (!comment || comment.momentId !== momentId) {
+      const error = new Error("COMMENT_NOT_FOUND") as Error & { code?: string };
+      error.code = "COMMENT_NOT_FOUND";
+      throw error;
+    }
+    if (comment.userId !== userId) {
+      const error = new Error("COMMENT_FORBIDDEN") as Error & { code?: string };
+      error.code = "COMMENT_FORBIDDEN";
+      throw error;
+    }
+
+    let scan = { blocked: false };
+    try {
+      scan = this.safety.scanText(trimmed);
+    } catch {
+      scan = { blocked: false };
+    }
+    if (scan.blocked) {
+      const error = new Error("CONTENT_BLOCKED") as Error & { code?: string };
+      error.code = "CONTENT_BLOCKED";
+      throw error;
+    }
+
+    const updated = await this.prisma.momentComment.update({
+      where: { id: commentId },
+      data: { content: trimmed },
+      include: {
+        user: { select: { id: true, nickname: true, avatarUrl: true } },
+      },
+    });
+
+    return {
+      id: updated.id,
+      content: updated.content,
+      createdAt: updated.createdAt,
+      user: updated.user,
+      parentCommentId: updated.parentCommentId,
+    };
+  }
+
   async publish(
     userId: string,
     input: { content: string; images?: string[]; videoUrl?: string; tags?: string[] },
@@ -673,11 +755,137 @@ export class MomentsService {
     };
   }
 
+  async updateMoment(
+    userId: string,
+    momentId: string,
+    input: { content?: string; images?: string[]; videoUrl?: string; tags?: string[] },
+  ) {
+    const moment = await this.prisma.moment.findUnique({ where: { id: momentId } });
+    if (!moment) return null;
+    if (moment.userId !== userId) {
+      const error = new Error("MOMENT_FORBIDDEN") as Error & { code?: string };
+      error.code = "MOMENT_FORBIDDEN";
+      throw error;
+    }
+
+    const nextContent = input.content !== undefined ? input.content.trim().slice(0, 2000) : moment.content;
+    const nextImages =
+      input.images !== undefined
+        ? Array.isArray(input.images)
+          ? input.images.filter((url) => typeof url === "string" && /^https?:\/\/\S{4,2000}$/.test(url)).slice(0, 9)
+          : []
+        : moment.images;
+    /**
+     * `""` is an explicit CLEAR, not an invalid value.
+     *
+     * `publish` keeps the same validation, where a rejected URL simply means "no
+     * clip" on a new row. Editing is different: an absent key already means
+     * "leave it alone" (that is what the `!== undefined` branch is for), so the
+     * only way for the client to say "remove the video" is to send something
+     * that is not a URL — and without this branch that request was silently
+     * turned into `null` anyway, which happens to be right, while `videoUrl:
+     * "not a url"` from a client that meant "keep it" would also have wiped it.
+     * Making the empty string the documented clear keeps the two intents apart.
+     */
+    const clearsVideoUrl = input.videoUrl !== undefined && input.videoUrl.trim() === "";
+    const nextVideoUrl =
+      input.videoUrl !== undefined
+        ? clearsVideoUrl
+          ? null
+          : typeof input.videoUrl === "string" && /^https?:\/\/\S{4,2000}$/.test(input.videoUrl)
+            ? input.videoUrl
+            : null
+        : moment.videoUrl;
+
+    if (!nextContent && (!nextImages || nextImages.length === 0) && !nextVideoUrl) {
+      const error = new Error("EMPTY_CONTENT") as Error & { code?: string };
+      error.code = "EMPTY_CONTENT";
+      throw error;
+    }
+
+    if (input.content !== undefined) {
+      let scan = { blocked: false };
+      try {
+        scan = this.safety.scanText(nextContent);
+      } catch {
+        scan = { blocked: false };
+      }
+      if (scan.blocked) {
+        const error = new Error("CONTENT_BLOCKED") as Error & { code?: string };
+        error.code = "CONTENT_BLOCKED";
+        throw error;
+      }
+    }
+
+    const nextTags =
+      input.tags !== undefined
+        ? Array.isArray(input.tags)
+          ? input.tags
+              .filter((tag) => typeof tag === "string")
+              .map((tag) => tag.trim().replace(/^#+/, "").toLowerCase().slice(0, 32))
+              .filter((tag) => tag.length > 0)
+              .slice(0, 10)
+          : []
+        : moment.tags;
+
+    const updated = await this.prisma.moment.update({
+      where: { id: momentId },
+      data: {
+        content: nextContent,
+        images: nextImages,
+        videoUrl: nextVideoUrl,
+        tags: nextTags,
+      },
+    });
+
+    return {
+      id: updated.id,
+      userId: updated.userId,
+      platform: updated.platform,
+      platformName: updated.platformName,
+      content: updated.content,
+      images: updated.images,
+      videoUrl: updated.videoUrl,
+      tags: updated.tags,
+      likeCount: this.reportedLikeCount(updated),
+      commentCount: updated.commentCount,
+      source: updated.source,
+      isDemo: updated.source === "DEMO",
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+    };
+  }
+
   async remove(userId: string, momentId: string) {
     const moment = await this.prisma.moment.findUnique({ where: { id: momentId } });
-    if (!moment || moment.userId !== userId) return null;
+    if (!moment) return null;
+    if (moment.userId !== userId) {
+      const error = new Error("MOMENT_FORBIDDEN") as Error & { code?: string };
+      error.code = "MOMENT_FORBIDDEN";
+      throw error;
+    }
     await this.prisma.moment.delete({ where: { id: momentId } });
     return { deleted: true };
+  }
+
+  /**
+   * FIX (audit P017) — the like count shown for a DEMO row.
+   *
+   * `seedDemoMoments` writes `likeCount: Math.floor(Math.random() * 200) + 20`
+   * on placeholder rows that have no `MomentLike` rows at all. The column is
+   * otherwise an honest denormalised counter maintained with atomic
+   * `increment`/`decrement` inside a transaction, so those fabricated values were
+   * indistinguishable from real engagement to anything that read the number
+   * without also checking `isDemo` — including any future admin statistic.
+   *
+   * Demo content is placeholder, and a placeholder must not borrow the authority
+   * of a real counter: it reports `0`. `commentCount` is NOT zeroed, because a
+   * DEMO row can legitimately accumulate real comments from real users, and those
+   * are counted truthfully. New DEMO rows are also seeded with zero (see
+   * `seedDemoMoments`), so the two halves of the fix agree.
+   */
+  private reportedLikeCount(moment: { source: string; likeCount: number }): number {
+    return moment.source === "DEMO" ? 0 : moment.likeCount;
   }
 
   private filterContent(content: string, filterSensitive: boolean) {
@@ -776,8 +984,21 @@ export class MomentsService {
           content: row.content,
           images: row.images,
           tags: row.tags,
-          likeCount: Math.floor(Math.random() * 200) + 20,
-          commentCount: Math.floor(Math.random() * 40) + 2,
+          /**
+           * FIX (audit P017) — zero, not a random number.
+           *
+           * These used to be `Math.floor(Math.random() * 200) + 20` and
+           * `Math.floor(Math.random() * 40) + 2`. `likeCount`/`commentCount` are
+           * otherwise honest denormalised counters maintained with atomic
+           * `increment`/`decrement` inside a transaction, so seeded random values
+           * made a placeholder row indistinguishable from genuinely engaged
+           * content to every reader that did not also check `isDemo` — including
+           * any future aggregate. `reportedLikeCount` additionally clamps the
+           * read side, so rows seeded before this change stop reporting fiction
+           * too.
+           */
+          likeCount: 0,
+          commentCount: 0,
           source: "DEMO",
           syncedAt: new Date(now - row.hoursAgo * 3600 * 1000),
           createdAt: new Date(now - row.hoursAgo * 3600 * 1000),

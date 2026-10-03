@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import * as bcrypt from "bcryptjs";
-import { AuthService } from "./auth.service";
+import { makeAuthService } from "./auth-service.fixture";
 import { VerificationService } from "./verification.service";
 import { SecurityEventService } from "../security/security-event.service";
 
@@ -57,7 +57,12 @@ function firstEvent(record: Recorder): RecordedEvent {
 }
 
 function makeAuth(overrides: Record<string, unknown> = {}) {
-  const prisma = {
+  const prisma: {
+    user: Record<string, jest.Mock>;
+    refreshToken: Record<string, jest.Mock>;
+    $transaction: jest.Mock;
+    [key: string]: unknown;
+  } = {
     user: {
       findUnique: jest.fn().mockResolvedValue(user),
       create: jest.fn().mockResolvedValue(user),
@@ -69,12 +74,22 @@ function makeAuth(overrides: Record<string, unknown> = {}) {
       update: jest.fn().mockResolvedValue({}),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
-    $transaction: jest.fn(async (ops: unknown[]) => Promise.all(ops as Promise<unknown>[])),
+    // Supports both Prisma forms: the array form (changePassword) and the
+    // interactive callback form (rotateRefresh). Wired after construction so the
+    // callback can close over `prisma` without a circular type.
+    $transaction: jest.fn(),
     ...overrides,
   };
+  prisma.$transaction.mockImplementation(async (arg: unknown) =>
+    typeof arg === "function"
+      ? (arg as (tx: unknown) => Promise<unknown>)(prisma)
+      : Promise.all(arg as Promise<unknown>[]),
+  );
   const jwtService = { signAsync: jest.fn().mockResolvedValue("access-token") };
   const record = makeRecorder();
-  const service = new AuthService(prisma as never, jwtService as never, { record } as never);
+  const service = makeAuthService(prisma as never, jwtService as never, {
+    securityEvents: { record },
+  });
   return { service, prisma, record };
 }
 
@@ -170,10 +185,10 @@ describe("AuthService — 登录事件", () => {
         }),
       },
     } as never);
-    const failing = new AuthService(
+    const failing = makeAuthService(
       prisma as never,
       { signAsync: jest.fn().mockResolvedValue("access-token") } as never,
-      failingEvents,
+      { securityEvents: failingEvents },
     );
 
     await expect(failing.login(LOGIN_DTO)).resolves.toMatchObject({

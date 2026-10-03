@@ -1,4 +1,5 @@
-import { AuthService } from "./auth.service";
+// Aliased: this file already has a local `makeAuthService` of its own.
+import { makeAuthService as buildAuthService } from "./auth-service.fixture";
 import * as bcrypt from "bcryptjs";
 
 jest.mock("bcryptjs", () => ({
@@ -38,7 +39,7 @@ function makeAuthService(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
   const jwtService = { signAsync: jest.fn().mockResolvedValue("access-token") };
-  const service = new AuthService(prisma as never, jwtService as never);
+  const service = buildAuthService(prisma as never, jwtService as never);
   return { service, prisma };
 }
 

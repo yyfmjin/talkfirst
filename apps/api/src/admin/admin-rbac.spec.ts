@@ -1,9 +1,9 @@
 import { ForbiddenException, BadRequestException } from "@nestjs/common";
 import type { ExecutionContext } from "@nestjs/common";
-import type { Reflector } from "@nestjs/core";
 import type { AdminRole } from "@prisma/client";
 
 import { AdminGuard, type AdminRequest, type ResolvedAdmin } from "./admin.guard";
+import { reflectorReturning } from "./test-reflector";
 import { PermissionGuard } from "./permission.guard";
 import { PERMISSION_METADATA_KEY } from "./require-permission.decorator";
 import {
@@ -35,10 +35,6 @@ function httpContext(request: Record<string, unknown>): ExecutionContext {
     getHandler: () => () => undefined,
     getClass: () => class {},
   } as unknown as ExecutionContext;
-}
-
-function reflectorReturning(permission: string | undefined): Reflector {
-  return { getAllAndOverride: jest.fn(() => permission) } as unknown as Reflector;
 }
 
 const admin = (over: Partial<ResolvedAdmin> = {}): ResolvedAdmin => ({
@@ -126,10 +122,35 @@ describe("RBAC — permission matrix", () => {
 // ---------------------------------------------------------------------------
 
 describe("PermissionGuard — capability enforcement", () => {
-  it("9. no declared permission -> passes (AdminGuard already vetted identity)", () => {
+  it("9. no declared permission -> 403 PERMISSION_UNDECLARED (fail-closed)", () => {
+    // FIX (Phase O0). This case used to assert `canActivate(...) === true` under
+    // the title "no declared permission -> passes (AdminGuard already vetted
+    // identity)". That was the PRE-audit-P006 behaviour: the guard returned
+    // `true` when no permission was declared, so a new admin route that forgot
+    // `@RequirePermission` was silently open to every role, read-only ones
+    // included. `permission.guard.ts:57-66` now refuses in that case, and its
+    // doc comment names the change explicitly ("Fail-closed (FIX, audit P006)").
+    //
+    // The old assertion could never have detected the regression it was supposed
+    // to guard, because the shared `reflectorReturning` stub answered every
+    // metadata key alike: `isPublic` came back truthy and the guard returned at
+    // `if (isPublic) return true` before permission resolution was reached. The
+    // test therefore passed against BOTH the old and the new guard, which is
+    // exactly why the stale expectation went unnoticed. With the stub corrected
+    // to answer only `PERMISSION_METADATA_KEY`, the fail-closed path is
+    // reachable and pinned here.
     const guard = new PermissionGuard(reflectorReturning(undefined));
     const request: AdminRequest = { admin: admin({ role: "ANALYST" }) };
-    expect(guard.canActivate(httpContext(request))).toBe(true);
+    try {
+      guard.canActivate(httpContext(request));
+      throw new Error("expected ForbiddenException");
+    } catch (error) {
+      expect(error).toBeInstanceOf(ForbiddenException);
+      const body = (error as ForbiddenException).getResponse() as {
+        error: { code: string };
+      };
+      expect(body.error.code).toBe("PERMISSION_UNDECLARED");
+    }
   });
 
   it("10. role lacking the permission -> 403 PERMISSION_DENIED", () => {

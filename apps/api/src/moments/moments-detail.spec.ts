@@ -151,7 +151,7 @@ describe("MomentsService.getMoment", () => {
       videoUrl: "v.mp4",
       durationSec: 42,
       tags: ["生活"],
-      likeCount: 7,
+      likeCount: 0,
       commentCount: 2,
       liked: true,
       source: "DEMO",

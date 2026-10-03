@@ -178,11 +178,37 @@ enum ReviewStatus {
   HIDDEN
 }
 
+/**
+ * A third-party identity provider a member can sign in with.
+ *
+ * Only Google is wired up. The enum exists rather than a free-text column so a
+ * second provider is a migration that adds a value — not a string that can drift
+ * into three spellings in the database, which is what happened to
+ * `VerificationCode.purpose` and is why that one carries a comment about it.
+ */
+enum OAuthProvider {
+  GOOGLE
+}
+
 model User {
   id            String     @id @default(uuid()) @db.Uuid
-  // Emails are stored lowercase (normalized in the service layer).
+  // Emails are stored lowercase (normalized in the service layer), and remain
+  // REQUIRED: every sign-up path needs one. Phone-only accounts were considered
+  // and deferred, so this stays non-null and the "at least one identifier"
+  // invariant does not exist yet.
   email         String     @unique
-  passwordHash  String
+  /**
+   * Nullable because a Google-only account has no password to store.
+   *
+   * This used to be `String` and every consumer assumed it. Writing a random
+   * hash for an OAuth account was the tempting shortcut and is wrong: it is a
+   * fabricated credential — `bcrypt.compare` would run against it on every login
+   * attempt, and nothing downstream could tell "this account has no password"
+   * from "this account has a password nobody knows". `NULL` states the fact, and
+   * the three readers that assumed otherwise (`login`, `changePassword`,
+   * `resetPassword`) now branch on it explicitly.
+   */
+  passwordHash  String?
   emailVerified Boolean    @default(false)
   status        UserStatus @default(ACTIVE)
 
@@ -210,6 +236,8 @@ model User {
   momentLikes              MomentLike[]
   momentComments           MomentComment[]
   refreshTokens            RefreshToken[]
+  // Third-party sign-in identities (Google). One user may hold several.
+  oauthIdentities          OAuthIdentity[]
   exchangeRequestsSent     ExchangeRequest[]       @relation("ExchangeSent")
   exchangeRequestsReceived ExchangeRequest[]       @relation("ExchangeReceived")
   sharesGranted            SharedSocialAccount[]   @relation("SharesGranted")
@@ -288,12 +316,58 @@ model RefreshToken {
   tokenHash String    @unique
   expiresAt DateTime
   revokedAt DateTime?
+  // SEC-003-B reuse detection. Set only when this token was revoked *because it
+  // was rotated* into a successor. A token revoked any other way (logout,
+  // password change, admin revoke) keeps this NULL. Replaying a token that has
+  // both `revokedAt` and `replacedById` is therefore a reuse signal; replaying a
+  // deliberately-revoked one is just an ordinary invalid refresh token.
+  replacedById String?  @db.Uuid
   userAgent String?
   ip        String?
   createdAt DateTime  @default(now())
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+/**
+ * A member's third-party sign-in identity — "this Google account is this user".
+ *
+ * ## Why a table and not `User.googleId`
+ *
+ * A second provider would otherwise be another nullable column plus another
+ * partial index, and the login query would grow a branch per provider. One row
+ * per (provider, account) keeps both the lookup and the schema flat.
+ *
+ * ## Why the lookup key is `(provider, providerUserId)` and never the e-mail
+ *
+ * The provider's `sub` claim is the stable identifier. The e-mail is a
+ * *snapshot* of what the provider told us at sign-in: it can change at the
+ * provider, and a member may later change their TalkFirst address. Matching on
+ * it would mean a provider-side address change silently logs someone into the
+ * wrong account, or locks them out of their own. `email` is therefore stored for
+ * support and display only.
+ */
+model OAuthIdentity {
+  id             String        @id @default(uuid()) @db.Uuid
+  userId         String        @db.Uuid
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider       OAuthProvider
+  // The provider's own immutable subject claim (`sub`). 255 chars because a
+  // provider is free to choose its format and Google's is a 21-digit string.
+  providerUserId String        @db.VarChar(255)
+  // Snapshot of the address the provider reported, lowercased. Display/support
+  // only — never a lookup key (see the model comment).
+  email          String?       @db.VarChar(320)
+  // True only when the provider itself asserted the address is verified. A false
+  // here must never be treated as a verified address; the account resolution
+  // rule refuses to create or link on one.
+  emailVerified  Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  lastLoginAt    DateTime?
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
 }
 
 model Interest {
@@ -880,6 +954,17 @@ model AccessLog {
   @@index([userId, createdAt])
   @@index([path, createdAt])
   @@index([statusCode, createdAt])
+  // Phase O2 — the ops console's filters and its one correlation key.
+  // `requestId` is the ONLY link between an access row and the security event
+  // raised for the same request (`SecurityEvent.requestId`), and it had no index,
+  // so "what else happened on this request?" was a sequential scan.
+  @@index([requestId])
+  // `deviceHash` is indexed on `SecurityEvent` but was not indexed here, so
+  // device correlation over access history could not use an index either.
+  @@index([deviceHash, createdAt])
+  @@index([riskLevel, createdAt])
+  @@index([isAdmin, createdAt])
+  @@index([authenticated, createdAt])
 }
 
 /// One row per distinct device identifier seen by the platform.

@@ -1,4 +1,4 @@
-import { AuthService } from "./auth.service";
+import { makeAuthService } from "./auth-service.fixture";
 import { VerificationService } from "./verification.service";
 import { sha256Hex } from "../common/crypto";
 
@@ -116,7 +116,20 @@ describe("SEC-005 — sendCode 生命周期", () => {
 
   it("60 秒冷却内重复发送 -> 429 EMAIL_VERIFICATION_RATE_LIMITED，且不创建新验证码", async () => {
     const { service, prisma, mail, record } = makeVerification();
-    prisma.verificationCode.findFirst.mockResolvedValue({ createdAt: new Date() });
+    /**
+     * Post-audit: `sendCode` now first looks for an UNSPENT code and, if one
+     * exists, returns it instead of spending a slot from the cooldown/hourly
+     * budget. The cooldown branch is therefore only reached when there is no
+     * outstanding code — so the first `findFirst` (outstanding check) must
+     * return null, and the second (cooldown check inside `assertSendAllowed`)
+     * must return a recently-consumed row whose `createdAt` falls inside the
+     * 60-second window.
+     */
+    prisma.verificationCode.findFirst
+      .mockResolvedValueOnce(null)  // 1st call: outstanding check → no live code
+      .mockResolvedValueOnce({      // 2nd call: cooldown check → 10s ago
+        createdAt: new Date(Date.now() - 10_000),
+      });
 
     const result = await refusal(service.sendCode("alice@example.com"));
 
@@ -125,6 +138,32 @@ describe("SEC-005 — sendCode 生命周期", () => {
     expect(prisma.verificationCode.create).not.toHaveBeenCalled();
     expect(mail.sendEmailVerificationCode).not.toHaveBeenCalled();
     expect(JSON.stringify(record.mock.calls)).toContain("EMAIL_VERIFICATION_RATE_LIMITED");
+  });
+
+  it("已有未消费且未过期的验证码 -> 不重发、不消耗配额、不返回验证码", async () => {
+    /**
+     * The behaviour that makes the password-reset flow survivable: a failed
+     * attempt calls `sendCode` again, and re-sending would otherwise burn the
+     * 5-per-hour budget so that five mistyped codes locked the address out for an
+     * hour. The code itself is unrecoverable (only its hash is stored), so the
+     * caller gets the remaining TTL and nothing else.
+     */
+    const { service, prisma, mail } = makeVerification();
+    const expiresAt = new Date(Date.now() + 7 * 60 * 1000);
+    prisma.verificationCode.findFirst.mockResolvedValue({
+      createdAt: new Date(),
+      consumedAt: null,
+      expiresAt,
+    });
+
+    const result = await service.sendCode("alice@example.com", "RESET");
+
+    expect(result.sent).toBe(true);
+    expect(result.devCode).toBeUndefined();
+    expect(result.expiresInSeconds).toBeGreaterThan(0);
+    expect(result.expiresInSeconds).toBeLessThanOrEqual(7 * 60);
+    expect(prisma.verificationCode.create).not.toHaveBeenCalled();
+    expect(mail.sendEmailVerificationCode).not.toHaveBeenCalled();
   });
 
   it("每小时上限 -> 429，且不创建新验证码", async () => {
@@ -140,7 +179,13 @@ describe("SEC-005 — sendCode 生命周期", () => {
 
   it("限流事件的 detail 只含脱敏信息，不含明文邮箱", async () => {
     const { service, prisma, record } = makeVerification();
-    prisma.verificationCode.findFirst.mockResolvedValue({ createdAt: new Date() });
+    // See the cooldown test above: an outstanding code would take the new
+    // short-circuit path instead of triggering the rate-limit event.
+    prisma.verificationCode.findFirst
+      .mockResolvedValueOnce(null)  // 1st call: outstanding check → no live code
+      .mockResolvedValueOnce({      // 2nd call: cooldown check → 10s ago
+        createdAt: new Date(Date.now() - 10_000),
+      });
 
     await refusal(service.sendCode("alice@example.com"));
 
@@ -289,7 +334,7 @@ describe("SEC-005 — markEmailVerified 幂等且不抛 P2025", () => {
         findUnique: jest.fn(async () => null),
       },
     };
-    const service = new AuthService(prisma as never, {} as never, undefined);
+    const service = makeAuthService(prisma as never, {} as never);
     await expect(service.markEmailVerified("ghost@example.com")).resolves.toBeNull();
     expect(prisma.user.updateMany).toHaveBeenCalledWith({
       where: { email: "ghost@example.com" },

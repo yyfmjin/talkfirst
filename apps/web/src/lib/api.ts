@@ -27,6 +27,18 @@ type RequestOptions = {
 let refreshPromise: Promise<boolean> | null = null;
 
 /**
+ * Fired when a request comes back 401 *after* the one refresh retry, which is
+ * the only honest definition of "the session is gone".
+ *
+ * This is the one place that knows it, and `SessionProvider` is the one place
+ * that reacts — otherwise every protected page would have to repeat the same
+ * "if (error.message.includes("Unauthorized")) router.replace("/login")" and
+ * the pages that forgot it would keep offering a 重试 button that can never
+ * succeed. Exported so the listener and the dispatcher cannot drift apart.
+ */
+export const UNAUTHORIZED_EVENT = "tf:unauthorized";
+
+/**
  * Single-flight access-token refresh.
  *
  * Exported because the chat socket needs the same guarantee: concurrent
@@ -76,6 +88,17 @@ async function doFetch<T>(path: string, options: RequestOptions): Promise<T> {
     }
   }
 
+  /*
+   * A 401 that survived the refresh retry (or arrived on the retry itself) ends
+   * the session. Broadcasting it here keeps that decision out of ~10 pages: the
+   * pages only know they got an error, this layer knows the refresh token is
+   * dead too. The SSR guard is required because client components are also
+   * rendered on the server, where `window` does not exist.
+   */
+  if (response.status === 401 && typeof window !== "undefined") {
+    window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+  }
+
   if (!response.ok || !envelope?.success) {
     throw new ApiRequestError(
       envelope?.error ?? {
@@ -90,4 +113,24 @@ async function doFetch<T>(path: string, options: RequestOptions): Promise<T> {
 
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   return doFetch<T>(path, options);
+}
+
+/**
+ * Which ways the signed-in member can enter their account.
+ *
+ * `hasPassword: false` means the account was created through Google sign-in and
+ * has no password at all. That distinction is not cosmetic: `POST /auth/password`
+ * asks for the CURRENT password only when one exists, so a screen that always
+ * demands it makes setting a first password impossible — which is exactly the dead
+ * end this endpoint exists to remove.
+ *
+ * Never carries a credential — booleans and provider names only.
+ */
+export type AuthMethods = {
+  hasPassword: boolean;
+  providers: string[];
+};
+
+export async function fetchAuthMethods(): Promise<AuthMethods> {
+  return doFetch<AuthMethods>("/auth/oauth/me/methods", {});
 }

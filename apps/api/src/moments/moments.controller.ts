@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -13,8 +14,9 @@ import {
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { Throttle } from "@nestjs/throttler";
-import { IsBoolean, IsIn, IsOptional, IsString, IsUUID, MaxLength } from "class-validator";
+import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsOptional, IsString, IsUUID, MaxLength } from "class-validator";
 import { CurrentUser, type AuthUser } from "../auth/current-user.decorator";
+import { UuidParamPipe } from "../common/uuid-param.pipe";
 import { ValidationPipe } from "../common/validation.pipe";
 import { MomentsService } from "./moments.service";
 
@@ -83,12 +85,31 @@ class CommentDto {
   parentCommentId?: string;
 }
 
+/**
+ * The composer's wire format.
+ *
+ * FIX (audit P032) — this DTO already existed but was never wired to the route,
+ * which took `@Body() raw: unknown` and hand-checked a single field. That meant
+ * the one write path users are most exposed to was the only one on the whole API
+ * with no `whitelist` / `forbidNonWhitelisted`, and `normalizeStringArray` had to
+ * re-implement array filtering that `class-validator` already does.
+ *
+ * `content` is `@IsString()` but NOT `@MinLength(1)`: a media-only post is a
+ * documented product case (see `MomentsService.publish`, which rejects the
+ * request only when content, images AND videoUrl are all empty). Keeping the
+ * "is this post empty" rule in the service means the two cannot disagree.
+ */
 class ComposeDto {
   @IsString()
   @MaxLength(2000)
   content!: string;
 
+  // `ArrayMaxSize(9)` mirrors the service's own `.slice(0, 9)`, so an
+  // over-long list is a clear 400 instead of being silently truncated.
   @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMaxSize(9)
   images?: string[];
 
   @IsOptional()
@@ -96,14 +117,50 @@ class ComposeDto {
   @MaxLength(2000)
   videoUrl?: string;
 
+  // Mirrors the service's `.slice(0, 10)`.
   @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMaxSize(10)
   tags?: string[];
 }
 
-function normalizeStringArray(value: unknown): string[] | undefined {
-  if (value === undefined) return undefined;
-  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === "string");
-  return undefined;
+class UpdateCommentDto {
+  @IsString()
+  @MaxLength(500)
+  content!: string;
+}
+
+class UpdateMomentDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  content?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMaxSize(9)
+  images?: string[];
+
+  /**
+   * An empty string is the documented way to REMOVE the clip: an absent key
+   * means "leave it alone" (`MomentsService.updateMoment` branches on
+   * `undefined`), so clearing needs a value, and `""` is one `@IsString()`
+   * accepts. A non-empty value must be an http(s) URL, which the service
+   * validates — this DTO deliberately does not add a second URL rule that could
+   * disagree with it.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  videoUrl?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMaxSize(10)
+  tags?: string[];
 }
 
 function asError(code: string, message: string) {
@@ -132,27 +189,49 @@ export class MomentsController {
   }
 
   @Get("feed")
-  feed(
+  async feed(
     @CurrentUser() user: AuthUser,
     @Query("tab") tab?: string,
     @Query("platform") platform?: string,
     @Query("limit") limit?: string,
     @Query("cursor") cursor?: string,
   ) {
+    /**
+     * FIX (audit P030), plus a latent bug found while fixing it.
+     *
+     * The original body was
+     *     try { return this.moments.feed(...).then(...) } catch { throw ... }
+     * which cannot catch anything: `feed()` is async, so it returns a *promise*
+     * and the `try` block has already completed by the time it rejects. Every
+     * domain error was therefore swallowed into a generic
+     * `UNKNOWN_PLATFORM` 403 — including the malformed-cursor case, which is a
+     * client error, not a platform problem. Awaiting the call makes the `catch`
+     * reachable and lets each error keep its own status.
+     */
     try {
-      return this.moments.feed(user.id, { tab, platform, limit: Number(limit ?? 20), cursor }).then((data) => ({
-        success: true as const,
-        data,
-      }));
-    } catch {
-      throw new ForbiddenException(asError("UNKNOWN_PLATFORM", "Unknown platform"));
+      const data = await this.moments.feed(user.id, {
+        tab,
+        platform,
+        limit: Number(limit ?? 20),
+        cursor,
+      });
+      return { success: true as const, data };
+    } catch (error) {
+      const code = (error as { code?: string }).code;
+      if (code === "INVALID_CURSOR") {
+        throw new BadRequestException(asError("VALIDATION_ERROR", "cursor is not a cursor issued by this API"));
+      }
+      if (code === "UNKNOWN_PLATFORM") {
+        throw new BadRequestException(asError("UNKNOWN_PLATFORM", "Unknown platform"));
+      }
+      throw error;
     }
   }
 
   @Get("user/:id")
   async userMoments(
     @CurrentUser() user: AuthUser,
-    @Param("id") id: string,
+    @Param("id", UuidParamPipe) id: string,
     @Query("platform") platform?: string,
     @Query("limit") limit?: string,
     @Query("cursor") cursor?: string,
@@ -169,7 +248,14 @@ export class MomentsController {
       return { success: true as const, data };
     } catch (error) {
       if ((error as { status?: number }).status === 404) throw error;
-      throw new ForbiddenException(asError("UNKNOWN_PLATFORM", "Unknown platform"));
+      const code = (error as { code?: string }).code;
+      if (code === "INVALID_CURSOR") {
+        throw new BadRequestException(asError("VALIDATION_ERROR", "cursor is not a cursor issued by this API"));
+      }
+      if (code === "UNKNOWN_PLATFORM") {
+        throw new BadRequestException(asError("UNKNOWN_PLATFORM", "Unknown platform"));
+      }
+      throw error;
     }
   }
 
@@ -232,7 +318,7 @@ export class MomentsController {
 
   @Post(":id/like")
   @Throttle({ default: { limit: 60, ttl: 60000 } })
-  async like(@CurrentUser() user: AuthUser, @Param("id") id: string) {
+  async like(@CurrentUser() user: AuthUser, @Param("id", UuidParamPipe) id: string) {
     try {
       const data = await this.moments.toggleLike(user.id, id);
       if (!data) {
@@ -251,7 +337,7 @@ export class MomentsController {
   @Get(":id/comments")
   async comments(
     @CurrentUser() user: AuthUser,
-    @Param("id") id: string,
+    @Param("id", UuidParamPipe) id: string,
     @Query("page") page?: string,
     @Query("pageSize") pageSize?: string,
     // PC-2.4 — `limit` was this route's page size before it was paginated. It is
@@ -278,7 +364,7 @@ export class MomentsController {
   @Throttle({ default: { limit: 30, ttl: 60000 } })
   async addComment(
     @CurrentUser() user: AuthUser,
-    @Param("id") id: string,
+    @Param("id", UuidParamPipe) id: string,
     @Body(new ValidationPipe()) dto: CommentDto,
   ) {
     try {
@@ -301,17 +387,20 @@ export class MomentsController {
 
   @Post()
   @Throttle({ default: { limit: 20, ttl: 60000 } })
-  async compose(@CurrentUser() user: AuthUser, @Body() raw: unknown) {
-    const dto = (raw ?? {}) as ComposeDto;
-    if (typeof dto.content !== "string") {
-      throw new ForbiddenException(asError("EMPTY_CONTENT", "Content is empty"));
-    }
+  async compose(
+    @CurrentUser() user: AuthUser,
+    // FIX (audit P032): the same `ValidationPipe` every other write path uses.
+    // This route alone took `@Body() raw: unknown` and hand-checked one field, so
+    // an unknown property (or a non-array `images`) bypassed the whitelist that
+    // the rest of the API enforces.
+    @Body(new ValidationPipe()) dto: ComposeDto,
+  ) {
     try {
       const data = await this.moments.publish(user.id, {
         content: dto.content,
-        images: normalizeStringArray(dto.images),
-        videoUrl: typeof dto.videoUrl === "string" ? dto.videoUrl : undefined,
-        tags: normalizeStringArray(dto.tags),
+        images: dto.images,
+        videoUrl: dto.videoUrl,
+        tags: dto.tags,
       });
       return { success: true as const, data };
     } catch (error) {
@@ -326,7 +415,7 @@ export class MomentsController {
   }
 
   @Get(":id")
-  async moment(@CurrentUser() user: AuthUser, @Param("id") id: string) {
+  async moment(@CurrentUser() user: AuthUser, @Param("id", UuidParamPipe) id: string) {
     try {
       const data = await this.moments.getMoment(user.id, id);
       if (!data) {
@@ -341,6 +430,39 @@ export class MomentsController {
       throw error;
     }
   }
+  @Patch(":id/comments/:commentId")
+  async updateComment(
+    @CurrentUser() user: AuthUser,
+    @Param("id", UuidParamPipe) id: string,
+    @Param("commentId", UuidParamPipe) commentId: string,
+    @Body(new ValidationPipe()) dto: UpdateCommentDto,
+  ) {
+    try {
+      const data = await this.moments.updateComment(user.id, id, commentId, dto.content);
+      if (!data) throw new NotFoundException(asError("MOMENT_NOT_FOUND", "Moment not found"));
+      return { success: true as const, data };
+    } catch (error) {
+      if ((error as { status?: number }).status === 404) throw error;
+      const code = (error as { code?: string }).code;
+      if (code === "MOMENT_LOCKED") {
+        throw new ForbiddenException(asError("MOMENT_LOCKED", "This moment is not visible to you"));
+      }
+      if (code === "COMMENT_NOT_FOUND") {
+        throw new NotFoundException(asError("COMMENT_NOT_FOUND", "Comment not found"));
+      }
+      if (code === "COMMENT_FORBIDDEN") {
+        throw new ForbiddenException(asError("COMMENT_FORBIDDEN", "You can only edit your own comment"));
+      }
+      if (code === "EMPTY_COMMENT") {
+        throw new ForbiddenException(asError("EMPTY_COMMENT", "Comment is empty"));
+      }
+      if (code === "CONTENT_BLOCKED") {
+        throw new ForbiddenException(asError("CONTENT_BLOCKED", "Comment contains blocked words"));
+      }
+      throw error;
+    }
+  }
+
   /**
    * PC-2.4 — the owner deletes their own comment. Declared before `@Delete(":id")`
    * so the two-segment route is never shadowed, and mapped onto the codes the
@@ -349,7 +471,11 @@ export class MomentsController {
    * thread does.
    */
   @Delete(":id/comments/:commentId")
-  async removeComment(@CurrentUser() user: AuthUser, @Param("id") id: string, @Param("commentId") commentId: string) {
+  async removeComment(
+    @CurrentUser() user: AuthUser,
+    @Param("id", UuidParamPipe) id: string,
+    @Param("commentId", UuidParamPipe) commentId: string,
+  ) {
     try {
       const data = await this.moments.deleteComment(user.id, id, commentId);
       if (!data) throw new NotFoundException(asError("MOMENT_NOT_FOUND", "Moment not found"));
@@ -370,12 +496,49 @@ export class MomentsController {
     }
   }
 
-  @Delete(":id")
-  async remove(@CurrentUser() user: AuthUser, @Param("id") id: string) {
-    const data = await this.moments.remove(user.id, id);
-    if (!data) {
-      throw new NotFoundException(asError("MOMENT_NOT_FOUND", "Moment not found"));
+  @Patch(":id")
+  async updateMoment(
+    @CurrentUser() user: AuthUser,
+    @Param("id", UuidParamPipe) id: string,
+    @Body(new ValidationPipe()) dto: UpdateMomentDto,
+  ) {
+    try {
+      const data = await this.moments.updateMoment(user.id, id, dto);
+      if (!data) {
+        throw new NotFoundException(asError("MOMENT_NOT_FOUND", "Moment not found"));
+      }
+      return { success: true as const, data };
+    } catch (error) {
+      if ((error as { status?: number }).status === 404) throw error;
+      const code = (error as { code?: string }).code;
+      if (code === "MOMENT_FORBIDDEN") {
+        throw new ForbiddenException(asError("MOMENT_FORBIDDEN", "You can only edit your own moment"));
+      }
+      if (code === "EMPTY_CONTENT") {
+        throw new ForbiddenException(asError("EMPTY_CONTENT", "Moment cannot be empty"));
+      }
+      if (code === "CONTENT_BLOCKED") {
+        throw new ForbiddenException(asError("CONTENT_BLOCKED", "Moment contains blocked words"));
+      }
+      throw error;
     }
-    return { success: true as const, data };
+  }
+
+  @Delete(":id")
+  async remove(@CurrentUser() user: AuthUser, @Param("id", UuidParamPipe) id: string) {
+    try {
+      const data = await this.moments.remove(user.id, id);
+      if (!data) {
+        throw new NotFoundException(asError("MOMENT_NOT_FOUND", "Moment not found"));
+      }
+      return { success: true as const, data };
+    } catch (error) {
+      if ((error as { status?: number }).status === 404) throw error;
+      const code = (error as { code?: string }).code;
+      if (code === "MOMENT_FORBIDDEN") {
+        throw new ForbiddenException(asError("MOMENT_FORBIDDEN", "You can only delete your own moment"));
+      }
+      throw error;
+    }
   }
 }

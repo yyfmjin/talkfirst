@@ -978,3 +978,226 @@ for (const viewport of PC254_DIALOG_VIEWPORTS) {
     });
   });
 }
+
+/**
+ * 发布之后的管理：修改 / 删除动态，修改评论。
+ *
+ * These are the three writes a member makes about content they already
+ * published, and until this phase none of them had a control in the member app:
+ * the routes existed, `MomentEditDialog` was imported and never rendered, and
+ * the comment editor was reachable only through a handler the detail screen
+ * never passed. So the assertions that matter are the ones a purely local editor
+ * cannot satisfy — the row in PostgreSQL, and the same value after a reload.
+ *
+ * Ownership is checked in both directions: the owner gets the menu items, and a
+ * stranger gets exactly the report item she had before.
+ */
+
+const MGMT_OWN_MOMENT_TEXT = "PW 管理：卡罗尔自己的动态";
+const MGMT_EDITED_TEXT = "PW 管理：修改后的正文";
+const MGMT_OWN_COMMENT_TEXT = "PW 管理：卡罗尔自己的评论";
+const MGMT_EDITED_COMMENT_TEXT = "PW 管理：修改后的评论";
+
+/** Carol's own moment: the row the owner-only actions are supposed to act on. */
+async function seedOwnMoment(content = MGMT_OWN_MOMENT_TEXT) {
+  const carol = await userId(EMAILS.carol);
+  return prisma.moment.create({
+    data: {
+      userId: carol,
+      platform: "TALKFIRST",
+      platformName: "TalkFirst",
+      content,
+      source: "USER",
+    },
+    select: { id: true },
+  });
+}
+
+/**
+ * Carol's own comment on Bob's moment, so the thread has a row she may edit.
+ * `commentCount` is incremented the way `MomentsService.addComment` does — the
+ * counter means top-level comments, and a helper that forgot it would make the
+ * screen disagree with the API for reasons that have nothing to do with editing.
+ */
+async function seedOwnComment(momentIdValue: string, content = MGMT_OWN_COMMENT_TEXT) {
+  const carol = await userId(EMAILS.carol);
+  const comment = await prisma.momentComment.create({
+    data: { momentId: momentIdValue, userId: carol, content },
+    select: { id: true },
+  });
+  await prisma.moment.update({ where: { id: momentIdValue }, data: { commentCount: { increment: 1 } } });
+  return comment;
+}
+
+test("作者在详情页可以修改自己的动态：保存后界面与数据库都是新正文，刷新仍在", async ({ page }) => {
+  const own = await seedOwnMoment();
+  await loginAndLand(page, EMAILS.carol);
+  await page.goto(`/moments/${own.id}`);
+
+  const detail = page.getByTestId("moment-detail");
+  await expect(detail).toContainText(MGMT_OWN_MOMENT_TEXT, { timeout: 20_000 });
+
+  await page.getByTestId("moment-menu").click();
+  await page.getByTestId("moment-edit-open").click();
+
+  // The editor opens on the server's own text rather than an empty draft.
+  const editor = page.getByTestId("moment-edit-content");
+  await expect(editor).toHaveValue(MGMT_OWN_MOMENT_TEXT);
+  await editor.fill(MGMT_EDITED_TEXT);
+  await page.getByTestId("moment-edit-save").click();
+
+  // The dialog closes only after the API answered, and the card shows what the
+  // route returned.
+  await expect(page.getByTestId("moment-edit-save")).toHaveCount(0, { timeout: 20_000 });
+  await expect(detail).toContainText(MGMT_EDITED_TEXT);
+  await expect(detail).not.toContainText(MGMT_OWN_MOMENT_TEXT);
+
+  // PostgreSQL holds the new body — not React state.
+  const stored = await prisma.moment.findUnique({ where: { id: own.id }, select: { content: true } });
+  expect(stored?.content).toBe(MGMT_EDITED_TEXT);
+
+  await page.reload();
+  await expect(page.getByTestId("moment-detail")).toContainText(MGMT_EDITED_TEXT, { timeout: 20_000 });
+});
+
+test("取消修改：弹层关闭，数据库里的正文一行都没变", async ({ page }) => {
+  const own = await seedOwnMoment();
+  await loginAndLand(page, EMAILS.carol);
+  await page.goto(`/moments/${own.id}`);
+  await expect(page.getByTestId("moment-detail")).toContainText(MGMT_OWN_MOMENT_TEXT, { timeout: 20_000 });
+
+  await page.getByTestId("moment-menu").click();
+  await page.getByTestId("moment-edit-open").click();
+  await page.getByTestId("moment-edit-content").fill("PW 管理：被放弃的草稿");
+  await page.getByRole("button", { name: "取消" }).click();
+
+  await expect(page.getByTestId("moment-edit-content")).toHaveCount(0);
+  await expect(page.getByTestId("moment-detail")).toContainText(MGMT_OWN_MOMENT_TEXT);
+  const stored = await prisma.moment.findUnique({ where: { id: own.id }, select: { content: true } });
+  expect(stored?.content).toBe(MGMT_OWN_MOMENT_TEXT);
+});
+
+test("作者在详情页可以删除自己的动态：确认后回到列表，数据库里也没有了", async ({ page }) => {
+  const own = await seedOwnMoment();
+  await loginAndLand(page, EMAILS.carol);
+  await page.goto(`/moments/${own.id}`);
+  await expect(page.getByTestId("moment-detail")).toContainText(MGMT_OWN_MOMENT_TEXT, { timeout: 20_000 });
+
+  await page.getByTestId("moment-menu").click();
+  await page.getByTestId("moment-delete-open").click();
+  // 自绘二次确认，不是浏览器原生 confirm。
+  await expect(page.getByTestId("moment-delete-confirm")).toBeVisible();
+  await expect(page.getByText("删除后无法恢复，评论也会一并消失。")).toBeVisible();
+
+  await page.getByTestId("moment-delete-confirm").click();
+
+  await expect(page).toHaveURL(/\/moments$/, { timeout: 20_000 });
+  expect(await prisma.moment.count({ where: { id: own.id } })).toBe(0);
+});
+
+test("取消删除：动态仍然存在，数据库里也还在", async ({ page }) => {
+  const own = await seedOwnMoment();
+  await loginAndLand(page, EMAILS.carol);
+  await page.goto(`/moments/${own.id}`);
+  await expect(page.getByTestId("moment-detail")).toContainText(MGMT_OWN_MOMENT_TEXT, { timeout: 20_000 });
+
+  await page.getByTestId("moment-menu").click();
+  await page.getByTestId("moment-delete-open").click();
+  await page.getByRole("button", { name: "取消" }).click();
+
+  await expect(page.getByTestId("moment-delete-confirm")).toHaveCount(0);
+  await expect(page.getByTestId("moment-detail")).toContainText(MGMT_OWN_MOMENT_TEXT);
+  expect(await prisma.moment.count({ where: { id: own.id } })).toBe(1);
+});
+
+test("别人的动态只提供举报：没有修改与删除入口", async ({ page }) => {
+  const id = await momentId();
+  await loginAndLand(page, EMAILS.carol);
+  await page.goto(`/moments/${id}`);
+  await expect(page.getByTestId("moment-detail")).toBeVisible({ timeout: 20_000 });
+
+  // 先证明菜单确实打开了（举报项在），再断言另外两项不在。
+  await page.getByTestId("moment-menu").click();
+  await expect(page.getByTestId("moment-report-open")).toBeVisible();
+  await expect(page.getByTestId("moment-edit-open")).toHaveCount(0);
+  await expect(page.getByTestId("moment-delete-open")).toHaveCount(0);
+});
+
+test("评论作者可以修改自己的评论：列表与数据库都是新内容，刷新仍在", async ({ page }) => {
+  const id = await momentId();
+  const own = await seedOwnComment(id);
+
+  const section = await openDetail(page);
+  const item = commentItem(page, MGMT_OWN_COMMENT_TEXT);
+  await expect(item).toBeVisible({ timeout: 20_000 });
+
+  // 菜单只有自己的评论才有。
+  await item.getByTestId("comment-menu").click();
+  await item.getByTestId("comment-edit").click();
+
+  /**
+   * Everything after this point is scoped to the section by testid rather than
+   * to `item`: opening the editor replaces the comment's body with an input, so
+   * `item`'s own text filter would stop matching its target (and would stop
+   * matching again after the fill). `comment-edit-form` stays visible for
+   * exactly one comment, so these ids are unambiguous.
+   */
+  const editor = section.getByTestId("comment-edit-input");
+  await expect(editor).toHaveValue(MGMT_OWN_COMMENT_TEXT, { timeout: 20_000 });
+  await editor.fill(MGMT_EDITED_COMMENT_TEXT);
+  await section.getByTestId("comment-edit-save").click();
+
+  // 编辑器只在 API 确认后关闭，列表就地变成服务端返回的文本。
+  await expect(section.getByTestId("comment-edit-form")).toHaveCount(0, { timeout: 20_000 });
+  await expect(section.getByTestId("comment-list")).toContainText(MGMT_EDITED_COMMENT_TEXT);
+  await expect(section).not.toContainText(MGMT_OWN_COMMENT_TEXT);
+  // 改内容不改变评论数（仍然只统计一级评论）。
+  await expect(section.getByTestId("comment-count")).toHaveText("评论 · 2");
+
+  const stored = await prisma.momentComment.findUnique({ where: { id: own.id }, select: { content: true } });
+  expect(stored?.content).toBe(MGMT_EDITED_COMMENT_TEXT);
+
+  await page.reload();
+  await expect(
+    page.getByTestId("moment-comments").getByTestId("comment-list"),
+  ).toContainText(MGMT_EDITED_COMMENT_TEXT, { timeout: 20_000 });
+});
+
+test("评论修改被服务端拒绝时保留编辑器与草稿，界面不回退成已保存", async ({ page }) => {
+  const id = await momentId();
+  const own = await seedOwnComment(id);
+
+  const section = await openDetail(page);
+  const item = commentItem(page, MGMT_OWN_COMMENT_TEXT);
+  await expect(item).toBeVisible({ timeout: 20_000 });
+  await item.getByTestId("comment-menu").click();
+  await item.getByTestId("comment-edit").click();
+
+  const editor = section.getByTestId("comment-edit-input");
+  await expect(editor).toHaveValue(MGMT_OWN_COMMENT_TEXT, { timeout: 20_000 });
+  await editor.fill(MGMT_EDITED_COMMENT_TEXT);
+
+  // 绕过界面把这一行删掉：服务端必须回答 404 COMMENT_NOT_FOUND，而不是假装成功，
+  // 界面也不能把草稿当成已保存的内容。
+  await prisma.momentComment.delete({ where: { id: own.id } });
+  await section.getByTestId("comment-edit-save").click();
+
+  await expect(section.getByTestId("comment-edit-error")).toHaveText("这条评论已经不存在了", { timeout: 20_000 });
+  await expect(section.getByTestId("comment-edit-form")).toBeVisible();
+  await expect(editor).toHaveValue(MGMT_EDITED_COMMENT_TEXT);
+  expect(await prisma.momentComment.count({ where: { id: own.id } })).toBe(0);
+});
+
+test("别人的评论没有修改入口", async ({ page }) => {
+  const section = await openDetail(page);
+  const theirs = commentItem(page, ALICE_COMMENT_TEXT);
+  await expect(theirs).toBeVisible({ timeout: 20_000 });
+
+  // The fixture comment belongs to Alice while Carol is signed in, so no menu is
+  // rendered at all — not an edit item and not a delete item. What stops a
+  // forged request is `COMMENT_FORBIDDEN` in `moments-management.spec.ts`; a
+  // hidden control is never the boundary.
+  await expect(theirs.getByTestId("comment-menu")).toHaveCount(0);
+  await expect(section.getByTestId("comment-edit")).toHaveCount(0);
+  await expect(theirs.getByTestId("comment-edit-form")).toHaveCount(0);
+});

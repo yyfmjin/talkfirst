@@ -27,9 +27,11 @@ import { relativeTime } from "@/lib/moments";
  *
  * PC-2.4 adds the two controls that need their own data: "load more" walks the
  * paginated thread (top-level comments only, so a page never splits a thread),
- * and the owner of a comment can delete it. Both are opt-in through props, which
- * is what keeps the feed card the read-only surface it has been since PC-2.3.3.
- * Nothing is removed locally before the API confirms it.
+ * and the owner of a comment can edit or delete it. Both are opt-in through
+ * props, which is what keeps the feed card the read-only surface it has been
+ * since PC-2.3.3 — the E2E suite pins that, and a control with no handler is
+ * worse than no control at all. Nothing is removed or rewritten locally before
+ * the API confirms it.
  */
 
 export type MomentComment = {
@@ -44,8 +46,8 @@ export type MomentComment = {
 };
 
 const AVATAR_CLASS = {
-  sm: "grid h-6 w-6 shrink-0 place-items-center overflow-hidden rounded-full bg-[#E4E8FF] text-[10px] font-semibold text-[#6572D8]",
-  md: "grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-[#E4E8FF] text-[11px] font-semibold text-[#6572D8]",
+  sm: "grid h-6 w-6 shrink-0 place-items-center overflow-hidden rounded-full bg-brand-100 text-overline font-semibold text-brand-600",
+  md: "grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-brand-100 text-caption font-semibold text-brand-600",
 } as const;
 
 /**
@@ -69,9 +71,27 @@ const DELETE_ERROR_TEXT: Record<string, string> = {
   MOMENT_LOCKED: "你没有权限删除这条动态下的评论",
 };
 
+/**
+ * Editing answers with the same codes as writing, plus the ownership refusal —
+ * the one a member can actually hit, because the menu is the only thing that
+ * knows whose comment this is and a hidden control is not a boundary.
+ */
+const EDIT_ERROR_TEXT: Record<string, string> = {
+  COMMENT_FORBIDDEN: "只能修改自己的评论",
+  COMMENT_NOT_FOUND: "这条评论已经不存在了",
+  MOMENT_LOCKED: "你没有权限修改这条动态下的评论",
+  EMPTY_COMMENT: "评论不能为空",
+  CONTENT_BLOCKED: "评论包含不适当内容，已被拦截",
+};
+
 function deleteErrorMessage(error: unknown): string {
   if (error instanceof ApiRequestError) return DELETE_ERROR_TEXT[error.code] ?? error.message;
   return error instanceof Error ? error.message : "删除失败，请稍后重试";
+}
+
+function editErrorMessage(error: unknown): string {
+  if (error instanceof ApiRequestError) return EDIT_ERROR_TEXT[error.code] ?? error.message;
+  return error instanceof Error ? error.message : "修改失败，请稍后重试";
 }
 
 function replyErrorMessage(error: unknown): string {
@@ -115,6 +135,75 @@ function CommentAuthor({ user, onProfile }: { user: Author; onProfile: (userId: 
   );
 }
 
+/**
+ * PC-2.4 — the inline editor, shared by a top-level comment and a reply.
+ *
+ * Both levels used to carry their own copy of this markup with the same
+ * classes, the same max length and the same two buttons; only the `submitEdit`
+ * argument differed. One implementation means a member editing either level
+ * gets the same Enter / Escape handling, and the testids below address both
+ * without the caller having to know which level it is looking at.
+ */
+function CommentEditor({
+  value,
+  onChange,
+  onSave,
+  onCancel,
+  saving,
+  error,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  saving: boolean;
+  error: string;
+}) {
+  return (
+    <div data-testid="comment-edit-form" className="mt-1 flex flex-col gap-1.5 rounded-control border border-border bg-surface p-2 shadow-card">
+      <input
+        type="text"
+        data-testid="comment-edit-input"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") onSave();
+          if (event.key === "Escape") onCancel();
+        }}
+        aria-label="修改评论"
+        className="w-full rounded-control border border-border px-2.5 py-1 text-caption text-content focus:border-brand-500 focus:outline-none"
+        maxLength={500}
+        autoFocus
+      />
+      {error ? (
+        <span data-testid="comment-edit-error" role="alert" className="break-words text-overline text-danger-600">
+          {error}
+        </span>
+      ) : null}
+      <div className="flex justify-end gap-1.5">
+        <button
+          type="button"
+          data-testid="comment-edit-cancel"
+          onClick={onCancel}
+          disabled={saving}
+          className="rounded-control px-2 py-0.5 text-overline text-content-muted hover:bg-surface-sunken disabled:opacity-50"
+        >
+          取消
+        </button>
+        <button
+          type="button"
+          data-testid="comment-edit-save"
+          onClick={onSave}
+          disabled={saving || !value.trim()}
+          className="rounded-control bg-brand-500 px-2.5 py-0.5 text-overline font-medium text-white disabled:opacity-50"
+        >
+          {saving ? "保存中…" : "保存"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function MomentComments({
   comments,
   draft,
@@ -122,6 +211,7 @@ export function MomentComments({
   onSend,
   onReply,
   onDelete,
+  onEdit,
   currentUserId,
   hasMore = false,
   loadingMore = false,
@@ -148,6 +238,8 @@ export function MomentComments({
    * server's response is still what decides whether it was a top-level delete.
    */
   onDelete?: (comment: MomentComment, parentId?: string) => Promise<void>;
+  /** Optional handler to update comment content. */
+  onEdit?: (comment: MomentComment, newContent: string, parentId?: string) => Promise<void>;
   /** The signed-in user: only their own comments get the menu. */
   currentUserId?: string | null;
   hasMore?: boolean;
@@ -174,12 +266,49 @@ export function MomentComments({
   const [replySending, setReplySending] = useState(false);
   const [replyError, setReplyError] = useState("");
 
+  // Edit comment state
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState("");
+
   // PC-2.4 — the menu, the confirmation and the in-flight delete are separate
   // so the dialog can stay open on a rejection and report why.
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState("");
+
+  function startEdit(comment: MomentComment) {
+    setMenuOpenId(null);
+    setEditingCommentId(comment.id);
+    setEditDraft(comment.content);
+    setEditError("");
+  }
+
+  function cancelEdit() {
+    setEditingCommentId(null);
+    setEditDraft("");
+    setEditError("");
+  }
+
+  async function submitEdit(comment: MomentComment, parentId?: string) {
+    const trimmed = editDraft.trim();
+    if (!onEdit || !trimmed || editSaving) return;
+    setEditSaving(true);
+    setEditError("");
+    try {
+      // The caller owns the write and the state it updates, so a rejection
+      // arrives here as a thrown error and the editor stays open with the draft
+      // intact — nothing is changed locally before the API answered.
+      await onEdit(comment, trimmed, parentId);
+      setEditingCommentId(null);
+    } catch (requestError) {
+      setEditError(editErrorMessage(requestError));
+    } finally {
+      setEditSaving(false);
+    }
+  }
 
   function openReply(comment: MomentComment) {
     setReplyingToId(comment.id);
@@ -255,7 +384,7 @@ export function MomentComments({
    * so a read-only surface cannot show an affordance it has no handler for.
    */
   function renderActions(comment: MomentComment, level: "comment" | "reply" = "comment") {
-    if (!onDelete || !currentUserId || comment.user.id !== currentUserId) return null;
+    if ((!onDelete && !onEdit) || !currentUserId || comment.user.id !== currentUserId) return null;
     const open = menuOpenId === comment.id;
     return (
       <span className="relative inline-block align-middle">
@@ -264,19 +393,33 @@ export function MomentComments({
           data-testid={`${level}-menu`}
           aria-label="评论菜单"
           onClick={() => setMenuOpenId(open ? null : comment.id)}
-          className="ml-1.5 whitespace-nowrap align-middle text-[12px] leading-none text-muted"
+          className="ml-1.5 whitespace-nowrap rounded-control px-1 align-middle text-caption leading-none text-content-muted transition-colors duration-instant hover:bg-surface-sunken"
         >
           ⋯
         </button>
         {open ? (
-          <button
-            type="button"
-            data-testid={`${level}-delete`}
-            onClick={() => askDelete(comment.id)}
-            className="absolute right-0 top-4 z-20 whitespace-nowrap rounded-xl border border-line bg-white px-3 py-1.5 text-[11px] text-red-600 shadow-xl"
-          >
-            删除
-          </button>
+          <span className="absolute right-0 top-4 z-20 flex flex-col overflow-hidden rounded-control border border-border bg-surface shadow-overlay">
+            {onEdit ? (
+              <button
+                type="button"
+                data-testid={`${level}-edit`}
+                onClick={() => startEdit(comment)}
+                className="whitespace-nowrap px-3 py-1.5 text-left text-caption text-content hover:bg-surface-sunken"
+              >
+                编辑
+              </button>
+            ) : null}
+            {onDelete ? (
+              <button
+                type="button"
+                data-testid={`${level}-delete`}
+                onClick={() => askDelete(comment.id)}
+                className="whitespace-nowrap px-3 py-1.5 text-left text-caption text-danger-600 hover:bg-surface-sunken"
+              >
+                删除
+              </button>
+            ) : null}
+          </span>
         ) : null}
       </span>
     );
@@ -285,7 +428,7 @@ export function MomentComments({
   return (
     <section data-testid={testId} className="min-w-0">
       {title ? (
-        <p data-testid="comment-count" className="mb-2.5 text-[12px] font-semibold text-[#3D4663]">
+        <p data-testid="comment-count" className="mb-2.5 text-caption font-semibold text-content-muted">
           {title}
           {typeof count === "number" ? ` · ${count}` : ""}
         </p>
@@ -303,15 +446,18 @@ export function MomentComments({
           {visible.map((comment) => {
             const replies = comment.replies ?? [];
             const replying = replyingToId === comment.id;
+            const isEditing = editingCommentId === comment.id;
             return (
               <div key={comment.id} data-testid="comment-item" className="mb-2.5">
                 <div className="flex items-start gap-2">
                   <CommentAvatar user={comment.user} size={avatarSize} onProfile={onProfile} />
                   <div className="min-w-0 flex-1">
-                    <p className="text-[12px] leading-5">
+                    <p className="text-caption leading-5 text-content">
                       <CommentAuthor user={comment.user} onProfile={onProfile} />{" "}
-                      <span className="break-words">{comment.content}</span>
-                      <span className="ml-2 whitespace-nowrap text-[10px] text-muted">
+                      {!isEditing ? (
+                        <span className="break-words">{comment.content}</span>
+                      ) : null}
+                      <span className="ml-2 whitespace-nowrap text-overline text-content-subtle">
                         {relativeTime(comment.createdAt)}
                       </span>
                       {onReply ? (
@@ -321,7 +467,7 @@ export function MomentComments({
                             type="button"
                             data-testid="reply-toggle"
                             onClick={() => (replying ? cancelReply() : openReply(comment))}
-                            className="whitespace-nowrap text-[10px] font-medium text-[#6572D8]"
+                            className="whitespace-nowrap text-overline font-medium text-brand-600"
                           >
                             回复
                           </button>
@@ -330,32 +476,64 @@ export function MomentComments({
                       {renderActions(comment)}
                     </p>
 
+                    {isEditing ? (
+                      <CommentEditor
+                        value={editDraft}
+                        onChange={setEditDraft}
+                        onSave={() => void submitEdit(comment)}
+                        onCancel={cancelEdit}
+                        saving={editSaving}
+                        error={editError}
+                      />
+                    ) : null}
+
                     {/* An empty reply container is never rendered, so a thread
                         without replies looks exactly as it did before. */}
                     {replies.length > 0 ? (
-                      <div data-testid="reply-list" className="mt-1.5 space-y-1.5 border-l border-line pl-2.5">
-                        {replies.map((reply) => (
-                          <div key={reply.id} data-testid="reply-item" className="flex items-start gap-2">
-                            <CommentAvatar user={reply.user} size={avatarSize} onProfile={onProfile} />
-                            <p className="min-w-0 flex-1 text-[12px] leading-5">
-                              <CommentAuthor user={reply.user} onProfile={onProfile} />{" "}
-                              <span className="break-words">{reply.content}</span>
-                              <span className="ml-2 whitespace-nowrap text-[10px] text-muted">
-                                {relativeTime(reply.createdAt)}
-                              </span>
-                              {renderActions(reply, "reply")}
-                            </p>
-                          </div>
-                        ))}
+                      <div data-testid="reply-list" className="mt-1.5 space-y-1.5 border-l border-border pl-2.5">
+                        {replies.map((reply) => {
+                          const isReplyEditing = editingCommentId === reply.id;
+                          return (
+                            <div key={reply.id} data-testid="reply-item" className="flex items-start gap-2">
+                              <CommentAvatar user={reply.user} size={avatarSize} onProfile={onProfile} />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-caption leading-5 text-content">
+                                  <CommentAuthor user={reply.user} onProfile={onProfile} />{" "}
+                                  {!isReplyEditing ? (
+                                    <span className="break-words">{reply.content}</span>
+                                  ) : null}
+                                  <span className="ml-2 whitespace-nowrap text-overline text-content-subtle">
+                                    {relativeTime(reply.createdAt)}
+                                  </span>
+                                  {renderActions(reply, "reply")}
+                                </p>
+
+                                {isReplyEditing ? (
+                                  <CommentEditor
+                                    value={editDraft}
+                                    onChange={setEditDraft}
+                                    onSave={() => void submitEdit(reply, comment.id)}
+                                    onCancel={cancelEdit}
+                                    saving={editSaving}
+                                    error={editError}
+                                  />
+                                ) : null}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : null}
 
                     {replying ? (
                       <div data-testid="reply-composer" className="mt-2">
-                        <p className="mb-1 break-words text-[11px] text-muted">
+                        <p className="mb-1 break-words text-overline text-content-muted">
                           回复 {comment.user.nickname ?? "用户"}
                         </p>
                         <div className="flex items-center gap-2">
+                          {/* Geometry deliberately unchanged: `chat-composer.spec`-style
+                              measurements and `moment-detail.spec`'s reply-composer
+                              bounding-box assertions both read this row. */}
                           <input
                             value={replyDraft}
                             onChange={(event) => setReplyDraft(event.target.value)}
@@ -366,13 +544,13 @@ export function MomentComments({
                             placeholder={`回复 ${comment.user.nickname ?? "用户"}…`}
                             maxLength={500}
                             aria-label={`回复 ${comment.user.nickname ?? "用户"}`}
-                            className="h-9 min-w-0 flex-1 rounded-full border border-line bg-white px-3 text-[12px] outline-none focus:ring-2 focus:ring-indigo-200"
+                            className="h-9 min-w-0 flex-1 rounded-control border border-border bg-surface px-3 text-caption text-content outline-none transition-colors duration-instant focus:border-brand-500 focus-visible:ring-2 focus-visible:ring-brand-200"
                           />
                           <button
                             type="button"
                             onClick={cancelReply}
                             data-testid="reply-cancel"
-                            className="h-9 shrink-0 rounded-full border border-line px-3 text-[12px] text-[#3D4663]"
+                            className="h-9 shrink-0 rounded-control border border-border px-3 text-caption text-content-muted transition-colors duration-instant hover:bg-surface-sunken"
                           >
                             取消
                           </button>
@@ -381,13 +559,13 @@ export function MomentComments({
                             onClick={() => void sendReply(comment)}
                             disabled={replyDraft.trim().length === 0 || replySending}
                             data-testid="reply-send"
-                            className="h-9 shrink-0 rounded-full bg-[#6572D8] px-4 text-[12px] text-white disabled:opacity-50"
+                            className="h-9 shrink-0 rounded-control bg-brand-500 px-4 text-caption font-medium text-white transition-colors duration-instant hover:bg-brand-600 disabled:opacity-50"
                           >
                             {replySending ? "发送中…" : "发送"}
                           </button>
                         </div>
                         {replyError ? (
-                          <p data-testid="reply-error" role="alert" className="mt-1 break-words text-[11px] text-red-600">
+                          <p data-testid="reply-error" role="alert" className="mt-1 break-words text-overline text-danger-600">
                             {replyError}
                           </p>
                         ) : null}
@@ -411,12 +589,12 @@ export function MomentComments({
               data-testid="comment-load-more"
               onClick={onLoadMore}
               disabled={loadingMore}
-              className="mx-auto block rounded-full border border-line bg-white px-4 py-1.5 text-[11px] text-[#3D4663] disabled:opacity-60"
+              className="mx-auto block rounded-control border border-border bg-surface px-4 py-1.5 text-overline text-content-muted transition-colors duration-instant hover:bg-surface-sunken disabled:opacity-60"
             >
               {loadingMore ? "正在加载…" : "加载更多"}
             </button>
           ) : (
-            <p data-testid="comment-no-more" className="text-center text-[11px] text-muted">
+            <p data-testid="comment-no-more" className="text-center text-overline text-content-subtle">
               不再有更多评论
             </p>
           )}
@@ -424,17 +602,19 @@ export function MomentComments({
       ) : null}
 
       {!loading && visible.length === 0 ? (
-        <p data-testid="comment-empty" className="mb-2 text-[11px] text-muted">
+        <p data-testid="comment-empty" className="mb-2 text-overline text-content-muted">
           还没有评论，成为第一个留言的人吧。
         </p>
       ) : null}
 
       {error ? (
-        <p data-testid="comment-error" role="alert" className="mb-2 break-words text-[11px] text-red-600">
+        <p data-testid="comment-error" role="alert" className="mb-2 break-words text-overline text-danger-600">
           {error}
         </p>
       ) : null}
 
+      {/* The `aria-label="写评论"` is the accessible name `moment-detail.spec.ts`
+          uses to address this composer, so it stays. */}
       <div className="flex items-center gap-2">
         <input
           value={draft}
@@ -445,14 +625,14 @@ export function MomentComments({
           placeholder="说点什么…"
           maxLength={500}
           aria-label="写评论"
-          className="h-9 min-w-0 flex-1 rounded-full border border-line bg-white px-3 text-[12px] outline-none focus:ring-2 focus:ring-indigo-200"
+          className="h-9 min-w-0 flex-1 rounded-control border border-border bg-surface px-3 text-caption text-content outline-none transition-colors duration-instant focus:border-brand-500 focus-visible:ring-2 focus-visible:ring-brand-200"
         />
         <button
           type="button"
           onClick={onSend}
           disabled={!canSend}
           data-testid="comment-send"
-          className="h-9 shrink-0 rounded-full bg-[#6572D8] px-4 text-[12px] text-white disabled:opacity-50"
+          className="h-9 shrink-0 rounded-control bg-brand-500 px-4 text-caption font-medium text-white transition-colors duration-instant hover:bg-brand-600 disabled:opacity-50"
         >
           {sending ? "发送中…" : "发送"}
         </button>
@@ -460,14 +640,21 @@ export function MomentComments({
 
       {/* The confirmation lives outside the list so it is not clipped by the
           scroller; the overlay is the phone screen, never a scaled-down desktop
-          dialog. Nothing is removed until the API confirms it. */}
+          dialog. Nothing is removed until the API confirms it.
+
+          Phase B: `absolute`, not `fixed`. `fixed` positions against the viewport,
+          so on a desktop width this 320px confirmation was centred on the whole
+          monitor and detached from the device frame (the six sibling overlays in
+          this app already used `absolute`). The scrim colour comes from the
+          `surface-scrim` token so every overlay in the product dims the same
+          amount. */}
       {confirmingId ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-5">
-          <div className="w-full max-w-[320px] rounded-3xl bg-white p-5 text-center shadow-xl">
-            <p className="text-[13px] font-semibold">删除这条评论？</p>
-            <p className="mt-1 text-[11px] text-muted">如果这是一级评论，其回复也会一并删除。</p>
+        <div className="absolute inset-0 z-50 grid place-items-center bg-surface-scrim p-5">
+          <div className="w-full max-w-[320px] rounded-sheet bg-surface p-5 text-center shadow-overlay">
+            <p className="text-heading font-semibold text-content">删除这条评论？</p>
+            <p className="mt-1 text-caption text-content-muted">如果这是一级评论，其回复也会一并删除。</p>
             {deleteError ? (
-              <p data-testid="comment-delete-error" role="alert" className="mt-2 break-words text-[11px] text-red-600">
+              <p data-testid="comment-delete-error" role="alert" className="mt-2 break-words text-caption text-danger-600">
                 {deleteError}
               </p>
             ) : null}
@@ -476,7 +663,7 @@ export function MomentComments({
                 type="button"
                 data-testid="comment-delete-cancel"
                 onClick={cancelDelete}
-                className="h-9 min-w-0 flex-1 rounded-full border border-line text-[12px] text-[#3D4663]"
+                className="h-9 min-w-0 flex-1 rounded-control border border-border text-caption text-content-muted transition-colors duration-instant hover:bg-surface-sunken"
               >
                 取消
               </button>

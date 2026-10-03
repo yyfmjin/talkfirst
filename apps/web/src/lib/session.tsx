@@ -1,7 +1,8 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { apiFetch } from "@/lib/api";
+import { usePathname, useRouter } from "next/navigation";
+import { UNAUTHORIZED_EVENT, apiFetch } from "@/lib/api";
 
 export type SessionUser = {
   id: string;
@@ -37,10 +38,36 @@ const SessionContext = createContext<SessionState>({
   setUser: () => undefined,
 });
 
+/**
+ * Routes that render without a signed-in user.
+ *
+ * The handler below must never bounce these to `/login`: a 401 on a public page
+ * (say the landing page probing `/users/me` for an anonymous visitor) would
+ * otherwise replace the very page that is already showing the correct thing,
+ * and the redirect could ping-pong between the two.
+ */
+const PUBLIC_PATHS = new Set([
+  "/",
+  "/login",
+  "/register",
+  "/register/success",
+  "/verify",
+  "/legal",
+  // The privacy policy has its own address because Google's OAuth consent screen
+  // requires a publicly reachable policy URL. It must load for a signed-out
+  // visitor — that is the whole point of the requirement.
+  "/legal/privacy",
+  // Password recovery is reached *because* the user cannot sign in, so a 401
+  // here is the expected state rather than an expiry to react to.
+  "/reset",
+]);
+
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const router = useRouter();
+  const pathname = usePathname();
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -59,6 +86,27 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  /**
+   * The single reaction to an expired session.
+   *
+   * `api.ts` broadcasts the event once a 401 has survived the refresh retry, so
+   * this listener — not each page — decides to drop the cached user and send
+   * them to `/login`. Two guards keep it from looping: nothing happens while the
+   * initial `GET /users/me` is still in flight (every 401 it produces is
+   * expected), and nothing happens on a public route, which has no session to
+   * expire in the first place.
+   */
+  useEffect(() => {
+    function onUnauthorized() {
+      if (loading) return;
+      if (pathname && PUBLIC_PATHS.has(pathname)) return;
+      setUser(null);
+      router.replace("/login");
+    }
+    window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+  }, [loading, pathname, router]);
 
   const value = useMemo(
     () => ({ user, loading, error, refresh, setUser }),

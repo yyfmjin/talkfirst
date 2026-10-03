@@ -65,6 +65,43 @@ services:
       SMTP_SECURE: ${SMTP_SECURE:-}
       ADMIN_BOOTSTRAP_EMAIL: ${ADMIN_BOOTSTRAP_EMAIL:-}
       SEED_ON_BOOT: ${SEED_ON_BOOT:-}
+      # FIX (audit P004): uploads are written to the filesystem, so the directory
+      # must live on a volume. Without this, every avatar / chat image / moment
+      # video was destroyed whenever the container was recreated, while the
+      # database kept pointing at the dead URLs.
+      UPLOAD_DIR: /app/uploads
+      # The public base for stored files. Must be reachable by the BROWSER, not
+      # by the container, so it stays an absolute public URL.
+      PUBLIC_UPLOAD_BASE_URL: ${PUBLIC_UPLOAD_BASE_URL:-http://localhost:4000/uploads}
+      # Phase O1-5 — proxy hops in front of the API. This compose file publishes
+      # the API directly (`ports: 4000:4000`) and defines NO proxy service, so 0
+      # is correct here. It must be stated explicitly: the code's production
+      # fallback is 1, and trusting a hop that does not exist lets any caller
+      # forge their own address with an X-Forwarded-For header, making every
+      # `AccessLog.ip` value attacker-controlled. Raise this to the real hop count
+      # (1 for a reverse proxy, 2 for a CDN plus a reverse proxy) when one is
+      # added, or the API will refuse to start in production.
+      TRUST_PROXY: ${TRUST_PROXY:-0}
+      # Google 快捷登录.
+      #
+      # API_PUBLIC_URL is what the OAuth `redirect_uri` is DERIVED from, and it must
+      # match the value registered in the Google Cloud console character for
+      # character. It is not APP_URL: APP_URL is the web origin, and deriving the
+      # callback from it produces a `redirect_uri_mismatch` that says nothing about
+      # the real cause. Leaving it unset falls back to `http://localhost:4000`, which
+      # Google rejects outside loopback — so any deployment behind a domain must set
+      # it. `assertOAuthConfiguration()` refuses to boot on a non-https value.
+      API_PUBLIC_URL: ${API_PUBLIC_URL:-http://localhost:4000}
+      # Both must be present for Google sign-in to be offered at all; leaving both
+      # empty is a supported state (the button is simply not rendered).
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      OAUTH_PROVIDERS: ${OAUTH_PROVIDERS:-}
+      # Must never be true here: `assertOAuthConfiguration()` refuses to boot in
+      # production with the development stand-in enabled, which is the point.
+      OAUTH_DEV_PROVIDER: ${OAUTH_DEV_PROVIDER:-false}
+    volumes:
+      - uploads_data:/app/uploads
     ports:
       - "${API_PORT:-4000}:4000"
     healthcheck:
@@ -123,3 +160,5 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  # FIX (audit P004): user-generated media must outlive the API container.
+  uploads_data:

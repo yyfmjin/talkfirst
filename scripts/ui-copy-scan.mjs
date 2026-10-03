@@ -90,6 +90,21 @@ export const BASE_ALLOWED = [
   "ANALYST",
   "ADMIN",
   "ADMIN_USER",
+  /**
+   * Technical identifiers that have no Chinese form, added with the privacy
+   * policy's Google sign-in section.
+   *
+   * `openid` / `email` / `profile` are the OAuth SCOPE NAMES this app requests,
+   * and naming them is the point: the policy has to say which Google permissions
+   * are asked for, and Google reports them verbatim. `sub` is the id_token claim
+   * the account is keyed on; `User-Agent` is an HTTP header name.
+   *
+   * Narrow on purpose — adding these four says nothing about letting other Latin
+   * words through, which is why the four are listed rather than, say, `profile*`.
+   */
+  "openid",
+  "sub",
+  "User-Agent",
   // Non-copy formats.
   "jpg",
   "jpeg",
@@ -162,6 +177,9 @@ export function scanUiCopy({ root, allowed = BASE_ALLOWED, ignore = [] } = {}) {
       // `=> Promise<T>` and `Record<string, T>` close a type, not a tag.
       const previous = source[match.index - 1];
       if (previous === "=" || previous === "<") continue;
+      // Self-closing tags: `<Icon size={16} />` — the `/>` ending is not a
+      // text-node boundary. When `>` is preceded by `/`, skip it.
+      if (previous === "/") continue;
       const text = match[1].replace(/\s+/g, " ").trim();
       if (!text || !looksLikeProse(text)) continue;
       if (!hasStrayEnglish(text, allowList)) continue;
@@ -210,12 +228,21 @@ export function apiReportReasons(repoRoot) {
 }
 
 /**
- * The admin console's one exemption: the login screen's operator note names the
- * guard it explains. `/admin/me` is the route that rejects a non-admin and
- * `isAdmin` is the column that has to be set, so neither can be translated.
+ * The admin console's exemptions, and why.
+ *
+ * From the login screen: `/admin/me` is the route that rejects a non-admin and
+ * `isAdmin` is the column that has to be set — both are code an operator types.
+ *
+ * From the Phase O2 operations console: `HTTP` is a protocol name with no
+ * Chinese form an operator would recognise; `ops:read` is the permission the nav
+ * entry is gated on, shown when explaining a refusal.
+ *
+ * Deliberately NOT listed: bare `admin` or `/admin`. Those are far too common a
+ * substring — widening to them made an e-mail placeholder (`admin@example.com`)
+ * stop being recognised, silently disabling a real check. Narrow terms only.
  * `apps/admin/test/ui-copy.test.mjs` passes the same list.
  */
-const ADMIN_ALLOWED = ["/admin/me", "isAdmin"];
+const ADMIN_ALLOWED = ["/admin/me", "isAdmin", "HTTP", "ops:read"];
 
 if (process.argv[1] && process.argv[1].endsWith("ui-copy-scan.mjs")) {
   const findings = scanUiCopy({ root: "apps/web/src" }).concat(

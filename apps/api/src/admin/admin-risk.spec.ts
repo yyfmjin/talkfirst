@@ -1,6 +1,5 @@
 import type { ExecutionContext } from "@nestjs/common";
 import { ForbiddenException } from "@nestjs/common";
-import type { Reflector } from "@nestjs/core";
 import type { AdminRole } from "@prisma/client";
 
 import { AdminController } from "./admin.controller";
@@ -13,6 +12,7 @@ import { PermissionGuard } from "./permission.guard";
 import { PERMISSION_METADATA_KEY } from "./require-permission.decorator";
 import { hasPermission } from "./permissions";
 import type { ResolvedAdmin } from "./admin.guard";
+import { reflectorReturning } from "./test-reflector";
 
 /**
  * Phase C1 — the Risk Center overview.
@@ -63,10 +63,6 @@ function httpContext(request: Record<string, unknown>): ExecutionContext {
     getHandler: () => () => undefined,
     getClass: () => class {},
   } as unknown as ExecutionContext;
-}
-
-function reflectorReturning(permission: string | undefined): Reflector {
-  return { getAllAndOverride: jest.fn(() => permission) } as unknown as Reflector;
 }
 
 const admin = (role: AdminRole): ResolvedAdmin => ({

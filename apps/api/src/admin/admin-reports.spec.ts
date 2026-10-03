@@ -1,6 +1,5 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import type { ExecutionContext } from "@nestjs/common";
-import type { Reflector } from "@nestjs/core";
 import type { AdminRole } from "@prisma/client";
 
 import { AdminController } from "./admin.controller";
@@ -15,6 +14,7 @@ import { PermissionGuard } from "./permission.guard";
 import { PERMISSION_METADATA_KEY } from "./require-permission.decorator";
 import { hasPermission } from "./permissions";
 import type { ResolvedAdmin } from "./admin.guard";
+import { reflectorReturning } from "./test-reflector";
 
 /**
  * Phase B4 — the reports queue and report detail.
@@ -63,10 +63,6 @@ function httpContext(request: Record<string, unknown>): ExecutionContext {
     getHandler: () => () => undefined,
     getClass: () => class {},
   } as unknown as ExecutionContext;
-}
-
-function reflectorReturning(permission: string | undefined): Reflector {
-  return { getAllAndOverride: jest.fn(() => permission) } as unknown as Reflector;
 }
 
 const admin = (role: AdminRole): ResolvedAdmin => ({
@@ -1218,14 +1214,27 @@ describe("Reports — review", () => {
     }
   });
 
-  it("46b. the review route stays gated on reports:write", () => {
+  it("46b. the review route is gated on moderation:write (content moderation)", () => {
+    // FIX (audit P013): adjudicating a report IS content moderation. Gating it
+    // on `reports:write` meant CONTENT_MANAGER — the role defined as "content
+    // moderation only" — could open the workbench and have every action refused,
+    // while SUPPORT (which holds `reports:write` and should not ban anyone) could
+    // adjudicate. `moderation:write` is held by SUPER_ADMIN, MODERATOR and
+    // CONTENT_MANAGER only.
     expect(Reflect.getMetadata(PERMISSION_METADATA_KEY, AdminController.prototype.review)).toBe(
-      "reports:write",
+      "moderation:write",
     );
   });
 
   it("46c. only SUPER_ADMIN and MODERATOR hold reports:write", () => {
     for (const role of WRITE_ROLES) expect(hasPermission(role, "reports:write")).toBe(true);
     for (const role of READ_ONLY_ROLES) expect(hasPermission(role, "reports:write")).toBe(false);
+  });
+
+  it("46d. exactly SUPER_ADMIN, MODERATOR and CONTENT_MANAGER may adjudicate", () => {
+    const holders = (["SUPER_ADMIN", "MODERATOR", "SUPPORT", "ANALYST", "CONTENT_MANAGER"] as const).filter(
+      (role) => hasPermission(role, "moderation:write"),
+    );
+    expect([...holders].sort()).toEqual(["CONTENT_MANAGER", "MODERATOR", "SUPER_ADMIN"]);
   });
 });

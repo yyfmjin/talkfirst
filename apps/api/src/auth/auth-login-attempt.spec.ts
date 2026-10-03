@@ -1,6 +1,6 @@
 import * as bcrypt from "bcryptjs";
 import { runWithRequestContext } from "../security/request-context";
-import { AuthService } from "./auth.service";
+import { makeAuthService } from "./auth-service.fixture";
 import { LoginAttemptService } from "./login-attempt.service";
 
 jest.mock("bcryptjs", () => ({
@@ -77,11 +77,10 @@ function makeAuth(overrides: {
     { maxFailures: 5, adminMaxFailures: 3, baseLockMs: 30_000, maxLockMs: 900_000, windowMs: 900_000 },
     overrides.now ?? Date.now,
   );
-  const service = new AuthService(
+  const service = makeAuthService(
     prisma as never,
     { signAsync: jest.fn().mockResolvedValue("access-token") } as never,
-    securityEvents as never,
-    loginAttempts,
+    { securityEvents, loginAttempts },
   );
   return { service, prisma, events, loginAttempts };
 }

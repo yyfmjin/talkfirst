@@ -33,6 +33,12 @@ const CODE_MESSAGES: Record<string, string> = {
   MOMENT_LOCKED: "这条动态暂时无法查看。",
   CANNOT_REPORT_SELF: "不能举报自己发布的内容。",
   INVALID_REASON: "请选择一个有效的举报原因。",
+  // Editing / deleting what one published. The ownership refusals are the ones
+  // a member can actually reach, because the menu is the only thing that knows
+  // whose post this is and a hidden control is not a boundary.
+  MOMENT_FORBIDDEN: "只能修改或删除自己发布的动态。",
+  EMPTY_CONTENT: "动态内容不能为空，至少保留一张照片或一个视频。",
+  CONTENT_BLOCKED: "这段内容包含不被允许的信息，请修改后再试。",
 };
 
 export function friendlyErrorMessage(error: unknown, fallback = "操作失败，请稍后再试。"): string {

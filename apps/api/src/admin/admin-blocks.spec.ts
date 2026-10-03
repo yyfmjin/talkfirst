@@ -1,5 +1,4 @@
 import type { ExecutionContext } from "@nestjs/common";
-import type { Reflector } from "@nestjs/core";
 import type { AdminRole } from "@prisma/client";
 
 import { AdminController } from "./admin.controller";
@@ -15,6 +14,7 @@ import { PermissionGuard } from "./permission.guard";
 import { PERMISSION_METADATA_KEY } from "./require-permission.decorator";
 import { hasPermission } from "./permissions";
 import type { ResolvedAdmin } from "./admin.guard";
+import { reflectorReturning } from "./test-reflector";
 
 /**
  * Phase C4 — Blocks management.
@@ -70,10 +70,6 @@ function httpContext(request: Record<string, unknown>): ExecutionContext {
     getHandler: () => () => undefined,
     getClass: () => class {},
   } as unknown as ExecutionContext;
-}
-
-function reflectorReturning(permission: string | undefined): Reflector {
-  return { getAllAndOverride: jest.fn(() => permission) } as unknown as Reflector;
 }
 
 const ADMIN_ID = "9c4e1a52-7b3d-4e6f-8a11-2d5f9c0b7e34";

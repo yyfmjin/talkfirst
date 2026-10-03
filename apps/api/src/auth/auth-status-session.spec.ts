@@ -1,5 +1,5 @@
 import * as bcrypt from "bcryptjs";
-import { AuthService } from "./auth.service";
+import { makeAuthService } from "./auth-service.fixture";
 import { JwtStrategy } from "./jwt.strategy";
 
 jest.mock("bcryptjs", () => ({
@@ -63,7 +63,12 @@ async function refusalCode(op: Promise<unknown>): Promise<string | null> {
 }
 
 function makeAuth(prismaOverride: Record<string, unknown> = {}) {
-  const prisma = {
+  const prisma: {
+    user: Record<string, jest.Mock>;
+    refreshToken: Record<string, jest.Mock>;
+    $transaction: jest.Mock;
+    [key: string]: unknown;
+  } = {
     user: {
       findUnique: jest.fn().mockResolvedValue(ACTIVE_USER),
       update: jest.fn().mockResolvedValue(ACTIVE_USER),
@@ -75,13 +80,21 @@ function makeAuth(prismaOverride: Record<string, unknown> = {}) {
       update: jest.fn().mockResolvedValue({}),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
-    $transaction: jest.fn(async (ops: unknown[]) => Promise.all(ops as Promise<unknown>[])),
+    // Supports both Prisma forms: the array form (changePassword) and the
+    // interactive callback form (rotateRefresh). Wired after construction so the
+    // callback can close over `prisma` without a circular type.
+    $transaction: jest.fn(),
     ...prismaOverride,
   };
+  prisma.$transaction.mockImplementation(async (arg: unknown) =>
+    typeof arg === "function"
+      ? (arg as (tx: unknown) => Promise<unknown>)(prisma)
+      : Promise.all(arg as Promise<unknown>[]),
+  );
   const jwtService = { signAsync: jest.fn().mockResolvedValue("access-token") };
-  const service = new AuthService(prisma as never, jwtService as never, {
-    record: jest.fn(async () => undefined),
-  } as never);
+  const service = makeAuthService(prisma as never, jwtService as never, {
+    securityEvents: { record: jest.fn(async () => undefined) },
+  });
   return { service, prisma };
 }
 

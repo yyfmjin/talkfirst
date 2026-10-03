@@ -165,8 +165,28 @@ test("phase B5: the moderation workbench reuses the reports and status APIs", ()
   assert.match(detail, /\/admin\/reports\/\$\{reportId\}\/review`, "POST"/);
   assert.match(detail, /\/admin\/users\/\$\{data\.reportedUser\.id\}\/status`, "POST"/);
 
-  // The target type is derived from messageId — there is no `targetType` column.
-  assert.match(queue, /item\.messageId \? "MESSAGE" : "USER"/);
+  // The target type is derived, never read: there is no `targetType` column.
+  //
+  // FIX (Phase O0): this assertion used to require the *inline* ternary
+  // `item.messageId ? "MESSAGE" : "USER"` in the page body. The derivation was
+  // later moved to the shared `lib/report-target.ts` helper (so the reports
+  // queue, the moderation queue and both detail screens cannot drift apart) and
+  // the page now calls `deriveReportTargetType(item)`. The assertion therefore
+  // failed against correct code, and because `package.json` runs this file
+  // before `playwright test`, that single stale regex made the ENTIRE admin
+  // suite unreachable through `npm test` — the same failure mode audit P005(t)
+  // already fixed once for the nav literal.
+  //
+  // What actually matters is the invariant, not the syntax that expresses it:
+  // the page must derive the type through the shared helper (never a local
+  // re-implementation of the rule), and it must expose which type it derived.
+  // Asserting the helper is used also captures a guarantee the old ternary
+  // never had — MOMENT reports are classified correctly.
+  assert.match(queue, /import\s*\{[^}]*deriveReportTargetType[^}]*\}\s*from\s*"@\/lib\/report-target"/);
+  assert.match(queue, /const target = deriveReportTargetType\(item\)/);
+  // A local re-implementation is what the shared helper exists to prevent.
+  assert.doesNotMatch(queue, /item\.messageId \? "MESSAGE" : "USER"/);
+  assert.match(queue, /data-target-type=\{target\}/);
   assert.match(queue, /moderation-target-badge/);
 
   // History is the audit log, and a SYSTEM row is rendered from `actorType`
@@ -772,6 +792,12 @@ test("phase C5: all nine admin domains have a page, and every data route is perm
     ["../src/app/blocks/page.tsx", /@Get\("blocks"\)\s*\n\s*@RequirePermission\("blocks:read"\)/],
     ["../src/app/blocks/[blockerId]/[blockedId]/page.tsx", /@Get\("blocks\/:blockerId\/:blockedId"\)\s*\n\s*@RequirePermission\("blocks:read"\)/],
     ["../src/app/audit/page.tsx", /@Get\("audit"\)\s*\n\s*@RequirePermission\("audit:read"\)/],
+    // Phase O2 — the ops domain. Three routes, all `ops:read`; the list is the
+    // one the page calls, so it is the one pinned against the page.
+    [
+      "../src/app/ops/access-logs/page.tsx",
+      /@Get\("access-logs"\)\s*\n\s*@RequirePermission\("ops:read"\)/,
+    ],
   ];
 
   for (const [page, route] of domains) {
@@ -785,31 +811,46 @@ test("phase C5: all nine admin domains have a page, and every data route is perm
  * Phase C5: the sidebar lists exactly the nine domains, in the mandated order,
  * each against the permission it is gated on.
  *
- * Order is part of the contract, not cosmetics: the phase that introduced the
- * relationship screens placed 连接 → 交换 → 屏蔽 between 风险中心 and 审计日志,
- * and an integration pass is exactly when an entry gets reordered or dropped.
+ * FIX (audit P005): this assertion used to hard-code the flat nine-entry order
+ * from before the sidebar was grouped into sections. When `shell.tsx` moved to
+ * four titled groups, the expectation was not updated, so `assert.deepEqual`
+ * failed on the SECOND element — and because `package.json` runs this file
+ * before `playwright test`, the failure aborted the entire admin suite. The
+ * nav could not be changed without also editing this literal, and once the
+ * literal was stale nothing could run at all.
+ *
+ * The contract that actually matters is: the nine domains are all present,
+ * exactly once each, in the documented order, each behind its own permission.
+ * That is asserted here by comparing the *sequence* of hrefs and the
+ * permission attached to each, which survives regrouping — the grouping itself
+ * is pinned separately by `admin-shell-ui.spec.ts`.
  */
 test("phase C5: the sidebar lists exactly the nine domains in the mandated order", () => {
   const shell = readFileSync(new URL("../src/components/shell.tsx", import.meta.url), "utf8");
-  const navStart = shell.indexOf("const NAV");
-  assert.ok(navStart > -1, "the NAV table is missing");
-  const navBlock = shell.slice(navStart, shell.indexOf("];", navStart));
+  const navStart = shell.indexOf("const NAV_GROUPS");
+  assert.ok(navStart > -1, "the NAV_GROUPS table is missing");
+  const navBlock = shell.slice(navStart, shell.indexOf("\n];", navStart));
 
   const entries = [...navBlock.matchAll(/href: "([^"]+)", label: "([^"]+)", permission: "([^"]+)"/g)].map(
     (match) => ({ href: match[1], label: match[2], permission: match[3] }),
   );
 
+  // The nine domains, with the permission each must advertise. Order is the
+  // contract, so it is compared explicitly rather than sorted.
   assert.deepEqual(entries, [
     { href: "/dashboard", label: "仪表盘", permission: "dashboard:read" },
     { href: "/users", label: "用户", permission: "users:read" },
+    { href: "/connections", label: "连接", permission: "connections:read" },
+    { href: "/exchanges", label: "交换", permission: "exchanges:read" },
+    { href: "/blocks", label: "屏蔽", permission: "blocks:read" },
     { href: "/reports", label: "举报", permission: "reports:read" },
     // `reports:read`, not `moderation:read` — see the Phase B5 test above.
     { href: "/moderation", label: "审核工作台", permission: "reports:read" },
     { href: "/risk", label: "风险中心", permission: "risk:read" },
-    { href: "/connections", label: "连接", permission: "connections:read" },
-    { href: "/exchanges", label: "交换", permission: "exchanges:read" },
-    { href: "/blocks", label: "屏蔽", permission: "blocks:read" },
     { href: "/audit", label: "审计日志", permission: "audit:read" },
+    // Phase O2 — site operations. `ops:read`, not `audit:read`: these rows carry
+    // raw client IP and User-Agent, so the holder set is SUPER_ADMIN + ANALYST.
+    { href: "/ops/access-logs", label: "访问日志", permission: "ops:read" },
   ]);
 
   // Every advertised destination has a page behind it, so the sidebar cannot
@@ -835,14 +876,18 @@ test("phase C5: the permission matrix is unchanged and mirrored on both sides", 
   const backend = readFileSync(new URL(`${API_ADMIN_DIR}/permissions.ts`, import.meta.url), "utf8");
   const frontend = readFileSync(new URL("../src/lib/permissions.ts", import.meta.url), "utf8");
 
-  // The vocabulary itself: 20 permissions, and `risk:write` is not one of them.
+  // The vocabulary itself: 21 permissions, and `risk:write` is not one of them.
+  // Phase O2 added `ops:read` — the site-operations surface (HTTP access logs),
+  // which carries raw client IP and User-Agent and is therefore narrower than
+  // `audit:read`: SUPER_ADMIN and ANALYST only.
   const permStart = backend.indexOf("export const PERMISSIONS = [");
   assert.ok(permStart > -1, "the PERMISSIONS vocabulary is missing");
   const vocabulary = [
     ...backend.slice(permStart, backend.indexOf("] as const;", permStart)).matchAll(/"([a-z]+:[a-z]+)"/g),
   ].map((match) => match[1]);
-  assert.equal(vocabulary.length, 20, "the permission vocabulary changed size");
+  assert.equal(vocabulary.length, 21, "the permission vocabulary changed size");
   assert.ok(!vocabulary.includes("risk:write"), "risk:write must not exist — the Risk Centre is read-only");
+  assert.ok(vocabulary.includes("ops:read"), "ops:read must exist — the ops console is gated on it");
 
   const all = new Set(vocabulary);
   const expected = {
@@ -869,6 +914,8 @@ test("phase C5: the permission matrix is unchanged and mirrored on both sides", 
       "blocks:read",
       "audit:read",
       "settings:read",
+      // Phase O2: the only non-super role that may read raw access-log data.
+      "ops:read",
     ]),
     CONTENT_MANAGER: new Set([
       "dashboard:read",
@@ -952,7 +999,10 @@ test("phase C5: no relationship domain gained a write route", () => {
     "the set of admin write routes changed",
   );
 
-  for (const domain of ["connections", "exchanges", "blocks", "risk"]) {
+  // Phase O2 adds the ops surface to the "read-only unless proven otherwise" set.
+  // Access logs are an *audit record*: an editable audit trail is not an audit
+  // trail, so no write route may exist here at all.
+  for (const domain of ["connections", "exchanges", "blocks", "risk", "access-logs"]) {
     assert.doesNotMatch(
       controller,
       new RegExp(`@(Post|Patch|Put|Delete)\\("${domain}`),
@@ -965,12 +1015,13 @@ test("phase C5: no relationship domain gained a write route", () => {
     );
   }
 
-  // The two relationship detail routes are UUID-addressed (C5 added the pipe),
-  // so a malformed path segment is a 400 rather than a 500 from Prisma.
+  // The relationship detail routes are UUID-addressed (C5 added the pipe), so a
+  // malformed path segment is a 400 rather than a 500 from Prisma. Phase O2's
+  // `access-logs/:id` adds the eleventh.
   const params = [...controller.matchAll(/@Param\("(\w+)", UuidParamPipe\)/g)].map((match) => match[1]);
   assert.deepEqual(
     [...params].sort(),
-    ["blockedId", "blockerId", "id", "id", "id", "id", "id", "id", "id", "id"].sort(),
+    ["blockedId", "blockerId", "id", "id", "id", "id", "id", "id", "id", "id", "id"].sort(),
     "every id-addressed route must carry the UUID guard",
   );
 });
@@ -979,10 +1030,24 @@ test("phase C5: no relationship domain gained a write route", () => {
  * Phase C5: no migration was added and the schema gained no model.
  *
  * The phase's hard rule is that integration work does not change the database.
- * Pinning the migration count and the full model/enum lists turns "we did not
- * touch the schema" from a claim into a checked fact — and it is the assertion
- * that would catch a convenience join table or a back-relation added to make a
- * cross-domain query easier.
+ * Pinning the model/enum lists turns "we did not touch the schema" from a claim
+ * into a checked fact — and it is the assertion that would catch a convenience
+ * join table or a back-relation added to make a cross-domain query easier.
+ *
+ * FIX (Phase O0): this test used to assert `migrations.length === 16`, i.e. it
+ * used the *total* migration count as a proxy for "C5 added none". That proxy
+ * breaks on every legitimate later schema change: two migrations landed after
+ * C5 (`security_audit_center_p1`, `refresh_token_reuse_detection`) and the
+ * literal went stale, failing the assertion against a schema that was in fact
+ * perfectly valid. Because `package.json` runs this file before
+ * `playwright test`, one stale number made the entire admin suite unreachable
+ * through `npm test` — the same failure mode as the nav literal (audit P005(t))
+ * and the moderation assertion above.
+ *
+ * The invariant that matters is preserved and made explicit: C5 itself must not
+ * have introduced a migration, and any migration added *after* the C5 baseline
+ * must be named here, so schema changes still require a deliberate edit to this
+ * list rather than sliding in under a bumped counter.
  */
 test("phase C5: no migration was added and the schema gained no model", () => {
   const migrations = readdirSync(new URL(`${REPO_ROOT}/prisma/migrations`, import.meta.url), {
@@ -992,7 +1057,60 @@ test("phase C5: no migration was added and the schema gained no model", () => {
     .map((entry) => entry.name)
     .sort();
 
-  assert.equal(migrations.length, 16, `unexpected migration count: ${migrations.join(", ")}`);
+  // The C5 migration set, established 2026-09-17. Everything at or before it is
+  // the frozen baseline; anything after must be listed explicitly below.
+  const C5_BASELINE = [
+    "20260915083412_phase2_core_models",
+    "20260915093221_phase4_discover",
+    "20260915200039_phase5_connection_conversation",
+    "20260915202602_phase7_exchange",
+    "20260915211738_phase10_admin",
+    "20260915224945_phase13_admin_console",
+    "20260915231253_phase14_translate_cache",
+    "20260915235218_phase15_moments",
+    "20260917090000_phase15_foreign_keys_and_indexes",
+    "20260917091500_phase16_social_platform_talkfirst",
+    "20260917092000_phase16_shared_social_account",
+    "20260917094000_phase16_drop_social_visibility",
+    "20260917095500_phase16_moment_source",
+    "20260917121000_phase17_admin_rbac_enums",
+    "20260917121100_phase17_admin_rbac",
+    "20260917153000_admin_audit_system_actor",
+  ];
+  assert.equal(C5_BASELINE.length, 16, "the C5 baseline literal was edited by accident");
+  assert.deepEqual(
+    migrations.slice(0, C5_BASELINE.length),
+    C5_BASELINE,
+    "the C5-era migration set changed; a historical migration must never be rewritten",
+  );
+
+  // Migrations added after C5, each deliberate and already applied. A new entry
+  // here is the point at which an author must confirm they meant to touch the
+  // schema — the pin is the edit, not a counter.
+  const POST_C5_MIGRATIONS = [
+    "20260919050334_profile_attributes",
+    "20260919150844_comment_replies",
+    "20260919233119_report_moment",
+    "20261001085200_security_audit_center_p1",
+    "20261002090000_refresh_token_reuse_detection",
+    // Phase O2 — indexes only (no column change), for the ops read path:
+    // `requestId` is the sole correlation key to SecurityEvent and had no index,
+    // and `deviceHash`/`riskLevel`/`isAdmin`/`authenticated` are offered as
+    // filters by the ops console.
+    "20261002140000_ops_access_log_indexes",
+    // Google sign-in — additive only: a new `OAuthProvider` enum and
+    // `OAuthIdentity` table, plus `User.passwordHash` DROPPED NOT NULL so an
+    // OAuth-only account has no fabricated credential. No column is removed and
+    // no existing row is rewritten.
+    "20261002151727_google_oauth_identity",
+  ];
+  assert.deepEqual(
+    migrations.slice(C5_BASELINE.length),
+    POST_C5_MIGRATIONS,
+    "a migration was added or removed without updating the post-C5 allowlist",
+  );
+
+  // Still enforced: the C5 phase itself contributed no migration.
   for (const name of migrations) {
     assert.doesNotMatch(name, /c5|integration/i, `a C5 migration was added: ${name}`);
   }
@@ -1004,15 +1122,19 @@ test("phase C5: no migration was added and the schema gained no model", () => {
       .sort();
 
   assert.deepEqual(names("model"), [
+    "AccessLog",
     "AdminAuditLog",
     "AdminNote",
     "AdminUser",
+    "AttributeDefinition",
     "Block",
     "Connection",
     "ConnectionRequest",
     "Conversation",
     "ConversationMember",
     "Country",
+    "DeviceIdentity",
+    "DeviceUser",
     "DiscoverView",
     "ExchangeRequest",
     "Interest",
@@ -1025,13 +1147,17 @@ test("phase C5: no migration was added and the schema gained no model", () => {
     "MomentPlatformBinding",
     "MomentSetting",
     "Notification",
+    "OAuthIdentity",
+    "ProfileFieldVisibility",
     "Purpose",
     "RefreshToken",
     "Report",
     "SchemaMeta",
+    "SecurityEvent",
     "SharedSocialAccount",
     "SocialAccount",
     "User",
+    "UserAttribute",
     "UserInterest",
     "UserLanguage",
     "UserPreferredCountry",
@@ -1040,6 +1166,9 @@ test("phase C5: no migration was added and the schema gained no model", () => {
   ]);
   assert.deepEqual(names("enum"), [
     "AdminRole",
+    "AttributeKind",
+    "AttributeSource",
+    "AttributeValueType",
     "AuditActorType",
     "ConnectionStatus",
     "ExchangeStatus",
@@ -1048,9 +1177,12 @@ test("phase C5: no migration was added and the schema gained no model", () => {
     "LanguageType",
     "MessageType",
     "MomentSource",
+    "OAuthProvider",
     "ReportStatus",
     "RequestStatus",
+    "ReviewStatus",
     "SocialPlatform",
     "UserStatus",
+    "Visibility",
   ]);
 });
