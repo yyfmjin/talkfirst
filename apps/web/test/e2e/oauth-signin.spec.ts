@@ -70,13 +70,54 @@ test.afterAll(async () => {
   await prisma.$disconnect();
 });
 
-/** The enabled provider, as the API reports it. Fetched, never assumed. */
-async function enabledProvider(page: Page): Promise<string> {
+/**
+ * The enabled provider, as the API reports it — or `null` when this deployment
+ * offers none.
+ *
+ * ## Why this returns null instead of throwing
+ *
+ * A deployment with no OAuth provider configured is a **supported state**: no
+ * Google credentials AND `OAUTH_DEV_PROVIDER` off means the login page correctly
+ * renders no third-party button at all. This suite cannot say anything in that
+ * state, and failing with `expect(providers.length).toBeGreaterThan(0)` would send
+ * the next person looking for a bug in the feature rather than at the environment.
+ *
+ * So the callers skip with a message that names the two ways to make the suite
+ * runnable. Playwright reports those as skipped, which is the honest signal: not
+ * "it passed" and not "it broke".
+ */
+async function enabledProvider(page: Page): Promise<string | null> {
   const response = await page.request.get(`${API_ORIGIN}/api/v1/auth/oauth/providers`);
   expect(response.ok()).toBe(true);
   const body = (await response.json()) as { data: { providers: string[] } };
-  expect(body.data.providers.length).toBeGreaterThan(0);
-  return body.data.providers[0]!;
+  return body.data.providers[0] ?? null;
+}
+
+/** Marks the current test skipped when no provider is available. */
+function skipUnlessConfigured(provider: string | null): provider is string {
+  if (provider) return true;
+  test.skip(
+    true,
+    "no OAuth provider is configured: set GOOGLE_CLIENT_ID/SECRET, or OAUTH_DEV_PROVIDER=true for the local dev provider",
+  );
+  return false;
+}
+
+/**
+ * The same, for the two tests that drive the LOCAL provider's callback by URL.
+ *
+ * Those exercise the refusal paths (`?error=access_denied`, a forged `state`) by
+ * navigating straight at `/auth/oauth/local/callback`. With the local provider off
+ * that route answers `404` and nothing redirects to the login page — so the test
+ * would fail for a reason that has nothing to do with the refusal handling.
+ */
+function skipUnlessLocalDevProvider(provider: string | null): provider is string {
+  if (provider === "local") return true;
+  test.skip(
+    true,
+    "these refusal paths are driven through the local dev provider: set OAUTH_DEV_PROVIDER=true",
+  );
+  return false;
 }
 
 /**
@@ -119,6 +160,7 @@ async function consent(page: Page) {
 
 test("登录页只提供 API 声明的 provider，且入口是指向本站 start 路由的真实链接", async ({ page }) => {
   const provider = await enabledProvider(page);
+  if (!skipUnlessConfigured(provider)) return;
 
   await page.goto("/login");
   const button = page.getByTestId(`oauth-${provider}`);
@@ -138,22 +180,43 @@ test("登录页只提供 API 声明的 provider，且入口是指向本站 start
   await expect(page.getByText("即将上线，暂用邮箱登录")).toHaveCount(0);
 });
 
-test("没有配置的 provider 不渲染按钮（列表来自 API，不是写死的）", async ({ page }) => {
+test("只渲染 API 声明的 provider，绝不渲染未配置或已放弃的", async ({ page }) => {
+  const response = await page.request.get(`${API_ORIGIN}/api/v1/auth/oauth/providers`);
+  const body = (await response.json()) as { data: { providers: string[] } };
+  const declared = body.data.providers;
+
   await page.goto("/login");
-  await expect(page.locator('[data-testid^="oauth-"]').first()).toBeVisible({ timeout: 20_000 });
 
   /**
-   * This deployment has no Google credentials, so a `google` button must NOT be
-   * rendered — a live-looking control that leads to `OAUTH_PROVIDER_DISABLED` is
-   * exactly what the previous 「即将上线」 placeholder was replaced to avoid.
+   * One rendered entry per declared provider THIS APP HAS PRESENTATION FOR.
+   *
+   * Duplicated from `PROVIDER_PRESENTATION` in `oauth-buttons.tsx` on purpose: the
+   * component only renders a provider it can label, so a provider the API declares
+   * but the component cannot name is silently dropped. Asserting the raw declared
+   * count would fail on that, and asserting `> 0` would hide it — so the two sets
+   * are reconciled here and a third provider forces this list to be updated.
    */
-  await expect(page.getByTestId("oauth-google")).toHaveCount(0);
+  const presentable = declared.filter((id) => ["google", "local"].includes(id));
+  if (presentable.length > 0) {
+    await expect(page.locator('[data-testid^="oauth-"]')).toHaveCount(presentable.length, { timeout: 20_000 });
+  }
+
+  /**
+   * A `google` button must NOT appear unless Google is declared. This deployment
+   * has no credentials, so a live-looking control leading to
+   * `OAUTH_PROVIDER_DISABLED` is exactly what the old 「即将上线」 placeholder was
+   * replaced to avoid — and the same rule has to hold in the other direction.
+   */
+  if (!declared.includes("google")) {
+    await expect(page.getByTestId("oauth-google")).toHaveCount(0);
+  }
   // Apple sign-in was dropped entirely; it must not reappear.
   await expect(page.getByTestId("oauth-apple")).toHaveCount(0);
 });
 
 test("点击登录入口：真实跳转 -> 同意 -> 回调建号 -> 会话生效并能在刷新后保持", async ({ page }) => {
   const provider = await enabledProvider(page);
+  if (!skipUnlessConfigured(provider)) return;
 
   await page.goto("/login");
   await page.getByTestId(`oauth-${provider}`).click();
@@ -196,6 +259,7 @@ test("点击登录入口：真实跳转 -> 同意 -> 回调建号 -> 会话生�
 
 test("第二次用同一个第三方账号登录：不重复建号", async ({ page }) => {
   const provider = await enabledProvider(page);
+  if (!skipUnlessConfigured(provider)) return;
 
   await page.goto("/login");
   await page.getByTestId(`oauth-${provider}`).click();
@@ -223,6 +287,7 @@ test("第二次用同一个第三方账号登录：不重复建号", async ({ pa
 
 test("在 provider 页面取消 -> 回到登录页并显示中文提示，且没有会话", async ({ page }) => {
   const provider = await enabledProvider(page);
+  if (!skipUnlessConfigured(provider)) return;
 
   await page.goto("/login");
   await page.getByTestId(`oauth-${provider}`).click();
@@ -253,8 +318,10 @@ test("在 provider 页面取消 -> 回到登录页并显示中文提示，且没
 });
 
 test("伪造 state 的回调 -> 中文提示，且不建号", async ({ page }) => {
+  const devProvider = await enabledProvider(page);
+  if (!skipUnlessLocalDevProvider(devProvider)) return;
+
   await page.goto("/login");
-  await expect(page.locator('[data-testid^="oauth-"]').first()).toBeVisible({ timeout: 20_000 });
 
   await page.goto(`${API_ORIGIN}/api/v1/auth/oauth/local/callback?code=forged&state=forged`);
 
@@ -264,6 +331,9 @@ test("伪造 state 的回调 -> 中文提示，且不建号", async ({ page }) =
 });
 
 test("错误提示读一次就清除：地址栏不再带错误码，刷新也不重复显示", async ({ page }) => {
+  const devProvider = await enabledProvider(page);
+  if (!skipUnlessLocalDevProvider(devProvider)) return;
+
   await page.goto(`${API_ORIGIN}/api/v1/auth/oauth/local/callback?error=access_denied`);
   await expect(page.getByText("与 Google 的通信失败，请稍后重试。")).toBeVisible({ timeout: 20_000 });
 
@@ -278,6 +348,7 @@ test("错误提示读一次就清除：地址栏不再带错误码，刷新也�
 });
 test("「使用…注册」与「使用…登录」走同一条服务端流程", async ({ page }) => {
   const provider = await enabledProvider(page);
+  if (!skipUnlessConfigured(provider)) return;
 
   await page.goto("/register");
   const button = page.getByTestId(`oauth-${provider}`);
