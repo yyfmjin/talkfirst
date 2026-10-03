@@ -14,6 +14,62 @@ const PURPOSE_SCORE = 20;
 const COUNTRY_SCORE = 15;
 const ACTIVITY_SCORE = 10;
 
+/**
+ * The filter tabs that existed before `DiscoverCategory` did.
+ *
+ * ## Why they are still here
+ *
+ * A fresh deployment has no category rows, and the tabs must not vanish the moment this
+ * feature ships. These two are therefore the fallback: when the table has no active row
+ * for a slug, the service behaves exactly as it did before — same matching, same tab list
+ * — and an administrator adding a category takes over from there.
+ *
+ * That also means the migration needs no data seeding, which matters because a seed would
+ * have to invent a keywords list and would silently change behaviour on deploy.
+ */
+const BUILT_IN_CATEGORIES: ReadonlyArray<{ slug: string; label: string; keywords: readonly string[] }> = [
+  { slug: "language", label: "语言交换", keywords: ["language-exchange"] },
+  {
+    slug: "gaming",
+    label: "游戏搭子",
+    keywords: ["minecraft", "valorant", "gta", "steam", "nintendo", "gaming"],
+  },
+];
+
+/**
+ * Parses the admin-typed keyword list.
+ *
+ * Splits on commas and whitespace-collapses each entry, so `"a, b ,c"` and `"a,b,c"` are
+ * the same list. `toLowerCase` because the slugs it is compared against are lowercase, and
+ * an operator typing `Steam` should not produce a dead keyword.
+ */
+export function parseCategoryKeywords(raw: string | null | undefined): string[] {
+  return (raw ?? "")
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+/**
+ * True when a candidate matches any of the category's keywords.
+ *
+ * Both sides are lower-cased here rather than trusting the caller to have normalised the
+ * keywords. The first version lower-cased only the candidate's slugs and claimed in a
+ * comment that a hand-edited row would still work — it would not: a row containing `STEAM`
+ * compared against a `steam` slug matched nothing, so the tab was silently narrower than
+ * the operator intended. Normalising both sides removes the asymmetry, and a `Set` makes
+ * the lookup constant-time instead of scanning the keyword list per slug.
+ */
+export function matchesCategoryKeywords(
+  keywords: readonly string[],
+  card: { interests: Array<{ slug: string }>; purposes: Array<{ slug: string }> },
+): boolean {
+  if (keywords.length === 0) return true;
+  const wanted = new Set(keywords.map((keyword) => keyword.trim().toLowerCase()));
+  const slugs = [...card.interests.map((row) => row.slug), ...card.purposes.map((row) => row.slug)];
+  return slugs.some((slug) => wanted.has(slug.trim().toLowerCase()));
+}
+
 export type DiscoverCard = {
   id: string;
   nickname: string | null;
@@ -36,10 +92,71 @@ type UserWithRelations = Awaited<ReturnType<DiscoverService["findUser"]>>;
 export class DiscoverService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * The tabs the client renders, database-first with the built-in pair as fallback.
+   *
+   * `all` is always first and is not a row: it is the absence of a filter, and storing it
+   * would let an administrator deactivate the unfiltered view.
+   */
+  async listCategories() {
+    const rows = await this.prisma.discoverCategory
+      .findMany({
+        where: { isActive: true },
+        orderBy: [{ sort: "asc" }, { createdAt: "asc" }],
+        select: { slug: true, label: true, labelZh: true, keywords: true },
+      })
+      .catch(() => [] as Array<{ slug: string; label: string; labelZh: string | null; keywords: string }>);
+
+    const items =
+      rows.length > 0
+        ? rows.map((row) => ({
+            id: row.slug,
+            label: row.labelZh ?? row.label,
+            keywords: parseCategoryKeywords(row.keywords),
+          }))
+        : BUILT_IN_CATEGORIES.map((row) => ({
+            id: row.slug,
+            label: row.label,
+            keywords: [...row.keywords],
+          }));
+
+    return [{ id: "all", label: "🌎 全部", keywords: [] as string[] }, ...items];
+  }
+
+  /**
+   * Resolves a requested filter into its keyword list.
+   *
+   * Returns `all` semantics (an empty list) for an unknown slug rather than rejecting the
+   * request: a client holding a stale tab list, or a category an administrator just
+   * deactivated, would otherwise get an error page instead of the unfiltered feed.
+   */
+  private async keywordsForFilter(raw: string): Promise<{ slug: string; keywords: string[] }> {
+    const slug = (raw ?? "all").trim().toLowerCase();
+    if (!slug || slug === "all") return { slug: "all", keywords: [] };
+
+    const row = await this.prisma.discoverCategory
+      .findFirst({ where: { slug, isActive: true }, select: { slug: true, keywords: true } })
+      .catch(() => null);
+
+    if (row) {
+      const keywords = parseCategoryKeywords(row.keywords);
+      // An active category with no keywords yet is not a filter that matches nothing —
+      // that would show an empty wall to every member. It means "not configured", so it
+      // falls back to unfiltered.
+      return keywords.length > 0 ? { slug: row.slug, keywords } : { slug: "all", keywords: [] };
+    }
+
+    const builtIn = BUILT_IN_CATEGORIES.find((entry) => entry.slug === slug);
+    if (builtIn) return { slug: builtIn.slug, keywords: [...builtIn.keywords] };
+
+    return { slug: "all", keywords: [] };
+  }
+
   async getRecommendations(userId: string, requestedLimit = 20, filterRaw?: string) {
     const limit = Math.min(Math.max(requestedLimit, 1), DAILY_VIEW_LIMIT);
-    const filter = (filterRaw ?? "all").toLowerCase();
-    const normalizedFilter = filter === "language" || filter === "gaming" ? filter : "all";
+    const { slug: normalizedFilter, keywords: filterKeywords } = await this.keywordsForFilter(
+      filterRaw ?? "all",
+    );
     const today = this.startOfToday();
     const viewed = await this.prisma.discoverView.findMany({
       where: { userId, viewDate: today },
@@ -95,21 +212,8 @@ export class DiscoverService {
       )
       // Filtering runs on the projected card rather than the raw row on purpose:
       // if a hidden `interests`/`purposes` list were consulted here, merely
-      // showing up in the "gaming" or "language" tab would disclose the value.
-      .filter((card) => {
-        if (normalizedFilter === "language") {
-          return (
-            card.purposes.some((purpose) => purpose.slug === "language-exchange") ||
-            card.matchReasons.some((reason) => reason.includes("语言"))
-          );
-        }
-        if (normalizedFilter === "gaming") {
-          return card.interests.some((interest) =>
-            ["minecraft", "valorant", "gta", "steam", "nintendo", "gaming"].includes(interest.slug),
-          );
-        }
-        return true;
-      })
+      // showing up in a category tab would disclose the value.
+      .filter((card) => matchesCategoryKeywords(filterKeywords, card))
       .sort((a, b) => b.matchScore - a.matchScore || b.lastActiveTimestamp - a.lastActiveTimestamp)
       .slice(0, Math.min(limit, remaining));
 

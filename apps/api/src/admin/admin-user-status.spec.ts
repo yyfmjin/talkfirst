@@ -2,6 +2,8 @@ import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { AdminController } from "./admin.controller";
 import { AdminService } from "./admin.service";
 import { PERMISSION_METADATA_KEY } from "./require-permission.decorator";
+import { AppSettingsService } from "../feedback/app-settings.service";
+import { FeedbackService } from "../feedback/feedback.service";
 
 /**
  * Phase B3 — PATCH /admin/users/:id/status
@@ -113,7 +115,16 @@ function makeController(target: unknown) {
   };
 
   return {
-    controller: new AdminController(new AdminService(prisma as never)),
+    /**
+     * The feedback service is a required collaborator, so it has to be supplied even
+     * though none of these cases touch it — the routes that use it are covered by
+     * `admin-feedback.spec.ts`. Constructed empty rather than mocked per method so this
+     * file does not have to be updated every time the feedback surface grows.
+     */
+    controller: new AdminController(
+      new AdminService(prisma as never),
+      new FeedbackService({} as never, new AppSettingsService()),
+    ),
     tx,
     prisma,
   };

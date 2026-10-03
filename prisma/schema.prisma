@@ -105,6 +105,344 @@ enum MomentSource {
   DEMO
 }
 
+/**
+ * A platform whose content can be read through that platform's OFFICIAL API after
+ * the member authorises it.
+ *
+ * Deliberately a separate enum from `SocialPlatform`. `SocialPlatform` is the
+ * broader "which network is this moment associated with" vocabulary, and it
+ * includes entries that can never be read programmatically (WECHAT, QQ, STEAM)
+ * as well as TALKFIRST itself. Reusing it here would let a caller request a sync
+ * for a platform that has no readable API, and the compiler would not object.
+ *
+ * `DOUYIN` and `TIKTOK` are distinct rows on purpose: they are different
+ * companies, different developer programmes and different APIs.
+ */
+enum SocialSyncProvider {
+  YOUTUBE
+  X
+  TIKTOK
+  INSTAGRAM
+  DOUYIN
+}
+
+/**
+ * Whether a stored sync connection can still be used.
+ *
+ * Named with the `SocialSync` prefix rather than `SocialAccountStatus`, which is
+ * already taken by the unrelated handle-sharing model above. `NEEDS_REAUTH` is the
+ * state that matters: refresh failed or the member revoked access at the provider.
+ * The row is KEPT rather than deleted, because deleting it would silently discard
+ * the member's sync settings and their previously synced posts, and would make
+ * "reconnect" indistinguishable from "bind for the first time" — the UI has to be
+ * able to offer the former.
+ */
+enum SocialSyncStatus {
+  ACTIVE
+  NEEDS_REAUTH
+  REVOKED
+}
+
+/** Shape of the media on an external post, normalised across providers. */
+enum SocialSyncMediaType {
+  TEXT
+  IMAGE
+  VIDEO
+  LINK
+}
+
+/**
+ * How much an IP ban removes.
+ *
+ * Two levels, because "block everything" and "block everything except the ability
+ * to fix this" are different tools and an operator needs both:
+ *
+ *   SECONDARY — the IP may still sign in and out. Everything else is refused.
+ *               Used when the account holder should be able to reach the app and
+ *               understand what happened, or contact support.
+ *   PRIMARY   — every request is refused. Used for traffic that has no legitimate
+ *               use of the API at all.
+ *
+ * A two-value enum rather than a boolean `active` flag: adding a third level later
+ * must not mean every stored boolean has to be reinterpreted.
+ */
+enum IpBanLevel {
+  SECONDARY
+  PRIMARY
+}
+
+/**
+ * A refused client address.
+ *
+ * ## Why this is separate from `User.bannedAt`
+ *
+ * Banning an account and banning an address answer different questions. An account
+ * ban follows the person; an address ban catches traffic that may not be signed in
+ * at all — scraping, credential stuffing, a flood of 404s. `AccessLog` already
+ * stores the resolved address and is indexed on it, so the address is the thing an
+ * operator can actually act on when they see abuse.
+ *
+ * ## Why `ip` is the raw normalised string, not an `inet` column
+ *
+ * The whole codebase treats an address as an opaque normalised string
+ * (`normalizeIp()` in `client-ip.ts`), which is what keeps the ban lookup and the
+ * `AccessLog.ip` column byte-identical. Switching this one column to `inet` would
+ * introduce a second representation, and the two would eventually disagree — the
+ * exact failure this table cannot afford, because a mismatch means a ban silently
+ * does nothing.
+ *
+ * ## Audit
+ *
+ * Rows are never deleted when a ban is lifted — `liftedAt`/`liftedBy` are set
+ * instead, so "why was this address blocked in March" stays answerable. `reason`
+ * is mandatory for the same reason a ban without a stated cause is unusable in a
+ * review.
+ */
+model IpBan {
+  id      String     @id @default(uuid()) @db.Uuid
+  /// Normalised via `normalizeIp()` — the same function `AccessLog.ip` uses.
+  ip      String     @db.VarChar(45)
+  level   IpBanLevel
+  reason  String     @db.VarChar(500)
+  /// Null once the acting admin's account is gone; the ban itself survives.
+  createdById String? @db.Uuid
+  createdBy   AdminUser? @relation("IpBanCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  expiresAt DateTime?
+  createdAt DateTime   @default(now())
+
+  /// Set once, and only once, when the ban is lifted. A row with these set is
+  /// history rather than an active block.
+  liftedAt   DateTime?
+  liftedById String?   @db.Uuid
+  liftedBy   AdminUser? @relation("IpBanLiftedBy", fields: [liftedById], references: [id], onDelete: SetNull)
+
+  /// The lookup the middleware performs on every request.
+  @@index([ip, liftedAt])
+  @@index([createdAt])
+}
+
+/**
+ * Site-wide configuration an administrator can change at runtime.
+ *
+ * ## Why a table rather than more environment variables
+ *
+ * The support address has to be changeable WITHOUT a deploy: it is the address the
+ * app shows members, and an operator locked out of it has to file a ticket against
+ * their own deployment. An environment variable would need shell access and a
+ * restart for a one-word change.
+ *
+ * ## Why a generic key/value shape
+ *
+ * The alternative is a `SiteConfig` table with one column per setting, which means
+ * a migration for every new string an operator wants to edit. Keys are namespaced
+ * (`feedback.email`) so a reader can tell what owns the row, and `value` is text
+ * because everything here is a human-entered string. Each consumer validates its
+ * own key rather than this table trying to type them all.
+ */
+model AppSetting {
+  key       String   @id @db.VarChar(64)
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+  /// Null when the last writer's admin account was removed.
+  updatedById String? @db.Uuid
+
+  @@index([key])
+}
+
+/**
+ * Handling state of a piece of member feedback.
+ *
+ * `OPEN` and `IN_PROGRESS` are distinguished because "we have not looked at it" and
+ * "someone is on it" are the two things a member most wants to know, and collapsing
+ * them makes the queue look untouched while it is being worked.
+ */
+enum FeedbackStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+/** What kind of feedback this is, so the queue can be triaged without reading it. */
+enum FeedbackKind {
+  SUGGESTION
+  BUG
+  COMPLAINT
+  OTHER
+}
+
+/**
+ * A member's message to the team.
+ *
+ * ## Why the content is kept even after the account is gone
+ *
+ * `userId` is nullable and `onDelete: SetNull`, unlike almost every other
+ * user-owned table here. Feedback is a record of a product problem: deleting an
+ * account must not delete the evidence that five people reported the same bug. The
+ * contact address, when the member supplied one, survives too — that is what makes
+ * a reply possible at all.
+ *
+ * ## Why `replyBody` is a column rather than a thread table
+ *
+ * The mature shape for support is a ticket with many messages. This is deliberately
+ * the smaller thing the product asked for: one member message and one team reply.
+ * A thread table would be justified the moment a back-and-forth is needed, and the
+ * `repliedAt`/`repliedById` pair is what a migration would read to build it. Adding
+ * it now would be a guess about a workflow nobody has described.
+ *
+ * ## Why `contactEmail` is stored apart from `User.email`
+ *
+ * The member chooses the address they want a reply at, and may want it to differ
+ * from the account address — or may not be signed in at all in a future variant.
+ * Copying `User.email` into this field at submission time also keeps the reply
+ * address stable if the account address later changes.
+ */
+model Feedback {
+  id           String         @id @default(uuid()) @db.Uuid
+  /// Null once the submitting account is deleted; the report itself survives.
+  userId       String?        @db.Uuid
+  user         User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  kind         FeedbackKind   @default(OTHER)
+  body         String         @db.Text
+  /// Optional reply address the member typed. Validated as an address, never required.
+  contactEmail String?        @db.VarChar(320)
+  /// Page or feature the member was looking at, when the client can supply it.
+  source       String?        @db.VarChar(128)
+  status       FeedbackStatus @default(OPEN)
+  /// The single team reply. Null until someone answers.
+  replyBody    String?        @db.Text
+  repliedAt    DateTime?
+  repliedById  String?        @db.Uuid
+  /// Null once the replying admin's record is removed; the reply text stays.
+  repliedBy    AdminUser?     @relation("FeedbackRepliedBy", fields: [repliedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  /// The admin queue reads by status, newest first.
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+
+/**
+ * An external post, cached locally.
+ *
+ * Nothing here is fetched on read: the profile page only ever reads PostgreSQL
+ * (see the sync strategy). `hidden` is the member's per-post visibility choice and
+ * `importedMomentId` records that the member chose to copy this into a native
+ * moment, which is the ONLY path that creates a TalkFirst `Moment` from a third
+ * party — nothing is imported automatically.
+ */
+model SocialSyncPost {
+  id              String              @id @default(uuid()) @db.Uuid
+  socialAccountId String              @db.Uuid
+  socialAccount   SocialSyncAccount   @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+  // Denormalised so a profile read does not have to join through SocialSyncAccount
+  // for the origin badge, and so a post keeps its label if the account is unbound.
+  provider        SocialSyncProvider
+  externalPostId  String              @db.VarChar(255)
+  externalUrl     String            @db.VarChar(1000)
+  authorId        String?           @db.VarChar(255)
+  authorName      String?           @db.VarChar(255)
+  authorAvatar    String?           @db.VarChar(1000)
+  text            String?           @db.Text
+  title           String?           @db.VarChar(500)
+  mediaType       SocialSyncMediaType @default(TEXT)
+  thumbnailUrl    String?           @db.VarChar(1000)
+  mediaUrl        String?           @db.VarChar(1000)
+  // Preferred over `mediaUrl` when the provider offers one: an embed renders the
+  // provider's own player, so no bytes are copied and the provider's terms apply.
+  embedUrl        String?           @db.VarChar(1000)
+  publishedAt     DateTime
+  // The provider's own payload, kept for debugging and re-normalisation. Never
+  // returned to a client verbatim — it can carry fields we did not intend to expose.
+  rawData         Json?
+  hidden          Boolean           @default(false)
+  importedMomentId String?          @db.Uuid
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  /**
+   * The deduplication key. A repeat sync of the same post UPDATEs this row instead
+   * of creating a second one, so counts and per-post choices survive re-syncs.
+   *
+   * `socialAccountId` is part of it (rather than just provider + externalPostId) so
+   * two members who both follow the same public account each keep their own row
+   * with their own `hidden` and `importedMomentId`.
+   */
+  @@unique([socialAccountId, provider, externalPostId])
+  @@index([socialAccountId, publishedAt])
+  @@index([socialAccountId, hidden])
+}
+
+/**
+ * A member's authorised connection to one external social account.
+ *
+ * ## Why this is not `OAuthIdentity`
+ *
+ * `OAuthIdentity` answers "how does this person sign in" and stores no token. This
+ * model answers "what may TalkFirst read on their behalf" and stores tokens. Merging
+ * them would mean a revoked sign-in provider also destroyed the ability to sync, and
+ * a sync scope change would touch the login path — so they stay separate tables with
+ * separate lifecycles, and nothing here is readable by the auth flow.
+ *
+ * ## Token handling
+ *
+ * `*TokenEnc` holds an AES-256-GCM envelope produced by `TokenCryptoService`; the
+ * plaintext never reaches the database, a log line or an API response. The column
+ * name ends in `Enc` so that a reader cannot mistake it for a raw token.
+ *
+ * ## Why `userId` AND `providerUserId` are both in uniqueness constraints
+ *
+ * `[userId, provider]` enforces one connection per platform per member, which is
+ * what the settings screen shows. `[provider, providerUserId]` stops the same
+ * external account being bound twice by different members in a way that would make
+ * a provider rate limit apply to the wrong connection.
+ */
+model SocialSyncAccount {
+  id              String              @id @default(uuid()) @db.Uuid
+  userId          String              @db.Uuid
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider        SocialSyncProvider
+  providerUserId  String              @db.VarChar(255)
+  handle          String?             @db.VarChar(255)
+  displayName     String?             @db.VarChar(255)
+  avatarUrl       String?             @db.VarChar(1000)
+
+  accessTokenEnc  String              @db.Text
+  refreshTokenEnc String?             @db.Text
+  /** Space-separated, exactly as the provider granted them. */
+  scope           String?             @db.Text
+  tokenExpiresAt  DateTime?
+
+  /**
+   * How many recent posts to keep, 1..3.
+   *
+   * The range is enforced by a CHECK constraint in the migration as well as in the
+   * service layer, because this is a policy the product promised and a service-layer
+   * check is bypassed by any direct SQL path.
+   */
+  syncLimit       Int                 @default(3)
+  syncEnabled     Boolean             @default(true)
+  status          SocialSyncStatus @default(ACTIVE)
+  lastSyncedAt    DateTime?
+  /** Short, already-translated code for the settings screen; never a raw provider error. */
+  lastSyncError   String?             @db.VarChar(64)
+
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  syncPosts       SocialSyncPost[]
+
+  @@unique([userId, provider])
+  @@unique([provider, providerUserId])
+  @@index([userId])
+  // Read by the background sync to find due connections without scanning the table.
+  @@index([status, syncEnabled, lastSyncedAt])
+}
+
+
 enum RequestStatus {
   PENDING
   ACCEPTED
@@ -230,6 +568,13 @@ model User {
   purposes                 UserPurpose[]
   preferredCountries       UserPreferredCountry[]
   socialAccounts           SocialAccount[]
+  // Feedback this member submitted. Kept `SetNull` on delete, so the product problem
+  // outlives the account that reported it.
+  feedback                 Feedback[]
+  // Authorised external-account connections used for CONTENT SYNC. A different
+  // concept from `socialAccounts` directly above, which is the handle-sharing
+  // model: this one carries OAuth tokens, that one carries sharing grants.
+  socialSyncAccounts       SocialSyncAccount[]
   momentBindings           MomentPlatformBinding[]
   momentSetting            MomentSetting?
   moments                  Moment[]
@@ -294,6 +639,14 @@ model AdminUser {
 
   @@index([role])
   @@index([isActive])
+
+  // IP bans this admin created, and ones they lifted. Two named relations rather
+  // than one, because "who blocked this address" and "who unblocked it" are
+  // separate facts that an audit has to be able to read independently.
+  ipBansCreated IpBan[] @relation("IpBanCreatedBy")
+  ipBansLifted  IpBan[] @relation("IpBanLiftedBy")
+
+  feedbackReplied Feedback[] @relation("FeedbackRepliedBy")
 }
 
 model VerificationCode {
@@ -387,6 +740,58 @@ model UserInterest {
   interest   Interest @relation(fields: [interestId], references: [id], onDelete: Cascade)
 
   @@id([userId, interestId])
+}
+
+/**
+ * A filter tab on 「发现」.
+ *
+ * ## Why this table exists
+ *
+ * The three tabs were hardcoded in two places at once — a `FILTERS` array in
+ * `apps/web/src/app/discover/page.tsx` and an `if (filter === "language") … else if
+ * (filter === "gaming") …` in `DiscoverService.getRecommendations`, with the gaming
+ * keywords themselves listed inline
+ * (`["minecraft", "valorant", "gta", "steam", …]`). Adding a category therefore required
+ * editing the frontend, editing the backend and redeploying, which is exactly why there
+ * were only two of them.
+ *
+ * ## Why `keywords` is a comma-separated string rather than a relation
+ *
+ * The matching rule is "does this candidate have an interest or purpose whose slug is in
+ * this list", so the list is a small admin-typed vocabulary, not a set of foreign keys. A
+ * join table would mean the operator has to create `Interest` rows first — and `Interest`
+ * is a member-facing profile vocabulary, so an admin-only filter keyword would pollute it.
+ * A string keeps the operator's mental model ("type the words") equal to the storage.
+ *
+ * Matching is case-insensitive and whitespace-tolerant, and the parsed list is what the
+ * service compares against, so a stray space cannot silently make a keyword dead.
+ *
+ * ## Why `isActive` rather than deletion
+ *
+ * Deactivating hides a tab without breaking anything that referred to it, which is the
+ * same pattern `AttributeDefinition.isActive` already uses in this codebase.
+ *
+ * ## Why an unknown `slug` filter still works
+ *
+ * `DiscoverService` treats a filter whose keywords list is empty as "no category filter"
+ * and falls back to the previous behaviour for the two built-in slugs. That keeps an
+ * existing client working against a database that has not been seeded yet, which is the
+ * state a fresh deployment is in.
+ */
+model DiscoverCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  /// Stable identifier used in the query string, e.g. `gaming`.
+  slug      String   @unique @db.VarChar(48)
+  label     String   @db.VarChar(48)
+  labelZh   String?  @db.VarChar(48)
+  /// Comma-separated interest/purpose slugs. Empty means the tab is not yet configured.
+  keywords  String   @db.Text @default("")
+  sort      Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, sort])
 }
 
 model Purpose {
@@ -534,6 +939,31 @@ model Moment {
   // because no real OAuth integration exists yet. Demo rows must never be
   // presented as genuine synced activity.
   source       MomentSource    @default(USER)
+  /**
+   * Moderation state, decided at publish time by `SafetyService`.
+   *
+   * ## Why this is a column rather than a queue table
+   *
+   * The state belongs to the moment and changes in place; a separate queue row would
+   * have to be kept in step with it and could disagree. `PENDING` is the only state
+   * that hides content from others, and it is set by the scanner, not by a human.
+   *
+   * ## Why the default is APPROVED
+   *
+   * Defaulting to PENDING would put every publish behind a human, which is a product
+   * decision nobody made and would empty the feed on day one. The scanner escalates the
+   * narrow cases it recognises instead — the shape every large platform uses, because
+   * the alternative is a queue that grows faster than it can be worked.
+   *
+   * Existing rows are backfilled to APPROVED by the migration: they were published
+   * under the old rule (everything visible), and silently hiding history would be a
+   * worse outcome than leaving it.
+   */
+  reviewStatus ReviewStatus    @default(APPROVED)
+  /** Reasons the scanner recorded, for the reviewer. Never shown to other members. */
+  reviewReasons String[]       @default([])
+  reviewedAt   DateTime?
+  reviewedById String?         @db.Uuid
   syncedAt     DateTime        @default(now())
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
@@ -543,6 +973,8 @@ model Moment {
   @@index([userId, createdAt])
   @@index([platform, createdAt])
   @@index([createdAt])
+  /// The moderation queue reads by status, oldest first (FIFO), so the index matches.
+  @@index([reviewStatus, createdAt])
 }
 
 model MomentLike {

@@ -44,13 +44,21 @@ type RecommendationResponse = {
   filter?: string;
 };
 
-const FILTERS = [
+/**
+ * Fallback tabs, used only until — or if — the server's list arrives.
+ *
+ * The tab list is product configuration now (`DiscoverCategory`), so hardcoding it was
+ * what limited the product to two categories and required a deploy to add one. This pair
+ * exists so the row is never empty on a slow or failed fetch, and it matches the server's
+ * own fallback for a database with no category rows.
+ */
+const FALLBACK_FILTERS = [
   { id: "all", label: "🌎 全部" },
   { id: "language", label: "语言交换" },
   { id: "gaming", label: "游戏搭子" },
 ] as const;
 
-type FilterId = (typeof FILTERS)[number]["id"];
+type FilterId = string;
 
 const FILTER_STORAGE_KEY = "talkfirst.discover.filter";
 const DAILY_LIMIT = 20;
@@ -67,6 +75,7 @@ const DAILY_LIMIT = 20;
  */
 export default function DiscoverPage() {
   const [filter, setFilter] = useState<FilterId>("all");
+  const [filters, setFilters] = useState<Array<{ id: string; label: string }>>([...FALLBACK_FILTERS]);
   const [items, setItems] = useState<DiscoverBubbleUser[]>([]);
   const [remaining, setRemaining] = useState(DAILY_LIMIT);
   const [loading, setLoading] = useState(true);
@@ -80,7 +89,7 @@ export default function DiscoverPage() {
     setError("");
     try {
       const data = await apiFetch<RecommendationResponse>(
-        `/discover/recommendations?limit=${DAILY_LIMIT}&filter=${nextFilter}`,
+        `/discover/recommendations?limit=${DAILY_LIMIT}&filter=${encodeURIComponent(nextFilter)}`,
       );
       setItems(data.items);
       setRemaining(data.remaining);
@@ -93,10 +102,31 @@ export default function DiscoverPage() {
   }, []);
 
   useEffect(() => {
+    /**
+     * Load the tabs, then the recommendations.
+     *
+     * The stored filter is applied as-is rather than validated against a hardcoded pair —
+     * the server decides whether a slug means anything, and treats an unknown one as "all".
+     * That keeps a tab that an administrator deactivated from turning into an error page.
+     *
+     * A failed fetch leaves the fallback pair in place: the tab row is not worth failing
+     * the whole screen over, and the recommendations request is what the member came for.
+     */
+    let alive = true;
+    void apiFetch<Array<{ id: string; label: string }>>("/discover/categories")
+      .then((categories) => {
+        if (alive && Array.isArray(categories) && categories.length > 0) setFilters(categories);
+      })
+      .catch(() => undefined);
+
     const stored = window.localStorage.getItem(FILTER_STORAGE_KEY);
-    const initialFilter: FilterId = stored === "language" || stored === "gaming" ? stored : "all";
+    const initialFilter: FilterId = stored && stored.trim() ? stored : "all";
     setFilter(initialFilter);
     void loadRecommendations(initialFilter, true);
+
+    return () => {
+      alive = false;
+    };
   }, [loadRecommendations]);
 
   function changeFilter(next: FilterId) {
@@ -185,7 +215,7 @@ export default function DiscoverPage() {
           call to action).
         */}
         <div className="tf-scroll-x mt-4 flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="推荐筛选">
-          {FILTERS.map((option) => (
+          {filters.map((option) => (
             <button
               key={option.id}
               type="button"
@@ -205,12 +235,15 @@ export default function DiscoverPage() {
           ))}
         </div>
 
+        {/*
+          One generic sentence for a category filter, because the categories are data now.
+          The old version named language and gaming specifically, which cannot survive an
+          administrator adding a third tab — the copy would describe the wrong thing.
+        */}
         <p className="mt-2 text-caption leading-5 text-content-muted">
-          {filter === "language"
-            ? "只看想语言交换的人，点头像看完整资料。"
-            : filter === "gaming"
-              ? "只看有游戏兴趣的人，点头像看完整资料。"
-              : "按语言互补、共同兴趣和活跃度综合排序，点头像看完整资料。"}
+          {filter === "all"
+            ? "按语言互补、共同兴趣和活跃度综合排序，点头像看完整资料。"
+            : "只看符合这个类别的人，点头像看完整资料。"}
         </p>
 
         {loading ? <DiscoverBubbleFieldSkeleton /> : null}

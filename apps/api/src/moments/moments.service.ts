@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { NotificationService } from "../notifications/notification.service";
 import { keysetFilterAfter, keysetNextCursor, keysetOrderBy, parseKeysetCursor } from "../common/keyset-cursor";
 import { PrismaService } from "../prisma/prisma.service";
-import { SafetyService } from "../safety/safety.service";
+import { SafetyService, type SafetyScan } from "../safety/safety.service";
 
 export const MOMENT_PLATFORMS = [
   { id: "TALKFIRST", label: "TalkFirst", icon: "TF", color: "#6572D8", connectedLabel: "站内动态" },
@@ -18,6 +18,69 @@ export type MomentPlatformId = (typeof MOMENT_PLATFORMS)[number]["id"];
 const PLATFORM_SET = new Set<string>(MOMENT_PLATFORMS.map((item) => item.id));
 
 export type MomentAccess = "allowed" | "locked";
+
+/**
+ * The moderation states another member may see.
+ *
+ * `APPROVED` and `HIDDEN` are the two where a human or the scanner has decided the
+ * content may be public — `HIDDEN` is a withdrawal after publication, and rows in it are
+ * excluded here because a withdrawn moment must stop being visible to others. `PENDING`
+ * and `REJECTED` are owner-only.
+ */
+const PUBLICLY_VISIBLE_REVIEW_STATUS = ["APPROVED"] as const;
+
+/**
+ * Restricts a moment query to what `viewerId` may see.
+ *
+ * ## Why this is a `where` clause and not a post-filter
+ *
+ * `feed()` already post-filters visibility in JavaScript, which is why it has a
+ * comment about its page size being approximate. Adding moderation to that filter
+ * would compound the problem: a page of 20 could come back with far fewer items, and
+ * the cursor would advance past rows the caller never saw. Pushing it into SQL keeps
+ * the page full.
+ *
+ * ## Why the owner is exempt
+ *
+ * A member must be able to see their own post while it awaits review, otherwise the
+ * publish appears to have silently failed. The exemption is expressed as
+ * `userId: viewerId` inside the `OR`, so it applies only to rows that viewer owns.
+ */
+function reviewVisibilityFilter(viewerId: string): Record<string, unknown> {
+  return {
+    OR: [
+      { reviewStatus: { in: [...PUBLICLY_VISIBLE_REVIEW_STATUS] } },
+      { userId: viewerId },
+    ],
+  };
+}
+
+/**
+ * True when a non-owner must be refused this row.
+ *
+ * ## Why an absent status is treated as visible
+ *
+ * The first version compared against `PUBLICLY_VISIBLE_REVIEW_STATUS` directly, so a row
+ * whose `reviewStatus` was `undefined` — which happens on any query that narrows its
+ * `select` and forgets this column — was refused. The effect is silent and severe: the
+ * detail route returns null for content that is perfectly public, and nothing in the
+ * response says why. A missing status means "this code path did not load the moderation
+ * state", which is not evidence that the content is withheld.
+ *
+ * The failure direction matters too. Treating unknown as visible can at worst show a
+ * moment that should have been queued, on a path that forgot to load the column; treating
+ * it as blocked hides legitimate content from everyone with no way to tell. The list
+ * queries filter in SQL where the column is always present, so this guard exists for the
+ * by-id route and for future callers.
+ */
+export function isReviewBlockedForViewer(
+  viewerId: string,
+  moment: { userId: string; reviewStatus?: string | null },
+): boolean {
+  if (moment.userId === viewerId) return false;
+  if (!moment.reviewStatus) return false;
+  return !(PUBLICLY_VISIBLE_REVIEW_STATUS as readonly string[]).includes(moment.reviewStatus);
+}
 
 @Injectable()
 export class MomentsService {
@@ -223,7 +286,16 @@ export class MomentsService {
         ...keysetFilterAfter(cursor),
         ...(platform ? { platform: platform as never } : {}),
         ...(authorIds ? { userId: { in: authorIds } } : {}),
-        ...(blockedIds.size > 0 ? { userId: { notIn: [...blockedIds] } } : {}),
+        /**
+         * Moderation visibility, expressed as an explicit `OR` rather than spread from
+         * `reviewVisibilityFilter`, because it has to be combined with the block list
+         * below. Two separate `userId` keys would silently overwrite each other, and the
+         * surviving one would either ignore blocks or hide the viewer's own queued post.
+         */
+        AND: [
+          ...(blockedIds.size > 0 ? [{ userId: { notIn: [...blockedIds] } }] : []),
+          reviewVisibilityFilter(viewerId),
+        ],
       },
       orderBy: keysetOrderBy,
       take: limit + 1,
@@ -295,6 +367,12 @@ export class MomentsService {
         userId: authorId,
         ...keysetFilterAfter(cursor),
         ...(platform ? { platform: platform as never } : {}),
+        /**
+         * A visitor to someone else's profile sees only approved moments, while the owner
+         * sees their own queued ones. `AND` rather than a spread so the `userId: authorId`
+         * above is never overwritten by the filter's own `userId` branch.
+         */
+        AND: [reviewVisibilityFilter(viewerId)],
       },
       orderBy: keysetOrderBy,
       take: limit + 1,
@@ -359,6 +437,15 @@ export class MomentsService {
     });
     if (!moment || moment.user.status !== "ACTIVE") return null;
     if (viewerId !== moment.userId) await this.assertCanInteract(viewerId, moment.userId);
+    /**
+     * A queued or refused moment is visible to its author only.
+     *
+     * The list queries filter this in SQL, but the detail route is a separate entry point
+     * reached by id — without this check, knowing an id would be enough to read content a
+     * reviewer has not yet cleared, and the content-visibility rule would hold only for
+     * people who used the list.
+     */
+    if (isReviewBlockedForViewer(viewerId, moment)) return null;
     const viewerSetting = await this.prisma.momentSetting.findUnique({ where: { userId: viewerId } });
     return {
       id: moment.id,
@@ -705,17 +792,49 @@ export class MomentsService {
       error.code = "EMPTY_CONTENT";
       throw error;
     }
-    let scan = { blocked: false };
+    let scan: SafetyScan = { blocked: false, level: "LOW", reasons: [], hasExternalLink: false, hasContactLeak: false };
     try {
       scan = this.safety.scanText(content);
     } catch {
-      scan = { blocked: false };
+      // A scanner defect must not block publishing outright: the failure mode of an
+      // unavailable scanner is "unmoderated", which is the behaviour every moment had
+      // before this feature existed.
+      scan = { blocked: false, level: "LOW", reasons: [], hasExternalLink: false, hasContactLeak: false };
     }
     if (scan.blocked) {
       const error = new Error("CONTENT_BLOCKED") as Error & { code?: string };
       error.code = "CONTENT_BLOCKED";
       throw error;
     }
+
+    /**
+     * Moderation decision, made here rather than in a queue.
+     *
+     * The rule is risk-based, which is what keeps a queue workable: a keyword match
+     * against the scam/spam lists always goes to a human, a medium-risk signal (an
+     * external link, a phone number, a handle) goes to a human **only from an untrusted
+     * account**, and everything else is visible immediately.
+     *
+     * The trusted-account exemption is not a loophole: `SafetyService.trustedAccount`
+     * requires a week-old account that is ACTIVE and has real activity behind it
+     * (connections, messages or requests). Without it, every established member would
+     * wait for a human to approve a link they are allowed to post, and the queue would be
+     * filled with content nobody needs to look at — which is how moderation queues stop
+     * being read.
+     */
+    let reviewStatus: "PENDING" | "APPROVED" = "APPROVED";
+    let reviewReasons: string[] = [];
+    if (scan.level === "HIGH") {
+      reviewStatus = "PENDING";
+      reviewReasons = scan.reasons;
+    } else if (scan.level === "MEDIUM") {
+      const trusted = await this.safety.trustedAccount(userId).catch(() => false);
+      if (!trusted) {
+        reviewStatus = "PENDING";
+        reviewReasons = scan.reasons;
+      }
+    }
+
     const tags = Array.isArray(input.tags)
       ? input.tags
           .filter((tag) => typeof tag === "string")
@@ -735,6 +854,8 @@ export class MomentsService {
         // Published by the user in-app — genuine content, not demo filler.
         source: "USER",
         syncedAt: new Date(),
+        reviewStatus: reviewStatus as never,
+        reviewReasons,
       },
     });
     return {
@@ -752,6 +873,12 @@ export class MomentsService {
       source: created.source,
       isDemo: created.source === "DEMO",
       createdAt: created.createdAt,
+      /**
+       * Returned so the composer can tell the member their post is queued rather than
+       * live. A silent delay is the worst outcome here: the member would assume it
+       * published, see nothing in the feed, and publish again.
+       */
+      reviewStatus: created.reviewStatus,
     };
   }
 

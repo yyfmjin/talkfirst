@@ -20,6 +20,8 @@ import { TranslateModule } from "./translate/translate.module";
 import { AdminModule } from "./admin/admin.module";
 import { UploadsModule } from "./uploads/uploads.module";
 import { MomentsModule } from "./moments/moments.module";
+import { FeedbackModule } from "./feedback/feedback.module";
+import { SocialSyncModule } from "./social-sync/social-sync.module";
 import { NotificationsModule } from "./notifications/notification.module";
 
 @Module({
@@ -51,6 +53,8 @@ import { NotificationsModule } from "./notifications/notification.module";
     AdminModule,
     UploadsModule,
     MomentsModule,
+    FeedbackModule,
+    SocialSyncModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: HttpThrottlerGuard }],

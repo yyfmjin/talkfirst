@@ -22,8 +22,11 @@ import { AccessLogService } from "./security/access-log.service";
 import { DeviceIdentityService } from "./security/device-identity.service";
 import { SecurityModule } from "./security/security.module";
 import { createRequestIdMiddleware } from "./security/request-id.middleware";
+import { createIpBanMiddleware } from "./security/ip-ban.middleware";
+import { IpBanService } from "./security/ip-ban.service";
 import { applySecurityHeaders } from "./security/security-headers";
 import { uploadRoot as resolveUploadRoot } from "./uploads/upload-paths";
+import { assertTokenEncryptionKeyConfigured } from "./social-sync/token-crypto.service";
 
 /**
  * Load `.env` BEFORE anything reads configuration.
@@ -84,6 +87,15 @@ async function bootstrap() {
   // `deviceHash` column stays NULL — see the guard for why that must not be a
   // production default.
   assertDeviceSaltConfigured();
+  /**
+   * Social sync: third-party OAuth tokens are stored encrypted, so the key that
+   * protects them must exist. Unlike the JWT secrets there is deliberately NO
+   * usable development fallback in production — a deployment that skipped this
+   * would encrypt real members' social credentials with a key committed to the
+   * source tree, and a leaked dump would then be decryptable by anyone with the
+   * repository.
+   */
+  assertTokenEncryptionKeyConfigured();
   // Phase O1-5: the fallback of "trust 1 proxy hop" lets any caller forge the
   // address recorded in `AccessLog.ip` when no proxy is actually present, so the
   // topology must be stated rather than assumed.
@@ -117,13 +129,21 @@ async function bootstrap() {
   // middleware, guard or interceptor runs.
   app.set("trust proxy", trustProxySetting());
   app.use(createRequestIdMiddleware());
+  const securityModule = app.select(SecurityModule);
+  /**
+   * IP bans. Registered AFTER the request-id middleware (so `getRequestContext()`
+   * already carries the address this middleware reads through `getClientIp`) and
+   * BEFORE access logging, so a refused request still produces an audit row. That
+   * ordering is the whole audit requirement: a ban whose refusals were invisible
+   * could not be told apart from a ban that never fired.
+   */
+  app.use(createIpBanMiddleware(securityModule.get(IpBanService)));
   // Phase O1: access logging must be a middleware, not an interceptor. Guards run
   // *before* interceptors, so an interceptor never saw a 401/403 rejection or an
   // unmatched 404 — exactly the traffic an audit trail exists to capture. Placed
   // after the request-id middleware so `getRequestContext()` (requestId/ip/path)
   // is populated, and before the routes so it wraps every response. It listens on
   // `res.on("finish")`, so body parsing does not need to have happened yet.
-  const securityModule = app.select(SecurityModule);
   app.use(
     createAccessLogMiddleware(
       securityModule.get(AccessLogService),

@@ -38,7 +38,15 @@ test-results/
 scripts/verify-report.txt
 scripts/verify-status.txt
 
-# Scratch file holding the text for `git commit -F`; removed after the commit.
+# Scratch files holding the text for `git commit -F`; removed after the commit.
+#
+# Both spellings are listed because the first version of this rule covered
+# `.git-commit-message.txt` while a later commit actually created
+# `.git-commit-msg.txt` — one word short, so the rule did not match and the scratch
+# file was committed. A glob covers the whole family instead of the next spelling
+# being missed too.
 .git-commit-message.txt
+.git-commit-msg.txt
+.git-commit*.txt
 
 talkfirst-*.tar.gz

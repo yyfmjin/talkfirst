@@ -9,6 +9,8 @@ import {
 } from "./admin.service";
 import { permissionsForRole, ROLE_ALLOWED_STATUS_ACTIONS } from "./permissions";
 import { PERMISSION_METADATA_KEY } from "./require-permission.decorator";
+import { AppSettingsService } from "../feedback/app-settings.service";
+import { FeedbackService } from "../feedback/feedback.service";
 
 /**
  * Phase A+ — `GET /admin/users/:id` must 404 for an unknown id.
@@ -299,7 +301,12 @@ describe("GET /admin/users/:id — unknown id", () => {
 
   it("3. the controller cannot emit { success: true, data: null } for a missing user", async () => {
     const { service } = makeService(null);
-    const controller = new AdminController(service);
+    // The feedback collaborator is unused by this route; see the same note in
+    // `admin-user-status.spec.ts`.
+    const controller = new AdminController(
+      service,
+      new FeedbackService({} as never, new AppSettingsService()),
+    );
 
     // If this ever resolves, the route is back to answering 200 with a null body.
     await expect(controller.user("does-not-exist")).rejects.toBeInstanceOf(NotFoundException);
@@ -307,7 +314,10 @@ describe("GET /admin/users/:id — unknown id", () => {
 
   it("4. an existing user is still returned inside the success envelope", async () => {
     const { service, prisma, calls } = makeService(userRow);
-    const controller = new AdminController(service);
+    const controller = new AdminController(
+      service,
+      new FeedbackService({} as never, new AppSettingsService()),
+    );
 
     const body = await controller.user(USER_ID);
 

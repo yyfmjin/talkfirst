@@ -2,6 +2,7 @@ import { Global, Module } from "@nestjs/common";
 import { AccessLogService } from "./access-log.service";
 import { AuditRetentionService } from "./audit-retention.service";
 import { DeviceIdentityService } from "./device-identity.service";
+import { IpBanService } from "./ip-ban.service";
 import { SecurityEventService } from "./security-event.service";
 
 /**
@@ -33,12 +34,16 @@ import { SecurityEventService } from "./security-event.service";
     AccessLogService,
     DeviceIdentityService,
     AuditRetentionService,
+    // Reads the ban table on the request path; `main.ts` builds the middleware from
+    // this instance so the console's write paths can invalidate the same cache.
+    IpBanService,
   ],
   exports: [
     SecurityEventService,
     AccessLogService,
     DeviceIdentityService,
     AuditRetentionService,
+    IpBanService,
   ],
 })
 export class SecurityModule {}

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -20,6 +21,7 @@ import { RequirePermission } from "./require-permission.decorator";
 import { AdminPublic } from "./admin-public.decorator";
 import { AdminService } from "./admin.service";
 import { UuidParamPipe } from "./uuid-param.pipe";
+import { FeedbackService } from "../feedback/feedback.service";
 
 class UserStatusDto {
   @IsIn(["ban", "unban", "disable", "activate", "suspend"])
@@ -46,6 +48,147 @@ class ReportReviewDto {
   @IsString()
   @MaxLength(500)
   reason?: string;
+}
+
+/**
+ * A new IP ban.
+ *
+ * `reason` is REQUIRED here, unlike on `UserStatusDto` where the service enforces it —
+ * on this endpoint the DTO can state it directly, which gives a 400 before the service
+ * is entered. A ban with no stated cause is unusable in a later review, which is the
+ * whole reason the column is non-nullable.
+ *
+ * `ip` is only checked for presence and length: the real validation is
+ * `normalizeIp` plus `isNonRoutableAddress` in the service, because "is this a
+ * banable address" depends on the deployment's topology (loopback, private ranges),
+ * not on syntax alone.
+ */
+class IpBanDto {
+  @IsString()
+  @MaxLength(64)
+  ip!: string;
+
+  @IsIn(["SECONDARY", "PRIMARY"])
+  level!: "SECONDARY" | "PRIMARY";
+
+  @IsString()
+  @MaxLength(500)
+  reason!: string;
+
+  @IsOptional()
+  @IsISO8601()
+  expiresAt?: string;
+}
+
+/** Lifting a ban. The reason is optional: the action itself is the record. */
+class LiftIpBanDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
+}
+
+/**
+ * Handling a feedback message.
+ *
+ * Both fields are optional and at least one is required, which the service enforces —
+ * a status-only change is the common case (triaging a queue), and a reply without a
+ * status change is the other.
+ */
+class FeedbackReviewDto {
+  @IsOptional()
+  @IsIn(["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"])
+  status?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  replyBody?: string;
+}
+
+/** The member-facing support address.
+ *
+ * A blank string is meaningful and distinct from omission: it CLEARS the override and
+ * falls back to the shipped default, which is how an operator undoes a bad value
+ * without database access.
+ */
+class SupportEmailDto {
+  @IsString()
+  @MaxLength(320)
+  supportEmail!: string;
+}
+
+/**
+ * A moderation decision on a moment.
+ *
+ * Three actions rather than a free-text status, because the three are genuinely
+ * different acts: approve makes it (or keeps it) public, reject refuses content that was
+ * never public, and hide withdraws content that was. Letting a caller post an arbitrary
+ * `ReviewStatus` would allow `PENDING`, which is the scanner's state and not a human
+ * decision.
+ */
+class MomentReviewDto {
+  @IsIn(["approve", "reject", "hide"])
+  action!: "approve" | "reject" | "hide";
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
+}
+
+/**
+ * A discover filter tab.
+ *
+ * `slug` is only accepted on create: it is what clients send in the query string, so
+ * renaming one would silently break every saved tab. The labels are what an operator
+ * changes.
+ */
+class DiscoverCategoryDto {
+  @IsString()
+  @MaxLength(48)
+  slug!: string;
+
+  @IsString()
+  @MaxLength(48)
+  label!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(48)
+  labelZh?: string;
+
+  /** Comma-separated interest/purpose slugs, e.g. `minecraft,steam`. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  keywords?: string;
+
+  @IsOptional()
+  sort?: number;
+}
+
+class DiscoverCategoryPatchDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(48)
+  label?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(48)
+  labelZh?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  keywords?: string;
+
+  @IsOptional()
+  sort?: number;
+
+  @IsOptional()
+  isActive?: boolean;
 }
 
 class AdminNoteDto {
@@ -95,7 +238,15 @@ function optionalBoolean(raw?: string): boolean | undefined {
 @Controller("admin")
 @UseGuards(JwtAuthGuard, AdminGuard, PermissionGuard)
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    /**
+     * The same service the member-facing endpoints use, injected rather than
+     * reimplemented so the address an operator saves is byte-for-byte the one a member
+     * is shown.
+     */
+    private readonly feedbackService: FeedbackService,
+  ) {}
 
   @Get("dashboard")
   @RequirePermission("dashboard:read")
@@ -387,6 +538,248 @@ export class AdminController {
   accessLog(@Param("id", UuidParamPipe) id: string) {
     return this.adminService
       .accessLogDetail(id)
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  /**
+   * IP bans ("IP 封禁").
+   *
+   * ## Why the read and the write are different permissions
+   *
+   * Listing bans is `ops:read` — it is the same operational data as the access log,
+   * and it necessarily exposes addresses. Creating one is `ops:write`, which is held by
+   * SUPER_ADMIN and MODERATOR. `ops:read`'s other holder, ANALYST, is read-only across
+   * the entire console, so a single shared permission would either let ANALYST ban
+   * addresses or leave nobody able to act on the list they can see.
+   *
+   * ## Why there is no delete
+   *
+   * A ban is lifted, never removed. `liftedAt`/`liftedById` keep the history, so "why
+   * was this address blocked in March" stays answerable after the decision is reversed.
+   *
+   * ## Why `POST` carries the address verbatim
+   *
+   * `AdminService` normalises it through `normalizeIp` — the same function `AccessLog`
+   * writes with — so a ban created from a log row keys on exactly the string that row
+   * stored. Normalising in the controller as well would create a second chance to
+   * diverge.
+   */
+  @Get("ip-bans")
+  @RequirePermission("ops:read")
+  ipBans(
+    @Query("ip") ip?: string,
+    @Query("includeLifted") includeLifted?: string,
+    @Query("page") page?: string,
+    @Query("pageSize") pageSize?: string,
+  ) {
+    return this.adminService
+      .listIpBans({
+        ip,
+        // Only the literal "true" opts in, so a typo shows the active list rather than
+        // silently widening the screen to every ban ever issued.
+        includeLifted: includeLifted === "true",
+        page: page ? Number(page) : undefined,
+        pageSize: pageSize ? Number(pageSize) : undefined,
+      })
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  @Get("ip-bans/counts")
+  @RequirePermission("ops:read")
+  ipBanCounts() {
+    return this.adminService
+      .ipBanCounts()
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  @Post("ip-bans")
+  @RequirePermission("ops:write")
+  createIpBan(@Req() request: AdminRequest & Request, @Body(new ValidationPipe()) dto: IpBanDto) {
+    return this.adminService
+      .createIpBan(
+        { ip: dto.ip, level: dto.level, reason: dto.reason, expiresAt: dto.expiresAt ?? null },
+        request.admin!,
+      )
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  @Post("ip-bans/:id/lift")
+  @RequirePermission("ops:write")
+  liftIpBan(
+    @Req() request: AdminRequest & Request,
+    @Param("id", UuidParamPipe) id: string,
+    @Body(new ValidationPipe()) dto: LiftIpBanDto,
+  ) {
+    return this.adminService
+      .liftIpBan(id, request.admin!, dto.reason)
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  /**
+   * Content moderation ("内容审核").
+   *
+   * This is the domain `moderation:read` / `moderation:write` were created for and which
+   * did not exist until now — a fact an existing test recorded. The 审核工作台 screen is
+   * the *reports* queue; this is the content queue, and the two are deliberately separate
+   * endpoints because a report is a member's claim about content while a queue row is
+   * content the scanner flagged.
+   */
+  @Get("moments/queue")
+  @RequirePermission("moderation:read")
+  momentQueue(
+    @Query("status") status?: string,
+    @Query("page") page?: string,
+    @Query("pageSize") pageSize?: string,
+  ) {
+    return this.adminService
+      .listMomentQueue({
+        status,
+        page: page ? Number(page) : undefined,
+        pageSize: pageSize ? Number(pageSize) : undefined,
+      })
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  @Get("moments/queue/counts")
+  @RequirePermission("moderation:read")
+  momentQueueCounts() {
+    return this.adminService.momentQueueCounts().then((data) => ({ success: true as const, data }));
+  }
+
+  @Post("moments/:id/review")
+  @RequirePermission("moderation:write")
+  reviewMoment(
+    @Req() request: AdminRequest & Request,
+    @Param("id", UuidParamPipe) id: string,
+    @Body(new ValidationPipe()) dto: MomentReviewDto,
+  ) {
+    return this.adminService
+      .reviewMoment(id, dto.action, request.admin!, dto.reason)
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  /**
+   * Member feedback ("意见反馈").
+   *
+   * Gated on `moderation:*` rather than `ops:*`: answering a member is content
+   * moderation work, which is what MODERATOR and CONTENT_MANAGER are for, and neither
+   * of them holds any `ops:*` permission. Gating it on `ops:read` would have left the
+   * queue readable only by SUPER_ADMIN and ANALYST, and writable by nobody.
+   */
+  @Get("feedback")
+  @RequirePermission("moderation:read")
+  feedback(
+    @Query("status") status?: string,
+    @Query("kind") kind?: string,
+    @Query("page") page?: string,
+    @Query("pageSize") pageSize?: string,
+  ) {
+    return this.feedbackService
+      .listForAdmin({
+        status,
+        kind,
+        page: page ? Number(page) : undefined,
+        pageSize: pageSize ? Number(pageSize) : undefined,
+      })
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  @Get("feedback/counts")
+  @RequirePermission("moderation:read")
+  feedbackCounts() {
+    return this.feedbackService.adminCounts().then((data) => ({ success: true as const, data }));
+  }
+
+  @Post("feedback/:id/review")
+  @RequirePermission("moderation:write")
+  reviewFeedback(
+    @Req() request: AdminRequest & Request,
+    @Param("id", UuidParamPipe) id: string,
+    @Body(new ValidationPipe()) dto: FeedbackReviewDto,
+  ) {
+    return this.feedbackService
+      .review(id, { status: dto.status, replyBody: dto.replyBody }, { adminUserId: request.admin?.adminUserId ?? null })
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  /**
+   * The support address members are shown.
+   *
+   * `settings:read` / `settings:write` — the permission pair that existed from the
+   * beginning and had no implementation until this feature needed it. Held by
+   * SUPER_ADMIN and ANALYST for reading, SUPER_ADMIN and MODERATOR for writing, which
+   * is the right shape for "the address the product advertises".
+   */
+  @Get("settings/support-email")
+  @RequirePermission("settings:read")
+  supportEmail() {
+    return this.feedbackService
+      .readSupportEmailSetting()
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  @Patch("settings/support-email")
+  @RequirePermission("settings:write")
+  setSupportEmail(@Req() request: AdminRequest & Request, @Body(new ValidationPipe()) dto: SupportEmailDto) {
+    return this.feedbackService
+      .writeSupportEmailSetting(dto.supportEmail, request.admin?.adminUserId ?? null)
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  /**
+   * Discover filter tabs ("发现页类别").
+   *
+   * These were hardcoded in the frontend and in `DiscoverService`, which is why there were
+   * only two. Gated on `settings:*` because a tab is product configuration rather than a
+   * judgement about a member's content — the same reasoning as the support address.
+   *
+   * `:id` routes are declared after the two static paths (`categories/discover` is the
+   * only other one) so a future static sibling cannot be captured as an id.
+   */
+  @Get("categories/discover")
+  @RequirePermission("settings:read")
+  discoverCategories(@Query("includeInactive") includeInactive?: string) {
+    return this.adminService
+      .listDiscoverCategories(includeInactive === "true")
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  @Post("categories/discover")
+  @RequirePermission("settings:write")
+  createDiscoverCategory(@Body(new ValidationPipe()) dto: DiscoverCategoryDto) {
+    return this.adminService
+      .createDiscoverCategory({
+        slug: dto.slug,
+        label: dto.label,
+        labelZh: dto.labelZh ?? null,
+        keywords: dto.keywords ?? "",
+        sort: dto.sort,
+      })
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  @Patch("categories/discover/:id")
+  @RequirePermission("settings:write")
+  updateDiscoverCategory(
+    @Param("id", UuidParamPipe) id: string,
+    @Body(new ValidationPipe()) dto: DiscoverCategoryPatchDto,
+  ) {
+    return this.adminService
+      .updateDiscoverCategory(id, {
+        label: dto.label,
+        labelZh: dto.labelZh,
+        keywords: dto.keywords,
+        sort: dto.sort,
+        isActive: dto.isActive,
+      })
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  @Delete("categories/discover/:id")
+  @RequirePermission("settings:write")
+  deleteDiscoverCategory(@Param("id", UuidParamPipe) id: string) {
+    return this.adminService
+      .deleteDiscoverCategory(id)
       .then((data) => ({ success: true as const, data }));
   }
 

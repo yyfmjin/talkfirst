@@ -9,6 +9,17 @@ import { DiscoverService } from "./discover.service";
 export class DiscoverController {
   constructor(private readonly discoverService: DiscoverService) {}
 
+  /**
+   * The filter tabs, so the client never hardcodes them.
+   *
+   * Declared BEFORE `views/:userId` would not matter for `GET` (that route is a `POST`),
+   * but the path is static and non-overlapping either way.
+   */
+  @Get("categories")
+  async categories() {
+    return { success: true as const, data: await this.discoverService.listCategories() };
+  }
+
   @Get("recommendations")
   async recommendations(
     @CurrentUser() user: AuthUser,

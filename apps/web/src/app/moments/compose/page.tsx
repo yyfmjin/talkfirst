@@ -133,6 +133,13 @@ export default function ComposePage() {
   const [savingVisibility, setSavingVisibility] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState("");
+  /**
+   * True once a publish came back queued for review.
+   *
+   * Kept apart from `error` because it is not a failure: the post exists, and showing it
+   * in red would make the member think it was lost.
+   */
+  const [pendingNotice, setPendingNotice] = useState(false);
 
   // Panels / sheets.
   const [sheet, setSheet] = useState<null | "media" | "visibility">(null);
@@ -434,8 +441,24 @@ export default function ComposePage() {
       if (tags.length > 0) body.tags = tags;
 
       const newTags = tags.length > 0 ? tags : [];
-      await apiFetch("/moments", { method: "POST", body });
+      const created = await apiFetch<{ reviewStatus?: string }>("/moments", { method: "POST", body });
       if (newTags.length > 0) rememberTags(newTags);
+
+      /**
+       * A queued post must say so.
+       *
+       * The scanner escalates risky content to `PENDING`, where it is visible to its author
+       * but nobody else. Navigating away silently would show the member an empty feed, and
+       * the natural reaction to that is to publish again — producing duplicates of content
+       * that is already waiting for a human.
+       */
+      if (created?.reviewStatus === "PENDING") {
+        setError("");
+        setPendingNotice(true);
+        setPublishing(false);
+        return;
+      }
+
       router.push("/moments");
     } catch (requestError) {
       setError(friendlyErrorMessage(requestError, "发布失败，请稍后再试。"));
@@ -720,6 +743,29 @@ export default function ComposePage() {
             <p role="alert" data-testid="moment-error" className="mt-3 break-words text-[12px] text-red-500">
               {error}
             </p>
+          ) : null}
+
+          {/* Not an error: the post was accepted and is waiting for review. Stated in
+              neutral colours, with the two ways out, because the alternative is a member
+              who sees an empty feed and publishes the same thing again. */}
+          {pendingNotice ? (
+            <div
+              data-testid="moment-pending-notice"
+              role="status"
+              className="mt-3 rounded-2xl bg-surface-sunken p-3"
+            >
+              <p className="text-[12px] leading-5 text-content-muted">
+                已提交，正在审核中。审核通过后其他成员才能看到，你可以先返回动态页。
+              </p>
+              <button
+                type="button"
+                data-testid="moment-pending-leave"
+                onClick={() => router.push("/moments")}
+                className="mt-2 text-[12px] font-medium text-brand-600 underline"
+              >
+                返回动态
+              </button>
+            </div>
           ) : null}
         </div>
 

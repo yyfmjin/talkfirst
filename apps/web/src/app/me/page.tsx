@@ -8,6 +8,7 @@ import {
   KeyRound,
   Languages,
   Lock,
+  MessageSquare,
   ShieldCheck,
   Sparkles,
   UserRound,
@@ -88,6 +89,20 @@ const ENTRY_GROUPS: Array<{
     entries: [
       { href: "/me/visibility", label: "资料可见范围", icon: Eye },
       { href: "/me/safety", label: "安全中心", hint: "拉黑与举报", icon: ShieldCheck },
+    ],
+  },
+  {
+    /**
+     * A group of its own rather than one more row under 隐私与安全.
+     *
+     * The existing groups answer "who can see me" and "who can reach me". This answers
+     * "how do I reach the team", which is neither: it is the one screen a member opens
+     * when something is wrong, so it sits apart and is not competing for attention with
+     * routine privacy settings.
+     */
+    title: "帮助与反馈",
+    entries: [
+      { href: "/me/feedback", label: "意见反馈", hint: "问题、建议都可以提", icon: MessageSquare },
     ],
   },
 ];

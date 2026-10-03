@@ -37,6 +37,8 @@ export type Permission =
   | "audit:export"
   /** Phase O2 — site operations (HTTP access logs). Carries raw IP / UA. */
   | "ops:read"
+  /** Blocking / unblocking client addresses. Split from `ops:read` — see the backend. */
+  | "ops:write"
   | "settings:read"
   | "settings:write"
   | "admins:read"
@@ -60,6 +62,7 @@ const ALL: readonly Permission[] = [
   "audit:read",
   "audit:export",
   "ops:read",
+  "ops:write",
   "settings:read",
   "settings:write",
   "admins:read",
@@ -78,6 +81,8 @@ export const ROLE_PERMISSIONS: Record<AdminRole, readonly Permission[]> = {
     "moderation:write",
     "risk:read",
     "audit:read",
+    // Mirrors the backend: MODERATOR may already ban an account via `users:write`.
+    "ops:write",
   ],
   SUPPORT: ["dashboard:read", "users:read", "users:write", "reports:read", "audit:read"],
   ANALYST: [

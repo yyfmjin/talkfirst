@@ -51,6 +51,21 @@ export const PERMISSIONS = [
    */
   "ops:read",
 
+  /**
+   * Blocking and unblocking client addresses.
+   *
+   * A separate permission from `ops:read` because the two holder sets do not overlap:
+   * `ops:read` belongs to SUPER_ADMIN and ANALYST (the roles that read operational
+   * data), and ANALYST is read-only by design — it holds no write permission anywhere.
+   * Reusing `ops:read` for writes would either have to make ANALYST able to ban
+   * addresses or leave nobody able to act on what they can see.
+   *
+   * MODERATOR holds this alongside `users:write`, which already allows banning an
+   * account. An address ban is the same kind of action against a different subject, so
+   * giving it to a different set of roles would be inconsistent.
+   */
+  "ops:write",
+
   "settings:read",
   "settings:write",
 
@@ -83,6 +98,9 @@ export const ROLE_PERMISSIONS: Record<AdminRole, readonly Permission[]> = {
     "moderation:write",
     "risk:read",
     "audit:read",
+    // Mirrors the address-ban grant: MODERATOR may already ban an account via
+    // `users:write`, so blocking an address is the same class of action.
+    "ops:write",
   ],
 
   SUPPORT: [

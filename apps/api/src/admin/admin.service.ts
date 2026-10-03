@@ -14,7 +14,12 @@ import type {
 } from "@prisma/client";
 import { NotificationService } from "../notifications/notification.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { normalizeIp } from "../security/client-ip";
+import type { IpBanService } from "../security/ip-ban.service";
 import { isProfileComplete, profileCompletionOf } from "../users/profile-completion";
+// The same keyword parser the discovery feed matches with, so the value an administrator
+// saves is byte-for-byte the value matching consumes.
+import { parseCategoryKeywords } from "../discover/discover.service";
 import type { ResolvedAdmin } from "./admin.guard";
 import { canSetUserStatus, permissionsForRole, type UserStatusAction } from "./permissions";
 
@@ -870,6 +875,58 @@ function parseOptionalDate(raw?: string): Date | undefined {
 }
 
 /**
+ * True for loopback, link-local, and private-range addresses — IPv4 and IPv6.
+ *
+ * ## Why a ban must refuse these
+ *
+ * Blocking `127.0.0.1` silences the deployment's own health checks and any
+ * server-to-server call that leaves and returns; blocking `10.0.0.0/8` or
+ * `192.168.0.0/16` silences an entire office or a whole container network, because
+ * every machine behind a NAT appears as its gateway or as its own private address.
+ * Neither is ever what an operator means when they click 封禁, and both are
+ * unrecoverable through the console if they happen — the console would be behind the
+ * block. Refusing them here is cheaper than any recovery procedure.
+ *
+ * ## Why string prefixes rather than an IP library
+ *
+ * IPv4 needs no library to classify, and for IPv6 the routable/private split is a
+ * small, well-known set of prefixes. Pulling in a dependency to answer "is this
+ * private" for a safety check would add supply-chain surface for no capability, and
+ * the check is deliberately conservative: anything not clearly identifiable as
+ * public is refused, so an unusual form fails closed (the ban is rejected) rather
+ * than open (a private range gets blocked).
+ */
+function isNonRoutableAddress(ip: string): boolean {
+  const value = ip.toLowerCase();
+
+  if (value === "127.0.0.1" || value === "::1" || value === "0.0.0.0" || value === "::") return true;
+
+  // IPv4 private, loopback, link-local, CGNAT, and this-network.
+  const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(value);
+  if (v4) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])];
+    if (a === 10) return true;
+    if (a === 127) return true;
+    if (a === 0) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 169 && b === 254) return true;
+    // 100.64.0.0/10 — carrier-grade NAT, i.e. a mobile network's whole subscriber pool.
+    if (a === 100 && b >= 64 && b <= 127) return true;
+    return false;
+  }
+
+  // IPv6 unique-local (fc00::/7) and link-local (fe80::/10).
+  if (/^f[cd][0-9a-f]{2}:/.test(value)) return true;
+  if (/^fe[89ab][0-9a-f]:/.test(value)) return true;
+
+  // Anything not recognisable as an IPv4 or IPv6 literal is refused: a value this
+  // function cannot classify must not become a ban that silently matches nothing.
+  const looksLikeV6 = /^[0-9a-f:]+$/.test(value) && value.includes(":");
+  return !looksLikeV6;
+}
+
+/**
  * Phase B3: the exact shape `GET /admin/users/:id` returns.
  *
  * ## Why every relation now names its fields
@@ -1289,7 +1346,56 @@ export class AdminService {
      * is global, so Nest always supplies it in the running application.
      */
     private readonly notifications?: NotificationService,
+    /**
+     * The ban cache the middleware reads.
+     *
+     * Optional for the same reason as `notifications` above: the admin specs build
+     * this service by hand, and a required third argument would either break every one
+     * of them or force each to construct a service it has no interest in. Only the
+     * ban write paths need it, and they fail with an explicit message rather than a
+     * null dereference when it is absent.
+     */
+    private readonly ipBans?: IpBanService,
   ) {}
+
+  /**
+   * The ban cache, or a clear failure.
+   *
+   * Called only from the ban write paths, so "not injected" is a construction mistake
+   * rather than a runtime condition — and it must not be able to silently skip cache
+   * invalidation, which would make 解封 appear broken for up to a TTL.
+   */
+  private requireIpBans(): IpBanService {
+    if (!this.ipBans) {
+      throw new Error("AdminService was constructed without IpBanService; ban writes cannot invalidate the cache.");
+    }
+    return this.ipBans;
+  }
+
+  /**
+   * The acting administrator's `AdminUser.id`, or a refusal.
+   *
+   * `ResolvedAdmin.adminUserId` is nullable because of the legacy compatibility path
+   * where an account is an administrator through `User.isAdmin` with no `AdminUser`
+   * row. That path cannot perform a ban: `IpBan.createdById` references `AdminUser`, so
+   * passing `User.id` would violate the foreign key, and passing `null` would record a
+   * moderation action with no actor — which is precisely the audit guarantee this
+   * feature exists to provide. Refusing is the honest outcome; the fix is to create the
+   * missing `AdminUser` row.
+   */
+  private requireAdminUserId(actor: ResolvedAdmin): string {
+    if (!actor.adminUserId) {
+      throw new ForbiddenException({
+        success: false,
+        error: {
+          code: "IP_BAN_ACTOR_REQUIRED",
+          message:
+            "当前管理员账号没有对应的 AdminUser 记录（旧版兼容模式），无法执行封禁。请先为该账号创建管理员记录。",
+        },
+      });
+    }
+    return actor.adminUserId;
+  }
 
   /**
    * Phase B1: platform-operations summary for the console landing screen.
@@ -3244,14 +3350,599 @@ export class AdminService {
   }
 
   /**
+   * IP ban administration.
+   *
+   * ## Why these live on `AdminService` rather than a new service
+   *
+   * Every write here must land an `AdminAuditLog` row atomically with the ban itself,
+   * and `recordAudit` — the one place human audit rows are written — is already here.
+   * A separate service would either duplicate that or reach back across a boundary for
+   * it.
+   *
+   * ## Gates that make an operator unable to lock themselves out
+   *
+   * A PRIMARY ban refuses every request from an address, so banning the address an
+   * operator is currently using ends their session permanently and requires database
+   * surgery to undo. Three refusals prevent the realistic versions of that mistake:
+   * loopback/private ranges, and any address already recorded against an admin
+   * account. See `assertBanableIp`.
+   */
+
+  /** The active bans, newest first, plus the lifted history when asked for. */
+  async listIpBans(query: { ip?: string; includeLifted?: boolean; page?: number; pageSize?: number } = {}) {
+    const page = Number.isFinite(query.page) && (query.page as number) > 0 ? (query.page as number) : 1;
+    const pageSize = Math.min(
+      Number.isFinite(query.pageSize) && (query.pageSize as number) > 0 ? (query.pageSize as number) : 50,
+      200,
+    );
+
+    const where: Prisma.IpBanWhereInput = {};
+    if (query.ip?.trim()) where.ip = normalizeIp(query.ip);
+    // Active-only by default: an operator opening this screen wants the bans in force,
+    // not every ban ever issued.
+    if (!query.includeLifted) where.liftedAt = null;
+
+    const [items, total] = await Promise.all([
+      this.prisma.ipBan.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true,
+          ip: true,
+          level: true,
+          reason: true,
+          expiresAt: true,
+          createdAt: true,
+          liftedAt: true,
+          createdById: true,
+          liftedById: true,
+        },
+      }),
+      this.prisma.ipBan.count({ where }),
+    ]);
+
+    const adminIds = [
+      ...new Set([
+        ...items.map((row) => row.createdById),
+        ...items.map((row) => row.liftedById),
+      ]),
+    ].filter((id): id is string => Boolean(id));
+
+    const admins =
+      adminIds.length === 0
+        ? []
+        : await this.prisma.adminUser.findMany({
+            where: { id: { in: adminIds } },
+            select: { id: true, user: { select: { nickname: true, email: true } } },
+          });
+    const adminLabels = new Map(
+      admins.map((row) => [row.id, row.user.nickname ?? row.user.email]),
+    );
+
+    return {
+      items: items.map((row) => ({
+        ...row,
+        createdByLabel: row.createdById ? (adminLabels.get(row.createdById) ?? null) : null,
+        liftedByLabel: row.liftedById ? (adminLabels.get(row.liftedById) ?? null) : null,
+      })),
+      total,
+      page,
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    };
+  }
+
+  /** How many addresses are currently blocked, for the console summary. */
+  async ipBanCounts() {
+    const now = new Date();
+    const activeWhere: Prisma.IpBanWhereInput = {
+      liftedAt: null,
+      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+    };
+    const [active, primary, secondary] = await Promise.all([
+      this.prisma.ipBan.count({ where: activeWhere }),
+      this.prisma.ipBan.count({ where: { ...activeWhere, level: "PRIMARY" } }),
+      this.prisma.ipBan.count({ where: { ...activeWhere, level: "SECONDARY" } }),
+    ]);
+    return { active, primary, secondary };
+  }
+
+  /**
+   * Blocks an address.
+   *
+   * The ban row and its audit entry are written in one transaction, so a ban can never
+   * exist without a record of who ordered it — the requirement that makes this feature
+   * reviewable at all.
+   */
+  async createIpBan(
+    input: { ip: string; level: "SECONDARY" | "PRIMARY"; reason: string; expiresAt?: string | null },
+    actor: ResolvedAdmin,
+  ) {
+    const adminUserId = this.requireAdminUserId(actor);
+    const ip = normalizeIp(input.ip);
+    const reason = input.reason?.trim();
+    if (!reason) {
+      throw new BadRequestException({
+        success: false,
+        error: { code: "BAN_REASON_REQUIRED", message: "A ban must state a reason" },
+      });
+    }
+
+    await this.assertBanableIp(ip);
+
+    const expiresAt = input.expiresAt ? new Date(input.expiresAt) : null;
+    if (expiresAt && Number.isNaN(expiresAt.getTime())) {
+      throw new BadRequestException({
+        success: false,
+        error: { code: "VALIDATION_ERROR", message: "expiresAt is not a valid date" },
+      });
+    }
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      /**
+       * An existing ACTIVE ban for the same address is updated rather than duplicated.
+       *
+       * Two active rows for one address would make "why is this blocked" ambiguous and
+       * make lifting it a guess about which row to close, so the newest intent replaces
+       * the old one — and the previous level/reason is preserved in the audit `before`.
+       */
+      const existing = await tx.ipBan.findFirst({ where: { ip, liftedAt: null } });
+
+      const row = existing
+        ? await tx.ipBan.update({
+            where: { id: existing.id },
+            data: { level: input.level, reason, expiresAt, createdById: adminUserId },
+          })
+        : await tx.ipBan.create({
+            data: { ip, level: input.level, reason, expiresAt, createdById: adminUserId },
+          });
+
+      await this.recordAudit(
+        {
+          adminId: adminUserId,
+          action: existing ? "ip_ban_update" : "ip_ban_create",
+          targetType: "IP",
+          targetId: ip,
+          reason,
+          before: existing ? { level: existing.level, reason: existing.reason } : null,
+          after: { level: input.level, reason, expiresAt: expiresAt?.toISOString() ?? null },
+        },
+        tx,
+      );
+
+      return row;
+    });
+
+    // Take effect on the next request rather than up to a TTL later.
+    this.requireIpBans().invalidate(ip);
+    return created;
+  }
+
+  /**
+   * Lifts a ban.
+   *
+   * The row is KEPT and stamped (`liftedAt`/`liftedById`) rather than deleted, so the
+   * history of who was blocked and why survives the decision to stop blocking them.
+   */
+  async liftIpBan(banId: string, actor: ResolvedAdmin, reason?: string) {
+    const adminUserId = this.requireAdminUserId(actor);
+    const existing = await this.prisma.ipBan.findUnique({ where: { id: banId } });
+    if (!existing) {
+      throw new NotFoundException({
+        success: false,
+        error: { code: "IP_BAN_NOT_FOUND", message: "No such IP ban" },
+      });
+    }
+    if (existing.liftedAt) {
+      throw new BadRequestException({
+        success: false,
+        error: { code: "IP_BAN_ALREADY_LIFTED", message: "This ban has already been lifted" },
+      });
+    }
+
+    const lifted = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.ipBan.update({
+        where: { id: banId },
+        data: { liftedAt: new Date(), liftedById: adminUserId },
+      });
+      await this.recordAudit(
+        {
+          adminId: adminUserId,
+          action: "ip_ban_lift",
+          targetType: "IP",
+          targetId: existing.ip,
+          reason: reason ?? null,
+          before: { level: existing.level, reason: existing.reason },
+          after: null,
+        },
+        tx,
+      );
+      return row;
+    });
+
+    this.requireIpBans().invalidate(existing.ip);
+    return lifted;
+  }
+
+  /**
+   * Refuses the addresses that would take the console down with the ban.
+   *
+   * ## The three refusals, and why each is not paranoia
+   *
+   * 1. **Loopback and private ranges.** Banning `127.0.0.1` blocks the deployment's own
+   *    health checks and any server-to-server call; banning a private range blocks the
+   *    operator's whole office. Neither is ever the intent.
+   * 2. **An address already seen on an admin request.** `AccessLog` records the resolved
+   *    address of every request including `isAdmin` ones, so the console can refuse to
+   *    block an address an administrator has actually used. This is the check that
+   *    prevents the self-lockout, and it is deliberately based on observed traffic
+   *    rather than on the operator's current IP, which the API cannot know reliably
+   *    behind Cloudflare.
+   * 3. **Empty / unparseable input.** Rejected before anything else, because
+   *    `normalizeIp("")` is `""` and an empty unique-ish key would match nothing —
+   *    a ban that silently does nothing is worse than a refusal.
+   *
+   * Path prefixes cannot be used here: the console's own prefix is already exempt from
+   * the middleware, so it is not part of this decision.
+   */
+  private async assertBanableIp(ip: string): Promise<void> {
+    if (!ip) {
+      throw new BadRequestException({
+        success: false,
+        error: { code: "VALIDATION_ERROR", message: "An IP address is required" },
+      });
+    }
+
+    if (isNonRoutableAddress(ip)) {
+      throw new BadRequestException({
+        success: false,
+        error: {
+          code: "IP_BAN_REFUSED_LOCAL",
+          message: "回环地址与内网地址不允许封禁：会连带阻断部署自身的健康检查或整个办公网络。",
+        },
+      });
+    }
+
+    const adminUse = await this.prisma.accessLog.findFirst({
+      where: { ip, isAdmin: true },
+      select: { id: true },
+    });
+    if (adminUse) {
+      throw new ForbiddenException({
+        success: false,
+        error: {
+          code: "IP_BAN_REFUSED_ADMIN_IP",
+          message:
+            "该地址曾用于访问管理后台，封禁会让管理员（可能包括你自己）立即失去访问权限，因此被拒绝。",
+        },
+      });
+    }
+  }
+
+  /**
+   * Moment moderation queue ("内容审核").
+   *
+   * ## What was missing before this
+   *
+   * The permission pair `moderation:read` / `moderation:write` existed from the start, and
+   * a test in `admin-integration.spec.ts` recorded that they belonged to "a standalone
+   * moderation domain that does not exist yet". The 审核工作台 screen read the *reports*
+   * endpoint, not content, and a published moment went live immediately with no way to
+   * withhold it. This is that domain.
+   *
+   * ## Why the queue is PENDING-only by default
+   *
+   * The scanner escalates the narrow risk cases, so the queue is meant to be short and
+   * worked oldest-first. Listing every moment would turn a review task into a browsing
+   * task, and a queue nobody finishes is a queue nobody reads.
+   */
+
+  async listMomentQueue(query: {
+    status?: string;
+    page?: number;
+    pageSize?: number;
+  } = {}) {
+    const page = Number.isFinite(query.page) && (query.page as number) > 0 ? (query.page as number) : 1;
+    const pageSize = Math.min(
+      Number.isFinite(query.pageSize) && (query.pageSize as number) > 0 ? (query.pageSize as number) : 50,
+      200,
+    );
+
+    // An unrecognised status is ignored rather than rejected, matching the other reads.
+    // The default is PENDING because that is the queue.
+    const allowed = ["PENDING", "APPROVED", "REJECTED", "HIDDEN"];
+    const status = query.status && allowed.includes(query.status) ? query.status : "PENDING";
+
+    const where: Prisma.MomentWhereInput = { reviewStatus: status as never };
+
+    const [rows, total] = await Promise.all([
+      this.prisma.moment.findMany({
+        where,
+        // Oldest first: a queue is worked from the front, and a newest-first list leaves
+        // the earliest reports permanently at the bottom.
+        orderBy: { createdAt: "asc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true,
+          userId: true,
+          content: true,
+          images: true,
+          videoUrl: true,
+          tags: true,
+          source: true,
+          reviewStatus: true,
+          reviewReasons: true,
+          reviewedAt: true,
+          reviewedById: true,
+          createdAt: true,
+          user: { select: { id: true, nickname: true, email: true, status: true } },
+        },
+      }),
+      this.prisma.moment.count({ where }),
+    ]);
+
+    return {
+      items: rows,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      status,
+    };
+  }
+
+  async momentQueueCounts() {
+    const [pending, rejected, hidden] = await Promise.all([
+      this.prisma.moment.count({ where: { reviewStatus: "PENDING" } }),
+      this.prisma.moment.count({ where: { reviewStatus: "REJECTED" } }),
+      this.prisma.moment.count({ where: { reviewStatus: "HIDDEN" } }),
+    ]);
+    return { pending, rejected, hidden };
+  }
+
+  /**
+   * Approves, refuses or withdraws a moment.
+   *
+   * `HIDDEN` is a distinct outcome from `REJECTED`: refusing means it never became public,
+   * withdrawing means it did and now does not. Recording which happened is what makes the
+   * history readable later, and the audit row carries the previous state so the change is
+   * reversible by a reader.
+   */
+  async reviewMoment(
+    id: string,
+    action: "approve" | "reject" | "hide",
+    actor: ResolvedAdmin,
+    reason?: string,
+  ) {
+    const existing = await this.prisma.moment.findUnique({
+      where: { id },
+      select: { id: true, reviewStatus: true, userId: true },
+    });
+    if (!existing) {
+      throw new NotFoundException({
+        success: false,
+        error: { code: "MOMENT_NOT_FOUND", message: "No such moment" },
+      });
+    }
+
+    const nextStatus = action === "approve" ? "APPROVED" : action === "reject" ? "REJECTED" : "HIDDEN";
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.moment.update({
+        where: { id },
+        data: {
+          reviewStatus: nextStatus as never,
+          reviewedAt: new Date(),
+          reviewedById: actor.adminUserId,
+          // The scanner's reasons are cleared once a human has decided, so the column
+          // reflects "why was this flagged" rather than "why was it once flagged".
+          ...(action === "approve" ? { reviewReasons: [] } : {}),
+        },
+        select: { id: true, reviewStatus: true },
+      });
+
+      await this.recordAudit(
+        {
+          adminId: actor.adminUserId,
+          action: `moment_${action}`,
+          targetType: "MOMENT",
+          targetId: id,
+          reason: reason ?? null,
+          before: { reviewStatus: existing.reviewStatus },
+          after: { reviewStatus: nextStatus },
+        },
+        tx,
+      );
+
+      return row;
+    });
+
+    return updated;
+  }
+
+  /**
+   * Discover category administration ("发现页类别").
+   *
+   * ## Why this is `settings:*` and not `moderation:*`
+   *
+   * A category is product configuration — which tabs the discovery screen offers — not a
+   * judgement about a member's content. `settings:read`/`settings:write` is the pair that
+   * already meant "the product's own configuration", and it is held by SUPER_ADMIN and
+   * MODERATOR.
+   *
+   * ## Why `slug` is validated rather than derived from the label
+   *
+   * The slug travels in the query string and is what an existing client already sends for
+   * the built-in tabs. Deriving it from a Chinese label would produce percent-encoded
+   * noise, and silently rewriting a slug would break a bookmarked tab. So it is an
+   * explicit, validated field — and `parseCategoryKeywords` normalises the keywords, which
+   * is the value matching depends on.
+   */
+
+  async listDiscoverCategories(includeInactive = false) {
+    const rows = await this.prisma.discoverCategory.findMany({
+      where: includeInactive ? {} : { isActive: true },
+      orderBy: [{ sort: "asc" }, { createdAt: "asc" }],
+      select: {
+        id: true,
+        slug: true,
+        label: true,
+        labelZh: true,
+        keywords: true,
+        sort: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+    return {
+      items: rows.map((row) => ({ ...row, keywords: parseCategoryKeywords(row.keywords) })),
+      total: rows.length,
+    };
+  }
+
+  async createDiscoverCategory(input: {
+    slug: string;
+    label: string;
+    labelZh?: string | null;
+    keywords?: string | null;
+    sort?: number;
+  }) {
+    const slug = this.assertCategorySlug(input.slug);
+    const label = (input.label ?? "").trim();
+    if (!label) {
+      throw new BadRequestException({
+        success: false,
+        error: { code: "VALIDATION_ERROR", message: "A category needs a label" },
+      });
+    }
+
+    const existing = await this.prisma.discoverCategory.findUnique({ where: { slug }, select: { id: true } });
+    if (existing) {
+      throw new BadRequestException({
+        success: false,
+        error: { code: "CATEGORY_SLUG_TAKEN", message: `分类标识 ${slug} 已存在` },
+      });
+    }
+
+    // Stored already-normalised so the value in the database is the value matching uses,
+    // rather than a raw string that has to be interpreted identically in two places.
+    const keywords = parseCategoryKeywords(input.keywords).join(",");
+
+    return this.prisma.discoverCategory.create({
+      data: {
+        slug,
+        label,
+        labelZh: input.labelZh?.trim() || null,
+        keywords,
+        sort: Number.isFinite(input.sort) ? (input.sort as number) : 0,
+      },
+      select: { id: true, slug: true, label: true, labelZh: true, keywords: true, sort: true, isActive: true },
+    });
+  }
+
+  async updateDiscoverCategory(
+    id: string,
+    input: { label?: string; labelZh?: string | null; keywords?: string | null; sort?: number; isActive?: boolean },
+  ) {
+    const existing = await this.prisma.discoverCategory.findUnique({ where: { id }, select: { id: true } });
+    if (!existing) {
+      throw new NotFoundException({
+        success: false,
+        error: { code: "CATEGORY_NOT_FOUND", message: "No such category" },
+      });
+    }
+
+    const data: Record<string, unknown> = {};
+    if (input.label !== undefined) {
+      const label = input.label.trim();
+      if (!label) {
+        throw new BadRequestException({
+          success: false,
+          error: { code: "VALIDATION_ERROR", message: "A category needs a label" },
+        });
+      }
+      data.label = label;
+    }
+    if (input.labelZh !== undefined) data.labelZh = input.labelZh?.trim() || null;
+    if (input.keywords !== undefined) data.keywords = parseCategoryKeywords(input.keywords).join(",");
+    if (input.sort !== undefined && Number.isFinite(input.sort)) data.sort = input.sort;
+    if (input.isActive !== undefined) data.isActive = Boolean(input.isActive);
+
+    if (Object.keys(data).length === 0) {
+      throw new BadRequestException({
+        success: false,
+        error: { code: "VALIDATION_ERROR", message: "Nothing to change" },
+      });
+    }
+
+    /**
+     * The slug is deliberately not updatable.
+     *
+     * It is the value clients send and bookmarks hold. Renaming it would silently break
+     * every saved tab and any cached client, and the operator's intent — "call this
+     * something else" — is served by the labels.
+     */
+    return this.prisma.discoverCategory.update({
+      where: { id },
+      data,
+      select: { id: true, slug: true, label: true, labelZh: true, keywords: true, sort: true, isActive: true },
+    });
+  }
+
+  /**
+   * Removes a category.
+   *
+   * A hard delete, unlike `IpBan` and `AttributeDefinition`: a category holds no history
+   * and nothing references it by id — the filter is a query-string slug that simply falls
+   * back to the unfiltered view once the row is gone. Deactivating is still available via
+   * `isActive` for an operator who wants to keep the configuration but hide the tab.
+   */
+  async deleteDiscoverCategory(id: string) {
+    const existing = await this.prisma.discoverCategory.findUnique({ where: { id }, select: { id: true } });
+    if (!existing) {
+      throw new NotFoundException({
+        success: false,
+        error: { code: "CATEGORY_NOT_FOUND", message: "No such category" },
+      });
+    }
+    await this.prisma.discoverCategory.delete({ where: { id } });
+    return { id };
+  }
+
+  /**
+   * A slug has to be safe in a query string and stable as an identifier.
+   *
+   * Restricted to lower-case letters, digits and hyphens so it needs no encoding, and
+   * length-bounded so it cannot be used to fill a column. The two built-in slugs
+   * (`language`, `gaming`) satisfy this, which is what lets an administrator take over
+   * their rows without changing what clients send.
+   */
+  private assertCategorySlug(raw: string): string {
+    const slug = (raw ?? "").trim().toLowerCase();
+    if (!/^[a-z0-9][a-z0-9-]{0,47}$/.test(slug)) {
+      throw new BadRequestException({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "分类标识只能包含小写字母、数字和连字符，且不能以连字符开头",
+        },
+      });
+    }
+    return slug;
+  }
+
+  /**
    * Resolves the accounts behind a page of access-log rows in one query.
    *
    * Only `id` / `nickname` / `email` — the console needs something to label a row
    * with and link on, nothing more. Unknown ids are simply absent from the map,
    * which is how a deleted account becomes an honest `null` instead of an error.
    */
-  private async accountsFor(
-    userIds: Array<string | null>,
+  private async accountsFor(    userIds: Array<string | null>,
   ): Promise<Map<string, { id: string; nickname: string | null; email: string }>> {
     const ids = [...new Set(userIds.filter((id): id is string => Boolean(id)))];
     if (ids.length === 0) return new Map();

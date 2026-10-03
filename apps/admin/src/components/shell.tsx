@@ -56,6 +56,22 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
       // Phase B5: reads the same report data through the same endpoint, so it is
       // gated on `reports:read` rather than `moderation:read`.
       { href: "/moderation", label: "审核工作台", permission: "reports:read" },
+      /**
+       * Content flagged by the scanner, as opposed to a member's report.
+       *
+       * Gated on `moderation:read` — the permission that had no consumer until this screen
+       * existed. Note the gate differs from 审核工作台 above on purpose: that one reads the
+       * reports endpoint, which ANALYST can see, while acting on flagged content is the
+       * moderation domain (MODERATOR, CONTENT_MANAGER).
+       */
+      { href: "/moderation-moments", label: "内容审核", permission: "moderation:read" },
+      /**
+       * Member feedback. Gated on `moderation:read` — the same domain that answers the
+       * members, since a reply IS content moderation work. `reports:read` would be wrong
+       * here: ANALYST holds it but not `moderation:read`, and the reply write needs
+       * `moderation:write`, so an ANALYST could open a queue they can never action.
+       */
+      { href: "/feedback", label: "意见反馈", permission: "moderation:read" },
     ],
   },
   {
@@ -64,6 +80,12 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
       // Phase C1: `risk:read` — SUPER_ADMIN, MODERATOR and ANALYST.
       { href: "/risk", label: "风险中心", permission: "risk:read" },
       { href: "/audit", label: "审计日志", permission: "audit:read" },
+      /**
+       * Product configuration rather than moderation: which filter tabs the discovery
+       * screen offers. Gated on `settings:read` so it appears for the roles that already
+       * own site configuration, and not for ANALYST (read-only across the console).
+       */
+      { href: "/discover-categories", label: "发现页类别", permission: "settings:read" },
     ],
   },
   {
@@ -80,7 +102,20 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
      * nav filter drops this whole section for every other role.
      */
     title: "网站运维",
-    items: [{ href: "/ops/access-logs", label: "访问日志", permission: "ops:read" }],
+    items: [
+      { href: "/ops/access-logs", label: "访问日志", permission: "ops:read" },
+      /**
+       * IP 封禁 is gated on the WRITE permission, not the read one.
+       *
+       * The two holder sets do not overlap in the way a reader might expect: `ops:read`
+       * belongs to SUPER_ADMIN and ANALYST, and ANALYST is read-only across the whole
+       * console. Gating this screen on `ops:read` would show a ban form to a role that
+       * the API refuses to accept a ban from — a button that always 403s, which the
+       * frontend/backend parity test exists to prevent. `ops:write` is SUPER_ADMIN and
+       * MODERATOR, so that is what the link checks.
+       */
+      { href: "/ops/ip-bans", label: "IP 封禁", permission: "ops:write" },
+    ],
   },
 ];
 
@@ -93,10 +128,18 @@ const NAV_ICONS: Record<string, string> = {
   "/blocks": "M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-3.5-4.5-9 9",
   "/reports": "M12 9v4m0 3h.01M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z",
   "/moderation": "M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9",
+  // A speech bubble, distinct from the moderation checklist glyph above.
+  "/feedback": "M21 12a8 8 0 0 1-8 8H7l-4 3v-6.5A8 8 0 0 1 11 4h2a8 8 0 0 1 8 8Z",
+  // A document with a check, for content the scanner flagged.
+  "/moderation-moments": "M7 3h7l5 5v13H7V3Zm7 0v5h5M9.5 14l2 2 3.5-3.5",
   "/risk": "M12 3 3 7v6c0 5 3.8 8.4 9 9 5.2-.6 9-4 9-9V7l-9-4Z",
   "/audit": "M12 8v4l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z",
+  // Tag/label glyph for the discovery filter tabs.
+  "/discover-categories": "M3 12V4h8l10 10-8 8L3 12Zm5-4h.01",
   // Phase O2 — a server rack / traffic glyph for the operations section.
   "/ops/access-logs": "M4 5h16v5H4V5Zm0 9h16v5H4v-5Zm3-6.5h.01M7 13.5h.01",
+  // A shield with a bar through it — blocking, as opposed to the risk shield.
+  "/ops/ip-bans": "M12 3 3 7v6c0 5 3.8 8.4 9 9 5.2-.6 9-4 9-9V7l-9-4Zm-3.5 8.5 7 5",
 };
 
 function NavIcon({ href }: { href: string }) {
