@@ -124,9 +124,33 @@ ALLOW_INSECURE_DEFAULTS=true   # 或 NODE_ENV=development
 
 ## 6. 真实凭据到位后的验收清单
 
+### 先跑预检脚本
+
+```bash
+node scripts/oauth-preflight.mjs --provider google
+```
+
+它会按顺序检查：环境是否完整、`client_secret` 是否被误填成了 ID（反之亦然）、
+回调地址是否会被 Google 拒绝、生产环境是否误用了 loopback、授权链接是否只带三个
+非敏感范围与 PKCE、以及**这台机器能否访问 Google 的 JWKS**（真实的出网问题，本地假
+provider 永远暴露不出来）。
+
+**它会直接打印出必须登记到控制台的那一行 URI** —— 复制粘贴，不要手打：
+
+```bash
+node scripts/oauth-preflight.mjs --provider google
+# 📋 请把下面这一行原样登记到 Google Cloud Console 的「已获授权的重定向 URI」：
+#    https://<你的域名>/api/v1/auth/oauth/google/callback
+```
+
+退出码 0 = 所有可自动检查的项都通过。
+
+### 然后手工确认（脚本代替不了浏览器）
+
 自签名的本地 provider 验不到的东西，必须用真实 Google 凭据过一遍：
 
-- [ ] 点「使用 Google 登录」→ 看到 Google 自己的账号选择页（不是本地页）
+- [ ] 点「使用 Google 登录」→ 看到 **Google 自己的**账号选择页（不是本地页）
+- [ ] 同意屏幕上的应用名与隐私政策链接正确（这就是控制台里填的品牌信息）
 - [ ] 首次用全新 Google 账号登录 → 进入资料完善引导；数据库里
       `User.passwordHash` 为 **NULL**、`emailVerified` 为 **true**、
       且有一行对应的 `OAuthIdentity`
@@ -176,8 +200,9 @@ Google 真实的 `iss`/`aud` 取值、同意屏幕的实际外观（应用名与
 
 | 现象 | 原因 |
 |---|---|
-| `redirect_uri_mismatch` | 控制台登记值与 `API_PUBLIC_URL` 推导出的不一致（注意 `/api/v1` 前缀与结尾斜杠） |
+| `redirect_uri_mismatch` | 控制台登记值与 `API_PUBLIC_URL` 推导出的不一致（注意 `/api/v1` 前缀与结尾斜杠）。用 `node scripts/oauth-preflight.mjs` 打印出正确的那一行。 |
 | 同意页提示「未验证的应用」 | 同意屏幕仍是测试状态，或尚未填写品牌信息 |
 | 回调后停在登录页且有 `oauth_error` | 看该参数值，对照登录页的中文提示 |
 | `OAUTH_PROVIDER_DISABLED` | 该 provider 未配置，或 `OAUTH_PROVIDERS` 拼错 |
-| 本地一切正常、生产失败 | 检查 `API_PUBLIC_URL` 是否为 https 且与登记值一致 |
+| 本地一切正常、生产失败 | 检查 `API_PUBLIC_URL` 是否为 https 且与登记值一致；预检脚本会直接报出来 |
+| `invalid_client`（换码阶段） | `client_secret` 与 `client_id` 互换了。预检脚本会检查两者形状 |
