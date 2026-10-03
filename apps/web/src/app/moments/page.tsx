@@ -22,6 +22,7 @@ import {
   useToast,
 } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
+import { useSession } from "@/lib/session";
 import { formatCount, formatDuration, relativeTime } from "@/lib/moments";
 
 type Platform = { id: string; label: string; icon: string; color: string; connectedLabel: string };
@@ -104,6 +105,22 @@ export default function MomentsPage() {
   const { show: toast } = useToast();
   // PC-1.4 §17: one card for every avatar / nickname entry point on this page.
   const [previewUserId, setPreviewUserId] = useState<string | null>(null);
+  /**
+   * The viewer's own id, so ownership is decided by WHO WROTE the post rather than
+   * by which tab is open.
+   *
+   * This used to be `isMine={tab === "mine"}`, which meant the delete control
+   * appeared ONLY on the 「我的」 tab. A member looking at their own post on the
+   * default 「推荐」 feed — the most natural place to notice a mistake — saw no way
+   * to remove it, and nothing on screen explained that switching tabs would reveal
+   * one. Ownership is a property of the row, not of the filter.
+   *
+   * KEEP AS A LAYOUT-ONLY DECISION: the API re-checks ownership on every write
+   * (`MomentService.remove` / `updateMoment` reject a non-author), so a hidden
+   * button was never the boundary and a shown-but-not-yours button still cannot
+   * delete anything.
+   */
+  const { user } = useSession();
 
   const load = useCallback(
     async (reset = true) => {
@@ -426,7 +443,7 @@ export default function MomentsPage() {
               <MomentCard
                 key={moment.id}
                 moment={moment}
-                isMine={tab === "mine"}
+                isMine={Boolean(user?.id) && moment.userId === user?.id}
                 liking={liking === moment.id}
                 deleting={deleting === moment.id}
                 shared={shared === moment.id}
