@@ -21,6 +21,18 @@ export class ApiRequestError extends Error {
 type RequestOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
+  /**
+   * A `FormData` payload, sent as `multipart/form-data`.
+   *
+   * Kept as a SEPARATE field from `body` rather than folding `FormData` into it,
+   * because the two need different `Content-Type` handling and mixing them would
+   * make `JSON.stringify(formData)` a silent runtime possibility — which produces
+   * the literal body `"{}"` and a 400 that says nothing useful.
+   *
+   * Used for large video uploads: a 90 MB file cannot ride `body`, since that is
+   * serialised to a JSON string and the API caps a JSON body at 8 MB.
+   */
+  formData?: FormData;
   retry?: boolean;
 };
 
@@ -62,12 +74,22 @@ export async function tryRefresh(): Promise<boolean> {
 }
 
 async function doFetch<T>(path: string, options: RequestOptions): Promise<T> {
+  const isMultipart = options.formData !== undefined;
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: options.method ?? "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    /*
+     * `Content-Type` is omitted for multipart ON PURPOSE. The browser must set it,
+     * because only the browser knows the boundary it generated — setting it by
+     * hand produces a header with no boundary and a body that no server can parse.
+     * Every other request keeps sending `application/json`, unchanged.
+     */
+    headers: isMultipart ? undefined : { "Content-Type": "application/json" },
+    body: isMultipart
+      ? options.formData
+      : options.body === undefined
+        ? undefined
+        : JSON.stringify(options.body),
     credentials: "include",
     cache: "no-store",
   });

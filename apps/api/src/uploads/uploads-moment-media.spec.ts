@@ -90,7 +90,13 @@ describe("UploadsController.uploadMomentMedia routing", () => {
       return match ? { mime: "video/mp4", ext: "mp4", buffer: Buffer.from(match[2], "base64") } : null;
     });
     uploads.saveLocal = saveLocal as never;
-    const controller = new UploadsController(uploads, {} as never);
+    /**
+     * The third dependency is `VideoCompressionService`, added when the video
+     * pipeline landed. This spec drives the moment-media (image/video routing)
+     * path only, so stubs are enough — but the argument must be passed, because a
+     * two-argument call no longer matches the constructor and fails `tsc`.
+     */
+    const controller = new UploadsController(uploads, {} as never, {} as never);
     return { controller, saveLocal };
   }
 

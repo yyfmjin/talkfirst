@@ -1,0 +1,45 @@
+# 换行策略 —— 钉死，避免依赖每个人的 core.autocrlf 设置。
+#
+# 为什么需要这个文件：本仓库有 core.autocrlf=true 的 Windows 开发机，也有
+# Linux 部署机。没有策略时，一次「在 Windows 上签出→提交」就会把 CRLF 写进
+# shell 脚本；脚本在 Linux 上会以 `bad interpreter: /usr/bin/env bash^M` 失败，
+# 而且这个错误看起来像环境问题，不像换行问题，排查成本很高。
+# （已实测：scripts/docker-up.sh 在工作区是 CRLF、在 git 里是 LF —— 正是这种漂移。）
+
+# shell 脚本必须永远 LF，无论平台、无论 autocrlf。
+*.sh            text eol=lf
+*.bash          text eol=lf
+
+# 有 shebang、会被直接执行的无扩展名脚本，也当 shell 脚本处理。
+scripts/verify  text eol=lf
+
+# Windows 批处理必须永远 CRLF。
+*.bat           text eol=crlf
+*.cmd           text eol=crlf
+
+# Windows 专用脚本，即便没有扩展名也按 CRLF 处理。
+scripts/docker-up-local.bat text eol=crlf
+
+# 以下按文本处理并统一归一化为 LF：这些文件跨平台且不该有 CRLF。
+# （不写 eol=lf，因为检出时的换行由各平台 autocrlf 决定即可，它们不参与执行。）
+*.ts            text
+*.tsx           text
+*.js            text
+*.mjs           text
+*.cjs           text
+*.json          text
+*.prisma        text
+*.md            text
+*.yml           text
+*.yaml          text
+.gitignore      text
+.gitattributes  text
+
+# 二进制资源绝不参与换行转换。
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.webp          binary
+*.gif           binary
+*.ico           binary
+*.pdf           binary

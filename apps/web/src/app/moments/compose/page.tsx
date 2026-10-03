@@ -46,13 +46,35 @@ import { useSession } from "@/lib/session";
 const MAX_CONTENT = 2000;
 const MAX_IMAGES = 9;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-const MAX_VIDEO_BYTES = 5 * 1024 * 1024;
+/**
+ * Video upload ceiling, raised from 5 MB.
+ *
+ * Must stay in step with the API's `VIDEO_MAX_UPLOAD_MB` (default 90) and with
+ * Nginx's `client_max_body_size` (100m). The API rejects anything larger with
+ * `FILE_TOO_LARGE`, and Cloudflare rejects a body over 100 MB before the request
+ * reaches us at all — so a larger number here would only produce a worse error
+ * message, not a successful upload.
+ *
+ * This is the size of the ORIGINAL the user may pick. The file that ends up
+ * stored is the compressed result (target ~15 MB); see `VIDEO_TARGET_LABEL`.
+ */
+const MAX_VIDEO_BYTES = 90 * 1024 * 1024;
+/** Shown to the user so the two numbers are not confused with each other. */
+const VIDEO_TARGET_LABEL = "15MB";
 const IMAGE_MIME = ["image/jpeg", "image/png", "image/webp"];
-const VIDEO_MIME = ["video/mp4", "video/webm", "video/quicktime"];
+const VIDEO_MIME = ["video/mp4", "video/webm", "video/quicktime", "video/x-m4v"];
 const RECENT_TAG_KEY = "tf.moment.tags.recent";
 
 type Kind = "image" | "video";
-type Status = "uploading" | "done" | "error";
+/**
+ * `processing` is a distinct state from `uploading` on purpose.
+ *
+ * A 90 MB upload followed by a transcode can take a minute or more, and the two
+ * halves fail differently. Collapsing them into one "uploading…" label is what
+ * makes a user think the browser has hung and reload the page — which discards
+ * the upload they were waiting on.
+ */
+type Status = "uploading" | "processing" | "done" | "error";
 
 type MediaItem = {
   id: string;
@@ -148,6 +170,32 @@ export default function ComposePage() {
     (item: MediaItem) => {
       const promise = (async () => {
         try {
+          if (item.kind === "video") {
+            /**
+             * Videos go to the multipart endpoint, NOT through `moment-media`.
+             *
+             * `moment-media` takes a base64 data URL inside a JSON body, which
+             * cannot carry a large file: base64 inflates by ~4/3 and the API caps
+             * a JSON body at 8 MB. Reading a 90 MB file into a data URL in the
+             * browser would also allocate ~120 MB of string on the client.
+             *
+             * The file is handed to `FormData` as-is, so it streams from disk.
+             * `status` moves to `processing` immediately, because for a large video
+             * the server spends most of the wait transcoding rather than
+             * receiving — and the user should be told which one is happening.
+             */
+            patchItem(item.id, { status: "processing" });
+            const form = new FormData();
+            form.append("file", item.file, item.file.name);
+            const uploaded = await apiFetch<{ url: string; kind: Kind }>("/uploads/moment-video", {
+              method: "POST",
+              formData: form,
+            });
+            patchItem(item.id, { status: "done", url: uploaded.url, error: undefined });
+            return;
+          }
+
+          // Images: unchanged base64 JSON path.
           const dataUrl = await fileToDataUrl(item.file);
           const uploaded = await apiFetch<{ url: string; kind: Kind }>("/uploads/moment-media", {
             method: "POST",
@@ -262,8 +310,7 @@ export default function ComposePage() {
         if (file.size > MAX_VIDEO_BYTES) {
           setError(`视频不能超过 ${formatBytes(MAX_VIDEO_BYTES)}`);
           continue;
-        }
-      }
+        }      }
       const item: MediaItem = {
         id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         kind,
@@ -346,6 +393,24 @@ export default function ComposePage() {
 
       if (itemsRef.current.some((item) => item.status === "error")) {
         setError("有媒体上传失败，请重试或删除后再发布。");
+        setPublishing(false);
+        return;
+      }
+
+      /**
+       * Nothing may still be in flight.
+       *
+       * The `await Promise.all` above is the real guard, but this is the one that
+       * catches a future refactor dropping an item from `inflight`. Without it the
+       * `filter(... === "done")` below would silently SKIP a video that is still
+       * processing and publish a moment with no video at all — the user would lose
+       * the clip and see no error.
+       */
+      const unfinished = itemsRef.current.filter(
+        (item) => item.status === "uploading" || item.status === "processing",
+      );
+      if (unfinished.length > 0) {
+        setError("还有媒体正在处理，请稍候再发布。");
         setPublishing(false);
         return;
       }
@@ -684,7 +749,9 @@ export default function ComposePage() {
             <SheetOption
               icon={<Play size={17} />}
               label="视频"
-              hint="mp4 / webm / mov，最多 1 个"
+              /* The old copy said 「不能超过5MB」. Both numbers are stated so the
+                 user is not surprised that a 90MB pick becomes a ~15MB post. */
+              hint={`mp4 / webm / mov，最大 ${formatBytes(MAX_VIDEO_BYTES)}，上传后自动压缩到约 ${VIDEO_TARGET_LABEL}`}
               disabled={Boolean(video)}
               onClick={() => {
                 setSheet(null);
@@ -783,13 +850,34 @@ function tileClasses(count: number, index: number) {
 }
 
 function StatusOverlay({ item }: { item: MediaItem }) {
+  /**
+   * Two different waits, two different labels.
+   *
+   * `uploading` ends when the last byte reaches the server; `processing` is the
+   * ffmpeg transcode that follows. For a 90 MB original the second is usually the
+   * longer half, and a user staring at one unchanging "上传中" for a minute
+   * concludes the page has frozen. The wording below is the one the brief
+   * specifies.
+   */
   if (item.status === "uploading") {
     return (
       <span
         data-testid="moment-media-uploading"
-        className="absolute inset-0 grid place-items-center bg-black/35 text-white"
+        className="absolute inset-0 grid place-items-center gap-1 bg-black/35 text-white"
       >
-        <Loader2 size={20} className="animate-spin" />
+        <Loader2 size={20} className="animate-spin motion-reduce:animate-none" />
+        <span className="text-[11px]">正在上传…</span>
+      </span>
+    );
+  }
+  if (item.status === "processing") {
+    return (
+      <span
+        data-testid="moment-media-processing"
+        className="absolute inset-0 grid place-items-center gap-1 bg-black/45 px-2 text-center text-white"
+      >
+        <Loader2 size={20} className="animate-spin motion-reduce:animate-none" />
+        <span className="text-[11px]">正在处理视频…</span>
       </span>
     );
   }

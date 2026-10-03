@@ -3,7 +3,7 @@ import { NestFactory } from "@nestjs/core";
 import { NestExpressApplication } from "@nestjs/platform-express";
 import { config as loadEnvFile } from "dotenv";
 import { existsSync } from "node:fs";
-import { join, resolve } from "path";
+import { resolve } from "path";
 import { json, urlencoded } from "express";
 import { AppModule } from "./app.module";
 import { ApiExceptionFilter } from "./common/api-exception.filter";
@@ -23,6 +23,7 @@ import { DeviceIdentityService } from "./security/device-identity.service";
 import { SecurityModule } from "./security/security.module";
 import { createRequestIdMiddleware } from "./security/request-id.middleware";
 import { applySecurityHeaders } from "./security/security-headers";
+import { uploadRoot as resolveUploadRoot } from "./uploads/upload-paths";
 
 /**
  * Load `.env` BEFORE anything reads configuration.
@@ -153,14 +154,15 @@ async function bootstrap() {
 }
 
 /**
- * The one place the upload directory is resolved, mirroring
- * `UploadsService.uploadRoot()` so the static mount and the writer cannot
- * disagree (audit P004).
+ * The upload directory now has ONE definition, in `uploads/upload-paths.ts`.
+ *
+ * It used to be declared here AND as a private method on `UploadsService`, kept in
+ * step only by a comment asking future editors to keep them in step — the exact
+ * arrangement audit P004 was meant to remove. This wrapper is kept so the call
+ * site above still reads locally.
  */
 function uploadRoot(): string {
-  const configured = process.env.UPLOAD_DIR?.trim();
-  if (configured) return configured;
-  return join(process.cwd(), ".local-data", "uploads");
+  return resolveUploadRoot();
 }
 
 void bootstrap();

@@ -1,8 +1,10 @@
 import { Injectable } from "@nestjs/common";
-import { createHmac, randomBytes } from "crypto";
-import { mkdirSync, writeFileSync } from "fs";
+import { createHmac, randomBytes, randomUUID } from "crypto";
+import { copyFileSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import { normalizeUploadUrl } from "./upload-url";
+import { uploadRoot as sharedUploadRoot } from "./upload-paths";
+import { LEGACY_BASE64_VIDEO_MAX_BYTES } from "./video-upload.config";
 
 const ALLOWED_MIME = new Map([
   ["image/jpeg", "jpg"],
@@ -35,12 +37,15 @@ export class UploadsService {
   }
 
   /**
-   * Videos ride the same base64 JSON body as images, and `main.ts` caps that
-   * body at 8 MB. Base64 inflates by ~4/3, so the raw ceiling has to stay under
-   * ~6 MB for the request to arrive at all.
+   * Raw ceiling for a base64 video data URL — the LEGACY path only.
+   *
+   * See `LEGACY_BASE64_VIDEO_MAX_BYTES` for why this stays at 5 MB while the real
+   * upload limit is 90 MB. The method NAME is kept deliberately:
+   * `uploads-moment-media.spec.ts` stubs `maxVideoBytes` to drive its size-limit
+   * cases, so renaming it would break a test unrelated to this change.
    */
   maxVideoBytes() {
-    return 5 * 1024 * 1024;
+    return LEGACY_BASE64_VIDEO_MAX_BYTES;
   }
 
   allowedMime() {
@@ -96,22 +101,54 @@ export class UploadsService {
   }
 
   /**
-   * Where local uploads live on disk.
-   *
-   * FIX (audit P004): the directory used to be derived from `process.cwd()`
-   * alone, and `docker-compose.yml` mounted no volume there — so every avatar,
-   * chat image and moment video disappeared the moment the API container was
-   * recreated, while the database kept pointing at the now-dead URLs.
-   *
-   * `UPLOAD_DIR` is now honoured (an absolute path inside the container, backed
-   * by a named volume), and every caller resolves the path through this one
-   * function so the static-file mount in `main.ts` and the writer can never
-   * disagree.
+   * Where local uploads live on disk — resolves through the shared helper so the
+   * static mount in `main.ts` and this writer cannot disagree (audit P004).
    */
   private uploadRoot(): string {
-    const configured = process.env.UPLOAD_DIR?.trim();
-    if (configured) return configured;
-    return join(process.cwd(), ".local-data", "uploads");
+    return sharedUploadRoot();
+  }
+
+  /**
+   * Moves an already-transcoded video out of the temp directory and into the
+   * public `moments/` directory, returning the URL to store on the moment.
+   *
+   * ## The file name is server-generated, always
+   *
+   * `randomUUID()` — never the client's filename, never anything the client sent.
+   * That is what makes path traversal and file overwriting structurally impossible
+   * rather than merely checked for: there is no user-controlled component in this
+   * path at all.
+   *
+   * ## Why `copyFileSync` and not `renameSync`
+   *
+   * They are frequently on different filesystems — temp is deliberately outside
+   * the static root — and `rename` across devices throws `EXDEV`. `copyFile` then
+   * leaves the source for the caller's `finally` to remove, which keeps ONE
+   * cleanup path instead of two.
+   *
+   * ## Backward compatibility
+   *
+   * The stored URL keeps the same shape as every other moment upload
+   * (`/uploads/moments/<name>`), and the moment row keeps writing the same
+   * `videoUrl` column. Existing rows and existing files are untouched.
+   */
+  storeProcessedVideo(tempPath: string, ext = "mp4"): string {
+    const dir = join(this.uploadRoot(), "moments");
+    mkdirSync(dir, { recursive: true });
+
+    const safeExt = /^[a-z0-9]{1,5}$/.test(ext) ? ext : "mp4";
+    const name = `${randomUUID()}.${safeExt}`;
+    copyFileSync(tempPath, join(dir, name));
+
+    return `${this.publicBase()}/moments/${name}`;
+  }
+
+  private publicBase(): string {
+    return (
+      process.env.PUBLIC_UPLOAD_BASE_URL ??
+      process.env.LOCAL_UPLOAD_BASE_URL ??
+      "http://localhost:4000/uploads"
+    ).replace(/\/$/, "");
   }
 
   saveLocal(kind: UploadKind, buffer: Buffer, ext: string) {
@@ -119,11 +156,7 @@ export class UploadsService {
     mkdirSync(dir, { recursive: true });
     const name = `${Date.now()}-${randomBytes(8).toString("hex")}.${ext}`;
     writeFileSync(join(dir, name), buffer);
-    const publicBase =
-      process.env.PUBLIC_UPLOAD_BASE_URL ??
-      process.env.LOCAL_UPLOAD_BASE_URL ??
-      "http://localhost:4000/uploads";
-    return `${publicBase.replace(/\/$/, "")}/${kind}/${name}`;
+    return `${this.publicBase()}/${kind}/${name}`;
   }
 
   uploadDir() {

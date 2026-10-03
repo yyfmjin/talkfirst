@@ -31,4 +31,14 @@ test-results/
 # AI tool session notes (kept local; not part of the product)
 .workbuddy-ai/
 
+# `scripts/verify.bat` / `verify.mjs` are product files and stay tracked, but
+# their OUTPUT is per-machine diagnostic state, not source: the report names the
+# local paths that ran, and the status file is a liveness heartbeat. Neither
+# belongs in history.
+scripts/verify-report.txt
+scripts/verify-status.txt
+
+# Scratch file holding the text for `git commit -F`; removed after the commit.
+.git-commit-message.txt
+
 talkfirst-*.tar.gz

@@ -31,12 +31,20 @@ import { friendlyErrorMessage } from "@/lib/errors";
 const MAX_CONTENT = 2000;
 const MAX_IMAGES = 9;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-const MAX_VIDEO_BYTES = 5 * 1024 * 1024;
+/**
+ * Kept in step with the composer's `MAX_VIDEO_BYTES` and the API's
+ * `VIDEO_MAX_UPLOAD_MB`. A replacement video is a new original upload and goes
+ * through exactly the same multipart + transcode path, so it carries exactly the
+ * same limit — the two screens must not disagree about what is acceptable.
+ */
+const MAX_VIDEO_BYTES = 90 * 1024 * 1024;
+const VIDEO_TARGET_LABEL = "15MB";
 const IMAGE_MIME = ["image/jpeg", "image/png", "image/webp"];
-const VIDEO_MIME = ["video/mp4", "video/webm", "video/quicktime"];
+const VIDEO_MIME = ["video/mp4", "video/webm", "video/quicktime", "video/x-m4v"];
 
 type Kind = "image" | "video";
-type Status = "stored" | "uploading" | "ready" | "error";
+/** `processing` mirrors the composer: upload finished, transcode still running. */
+type Status = "stored" | "uploading" | "processing" | "ready" | "error";
 
 /** Exactly what the caller has to merge back into its own copy of the moment. */
 export type MomentEditable = {
@@ -168,6 +176,22 @@ export function MomentEditDialog({ open, onClose, moment, onSaved }: MomentEditD
     patchItem(item.id, { status: "uploading", error: undefined });
     void (async () => {
       try {
+        if (item.kind === "video") {
+          // Multipart, same as the composer. `moment-media` carries a base64 data
+          // URL in a JSON body, which caps a video at ~6 MB before `express.json`
+          // refuses the request — see `video-upload.interceptor.ts` for why the
+          // large path exists at all.
+          patchItem(item.id, { status: "processing" });
+          const form = new FormData();
+          form.append("file", file, file.name);
+          const uploaded = await apiFetch<{ url: string; kind: Kind }>("/uploads/moment-video", {
+            method: "POST",
+            formData: form,
+          });
+          patchItem(item.id, { status: "ready", url: uploaded.url, error: undefined });
+          return;
+        }
+
         const dataUrl = await fileToDataUrl(file);
         const uploaded = await apiFetch<{ url: string; kind: Kind }>("/uploads/moment-media", {
           method: "POST",
@@ -252,7 +276,17 @@ export function MomentEditDialog({ open, onClose, moment, onSaved }: MomentEditD
     commitItems(next);
   }
 
-  const uploading = items.some((item) => item.status === "uploading");
+  /**
+   * Both in-flight states block saving.
+   *
+   * An earlier version checked only `"uploading"`. Adding `processing` (the
+   * ffmpeg half of a video upload) without this would have enabled 保存 while a
+   * video was still transcoding, and `usableMedia` drops anything without a URL —
+   * so the user would have silently saved a moment with the video missing.
+   */
+  const uploading = items.some(
+    (item) => item.status === "uploading" || item.status === "processing",
+  );
   const failed = items.some((item) => item.status === "error");
   const canSave = !saving && !uploading && !failed;
 
@@ -368,6 +402,12 @@ export function MomentEditDialog({ open, onClose, moment, onSaved }: MomentEditD
 
         <div>
           <p className="mb-1.5 text-caption font-medium text-content-muted">照片与视频</p>
+          {/* The video rule is stated here as well as in the composer: the two
+              screens accept the same file, so they must not read differently. */}
+          <p className="mb-2 text-overline leading-4 text-content-subtle">
+            照片最大 {formatBytes(MAX_IMAGE_BYTES)}；视频最大 {formatBytes(MAX_VIDEO_BYTES)}
+            ，上传后自动压缩到约 {VIDEO_TARGET_LABEL}
+          </p>
           {items.length > 0 ? (
             <div data-testid="moment-edit-media" className="grid grid-cols-3 gap-2">
               {images.map((item, index) => (
@@ -516,9 +556,12 @@ function MediaTile({
         <img src={item.previewUrl} alt="" className="h-full w-full object-cover" />
       )}
 
-      {item.status === "uploading" ? (
-        <span className="absolute inset-0 grid place-items-center bg-black/40 text-white">
-          <Loader2 size={18} className="animate-spin" aria-hidden="true" />
+      {item.status === "uploading" || item.status === "processing" ? (
+        <span className="absolute inset-0 grid place-items-center gap-1 bg-black/40 text-white">
+          <Loader2 size={18} className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+          <span className="text-[11px]">
+            {item.status === "processing" ? "正在处理视频…" : "正在上传…"}
+          </span>
         </span>
       ) : null}
       {item.status === "error" ? (
