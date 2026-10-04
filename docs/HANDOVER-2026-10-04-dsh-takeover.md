@@ -99,6 +99,8 @@ dsh 在 10-03 18:00 之后的两笔提交（内容审核/反馈/IP 封禁/发现
 
 修复后：`apps/web` 16/16、`apps/admin` 28/28、CLI 扫描 0 findings。**没有任何检查被降低标准换绿**：放宽的唯一一条正则仍然钉住原来的契约，其余全部是把「人必须确认过的变更」写进允许清单。
 
+本次修复 + 本交接文档一起提交为 **`c618e6d`**，已推送至 `origin/master`（前置提交 `51c2cbb`）。
+
 ### 2.2 已知的、非本次引入的问题
 
 - **`npx jest` 默认并行时存在争用**：需要真实数据库的 `oauth-flow-http.spec.ts` 会与其它 worker 冲突导致偶发失败。用 `--runInBand` 串行后全绿。**建议 CI 使用串行**，或将该套件单独隔离。
@@ -246,7 +248,7 @@ dsh 在 10-03 18:00 之后的两笔提交（内容审核/反馈/IP 封禁/发现
 
 - 本文档中的**仓库事实与验证数字来自本次接管的实际命令输出**（`git`、`npm run typecheck`、`npx jest --runInBand`、`npm run lint`、`npm run test:static`、`node scripts/ui-copy-scan.mjs`、`npx prisma migrate status`）。
 - **dsh 已完成工作**一节的来源是 dsh 会话记录（用户指令、逐轮结论、任务清单、上下文压缩摘要、14 份子代理审查报告），属于**对 dsh 自述的整理**；其中可复核的部分（提交内容、文档、代码是否存在）已在本次接管中抽查确认。
-- **§2.1 的 5 条静态测试失败是本次接管实测发现并修复的**，dsh 从未报告过它们。修改共涉及 4 个文件：`apps/admin/test/smoke.test.mjs`、`apps/admin/test/ui-copy.test.mjs`、`apps/web/test/smoke.test.mjs`、`scripts/ui-copy-scan.mjs`；**均未降低任何检查的标准**。这些修改在本文档写作时**尚未提交**（工作树为 modified，未 push）。
+- **§2.1 的 5 条静态测试失败是本次接管实测发现并修复的**，dsh 从未报告过它们。修改共涉及 4 个文件：`apps/admin/test/smoke.test.mjs`、`apps/admin/test/ui-copy.test.mjs`、`apps/web/test/smoke.test.mjs`、`scripts/ui-copy-scan.mjs`；**均未降低任何检查的标准**。这些修改随本交接文档一起提交为 `c618e6d` 并推送至 `origin/master`。
 - **§4.D 的验证缺口是 dsh 自己标注的**，本文档原样保留，未做美化。
 - 本次接管**未执行**生产部署、未改动任何业务代码、未跑 Playwright（现有失败与本次改动无关）、未跑三个 `build`。
 - 本文档**只写事实，不写计划性承诺**；§6 是建议顺序而非承诺。
