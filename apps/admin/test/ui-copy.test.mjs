@@ -27,10 +27,33 @@ const repoRoot = join(here, "..", "..", "..");
  * Phase O2 operations console adds `HTTP` (a protocol name with no Chinese form
  * an operator would recognise) and `ops:read` (the permission it is gated on).
  *
+ * The post-O2 console adds three more groups. All of them are values rather than
+ * copy: the rule is that an operator must be able to read or type the exact
+ * string, so translating it would make the screen wrong.
+ *   - the HTTP request-header names on an access-log detail row;
+ *   - the Discover category `slug`, and the example slugs `minecraft`, `steam`
+ *     and `language-exchange` — these are matched verbatim against members'
+ *     profile interest slugs, so the console has to show the literal value;
+ *   - `travel, backpacking`, the example keyword list in the category form.
+ *
  * Bare `admin` is deliberately absent: it is too common a substring and would
  * stop `admin@example.com` from being recognised as an e-mail address.
  */
-const ALLOWED = ["/admin/me", "isAdmin", "HTTP", "ops:read"];
+const ALLOWED = [
+  "/admin/me",
+  "isAdmin",
+  "HTTP",
+  "ops:read",
+  "Content-Type",
+  "Referer",
+  "Origin",
+  "Accept-Language",
+  "slug",
+  "minecraft",
+  "steam",
+  "language-exchange",
+  "travel, backpacking",
+];
 
 test("admin console has no untranslated English UI copy", () => {
   const findings = scanUiCopy({ root: join(appRoot, "src"), allowed: ALLOWED });

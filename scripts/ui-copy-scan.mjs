@@ -237,12 +237,31 @@ export function apiReportReasons(repoRoot) {
  * Chinese form an operator would recognise; `ops:read` is the permission the nav
  * entry is gated on, shown when explaining a refusal.
  *
+ * From the post-O2 console: the HTTP request-header names on an access-log
+ * detail row, the Discover category `slug` and its example slugs, and the
+ * example keyword list. These are values an operator reads or types verbatim —
+ * translating any of them would make the screen wrong rather than Chinese.
+ *
  * Deliberately NOT listed: bare `admin` or `/admin`. Those are far too common a
  * substring — widening to them made an e-mail placeholder (`admin@example.com`)
  * stop being recognised, silently disabling a real check. Narrow terms only.
  * `apps/admin/test/ui-copy.test.mjs` passes the same list.
  */
-const ADMIN_ALLOWED = ["/admin/me", "isAdmin", "HTTP", "ops:read"];
+const ADMIN_ALLOWED = [
+  "/admin/me",
+  "isAdmin",
+  "HTTP",
+  "ops:read",
+  "Content-Type",
+  "Referer",
+  "Origin",
+  "Accept-Language",
+  "slug",
+  "minecraft",
+  "steam",
+  "language-exchange",
+  "travel, backpacking",
+];
 
 if (process.argv[1] && process.argv[1].endsWith("ui-copy-scan.mjs")) {
   const findings = scanUiCopy({ root: "apps/web/src" }).concat(

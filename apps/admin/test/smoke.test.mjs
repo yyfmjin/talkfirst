@@ -825,7 +825,7 @@ test("phase C5: all nine admin domains have a page, and every data route is perm
  * permission attached to each, which survives regrouping — the grouping itself
  * is pinned separately by `admin-shell-ui.spec.ts`.
  */
-test("phase C5: the sidebar lists exactly the nine domains in the mandated order", () => {
+test("phase C5: the sidebar lists the documented domains in the mandated order", () => {
   const shell = readFileSync(new URL("../src/components/shell.tsx", import.meta.url), "utf8");
   const navStart = shell.indexOf("const NAV_GROUPS");
   assert.ok(navStart > -1, "the NAV_GROUPS table is missing");
@@ -835,8 +835,8 @@ test("phase C5: the sidebar lists exactly the nine domains in the mandated order
     (match) => ({ href: match[1], label: match[2], permission: match[3] }),
   );
 
-  // The nine domains, with the permission each must advertise. Order is the
-  // contract, so it is compared explicitly rather than sorted.
+  // Every domain in the sidebar, with the permission each must advertise. Order
+  // is the contract, so it is compared explicitly rather than sorted.
   assert.deepEqual(entries, [
     { href: "/dashboard", label: "仪表盘", permission: "dashboard:read" },
     { href: "/users", label: "用户", permission: "users:read" },
@@ -846,11 +846,23 @@ test("phase C5: the sidebar lists exactly the nine domains in the mandated order
     { href: "/reports", label: "举报", permission: "reports:read" },
     // `reports:read`, not `moderation:read` — see the Phase B5 test above.
     { href: "/moderation", label: "审核工作台", permission: "reports:read" },
+    // The console side of the two post-O2 moderation domains. Both are gated on
+    // `moderation:read`: content review is the `Moment.reviewStatus` queue, and
+    // member feedback is answered by the same roles that handle reports.
+    { href: "/moderation-moments", label: "内容审核", permission: "moderation:read" },
+    { href: "/feedback", label: "意见反馈", permission: "moderation:read" },
     { href: "/risk", label: "风险中心", permission: "risk:read" },
     { href: "/audit", label: "审计日志", permission: "audit:read" },
+    // The Discover category table is the first live user of the `settings:*` pair
+    // that had been declared since Phase C5 but never wired to anything.
+    { href: "/discover-categories", label: "发现页类别", permission: "settings:read" },
     // Phase O2 — site operations. `ops:read`, not `audit:read`: these rows carry
     // raw client IP and User-Agent, so the holder set is SUPER_ADMIN + ANALYST.
     { href: "/ops/access-logs", label: "访问日志", permission: "ops:read" },
+    // Address bans are the one ops surface with a write route, so the nav is
+    // gated on `ops:write`: ANALYST holds `ops:read` (it must) but is read-only
+    // by design, and must not be shown a page it cannot use.
+    { href: "/ops/ip-bans", label: "IP 封禁", permission: "ops:write" },
   ]);
 
   // Every advertised destination has a page behind it, so the sidebar cannot
@@ -876,18 +888,23 @@ test("phase C5: the permission matrix is unchanged and mirrored on both sides", 
   const backend = readFileSync(new URL(`${API_ADMIN_DIR}/permissions.ts`, import.meta.url), "utf8");
   const frontend = readFileSync(new URL("../src/lib/permissions.ts", import.meta.url), "utf8");
 
-  // The vocabulary itself: 21 permissions, and `risk:write` is not one of them.
+  // The vocabulary itself: 22 permissions, and `risk:write` is not one of them.
   // Phase O2 added `ops:read` — the site-operations surface (HTTP access logs),
   // which carries raw client IP and User-Agent and is therefore narrower than
   // `audit:read`: SUPER_ADMIN and ANALYST only.
+  //
+  // The second addition is `ops:write`, and it is deliberately separate: ANALYST
+  // holds `ops:read` and is read-only, so a single permission could not both let
+  // ANALYST see access logs and let MODERATOR ban an address.
   const permStart = backend.indexOf("export const PERMISSIONS = [");
   assert.ok(permStart > -1, "the PERMISSIONS vocabulary is missing");
   const vocabulary = [
     ...backend.slice(permStart, backend.indexOf("] as const;", permStart)).matchAll(/"([a-z]+:[a-z]+)"/g),
   ].map((match) => match[1]);
-  assert.equal(vocabulary.length, 21, "the permission vocabulary changed size");
+  assert.equal(vocabulary.length, 22, "the permission vocabulary changed size");
   assert.ok(!vocabulary.includes("risk:write"), "risk:write must not exist — the Risk Centre is read-only");
   assert.ok(vocabulary.includes("ops:read"), "ops:read must exist — the ops console is gated on it");
+  assert.ok(vocabulary.includes("ops:write"), "ops:write must exist — address bans are gated on it");
 
   const all = new Set(vocabulary);
   const expected = {
@@ -902,6 +919,9 @@ test("phase C5: the permission matrix is unchanged and mirrored on both sides", 
       "moderation:write",
       "risk:read",
       "audit:read",
+      // Banning an address is the same class of action as the account ban
+      // `users:write` already grants this role.
+      "ops:write",
     ]),
     SUPPORT: new Set(["dashboard:read", "users:read", "users:write", "reports:read", "audit:read"]),
     ANALYST: new Set([
@@ -981,8 +1001,13 @@ test("phase C5: the permission matrix is unchanged and mirrored on both sides", 
  * `connections:write` / `exchanges:write` / `blocks:write` are present in the
  * permission matrix because the matrix describes which capability a role may
  * hold — not an obligation to ship the capability. C2/C3/C4 are inspection
- * consoles, and the whole admin API has exactly four write routes, all of them
- * in domains that predate C5.
+ * consoles, and `connections` / `exchanges` / `blocks` / `risk` / `access-logs`
+ * still hold no write route at all.
+ *
+ * The literal below is therefore no longer four routes: the content-moderation,
+ * feedback, Discover-category and address-ban domains each added one. It is kept
+ * as an explicit list rather than a count so that every new write surface has to
+ * be named here on purpose.
  */
 test("phase C5: no relationship domain gained a write route", () => {
   const controller = readFileSync(new URL(`${API_ADMIN_DIR}/admin.controller.ts`, import.meta.url), "utf8");
@@ -991,10 +1016,25 @@ test("phase C5: no relationship domain gained a write route", () => {
   assert.deepEqual(
     mutations,
     [
+      // The four C5-era routes.
       '@Patch("users/:id/status")',
       '@Post("reports/:id/review")',
       '@Post("users/:id/notes")',
       '@Post("users/:id/status")',
+      // Content moderation: approving, rejecting or pulling a moment.
+      '@Post("moments/:id/review")',
+      // Member feedback: replying to a submission.
+      '@Post("feedback/:id/review")',
+      // Address bans: create and lift. `IpBan` rows are never deleted, so lifting
+      // is the only way back and it is a write.
+      '@Post("ip-bans")',
+      '@Post("ip-bans/:id/lift")',
+      // Discover categories: full CRUD, and the support address the member-facing
+      // feedback page displays.
+      '@Post("categories/discover")',
+      '@Patch("categories/discover/:id")',
+      '@Delete("categories/discover/:id")',
+      '@Patch("settings/support-email")',
     ].sort(),
     "the set of admin write routes changed",
   );
@@ -1017,11 +1057,18 @@ test("phase C5: no relationship domain gained a write route", () => {
 
   // The relationship detail routes are UUID-addressed (C5 added the pipe), so a
   // malformed path segment is a 400 rather than a 500 from Prisma. Phase O2's
-  // `access-logs/:id` adds the eleventh.
+  // `access-logs/:id` was the eleventh such route; the moderation, feedback,
+  // category (`:id`), address-ban lift and `moments/:id/review` routes bring it
+  // to sixteen.
   const params = [...controller.matchAll(/@Param\("(\w+)", UuidParamPipe\)/g)].map((match) => match[1]);
+  const UUID_ADDRESSED = [
+    "blockedId",
+    "blockerId",
+    ...Array(14).fill("id"),
+  ];
   assert.deepEqual(
     [...params].sort(),
-    ["blockedId", "blockerId", "id", "id", "id", "id", "id", "id", "id", "id", "id"].sort(),
+    [...UUID_ADDRESSED].sort(),
     "every id-addressed route must carry the UUID guard",
   );
 });
@@ -1103,6 +1150,25 @@ test("phase C5: no migration was added and the schema gained no model", () => {
     // OAuth-only account has no fabricated credential. No column is removed and
     // no existing row is rewritten.
     "20261002151727_google_oauth_identity",
+    // External social post sync — two new tables plus the enums behind them.
+    // `SocialSyncAccount` / `SocialSyncPost` are named with that prefix because
+    // the handle-sharing `SocialAccount` model already owned the plain name.
+    "20261003094404_social_sync_accounts",
+    // Address bans (`IpBan`, two-level) and the `AppSetting` key/value table that
+    // makes the member-facing support address editable from the console.
+    "20261003100633_ip_ban_and_app_setting",
+    // Member feedback submissions and their admin replies.
+    "20261003101958_feedback",
+    // `Moment.reviewStatus` — the content-moderation queue. Existing rows keep
+    // the default, so nothing is rewritten.
+    "20261003102800_moment_review_status",
+    // `DiscoverCategory`: the Discover filter tabs move from code constants to
+    // rows, with the built-in pair kept as a fallback when the table is empty.
+    "20261003104212_discover_categories",
+    // A `CHECK (syncLimit BETWEEN 1 AND 3)` on `SocialSyncAccount`. Added as its
+    // own migration rather than folded into the one above because that one had
+    // already been applied; an applied migration is never edited.
+    "20261003174412_social_sync_synclimit_check",
   ];
   assert.deepEqual(
     migrations.slice(C5_BASELINE.length),
@@ -1126,6 +1192,8 @@ test("phase C5: no migration was added and the schema gained no model", () => {
     "AdminAuditLog",
     "AdminNote",
     "AdminUser",
+    // Editable console settings — currently the member-facing support address.
+    "AppSetting",
     "AttributeDefinition",
     "Block",
     "Connection",
@@ -1135,9 +1203,15 @@ test("phase C5: no migration was added and the schema gained no model", () => {
     "Country",
     "DeviceIdentity",
     "DeviceUser",
+    // Discover filter tabs, moved out of the code constants they used to live in.
+    "DiscoverCategory",
     "DiscoverView",
     "ExchangeRequest",
+    // Member feedback submissions and their replies.
+    "Feedback",
     "Interest",
+    // Two-level address bans (PRIMARY / SECONDARY), never deleted.
+    "IpBan",
     "Language",
     "Message",
     "MessageTranslation",
@@ -1156,6 +1230,10 @@ test("phase C5: no migration was added and the schema gained no model", () => {
     "SecurityEvent",
     "SharedSocialAccount",
     "SocialAccount",
+    // External social post sync. Prefixed `SocialSync*` because the
+    // handle-sharing `SocialAccount` above already owned the plain name.
+    "SocialSyncAccount",
+    "SocialSyncPost",
     "User",
     "UserAttribute",
     "UserInterest",
@@ -1172,7 +1250,10 @@ test("phase C5: no migration was added and the schema gained no model", () => {
     "AuditActorType",
     "ConnectionStatus",
     "ExchangeStatus",
+    "FeedbackKind",
+    "FeedbackStatus",
     "Gender",
+    "IpBanLevel",
     "LanguageLevel",
     "LanguageType",
     "MessageType",
@@ -1182,6 +1263,9 @@ test("phase C5: no migration was added and the schema gained no model", () => {
     "RequestStatus",
     "ReviewStatus",
     "SocialPlatform",
+    "SocialSyncMediaType",
+    "SocialSyncProvider",
+    "SocialSyncStatus",
     "UserStatus",
     "Visibility",
   ]);

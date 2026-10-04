@@ -55,7 +55,11 @@ test("moments module covers feed, publish, detail and settings", () => {
   assert.match(feed, /\/moments\/compose/);
   assert.match(feed, /\/moments\/settings/);
   const compose = readFileSync(join(root, "src/app/moments/compose/page.tsx"), "utf8");
-  assert.match(compose, /apiFetch\("\/moments"/);
+  // An explicit type argument is allowed, and is now used: the composer reads the
+  // review status off the response so it can tell the author a pending post is
+  // queued instead of navigating to an empty feed. What is pinned is that the
+  // composer publishes through the shared client and not a bare `fetch`.
+  assert.match(compose, /apiFetch(?:<[^>]*>)?\("\/moments"/);
   const settings = readFileSync(join(root, "src/app/moments/settings/page.tsx"), "utf8");
   assert.match(settings, /\/moments\/bindings/);
   const detail = readFileSync(join(root, "src/app/moments/user/[id]/page.tsx"), "utf8");
