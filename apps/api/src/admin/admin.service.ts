@@ -15,7 +15,28 @@ import type {
 import { NotificationService } from "../notifications/notification.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { normalizeIp } from "../security/client-ip";
-import type { IpBanService } from "../security/ip-ban.service";
+/**
+ * A VALUE import, and that is load-bearing.
+ *
+ * This was `import type { IpBanService }`, which produces no runtime reference —
+ * so TypeScript emitted `Function` as this constructor parameter's metadata, and
+ * Nest could not resolve it:
+ *
+ *   Nest can't resolve dependencies of the AdminService (PrismaService,
+ *   NotificationService, ?). Please make sure that the argument Function at
+ *   index [2] is available in the AdminModule module.
+ *
+ * The API therefore refused to boot at all (found 2026-10-04, while starting the
+ * Playwright servers). Note that `?:` does NOT make a dependency optional for
+ * Nest — only `@Optional()` does — so the optional-looking parameter still had to
+ * resolve. SecurityModule is `@Global()` and exports this service, so a value
+ * import is all it takes.
+ *
+ * Worth remembering for any injected dependency: `import type` is for types the
+ * DI container never sees. It is checked by neither `tsc --noEmit` nor `next
+ * build`, which is why this reached a pushed commit.
+ */
+import { IpBanService } from "../security/ip-ban.service";
 import { isProfileComplete, profileCompletionOf } from "../users/profile-completion";
 // The same keyword parser the discovery feed matches with, so the value an administrator
 // saves is byte-for-byte the value matching consumes.
