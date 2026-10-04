@@ -120,6 +120,8 @@ function makeService(rows: CategoryRow[] = [], options: { fail?: boolean } = {})
     discoverView: { findMany: jest.fn(async () => []) },
     block: { findMany: jest.fn(async () => []) },
     connection: { findMany: jest.fn(async () => []) },
+    // P0-06：推荐现在会排除「已明确拒绝」的关系；返回空表，无用例依赖它。
+    connectionRequest: { findMany: jest.fn(async () => []) },
     user: {
       // `getRecommendations` refuses an unknown viewer before it does anything else, so the
       // stub has to yield a plausible row for the filter assertions to be reachable.

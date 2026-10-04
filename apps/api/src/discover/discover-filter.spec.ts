@@ -48,6 +48,8 @@ function makePrisma(opts: {
         },
       ),
     },
+    /** P0-06：推荐现在会排除「已明确拒绝」的关系；返回空表，无用例依赖它。 */
+    connectionRequest: { findMany: jest.fn(async () => []) },
     user: {
       findUnique: jest.fn(async () => {
         const me = opts.current;

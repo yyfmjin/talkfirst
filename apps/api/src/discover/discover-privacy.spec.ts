@@ -81,6 +81,12 @@ function makePrisma(opts: {
         return connections.filter((c) => c.userAId === me || c.userBId === me);
       }),
     },
+    /**
+     * P0-06：`getRecommendations` 现在还会查「已明确拒绝」的关系，所以桩件也得有。
+     * 返回空表：下面没有任何用例依赖“被拒绝过”的关系，为它写用例是另一件事，
+     * 不该顺手改到这里来。
+     */
+    connectionRequest: { findMany: jest.fn(async () => []) },
     user: {
       findUnique: jest.fn(async () => (opts.current ? hydrate(opts.current) : null)),
       findMany: jest.fn(async ({ where }: { where: { id: { not: string; notIn: string[] } } }) => {

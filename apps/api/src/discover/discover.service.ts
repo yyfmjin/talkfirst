@@ -6,13 +6,23 @@ import {
   type ProfileVisibilityField,
   type ViewerContext,
 } from "../users/profile-visibility.constants";
+import { isProfileComplete } from "../users/profile-completion";
 
 const DAILY_VIEW_LIMIT = 20;
 const LANGUAGE_SCORE = 30;
 const INTEREST_SCORE = 25;
 const PURPOSE_SCORE = 20;
-const COUNTRY_SCORE = 15;
+/**
+ * P0-06 的六个权重。`COUNTRY_SCORE` 在 2026-10-04 之前是 15：当初没有「资料完整度」
+ * 这一项，所以国家的权重被多给了 5。补上完整度时把那 5 还回去，六项之和仍是 100 ——
+ * 这是一次**份额重新分配**，不是重新调参，所以两个常量必须一起改。
+ *
+ * 只改这一项会让满分从 100 掉到 95 且没有任何补偿，所以当时没有单独做。
+ */
+const COUNTRY_SCORE = 10;
 const ACTIVITY_SCORE = 10;
+/** 资料完整度。用 `isProfileComplete` 判断，不在这里重新定义「完整」。 */
+const COMPLETENESS_SCORE = 5;
 
 /**
  * The filter tabs that existed before `DiscoverCategory` did.
@@ -327,7 +337,7 @@ export class DiscoverService {
     blockedIds: Set<string>;
     connectedIds: Set<string>;
   }> {
-    const [blocks, connections] = await Promise.all([
+    const [blocks, connections, declined] = await Promise.all([
       this.prisma.block.findMany({
         where: { OR: [{ blockerId: userId }, { blockedId: userId }] },
         select: { blockerId: true, blockedId: true },
@@ -338,6 +348,24 @@ export class DiscoverService {
           OR: [{ userAId: userId }, { userBId: userId }],
         },
         select: { userAId: true, userBId: true },
+      }),
+      /**
+       * P0-06：明确拒绝过我的人不再出现在我的推荐里；反过来，我拒绝过的人也一样。
+       *
+       * 单列为第三个子集，而**不并入 `blockedIds`**：两件事的含义不同。Block 是
+       * 「什么都不许投射」，而拒绝只是「别再推荐给我」—— 被拒绝过的人仍然应该能通过
+       * 直接链接访问（`GET /users/:id` 不走这里）。塞进 `blockedIds` 会顺手把资料也
+       * 锁掉，那是比需求更重的动作。
+       *
+       * `CANCELLED`（自己撤回）**不排除**：撤回不代表对方的意愿，据此把对方从推荐里
+       * 抹掉没有依据。
+       */
+      this.prisma.connectionRequest.findMany({
+        where: {
+          status: "REJECTED",
+          OR: [{ senderId: userId }, { receiverId: userId }],
+        },
+        select: { senderId: true, receiverId: true },
       }),
     ]);
 
@@ -350,13 +378,20 @@ export class DiscoverService {
     for (const row of connections) {
       connectedIds.add(row.userAId === userId ? row.userBId : row.userAId);
     }
+    /** 只进 `excluded`（候选的 notIn），不进 `blockedIds`。理由见上面查询处的注释。 */
+    const declinedIds = new Set<string>();
+    for (const row of declined) {
+      declinedIds.add(row.senderId === userId ? row.receiverId : row.senderId);
+    }
     blockedIds.delete(userId);
     connectedIds.delete(userId);
+    declinedIds.delete(userId);
 
     // The two subsets stay separate: "blocked" means nothing may be projected,
-    // while "connected" only means the CONNECTIONS tier opens up.
+    // while "connected" only means the CONNECTIONS tier opens up. Declined is a
+    // third thing again — it only removes a candidate, and it is not returned.
     return {
-      excluded: [...new Set([...blockedIds, ...connectedIds])],
+      excluded: [...new Set([...blockedIds, ...connectedIds, ...declinedIds])],
       blockedIds,
       connectedIds,
     };
@@ -407,7 +442,16 @@ export class DiscoverService {
     const interestScore = Math.round((sharedInterests.length / Math.max(current.interests.length, 1)) * INTEREST_SCORE);
     const purposeScore = sharedPurposes.length > 0 ? PURPOSE_SCORE : 0;
     const countryScore = countryMatch ? COUNTRY_SCORE : 0;
-    const score = Math.min(languageScore + interestScore + purposeScore + countryScore + activityScore, 100);
+    /**
+     * P0-06 的第六个分量。`isProfileComplete` 是仓库既有的「完整」定义，
+     * **刻意不在这里重新推导**：第二份定义会与账号页显示的那个漂移
+     * （「你的资料完成度 80%」用的就是它）。
+     */
+    const completenessScore = isProfileComplete(candidate) ? COMPLETENESS_SCORE : 0;
+    const score = Math.min(
+      languageScore + interestScore + purposeScore + countryScore + activityScore + completenessScore,
+      100,
+    );
     const reasons: string[] = [];
     // A reason may only be shown when the field it is derived from is visible to
     // this viewer: "共同兴趣：摄影" would otherwise hand over a hidden interest.
@@ -418,6 +462,12 @@ export class DiscoverService {
     if (canSee("countryCode") && countryScore) reasons.push("符合国家偏好");
     // Activity is not a governed field (`lastActiveAt` is not on the whitelist).
     if (activityScore >= 8) reasons.push("近期活跃");
+    /**
+     * 完整度同样不是被治理的字段，所以不需要 `canSee` 闸门 —— 但这条理由
+     * **绝不能说出缺的是哪些字段**。「资料较完整」就到此为止：告诉浏览者对方缺什么，
+     * 等于泄露对方选择隐藏的内容，而这正是上面那组闸门存在的原因。
+     */
+    if (completenessScore) reasons.push("资料较完整");
 
     // Hidden scalars become null and hidden lists become [], so the response
     // shape is stable and the card simply omits the row.
