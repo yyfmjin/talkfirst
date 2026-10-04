@@ -214,7 +214,31 @@ export class DiscoverService {
       // if a hidden `interests`/`purposes` list were consulted here, merely
       // showing up in a category tab would disclose the value.
       .filter((card) => matchesCategoryKeywords(filterKeywords, card))
-      .sort((a, b) => b.matchScore - a.matchScore || b.lastActiveTimestamp - a.lastActiveTimestamp)
+      .sort((a, b) => {
+        const byScore = b.matchScore - a.matchScore;
+        if (byScore !== 0) return byScore;
+        /**
+         * P0-06 — 同分者按「当天轮换」排序，而不是按 `lastActiveAt`。
+         *
+         * 旧的第一键是 `lastActiveAt`，确定性排序——同一批高分用户因此长期占着
+         * 同样的位置，「永远是同一批人」正是 P0-06 点名要避免的那个失效形态。
+         *
+         * 键由 (浏览者, 候选者, 今天) 推出，**刻意不用随机数**：随机会让同一天里
+         * 两次请求的顺序不同，用户刚看过的列表再进来会换一个次序，而这里是有日配额
+         * 与分页的表面，顺序必须当天稳定。把日期混进哈希，就得到「当天稳定、跨天轮换」。
+         *
+         * 只用 id 与日期，不引入新表、不引入新依赖；`Math.imul` 让哈希保持在 32 位。
+         */
+        const day = this.startOfToday().getTime();
+        const rank = (id: string) => {
+          let hash = 2166136261 ^ (day & 0xffff);
+          for (let i = 0; i < id.length; i += 1) {
+            hash = Math.imul(hash ^ id.charCodeAt(i), 16777619);
+          }
+          return hash;
+        };
+        return rank(a.id) - rank(b.id);
+      })
       .slice(0, Math.min(limit, remaining));
 
     return {
