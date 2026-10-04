@@ -39,8 +39,15 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const ROOT = process.cwd();
+/**
+ * The repository root, derived from THIS FILE's location, not `process.cwd()`.
+ * See the same note in `static-contract-check.mjs`: these checkers are invoked
+ * from workspace package scripts, where `process.cwd()` is `apps/web` and every
+ * path below would resolve one level too deep.
+ */
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const SRC = path.join(ROOT, "apps/web/src");
 const TF = path.join(SRC, "components/tf");
 
@@ -240,11 +247,26 @@ function declaredProps() {
       // (a) Destructured names: `{ a, b = 1, "data-testid": testId }`.
       const destructure = params.match(/\{([\s\S]*)\}/);
       if (destructure) {
-        for (const part of destructure[1].split(",")) {
-          const cleaned = part
-            .replace(/\/\*[\s\S]*?\*\//g, " ")
-            .replace(/\/\/[^\n]*/g, " ")
-            .trim();
+        /**
+         * Comments are stripped from the WHOLE destructuring block before it is
+         * split on commas — the order matters, and getting it wrong silently
+         * dropped props.
+         *
+         * The split used to run first, so a doc comment inside the pattern was cut
+         * in half at one of its own commas: the fragment that carried the property
+         * name began in the middle of that comment, failed the identifier test
+         * below, and the prop was never recorded. `TFBadge.dot` and
+         * `TFBadge.title` were the two affected props in this repo — the only ones
+         * whose doc comments contain a comma — so every call site passing `dot` or
+         * `title` was reported as "does not declare", which is most of the 254
+         * findings this script was producing. `--self-test` is what caught it;
+         * keep it running.
+         */
+        const body = destructure[1]
+          .replace(/\/\*[\s\S]*?\*\//g, " ")
+          .replace(/\/\/[^\n]*/g, " ");
+        for (const part of body.split(",")) {
+          const cleaned = part.trim();
           if (!cleaned) continue;
           const key = cleaned.split(/[:=]/)[0].trim();
           if (/^[A-Za-z_$][\w$]*$/.test(key)) props.add(key);
@@ -291,31 +313,109 @@ function walk(dir, out = []) {
   return out;
 }
 
-/** Attribute names on every `<Name …>` (multi-line) usage of `name`. */
+/** Index just past the `{…}` group that starts at `start` (which must be `{`). */
+function skipBraces(source, start) {
+  const n = source.length;
+  let depth = 0;
+  let i = start;
+  while (i < n) {
+    const ch = source[i];
+    if (ch === '"' || ch === "'" || ch === "`") {
+      i += 1;
+      while (i < n && source[i] !== ch) {
+        if (source[i] === "\\") i += 1;
+        i += 1;
+      }
+      i += 1;
+      continue;
+    }
+    if (ch === "{") depth += 1;
+    else if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) return i + 1;
+    }
+    i += 1;
+  }
+  return n;
+}
+
+/**
+ * Attribute names on every `<Name …>` (multi-line) usage of `name`.
+ *
+ * The tag is walked character by character, skipping quoted values and `{…}`
+ * groups wholesale, instead of regex-matching attribute names against the raw tag
+ * text.
+ *
+ * The regex version was:
+ *
+ *     /(?:^|\s)([A-Za-z_][\w-]*)(?=\s*=|(?=\s|\/?>))/g
+ *
+ * Its lookahead degrades to "followed by whitespace", so it matched EVERY word in
+ * the tag region — including the words inside attribute values. A call such as
+ * `description="One filter that is chosen by what you can actually see"` was
+ * reported as twelve undeclared props (`One`, `filter`, `that`, …), which is the
+ * bulk of the findings this script was producing.
+ *
+ * Cross-check worth remembering: `npm run typecheck` (`tsc --noEmit`) is green on
+ * this tree, and an undeclared prop on a closed prop type is a compile error. So
+ * every finding this script reports here is, by construction, a false positive —
+ * if it ever reports one that `tsc` accepts, the checker (not the code) is wrong.
+ */
 function attributesOf(source, name) {
   const found = [];
-  const re = new RegExp(`<${name}\\b`, "g");
+  const re = new RegExp(`<${name}[\\s/>]`, "g");
+  const n = source.length;
   let m;
   while ((m = re.exec(source)) !== null) {
-    // Take everything up to the closing `>` of the opening tag.
-    let i = m.index + name.length + 1;
-    let depth = 0;
-    for (; i < source.length; i += 1) {
-      const ch = source[i];
-      if (ch === "{") depth += 1;
-      else if (ch === "}") depth -= 1;
-      else if (ch === ">" && depth === 0) break;
-      else if (ch === "\n" && depth === 0) {
-        // Only a `>` ends a tag; a newline does not. Keep scanning.
-      }
-    }
-    const tag = source.slice(m.index, i);
     const line = source.slice(0, m.index).split("\n").length;
-    // Attribute names: start-of-tag, then whitespace + identifier + (= | | / >).
-    // The component name itself is skipped.
-    for (const a of tag.matchAll(/(?:^|\s)([A-Za-z_][\w-]*)(?=\s*=|(?=\s|\/?>))/g)) {
-      if (a[1] === name) continue;
-      found.push({ attr: a[1], line });
+    let i = m.index + name.length + 1;
+
+    while (i < n) {
+      const ch = source[i];
+      if (ch === ">") break;
+      // `/>`: the `/` only ever appears at this level to self-close the tag.
+      if (ch === "/") break;
+      if (/\s/.test(ch)) {
+        i += 1;
+        continue;
+      }
+      // A spread (`{...props}`) or a bare expression: skip it entirely so `void`,
+      // `=>` and the words inside string literals are never read as names.
+      if (ch === "{") {
+        i = skipBraces(source, i);
+        continue;
+      }
+      if (!/[A-Za-z_$]/.test(ch)) {
+        i += 1;
+        continue;
+      }
+
+      let j = i;
+      while (j < n && /[\w$:.-]/.test(source[j])) j += 1;
+      found.push({ attr: source.slice(i, j), line });
+      i = j;
+
+      // Optional `= value`. The value is consumed wholesale — that is what keeps
+      // prose in a string, and code in a `{…}`, out of the attribute list.
+      let k = i;
+      while (k < n && /\s/.test(source[k])) k += 1;
+      if (source[k] !== "=") continue;
+      k += 1;
+      while (k < n && /\s/.test(source[k])) k += 1;
+      const q = source[k];
+      if (q === '"' || q === "'" || q === "`") {
+        k += 1;
+        while (k < n && source[k] !== q) {
+          if (source[k] === "\\") k += 1;
+          k += 1;
+        }
+        k += 1;
+      } else if (q === "{") {
+        k = skipBraces(source, k);
+      } else {
+        while (k < n && !/[\s/>]/.test(source[k])) k += 1;
+      }
+      i = k;
     }
   }
   return found;

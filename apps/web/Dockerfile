@@ -12,6 +12,11 @@ COPY apps/api/package.json apps/api/
 COPY packages ./packages
 RUN npm ci
 COPY apps/web ./apps/web
+# 交付构建前的守卫：上面两个 ARG 的默认值是 localhost，而它们是**构建期**写死进
+# 产物的 —— 忘记传参不会报任何错，只会生成一个「浏览器去连自己 localhost」的包。
+# 本地 `npm run build` 不会经过这里，行为不变。
+COPY scripts ./scripts
+RUN node scripts/check-build-env.mjs --socket
 RUN npm run build -w @talkfirst/web
 
 FROM node:22-alpine AS runtime

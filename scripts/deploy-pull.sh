@@ -129,20 +129,46 @@ DEVICE_SALT_V=$(env_value SECURITY_DEVICE_SALT)
 [ -n "$DEVICE_SALT_V" ] || die "SECURITY_DEVICE_SALT 未设置。API 在生产缺它会拒绝启动（设备指纹会恒为空）。
   生成：node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
 
+# FIX (2026-10-04): 这两项在下面原本没有校验，但它们同样会让 API 拒绝启动。
+# 漏掉它们的后果比漏掉上面两项更隐蔽：部署脚本会一路跑到「重启进程」才由 API 自己
+# 报错退出，而那时新版代码已经替换掉了正在运行的旧进程。
+TOKEN_KEY_V=$(env_value TOKEN_ENCRYPTION_KEY)
+[ -n "$TOKEN_KEY_V" ] || die "TOKEN_ENCRYPTION_KEY 未设置。API 在生产缺它会拒绝启动 —— 它加密库里保存的第三方社交 token（AES-256-GCM），故意没有默认值。
+  生成：openssl rand -base64 48
+  警告：轮换它会让已保存的第三方 token 全部无法解密，用户需重新绑定（没有恢复路径）。"
+
+API_PUBLIC_V=$(env_value API_PUBLIC_URL)
+GOOGLE_ID_V=$(env_value GOOGLE_CLIENT_ID)
+case "$API_PUBLIC_V" in
+  *localhost*|*127.0.0.1*)
+    if [ -n "$GOOGLE_ID_V" ]; then
+      die "API_PUBLIC_URL=$API_PUBLIC_V 是本机地址，而 GOOGLE_CLIENT_ID 已配置：
+  API 启动时会在 assertOAuthConfiguration 处以「生产部署不允许 loopback 回调地址」为由拒绝启动。
+  请设为对外 https 源（例如 https://api.talkfirst.ccwu.cc）—— Google 回调地址由它派生。"
+    fi
+    warn "API_PUBLIC_URL=$API_PUBLIC_V 指向本机。当前未配置 Google 登录，不影响启动；
+      但一旦配上 GOOGLE_CLIENT_ID，生产下的 loopback 地址会让 API 拒绝启动。" ;;
+esac
+echo "  API_PUBLIC_URL=${API_PUBLIC_V:-<未设置，代码默认 http://localhost:4000>}"
+
+# FIX (2026-10-04): 这两个值都是**构建期**注入前端产物的 —— 改完不重建无效，
+# 而缺失或指向本机时，产物里的兜底值是 http://localhost:4000，也就是访客自己的机器。
+# 原来的行为是「缺失就写入 localhost 并只给一条警告」，等于默认生成一个坏产物；
+# 现在直接中止，且规则（回环一律拒、非 https 一律拒、相对路径允许）集中在
+# scripts/check-build-env.mjs，和两个 Dockerfile 的构建阶段用同一份实现。
 API_BASE_V=$(env_value NEXT_PUBLIC_API_BASE_URL)
 [ -n "$API_BASE_V" ] || API_BASE_V=${NEXT_PUBLIC_API_BASE_URL:-}
-if [ -z "$API_BASE_V" ]; then
-  upsert_env NEXT_PUBLIC_API_BASE_URL "http://localhost:4000/api/v1"
-  warn "NEXT_PUBLIC_API_BASE_URL 缺失，已按 localhost 写入。若前端不跑在同一台机器上，浏览器会连不通 API —— 必须改。"
-else
-  case "$API_BASE_V" in
-    *localhost*|*127.0.0.1*)
-      warn "NEXT_PUBLIC_API_BASE_URL=$API_BASE_V 指向本机。它会**固化进前端产物**，
-      只有当前端与 API 同机同端口时才可用；否则浏览器会连自己的 localhost 而失败。" ;;
-  esac
-  upsert_env NEXT_PUBLIC_API_BASE_URL "$API_BASE_V"
-fi
+SOCKET_BASE_V=$(env_value NEXT_PUBLIC_SOCKET_BASE_URL)
+[ -n "$SOCKET_BASE_V" ] || SOCKET_BASE_V=${NEXT_PUBLIC_SOCKET_BASE_URL:-}
+
+if [ -n "$API_BASE_V" ]; then upsert_env NEXT_PUBLIC_API_BASE_URL "$API_BASE_V"; fi
+if [ -n "$SOCKET_BASE_V" ]; then upsert_env NEXT_PUBLIC_SOCKET_BASE_URL "$SOCKET_BASE_V"; fi
 export NEXT_PUBLIC_API_BASE_URL="$API_BASE_V"
+export NEXT_PUBLIC_SOCKET_BASE_URL="$SOCKET_BASE_V"
+
+log "校验交付构建的前端基址"
+node scripts/check-build-env.mjs --socket || die "前端基址不能用于交付（原因见上）。改成对外 https 地址后重跑；
+  确实要在内网 http 下交付时才用 ALLOW_INSECURE_API_BASE_URL=true 降级为警告。"
 
 # ---------------------------------------------------------------- 3. 依赖与构建
 if [ "$RUN_INSTALL" -eq 1 ]; then

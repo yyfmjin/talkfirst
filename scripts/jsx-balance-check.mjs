@@ -38,8 +38,15 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const ROOT = process.cwd();
+/**
+ * The repository root, derived from THIS FILE's location, not `process.cwd()`.
+ * See the same note in `static-contract-check.mjs`: these checkers are invoked
+ * from workspace package scripts, where `process.cwd()` is `apps/web` and every
+ * path below would resolve one level too deep.
+ */
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
 
 /** Element names that never take children, so they cannot be "unclosed". */
 const SELF_CLOSING_HTML = new Set([
@@ -133,6 +140,80 @@ function blankNonMarkup(source) {
     i += 1;
   }
   return out.join("");
+}
+
+/**
+ * True when `region` — the text between an opening tag's name and its `>` — has
+ * the shape of a JSX attribute list: `name`, `name=value`, `{…}` and whitespace,
+ * and nothing else.
+ *
+ * Skipping a `{…}` group and a quoted value wholesale is the whole point: an
+ * attribute region legitimately contains `(`, `)`, `;`, `=>`, `&&` and literal
+ * prose, so no "does it contain X" test can separate a tag from a comparison.
+ * Only the shape can. See the call site for the two guards this replaced.
+ */
+function looksLikeAttributes(region) {
+  const n = region.length;
+  let i = 0;
+
+  const skipString = () => {
+    const quote = region[i];
+    i += 1;
+    while (i < n && region[i] !== quote) {
+      if (region[i] === "\\") i += 1;
+      i += 1;
+    }
+    i += 1;
+  };
+
+  const skipBraces = () => {
+    let depth = 0;
+    while (i < n) {
+      const c = region[i];
+      if (c === '"' || c === "'" || c === "`") {
+        skipString();
+        continue;
+      }
+      if (c === "{") depth += 1;
+      else if (c === "}") {
+        depth -= 1;
+        if (depth === 0) {
+          i += 1;
+          return;
+        }
+      }
+      i += 1;
+    }
+  };
+
+  while (i < n) {
+    const ch = region[i];
+    if (/\s/.test(ch)) {
+      i += 1;
+      continue;
+    }
+    if (ch === "{") {
+      skipBraces();
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === "`") {
+      skipString();
+      continue;
+    }
+    // A comparison region reaches an operator here — that is the rejection.
+    if (!/[A-Za-z_$]/.test(ch)) return false;
+
+    while (i < n && /[\w$:.-]/.test(region[i])) i += 1;
+    let j = i;
+    while (j < n && /\s/.test(region[j])) j += 1;
+    if (region[j] !== "=") {
+      i = j;
+      continue;
+    }
+    // Step past the `=`; the loop then consumes the value as its own token.
+    i = j + 1;
+  }
+  return true;
 }
 
 /**
@@ -256,19 +337,24 @@ function scanTags(source) {
     }
 
     /**
-     * Distinguish a real opening tag from a bare comparison `a < b`.
+     * Distinguish a real opening tag from a bare comparison such as `a <b && c`.
      *
-     * An earlier guard rejected any tag whose attributes contained `=` — which is
-     * how EVERY JSX attribute is written. So `<div className="x">` was discarded
-     * and only attribute-less tags like `<span>` survived, making every `</div>`
-     * report "nothing open". `=` is therefore NOT a rejection signal.
+     * Two guards tried this before and both were wrong:
+     *   - "the attributes must contain `=`" discarded `<div>`, `<span>` and every
+     *     other attribute-less tag, so their closing tags then reported "nothing
+     *     open" — the guard rejected the very shape that had no attributes;
+     *   - "the attributes must not contain `)`, `;`, `&&` or `||`" discarded every
+     *     tag with a call or an arrow function in it. `onClick={() => …}` contains
+     *     `)`, so `<button>` never reached the stack and its `</button>` was matched
+     *     against whatever ancestor happened to be on top. That one heuristic
+     *     produced all 220 findings this script reported on a tree that
+     *     `next build` compiles — i.e. every finding was a false positive.
+     *
+     * The shape test below accepts a real attribute list (including a
+     * spread-only `<Comp {...props}>`, which the second guard also threw away) and
+     * rejects a comparison, whose region reaches an operator.
      */
-    if (!closing && /[);]|&&|\|\|/.test(attrs)) {
-      i = end + 1;
-      continue;
-    }
-    const attrsTrimmed = attrs.trim();
-    if (!closing && !/[="']/.test(attrs) && attrsTrimmed !== "") {
+    if (!closing && !looksLikeAttributes(attrs)) {
       i = end + 1;
       continue;
     }

@@ -15,6 +15,9 @@ RUN npm ci
 COPY prisma ./prisma
 RUN npx prisma generate --schema prisma/schema.prisma
 COPY apps/admin ./apps/admin
+# 交付构建前的守卫 —— 见 apps/web/Dockerfile 的同名步骤（admin 不连 Socket.IO）。
+COPY scripts ./scripts
+RUN node scripts/check-build-env.mjs
 RUN npm run build -w @talkfirst/admin
 
 FROM node:22-alpine AS runtime

@@ -36,8 +36,20 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const ROOT = process.cwd();
+/**
+ * The repository root, derived from THIS FILE's location, not `process.cwd()`.
+ *
+ * `apps/web` and `apps/admin` invoke these checkers from their own package
+ * scripts (`node ../../scripts/…`), and npm runs a workspace script with the
+ * workspace directory as its cwd. With `process.cwd()` every path below resolved
+ * to `apps/web/apps/web/src`, so this checker reported `tf/index.ts is missing`
+ * against a file that exists — a failure manufactured entirely by how it was
+ * called. Anchoring to `import.meta.url` makes the result the same from the repo
+ * root, from a workspace, or from anywhere else.
+ */
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const WEB = path.join(ROOT, "apps/web");
 const SRC = path.join(WEB, "src");
 const E2E = path.join(WEB, "test");
