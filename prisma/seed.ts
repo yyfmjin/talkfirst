@@ -107,6 +107,32 @@ const ATTRIBUTE_DEFINITIONS = [
   { key: "looking-local-friends", kind: "LOOKING_FOR", category: "Social", label: "Local Friends", labelZh: "同城朋友", sort: 3 },
   { key: "looking-travel-buddy", kind: "LOOKING_FOR", category: "Travel", label: "Travel Buddy", labelZh: "旅行伙伴", sort: 4 },
   { key: "looking-culture-exchange", kind: "LOOKING_FOR", category: "Culture", label: "Culture Exchange", labelZh: "文化交流", sort: 5 },
+
+  /**
+   * P0-03 的补齐（2026-10-04）。上一版只出厂了 1 个性格标签与 1 个交流方式标签，
+   * 等于这两个板块实际上不可用；能力（模型、校验、上限、可见性）早就在了，缺的只是可选内容。
+   *
+   * 两条判断写在这里，免得后来者以为是遗漏：
+   *   - 「慢热」只留在性格（`about-slow-warmup`）。P0-03 的文案在两处都列了它，但同一个词
+   *     挂在两个 section 上会让人以为它们是不同选项。一个词一个归属。
+   *   - 英文 label 直说意思，不做逐字对译（`Takes the Lead` 而不是 `Like to Initiate`）。
+   */
+  { key: "about-outgoing", kind: "ABOUT_ME", category: "Personality", label: "Outgoing", labelZh: "外向", sort: 16 },
+  { key: "about-introverted", kind: "ABOUT_ME", category: "Personality", label: "Introverted", labelZh: "内向", sort: 17 },
+  { key: "about-humorous", kind: "ABOUT_ME", category: "Personality", label: "Humorous", labelZh: "幽默", sort: 18 },
+  { key: "about-curious", kind: "ABOUT_ME", category: "Personality", label: "Curious", labelZh: "好奇", sort: 19 },
+  { key: "about-quiet", kind: "ABOUT_ME", category: "Personality", label: "Quiet", labelZh: "安静", sort: 20 },
+  { key: "about-talkative", kind: "ABOUT_ME", category: "Personality", label: "Talkative", labelZh: "健谈", sort: 21 },
+  { key: "about-easygoing", kind: "ABOUT_ME", category: "Personality", label: "Easygoing", labelZh: "随和", sort: 22 },
+  { key: "about-text-chats", kind: "ABOUT_ME", category: "Communication", label: "Text Chats", labelZh: "文字聊天", sort: 23 },
+  { key: "about-voice-chats", kind: "ABOUT_ME", category: "Communication", label: "Voice Chats", labelZh: "语音聊天", sort: 24 },
+  { key: "about-chat-occasionally", kind: "ABOUT_ME", category: "Communication", label: "Chat Occasionally", labelZh: "偶尔聊天", sort: 25 },
+  { key: "about-chat-often", kind: "ABOUT_ME", category: "Communication", label: "Chat Often", labelZh: "经常聊天", sort: 26 },
+  { key: "about-chat-initiator", kind: "ABOUT_ME", category: "Communication", label: "Takes the Lead", labelZh: "喜欢主动聊天", sort: 27 },
+  { key: "about-tech", kind: "ABOUT_ME", category: "Hobby", label: "Tech", labelZh: "科技", sort: 28 },
+  { key: "looking-international-friends", kind: "LOOKING_FOR", category: "Social", label: "International Friends", labelZh: "国际朋友", sort: 6 },
+  { key: "looking-deep-chat", kind: "LOOKING_FOR", category: "Social", label: "Deep Conversations", labelZh: "深度聊天", sort: 7 },
+  { key: "looking-daily-chat", kind: "LOOKING_FOR", category: "Social", label: "Everyday Chat", labelZh: "日常聊天", sort: 8 },
 ];
 
 const TEST_USERS = [

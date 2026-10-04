@@ -8,6 +8,9 @@ import { TFBadge, TFButton, TFChip, TFErrorState, TFInput, TFLoadingRegion, TFSk
 import { cn } from "@/lib/cn";
 import { apiFetch } from "@/lib/api";
 import { friendlyErrorMessage } from "@/lib/errors";
+// P0-03: `category` → section heading. Shared so the picker here and any future
+// read-only grouping cannot disagree about which categories fold into 我的兴趣.
+import { groupByAttributeSection } from "@/lib/attribute-sections";
 import {
   attributeLabel,
   VISIBILITY_LABELS,
@@ -458,10 +461,12 @@ function PickerSheet({
     () => definitions.filter((definition) => definition.kind === kind && !usedDefinitionIds.has(definition.id)),
     [definitions, kind, usedDefinitionIds],
   );
-  const categories = useMemo(
-    () => [...new Set(available.map((definition) => definition.category))],
-    [available],
-  );
+  /**
+   * `categories` used to live here — a `Set` of raw `category` values that the picker
+   * iterated. P0-03 heads the picker by SECTION instead (我的性格 / 我的兴趣 / 交流方式),
+   * and the render calls `groupByAttributeSection(available)` directly, so a memo would
+   * only be a second name for the same value.
+   */
 
   const section = KIND_SECTIONS.find((item) => item.kind === kind);
 
@@ -525,13 +530,19 @@ function PickerSheet({
               系统标签都已经用过了，试试自定义标签。
             </p>
           ) : (
-            categories.map((category) => (
-              <div key={category} className="mb-4">
-                <p className="mb-2 text-caption font-medium text-content-muted">{category}</p>
+            groupByAttributeSection(available).map((section) => (
+              <div key={section.title} className="mb-4">
+                {/*
+                  P0-03: the heading is the SECTION the member thinks in
+                  (我的性格 / 我的兴趣 / 交流方式), not the database's `category`
+                  ("Personality" / "Hobby" …). Several categories fold into one
+                  heading, which is why this groups rather than iterating categories
+                  directly — otherwise 我的兴趣 would appear up to five times, once
+                  per filing.
+                */}
+                <p className="mb-2 text-caption font-medium text-content-muted">{section.title}</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {available
-                    .filter((definition) => definition.category === category)
-                    .map((definition) => (
+                  {section.entries.map((definition) => (
                       <TFChip
                         key={definition.id}
                         disabled={busy}
