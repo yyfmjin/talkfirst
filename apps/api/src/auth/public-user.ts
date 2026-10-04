@@ -25,6 +25,16 @@ export function toPublicUser(user: User) {
   return {
     id: user.id,
     email: user.email,
+    /**
+     * The account name used to sign in (P0-02). It belongs in the owner's session
+     * payload because the account screen has to show which identifier is theirs —
+     * and because a member who registered by e-mail may not remember the name the
+     * system generated for them.
+     *
+     * This shape is the OWNER's; other members receive a different projection
+     * (`PublicProfile`), which deliberately does not carry it.
+     */
+    username: user.username,
     emailVerified: user.emailVerified,
     status: user.status,
     isAdmin: user.isAdmin,

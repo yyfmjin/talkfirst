@@ -32,18 +32,32 @@ import { useSession, type SessionUser } from "@/lib/session";
  *    `apiFetch<SessionUser>("/auth/login"`, and `邮箱尚未验证` — so those strings and
  *    that call signature are deliberately untouched. See
  *    `test/smoke.test.mjs` and `test/email-verification.test.mjs`.
+ *
+ *    P0-02 note: the label became 「邮箱或用户名」 and the request body became
+ *    `{ identifier, password }`. All four pinned strings still hold — `邮箱` is
+ *    still a substring of the new label, and the call signature is unchanged —
+ *    but the SECOND pinned string moved: `test/fixtures/browser.ts` resolves the
+ *    field with `getByLabel(...)`, so that one line had to be renamed with it.
+ *    The label is an exact match there, so the two are not free to drift apart.
  */
 export default function LoginPage() {
   const router = useRouter();
   const { setUser } = useSession();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [needsVerification, setNeedsVerification] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedIdentifier = identifier.trim().toLowerCase();
+
+  /**
+   * `@` is the discriminator between the two things the field accepts (P0-02),
+   * and it is unambiguous rather than a guess: an account name is `[a-z0-9]` by
+   * rule, so a value containing `@` cannot be one.
+   */
+  const looksLikeEmail = normalizedIdentifier.includes("@");
 
   /**
    * Surface a refusal the OAuth callback bounced back with.
@@ -73,10 +87,19 @@ export default function LoginPage() {
   async function resendVerification() {
     setError("");
     setNotice("");
+    /**
+     * This endpoint MAILS a code, so it needs an address. The sign-in field may
+     * hold an account name, and answering 「验证码已重新发送」 in that case would be
+     * a plain lie — the request could not have produced a code.
+     */
+    if (!looksLikeEmail) {
+      setError("验证码只能发送到邮箱地址，请填写邮箱后重试。");
+      return;
+    }
     try {
       await apiFetch("/auth/send-verification-code", {
         method: "POST",
-        body: { email: normalizedEmail },
+        body: { email: normalizedIdentifier },
       });
       setNotice("验证码已重新发送，请查收邮箱。");
     } catch {
@@ -106,12 +129,18 @@ export default function LoginPage() {
     setError("");
     setNotice("");
     setNeedsVerification(false);
-    const trimmed = normalizedEmail;
+    const trimmed = normalizedIdentifier;
     if (!trimmed || !password) {
-      setError("请填写邮箱和密码。");
+      setError("请填写邮箱或账户名和密码。");
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    /**
+     * Only the e-mail branch is shape-checked here. An account name's rules
+     * (`[a-z0-9]`, 8-30, reserved words) live on the server, which is the only
+     * authority — a second copy here would drift, and a drifted copy refuses
+     * names the server accepts.
+     */
+    if (looksLikeEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       setError("请输入有效的邮箱地址。");
       return;
     }
@@ -119,7 +148,7 @@ export default function LoginPage() {
     try {
       const user = await apiFetch<SessionUser>("/auth/login", {
         method: "POST",
-        body: { email: trimmed, password },
+        body: { identifier: trimmed, password },
       });
       setUser(user);
       router.push("/discover");
@@ -148,23 +177,26 @@ export default function LoginPage() {
 
         <form className="mt-7 space-y-4" onSubmit={(event) => void handleSubmit(event)} noValidate>
           <div>
-            {/* The label is 「邮箱地址」, NOT 「邮箱」. `test/fixtures/browser.ts`
-                signs in with `getByLabel("邮箱地址")` and that helper is the entry
-                point for nearly every authenticated spec — renaming this to the
-                shorter string would fail the whole suite at login. */}
-            <label htmlFor="login-email" className="mb-1.5 block text-caption font-medium text-content-muted">
-              邮箱地址
+            {/* The label keeps the substring 「邮箱」: `test/smoke.test.mjs` asserts
+                it. `test/fixtures/browser.ts` signs in with
+                `getByLabel("邮箱或用户名")` — an EXACT match — and that helper is
+                the entry point for nearly every authenticated spec, so this
+                string is not free to drift on its own. */}
+            <label htmlFor="login-identifier" className="mb-1.5 block text-caption font-medium text-content-muted">
+              邮箱或用户名
             </label>
             <TFInput
-              id="login-email"
-              type="email"
-              inputMode="email"
+              id="login-identifier"
+              // `type="text"`, not `type="email"`: the field legitimately holds an
+              // account name, and the email type would have the browser reject it
+              // before the request is ever sent.
+              type="text"
               autoComplete="username"
-              placeholder="请输入邮箱地址"
-              value={email}
+              placeholder="请输入邮箱地址或账户名"
+              value={identifier}
               invalid={Boolean(error) && !needsVerification}
               describedBy={error && !needsVerification ? "login-error" : undefined}
-              onChange={(event) => setEmail(event.target.value)}
+              onChange={(event) => setIdentifier(event.target.value)}
             />
           </div>
 

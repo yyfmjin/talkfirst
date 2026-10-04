@@ -1169,6 +1169,11 @@ test("phase C5: no migration was added and the schema gained no model", () => {
     // own migration rather than folded into the one above because that one had
     // already been applied; an applied migration is never edited.
     "20261003174412_social_sync_synclimit_check",
+    // P0-02 — `User.username`: the account name used to sign in, NOT NULL and
+    // unique, plus the backfill that gave every pre-existing account a generated
+    // one. Additive, but it is a column with a constraint rather than an index, so
+    // it belongs on this list for the same reason as the rest.
+    "20261004120000_username_login_identifier",
   ];
   assert.deepEqual(
     migrations.slice(C5_BASELINE.length),

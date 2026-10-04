@@ -7,6 +7,14 @@ import { UNAUTHORIZED_EVENT, apiFetch } from "@/lib/api";
 export type SessionUser = {
   id: string;
   email: string;
+  /**
+   * P0-02 — the account name used to sign in. Distinct from `nickname` below,
+   * which is the display name. It arrives with every session payload and is shown
+   * on the account screen so a member can see which identifier is theirs —
+   * including a member who registered by e-mail and does not remember the name the
+   * system generated for them.
+   */
+  username: string;
   emailVerified: boolean;
   nickname: string | null;
   avatarUrl: string | null;

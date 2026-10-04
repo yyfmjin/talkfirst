@@ -30,11 +30,35 @@ import { useSession, type SessionUser } from "@/lib/session";
  *
  * `smoke.test.mjs` pins `apiFetch<SessionUser>("/auth/register"`, and that call is
  * untouched.
+ *
+ * P0-02 added the optional account-name field. Its two refusals (`USERNAME_TAKEN`,
+ * `USERNAME_RESERVED`) are mapped to Chinese below, because the API's own messages
+ * are English and this screen renders whatever the server said.
  */
+
+/**
+ * The account-name refusals, in Chinese.
+ *
+ * `EMAIL_TAKEN` is deliberately NOT in this map: it has always reached the screen
+ * as the API's English string, and changing that is a separate copy cleanup rather
+ * than part of adding an account name. Adding only the new codes keeps this file
+ * honest about what it does rather than pretending to be a general mapping.
+ */
+const USERNAME_ERROR_LABELS: Record<string, string> = {
+  USERNAME_TAKEN: "这个账户名已经被占用了，换一个试试。",
+  USERNAME_RESERVED: "这个账户名不可用，换一个试试。",
+  USERNAME_INVALID: "账户名需为 8–30 位字母或数字。",
+};
+
 export default function RegisterPage() {
   const router = useRouter();
   const { setUser } = useSession();
   const [email, setEmail] = useState("");
+  /**
+   * Optional (P0-02). Blank means "generate one for me", which is what every
+   * account created before this feature got.
+   */
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -51,17 +75,40 @@ export default function RegisterPage() {
       setError("密码至少 8 位。");
       return;
     }
+    const trimmedUsername = username.trim();
+    /**
+     * Only the FORMAT is checked here, and upper case is allowed because the
+     * server lower-cases before storing. The alphabet (letters and digits only)
+     * and the reserved-word list live on the server — a second copy of the list
+     * would drift, and a drifted copy either refuses names the server accepts or
+     * accepts names it refuses.
+     */
+    if (trimmedUsername && !/^[A-Za-z0-9]{8,30}$/.test(trimmedUsername)) {
+      setError("账户名需为 8–30 位字母或数字。");
+      return;
+    }
     setLoading(true);
     try {
       const user = await apiFetch<SessionUser>("/auth/register", {
         method: "POST",
-        body: { email: trimmed, password },
+        body: {
+          email: trimmed,
+          password,
+          // Omitted entirely when blank. Sending `username: ""` would be a
+          // validation error, not "no preference".
+          ...(trimmedUsername ? { username: trimmedUsername } : {}),
+        },
       });
       setUser(user);
       router.push("/verify");
     } catch (requestError) {
+      const mapped =
+        requestError instanceof ApiRequestError
+          ? USERNAME_ERROR_LABELS[requestError.code ?? ""]
+          : undefined;
       setError(
-        requestError instanceof ApiRequestError ? requestError.message : "注册失败，请稍后再试",
+        mapped ??
+          (requestError instanceof ApiRequestError ? requestError.message : "注册失败，请稍后再试"),
       );
     } finally {
       setLoading(false);
@@ -86,12 +133,31 @@ export default function RegisterPage() {
               id="register-email"
               type="email"
               inputMode="email"
-              autoComplete="username"
+              // "email", not "username": the account-name field below now claims
+              // that hint, and two fields advertising the same autofill target is
+              // how a password manager ends up filling the wrong one.
+              autoComplete="email"
               placeholder="请输入邮箱地址"
               value={email}
               invalid={Boolean(error)}
               describedBy={error ? "register-error" : "register-hint"}
               onChange={(event) => setEmail(event.target.value)}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="register-username" className="mb-1.5 block text-caption font-medium text-content-muted">
+              账户名（可选）
+            </label>
+            <TFInput
+              id="register-username"
+              type="text"
+              autoComplete="username"
+              placeholder="8–30 位字母或数字，留空则自动生成"
+              value={username}
+              invalid={Boolean(error)}
+              describedBy={error ? "register-error" : "register-hint"}
+              onChange={(event) => setUsername(event.target.value)}
             />
           </div>
 

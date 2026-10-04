@@ -147,6 +147,10 @@ describe("OAuthAccountService — 邮箱不存在则建号", () => {
     expect(prisma.user.create).toHaveBeenCalledWith({
       data: {
         email: "alice@example.com",
+        // P0-02: a Google-only account still needs an account name, and it is
+        // generated because this member was never asked for one. Asserted by RULE
+        // rather than by value — the value is random by design.
+        username: expect.stringMatching(/^[a-z0-9]{8,30}$/),
         // No password exists — NOT a random hash (that would be a fabricated credential).
         passwordHash: null,
         emailVerified: true,

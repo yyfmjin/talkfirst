@@ -536,6 +536,36 @@ model User {
   // invariant does not exist yet.
   email         String     @unique
   /**
+   * The account name used to SIGN IN. `nickname` is the display name — the two
+   * are deliberately separate things (P0-02).
+   *
+   * Required and unique, and stored lower-case by `common/username.ts` rather
+   * than relying on a functional unique index: `Alice` must not be able to
+   * coexist with `alice`, because the two render identically in most fonts and
+   * that is an impersonation vector. Normalising on the way in also means lookup
+   * needs no case handling.
+   *
+   * Every account has one: registration generates one when the field is omitted,
+   * and the migration that added this column backfilled the accounts that already
+   * existed (they had never been asked for a name).
+   *
+   * Scope note: it is part of the OWNER's session payload and is shown on `/me`.
+   * It is deliberately NOT part of the public-profile projection — surfacing an
+   * account name that also works as a login identifier to other members is a
+   * privacy decision with its own threat model (targeted guessing), and it is not
+   * made here.
+   *
+   * There is deliberately NO database-side default. One was tried
+   * (`dbgenerated('lower(substr(md5(random()::text || clock_timestamp()::text), 1, 10))')`)
+   * and removed again: PostgreSQL re-renders the parsed expression, so
+   * introspection returned a differently parenthesised string and
+   * `prisma migrate diff` reported drift forever — meaning every later
+   * `migrate dev` would have proposed a meaningless migration. The column's
+   * invariant is therefore the application's to keep, and every caller passes a
+   * name (`common/username.ts`).
+   */
+  username      String     @unique @db.VarChar(30)
+  /**
    * Nullable because a Google-only account has no password to store.
    *
    * This used to be `String` and every consumer assumed it. Writing a random

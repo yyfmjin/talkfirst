@@ -14,7 +14,11 @@ import { PASSWORD } from "./profile";
 
 export async function submitLogin(page: Page, email: string) {
   await page.goto("/login");
-  await page.getByLabel("邮箱地址").fill(email);
+  // The label is 「邮箱或用户名」 and the match is EXACT: the page also renders
+  // "Google 快捷登录", so a substring match would have to guess. This helper is the
+  // sign-in path for nearly every authenticated spec, and it was renamed together
+  // with the field when the form started accepting an account name (P0-02).
+  await page.getByLabel("邮箱或用户名").fill(email);
   await page.getByLabel("密码").fill(PASSWORD);
   // "exact" matters: the page also renders "Google 登录" / "Apple 登录"
   // placeholders, which a substring match would also resolve to.

@@ -60,6 +60,9 @@ async function seedUsers() {
     await prisma.user.create({
       data: {
         email: `${PREFIX}${n}@example.test`,
+        // P0-02 — required and unique. Derived from the loop index, which is what
+        // already makes the address unique within this fixture set.
+        username: `e2epwu${n}`,
         passwordHash,
         emailVerified: true,
         status,
@@ -90,6 +93,7 @@ async function seedUsers() {
   const contentManager = await prisma.user.create({
     data: {
       email: CONTENT_MANAGER_EMAIL,
+      username: "e2epwumgr01",
       passwordHash,
       emailVerified: true,
       status: "ACTIVE",

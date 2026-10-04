@@ -87,6 +87,9 @@ export async function seedChat(prisma: PrismaClient): Promise<ChatFixture> {
     prisma.user.create({
       data: {
         email: CHAT_EMAILS[key],
+        // P0-02 — required and unique. Derived from the fixture key for the same
+        // reason as `profile.ts`.
+        username: `chatuser${key}`,
         passwordHash,
         emailVerified: true,
         status: "ACTIVE",

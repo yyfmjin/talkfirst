@@ -331,7 +331,14 @@ describe("Google 登录（本地假 provider，真实 HTTP + 真实数据库）"
 
   it("邮箱已属于密码账号 -> 不自动关联，也不建号，并回传可执行的登录方式", async () => {
     const existing = await prisma.user.create({
-      data: { email: TAKEN_USER.email, passwordHash: "$2b$12$abcdefghijklmnopqrstuv", emailVerified: true },
+      data: {
+        email: TAKEN_USER.email,
+        // Required since P0-02. The value is arbitrary here — this account exists
+        // to prove the OAuth path refuses to adopt it.
+        username: "oauthspec0001",
+        passwordHash: "$2b$12$abcdefghijklmnopqrstuv",
+        emailVerified: true,
+      },
       select: { id: true },
     });
 

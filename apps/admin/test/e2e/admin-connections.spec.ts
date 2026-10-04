@@ -108,6 +108,10 @@ async function seedConnectionFixtures(prisma: PrismaClient) {
     prisma.user.create({
       data: {
         email: `alice@${FIXTURE_EMAIL_DOMAIN}`,
+        // P0-02 — required and unique. Prefixed per spec so two suites that share
+        // a database cannot collide on an account name the way they cannot collide
+        // on an address (the fixture domain is already per-spec).
+        username: "e2econnalice",
         passwordHash: "not-a-real-login",
         nickname: ALICE_NICKNAME,
         status: "ACTIVE",
@@ -117,6 +121,7 @@ async function seedConnectionFixtures(prisma: PrismaClient) {
     prisma.user.create({
       data: {
         email: `bob@${FIXTURE_EMAIL_DOMAIN}`,
+        username: "e2econnbob",
         passwordHash: "not-a-real-login",
         nickname: BOB_NICKNAME,
         status: "ACTIVE",
@@ -126,6 +131,7 @@ async function seedConnectionFixtures(prisma: PrismaClient) {
     prisma.user.create({
       data: {
         email: `carol@${FIXTURE_EMAIL_DOMAIN}`,
+        username: "e2econncarol",
         passwordHash: "not-a-real-login",
         nickname: CAROL_NICKNAME,
         status: "ACTIVE",

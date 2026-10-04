@@ -1,6 +1,7 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, ServiceUnavailableException } from "@nestjs/common";
 import { OAuthProvider, type Prisma, type User as PrismaUser } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import { generateUsername, isUsernameConflict } from "../../common/username";
 import type { ProviderIdentity } from "./oauth.types";
 import { OAuthError } from "./oauth.types";
 
@@ -124,45 +125,71 @@ export class OAuthAccountService {
    * sign-in that visibly showed a name.
    */
   private async createAccount(identity: ProviderIdentity): Promise<ResolutionOutcome> {
-    try {
-      const user = await this.prisma.$transaction(async (tx) => {
-        const created = await tx.user.create({
-          data: {
-            email: identity.email as string,
-            passwordHash: null,
-            emailVerified: true,
-            nickname: identity.name,
-            lastActiveAt: new Date(),
-          },
+    /**
+     * Google-only 账号同样要有一个账户名（P0-02）：`username` 是 NOT NULL，
+     * 而且它本身就是登录标识。这里由服务端生成 —— 它与下面写入的 `nickname`
+     * 是两件事，那个是会员自己选择对外展示的名字。
+     *
+     * 重试循环不是装饰：P2002 只告诉你「撞了唯一约束」，不告诉你撞的是哪一列，
+     * 而这一列是账户名还是邮箱，处理方式完全不同。混在一起会把一次生成碰撞
+     * 报成「有人抢先创建了这个账号」，把用户引向一个错误的下一步。
+     */
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      try {
+        const user = await this.prisma.$transaction(async (tx) => {
+          const created = await tx.user.create({
+            data: {
+              email: identity.email as string,
+              username: generateUsername(),
+              passwordHash: null,
+              emailVerified: true,
+              nickname: identity.name,
+              lastActiveAt: new Date(),
+            },
+          });
+          await tx.oAuthIdentity.create({
+            data: {
+              userId: created.id,
+              provider: identity.provider,
+              providerUserId: identity.providerUserId,
+              email: identity.email,
+              emailVerified: identity.emailVerified,
+              lastLoginAt: new Date(),
+            },
+          });
+          return created;
         });
-        await tx.oAuthIdentity.create({
-          data: {
-            userId: created.id,
-            provider: identity.provider,
-            providerUserId: identity.providerUserId,
-            email: identity.email,
-            emailVerified: identity.emailVerified,
-            lastLoginAt: new Date(),
-          },
-        });
-        return created;
-      });
-      return { kind: "session", user, linked: false, isNewAccount: true };
-    } catch (error) {
-      /**
-       * A unique-constraint violation here means someone else created this
-       * account (or bound this identity) between the read above and this write —
-       * two simultaneous first sign-ins, or a sign-in racing a registration.
-       *
-       * The honest answer is to re-resolve rather than to fail: whichever write
-       * landed first is the account that exists, and a second attempt is exactly
-       * the "already bound / already registered" path. Re-throwing would surface a
-       * 500 for what is a benign race.
-       */
-      if (!isUniqueViolation(error)) throw error;
-      this.logger.warn("OAuth account creation raced another writer; re-resolving");
-      return this.resolve(identity);
+        return { kind: "session", user, linked: false, isNewAccount: true };
+      } catch (error) {
+        if (!isUniqueViolation(error)) throw error;
+
+        /**
+         * 碰撞的是账户名：整个事务已回滚，什么都没建，唯一正确的答案是换一个名字重试。
+         */
+        if (isUsernameConflict(error)) {
+          this.logger.warn("Generated username collided; retrying with a new one");
+          continue;
+        }
+
+        /**
+         * 否则是邮箱（或这条身份绑定）在「上面的读」与「这里的写」之间被别人写掉了 ——
+         * 两个并发的首次登录，或一次登录与一次注册撞车。
+         *
+         * 诚实的做法是重新解析而不是失败：先落地的那一次写入就是真实存在的账号，
+         * 重走一遍恰好会命中「已绑定 / 已注册」那条路径。直接抛出去，会把一次良性先占
+         * 当成 500。
+         */
+        this.logger.warn("OAuth account creation raced another writer; re-resolving");
+        return this.resolve(identity);
+      }
     }
+
+    /**
+     * 五次全部撞在生成的账户名上：4.9e14 的空间里这不是运气，是生成器坏了。
+     * 明确失败优于无限循环，而且绝不能报成 `USERNAME_TAKEN` —— 那会让用户去改一个与
+     * 他无关的东西。
+     */
+    throw new ServiceUnavailableException("Could not allocate a username for the new account");
   }
 
   /** Refuse a banned/disabled account exactly like password login does. */

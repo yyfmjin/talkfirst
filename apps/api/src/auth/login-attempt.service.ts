@@ -83,9 +83,17 @@ export class LoginAttemptService {
     this.now = now;
   }
 
-  /** Whether `email` is currently locked, without recording anything. */
-  check(email: string): LockCheck {
-    const state = this.states.get(email);
+  /**
+   * Whether `bucket` is currently locked, without recording anything.
+   *
+   * `bucket` is an opaque key, not necessarily an e-mail: `AuthService` keys the
+   * account bucket on the account's e-mail and the pre-lookup bucket on the value
+   * as typed. The class deliberately does not care which — it owns a budget per
+   * key, and keeping the key opaque is what lets one account stay on one budget
+   * no matter which identifier the member signs in with.
+   */
+  check(bucket: string): LockCheck {
+    const state = this.states.get(bucket);
     if (!state || state.lockedUntil <= this.now()) {
       return { locked: false, retryAfterMs: 0 };
     }
@@ -93,16 +101,17 @@ export class LoginAttemptService {
   }
 
   /**
-   * Records one credential failure for `email` and reports the resulting state.
-   * Keyed on the submitted e-mail, so an address that does not exist is counted
+   * Records one credential failure for `bucket` and reports the resulting state.
+   *
+   * Keyed on the submitted value, so a value that matches no account is counted
    * exactly like one that does — the budget itself leaks no account existence.
    */
-  recordFailure(email: string, isAdmin: boolean): FailureOutcome {
+  recordFailure(bucket: string, isAdmin: boolean): FailureOutcome {
     const now = this.now();
     this.prune(now);
 
     const threshold = isAdmin ? this.policy.adminMaxFailures : this.policy.maxFailures;
-    let state = this.states.get(email);
+    let state = this.states.get(bucket);
     if (!state || now - state.windowStartedAt > this.policy.windowMs) {
       state = { failures: 0, windowStartedAt: now, lockedUntil: 0 };
     }
@@ -119,7 +128,7 @@ export class LoginAttemptService {
       lockedNow = true;
     }
 
-    this.states.set(email, state);
+    this.states.set(bucket, state);
     return {
       locked: state.lockedUntil > now,
       retryAfterMs: Math.max(0, state.lockedUntil - now),
@@ -129,8 +138,8 @@ export class LoginAttemptService {
   }
 
   /** Clears the budget after a successful authentication. */
-  reset(email: string): void {
-    this.states.delete(email);
+  reset(bucket: string): void {
+    this.states.delete(bucket);
   }
 
   /** Drops unlocked states whose window has elapsed, bounding memory. */

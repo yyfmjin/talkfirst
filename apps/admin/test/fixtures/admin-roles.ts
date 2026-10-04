@@ -166,6 +166,16 @@ export async function seed(prisma: PrismaClient): Promise<SeedIds> {
       },
       create: {
         email: spec.email,
+        /**
+         * P0-02 — required on create; the `update` branch deliberately leaves it
+         * alone so re-seeding never renames an account.
+         *
+         * Seeded directly, so these values never pass through the product's own
+         * validator — and they sign in by E-MAIL, not by name. A role key like
+         * `superadmin` would in fact be refused by `checkUsername`, which is worth
+         * knowing before anyone tries to use one of these names to sign in.
+         */
+        username: `pwspec${key.replace(/[^a-z0-9]/g, "")}`,
         passwordHash,
         emailVerified: true,
         status: "ACTIVE",

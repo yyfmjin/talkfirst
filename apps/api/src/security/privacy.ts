@@ -24,3 +24,22 @@ export function maskEmail(email: string): string {
 export function hashEmail(email: string): string {
   return sha256Hex(email.trim().toLowerCase());
 }
+
+/**
+ * The same treatment for an account name, and deliberately a separate pair of
+ * functions rather than a generalised one.
+ *
+ * `maskEmail` keeps the domain because the domain carries meaning for an address;
+ * a handle has no `@` to split on, and preserving its head and tail is what makes
+ * a row recognisable to whoever reads the log. The hash does not need its own
+ * namespace: a username is `[a-z0-9]` only, so it can never equal an e-mail.
+ */
+export function maskUsername(username: string): string {
+  const normalized = username.trim().toLowerCase();
+  if (normalized.length <= 2) return "***";
+  return `${normalized.slice(0, 1)}***${normalized.slice(-1)}`;
+}
+
+export function hashUsername(username: string): string {
+  return sha256Hex(username.trim().toLowerCase());
+}

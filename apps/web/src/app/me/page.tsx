@@ -34,6 +34,12 @@ import { useSession } from "@/lib/session";
 import { AvatarActionSheet, ClickableAvatar } from "@/components/avatar-actions";
 
 type FullProfile = {
+  /**
+   * P0-02 — the account name used to sign in. It is not optional: `GET /users/me`
+   * returns it for every account, including the pre-existing ones the migration
+   * backfilled.
+   */
+  username: string;
   nickname: string | null;
   avatarUrl: string | null;
   countryCode: string | null;
@@ -298,7 +304,27 @@ export default function MePage() {
         <section className="mt-5">
           <TFSectionHeader title="账号" />
           <div className="mx-4 overflow-hidden rounded-card border border-border bg-surface">
-            <TFListRow icon={<KeyRound size={17} />} title="修改密码" href="/me/password" />
+            {/*
+              P0-02 — the account name, and it is shown rather than edited.
+
+              Shown because it is a sign-in identifier: a member who registered
+              with an e-mail address may never have seen the name the system
+              generated for them, and "what do I type to sign in" is not a question
+              the account screen should leave open.
+
+              Read-only because changing it is its own change: it needs a
+              uniqueness check, the reserved-word rules, a rate limit and a decision
+              about sessions already in flight. None of that is part of adding the
+              field, so it is not smuggled in here.
+            */}
+            <TFListRow
+              icon={<UserRound size={17} />}
+              title="账户名"
+              subtitle={profile ? `@${profile.username}` : "读取中…"}
+            />
+            <div className="border-t border-border">
+              <TFListRow icon={<KeyRound size={17} />} title="修改密码" href="/me/password" />
+            </div>
             {profile?.isAdmin ? (
               <div className="border-t border-border">
                 <TFListRow icon={<ShieldCheck size={17} />} title="管理后台" href="/admin" />

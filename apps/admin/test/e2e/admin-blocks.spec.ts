@@ -135,6 +135,9 @@ async function seedBlockFixtures(prisma: PrismaClient) {
     prisma.user.create({
       data: {
         email: `alice@${FIXTURE_EMAIL_DOMAIN}`,
+        // P0-02 — required and unique. Prefixed per spec; see the same note in
+        // `admin-connections.spec.ts`.
+        username: "e2eblkalice",
         passwordHash: "not-a-real-login",
         nickname: ALICE_NICKNAME,
         status: "ACTIVE",
@@ -144,6 +147,7 @@ async function seedBlockFixtures(prisma: PrismaClient) {
     prisma.user.create({
       data: {
         email: `bob@${FIXTURE_EMAIL_DOMAIN}`,
+        username: "e2eblkbob",
         passwordHash: "not-a-real-login",
         nickname: BOB_NICKNAME,
         status: "ACTIVE",
@@ -153,6 +157,7 @@ async function seedBlockFixtures(prisma: PrismaClient) {
     prisma.user.create({
       data: {
         email: `carol@${FIXTURE_EMAIL_DOMAIN}`,
+        username: "e2eblkcarol",
         passwordHash: "not-a-real-login",
         nickname: CAROL_NICKNAME,
         status: "ACTIVE",
@@ -585,6 +590,7 @@ test.describe("Phase C4 — Blocks", () => {
         const user = await prisma.user.create({
           data: {
             email: `filler${i}@${FIXTURE_EMAIL_DOMAIN}`,
+            username: `e2eblkfiller${String(i).padStart(2, "0")}`,
             passwordHash: "not-a-real-login",
             nickname: `${BLOCK_FIXTURE_PREFIX}Filler${String(i).padStart(2, "0")}`,
             status: "ACTIVE",

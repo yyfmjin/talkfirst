@@ -29,7 +29,8 @@ import {
 } from "../security/security.constants";
 import { reasonCodeOf } from "../security/error-reason";
 import { getRequestContext } from "../security/request-context";
-import { hashEmail, maskEmail } from "../security/privacy";
+import { hashEmail, hashUsername, maskEmail, maskUsername } from "../security/privacy";
+import { checkUsername, generateUsername, isUsernameConflict } from "../common/username";
 import { ChangePasswordDto, LoginDto, RegisterDto, ResetPasswordDto } from "./auth.dto";
 import { emailVerificationEnforced } from "./email-verification.policy";
 import { LoginAttemptService } from "./login-attempt.service";
@@ -134,6 +135,21 @@ export class AuthService {
 
   async register(dto: RegisterDto) {
     const email = dto.email.trim().toLowerCase();
+    /**
+     * Validated OUTSIDE the try, unlike `EMAIL_TAKEN` below.
+     *
+     * A malformed or reserved account name is a 400 about the member's own typing.
+     * `REGISTER_FAILED` exists to surface enumeration and abuse patterns, and
+     * filling it with "you used a forbidden word" would bury that signal. It is
+     * still a deliberate refusal — just not a security event.
+     */
+    const requested = dto.username === undefined ? null : checkUsername(dto.username);
+    if (requested && !requested.ok) {
+      throw new BadRequestException({
+        success: false,
+        error: { code: requested.code, message: requested.message },
+      });
+    }
     try {
       const existing = await this.prisma.user.findUnique({ where: { email } });
       if (existing) {
@@ -142,9 +158,23 @@ export class AuthService {
           error: { code: "EMAIL_TAKEN", message: "Email is already registered" },
         });
       }
+      // A friendly early answer for a name the member chose. It is NOT the
+      // authority — two concurrent registrations can both see the name as free,
+      // which is why `createAccount` below still handles the constraint.
+      if (requested) {
+        const taken = await this.prisma.user.findUnique({ where: { username: requested.value } });
+        if (taken) {
+          throw new ConflictException({
+            success: false,
+            error: { code: "USERNAME_TAKEN", message: "Username is already taken" },
+          });
+        }
+      }
       const passwordHash = await bcrypt.hash(dto.password, 12);
-      const user = await this.prisma.user.create({
-        data: { email, passwordHash, lastActiveAt: new Date() },
+      const user = await this.createAccount({
+        email,
+        passwordHash,
+        preferredUsername: requested ? requested.value : null,
       });
       const session = await this.issueSession(user);
       await this.securityEvents?.record({
@@ -172,38 +202,137 @@ export class AuthService {
     }
   }
 
-  async login(dto: LoginDto) {
-    const email = dto.email.trim().toLowerCase();
-    try {
-      // SEC-001. Refuse before touching the database: the budget is keyed on the
-      // submitted e-mail and counts unknown addresses the same as real ones, so a
-      // lock says nothing about whether the account exists.
-      const lock = this.loginAttempts.check(email);
-      if (lock.locked) {
-        // The crossing failure already raised BRUTE_FORCE_DETECTED; repeating it
-        // on every blocked retry would be one event per packet. The refusal still
-        // lands in the audit trail via the LOGIN_FAILED written by the catch below.
-        throw new HttpException(
-          {
-            success: false,
-            error: {
-              code: "TOO_MANY_ATTEMPTS",
-              message: "Too many sign-in attempts. Please try again later.",
-            },
+  /**
+   * Create the account, resolving the username's unique constraint.
+   *
+   * The pre-check in `register` cannot be the whole answer: two concurrent
+   * registrations can both observe the same name as free, and the database is the
+   * only authority. `P2002` is therefore caught here, and what happens next
+   * depends on who chose the name:
+   *   - a name the MEMBER picked is reported back as `USERNAME_TAKEN`. Silently
+   *     handing them a different account name would be worse than asking again,
+   *     because that name is what they will type to sign in;
+   *   - a GENERATED name is simply regenerated. Nobody chose it, so there is
+   *     nothing to disappoint, and the space is ~4.9e14 wide.
+   */
+  private async createAccount(input: {
+    email: string;
+    passwordHash: string;
+    preferredUsername: string | null;
+  }) {
+    const attempts = input.preferredUsername ? 1 : 5;
+    for (let i = 0; i < attempts; i += 1) {
+      const username = input.preferredUsername ?? generateUsername();
+      try {
+        return await this.prisma.user.create({
+          data: {
+            email: input.email,
+            username,
+            passwordHash: input.passwordHash,
+            lastActiveAt: new Date(),
           },
-          HttpStatus.TOO_MANY_REQUESTS,
-        );
+        });
+      } catch (error) {
+        if (!isUsernameConflict(error)) throw error;
+        if (input.preferredUsername) {
+          throw new ConflictException({
+            success: false,
+            error: { code: "USERNAME_TAKEN", message: "Username is already taken" },
+          });
+        }
       }
+    }
+    /**
+     * Five consecutive collisions on a 4.9e14-wide space is not bad luck, it is a
+     * broken generator. Failing loudly beats looping forever, and it must NOT be
+     * reported as `USERNAME_TAKEN` — that would send the caller off to choose a
+     * different name for a reason that is not theirs.
+     */
+    throw new ServiceUnavailableException({
+      success: false,
+      error: { code: "USERNAME_GENERATION_FAILED", message: "Could not allocate a username" },
+    });
+  }
 
-      const user = await this.prisma.user.findUnique({ where: { email } });
+  /**
+   * The one refusal shape for a locked budget. Returns rather than throws so the
+   * two call sites stay ordinary `throw` statements and no control-flow narrowing
+   * has to be assumed.
+   */
+  private lockedOutError(): HttpException {
+    // The crossing failure already raised BRUTE_FORCE_DETECTED; repeating it on
+    // every blocked retry would be one event per packet. The refusal still lands
+    // in the audit trail via the LOGIN_FAILED written by the caller's catch.
+    return new HttpException(
+      {
+        success: false,
+        error: {
+          code: "TOO_MANY_ATTEMPTS",
+          message: "Too many sign-in attempts. Please try again later.",
+        },
+      },
+      HttpStatus.TOO_MANY_REQUESTS,
+    );
+  }
+
+  async login(dto: LoginDto) {
+    /**
+     * One input, two identifier kinds.
+     *
+     * `@` is the discriminator, and it is unambiguous rather than a heuristic: a
+     * username is `[a-z0-9]` by rule, so a value containing `@` cannot be one. A
+     * leading `@` is stripped FIRST, because people write handles that way and
+     * `@alice` has to resolve to `alice` rather than be read as an address.
+     */
+    const candidate = (dto.identifier ?? dto.email ?? "").trim().replace(/^@+/, "").toLowerCase();
+    if (candidate === "") {
+      throw new BadRequestException({
+        success: false,
+        error: { code: "VALIDATION_ERROR", message: "Email or username is required" },
+      });
+    }
+    const isEmail = candidate.includes("@");
+
+    /**
+     * SEC-001's budget, in two layers.
+     *
+     * `submittedKey` is the value as typed, and it is what earns the pre-lookup
+     * refusal: a locked identifier is turned away without touching the database,
+     * and one that matches no account is counted exactly like a real one, so a
+     * lock says nothing about whether the account exists.
+     *
+     * `accountKey` is the bucket that DECIDES, and once the account is known it is
+     * that account's e-mail — the very key the e-mail sign-in path has always
+     * used. Keying on the submitted string alone would let one account be attacked
+     * on two independent budgets by alternating between its address and its
+     * username: twice the attempts for one password to guess.
+     */
+    const submittedKey = isEmail ? candidate : `username:${candidate}`;
+    const identifierDetail = isEmail
+      ? { emailMasked: maskEmail(candidate), emailHash: hashEmail(candidate) }
+      : { usernameMasked: maskUsername(candidate), usernameHash: hashUsername(candidate) };
+
+    try {
+      if (this.loginAttempts.check(submittedKey).locked) throw this.lockedOutError();
+
+      const user = isEmail
+        ? await this.prisma.user.findUnique({ where: { email: candidate } })
+        : await this.prisma.user.findUnique({ where: { username: candidate } });
+
+      const accountKey = user ? user.email : submittedKey;
+      if (user && this.loginAttempts.check(accountKey).locked) throw this.lockedOutError();
+
       if (!user) {
         // SEC-005: spend the same bcrypt work as a real comparison so an unknown
         // address cannot be distinguished from a wrong password by timing.
         await bcrypt.compare(dto.password, DUMMY_PASSWORD_HASH);
-        await this.recordCredentialFailure(email, false);
+        await this.recordCredentialFailure(accountKey, false, identifierDetail);
         throw new UnauthorizedException({
           success: false,
-          error: { code: "INVALID_CREDENTIALS", message: "Email or password is incorrect" },
+          error: {
+            code: "INVALID_CREDENTIALS",
+            message: "Email, username or password is incorrect",
+          },
         });
       }
       /**
@@ -219,10 +348,13 @@ export class AuthService {
        */
       const valid = await bcrypt.compare(dto.password, user.passwordHash ?? DUMMY_PASSWORD_HASH);
       if (!valid || !user.passwordHash) {
-        await this.recordCredentialFailure(email, user.isAdmin);
+        await this.recordCredentialFailure(accountKey, user.isAdmin, identifierDetail);
         throw new UnauthorizedException({
           success: false,
-          error: { code: "INVALID_CREDENTIALS", message: "Email or password is incorrect" },
+          error: {
+            code: "INVALID_CREDENTIALS",
+            message: "Email, username or password is incorrect",
+          },
         });
       }
       // SEC-005: only after the password is proven do we reveal the account-state
@@ -244,8 +376,12 @@ export class AuthService {
         );
       }
       // A correct password clears the budget so an honest user is never punished
-      // for earlier typos once they get in.
-      this.loginAttempts.reset(email);
+      // for earlier typos once they get in. Both keys are cleared: the account
+      // bucket (which decides) and, when the member signed in by name, the
+      // typing bucket too — leaving that one behind would lock them out on the
+      // next attempt after a handful of earlier fat-fingers.
+      this.loginAttempts.reset(accountKey);
+      if (submittedKey !== accountKey) this.loginAttempts.reset(submittedKey);
       await this.prisma.user.update({
         where: { id: user.id },
         data: { lastActiveAt: new Date() },
@@ -268,8 +404,7 @@ export class AuthService {
         riskLevel: RiskLevel.MEDIUM,
         success: false,
         detail: {
-          emailMasked: maskEmail(email),
-          emailHash: hashEmail(email),
+          ...identifierDetail,
           reasonCode: reasonCodeOf(error, "LOGIN_FAILED"),
         },
       });
@@ -282,8 +417,12 @@ export class AuthService {
    * the failure that crosses the threshold (not on every subsequent refusal,
    * which would flood the log with duplicates of one event).
    */
-  private async recordCredentialFailure(email: string, isAdmin: boolean) {
-    const outcome = this.loginAttempts.recordFailure(email, isAdmin);
+  private async recordCredentialFailure(
+    bucket: string,
+    isAdmin: boolean,
+    identifierDetail: Record<string, unknown>,
+  ) {
+    const outcome = this.loginAttempts.recordFailure(bucket, isAdmin);
     if (!outcome.lockedNow) return;
     await this.securityEvents?.record({
       type: SecurityEventType.BRUTE_FORCE_DETECTED,
@@ -291,8 +430,7 @@ export class AuthService {
       riskLevel: RiskLevel.HIGH,
       success: false,
       detail: {
-        emailMasked: maskEmail(email),
-        emailHash: hashEmail(email),
+        ...identifierDetail,
         reasonCode: "ACCOUNT_LOCKED",
         failures: outcome.failures,
         lockMs: outcome.retryAfterMs,

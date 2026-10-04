@@ -152,6 +152,9 @@ async function seedExchangeFixtures(prisma: PrismaClient) {
     prisma.user.create({
       data: {
         email: `alice@${FIXTURE_EMAIL_DOMAIN}`,
+        // P0-02 — required and unique. Prefixed per spec; see the same note in
+        // `admin-connections.spec.ts`.
+        username: "e2eexchalice",
         passwordHash: "not-a-real-login",
         nickname: ALICE_NICKNAME,
         status: "ACTIVE",
@@ -161,6 +164,7 @@ async function seedExchangeFixtures(prisma: PrismaClient) {
     prisma.user.create({
       data: {
         email: `bob@${FIXTURE_EMAIL_DOMAIN}`,
+        username: "e2eexchbob",
         passwordHash: "not-a-real-login",
         nickname: BOB_NICKNAME,
         status: "ACTIVE",
@@ -170,6 +174,7 @@ async function seedExchangeFixtures(prisma: PrismaClient) {
     prisma.user.create({
       data: {
         email: `carol@${FIXTURE_EMAIL_DOMAIN}`,
+        username: "e2eexchcarol",
         passwordHash: "not-a-real-login",
         nickname: CAROL_NICKNAME,
         status: "ACTIVE",

@@ -198,6 +198,8 @@ test.describe("admin user detail — Phase B3 aggregates", () => {
     const target = await prisma.user.create({
       data: {
         email: B3_TARGET_EMAIL,
+        // P0-02 — required and unique.
+        username: "e2eb3target",
         passwordHash: "x",
         emailVerified: true,
         nickname: "B3 Target",
@@ -211,6 +213,7 @@ test.describe("admin user detail — Phase B3 aggregates", () => {
     const peer = await prisma.user.create({
       data: {
         email: B3_PEER_EMAIL,
+        username: "e2eb3peer01",
         passwordHash: "x",
         emailVerified: true,
         nickname: "B3 Peer",
@@ -287,6 +290,9 @@ test.describe("admin user detail — Phase B3 aggregates", () => {
       update: { passwordHash: await require("bcryptjs").hash(B3_CONTENT_MANAGER_PASSWORD, 10) },
       create: {
         email: B3_CONTENT_MANAGER_EMAIL,
+        // P0-02 — required on create. The `update` branch leaves it alone, which
+        // is the point of an upsert here: re-running must not rename the account.
+        username: "e2eb3cm0001",
         passwordHash: await require("bcryptjs").hash(B3_CONTENT_MANAGER_PASSWORD, 10),
         emailVerified: true,
         nickname: "B3 CM",

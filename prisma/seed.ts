@@ -112,6 +112,14 @@ const ATTRIBUTE_DEFINITIONS = [
 const TEST_USERS = [
   {
     email: "yuki.demo@talkfirst.local",
+    /**
+     * Demo accounts get readable account names instead of generated ones.
+     *
+     * A seed is documentation as much as data: `yukidemo` can be typed at the
+     * sign-in form, while a random handle cannot be remembered or quoted in a
+     * test. Both are valid under the same rules (`[a-z0-9]`, 8-30).
+     */
+    username: "yukidemo",
     nickname: "Yuki",
     countryCode: "JP",
     birthDate: "2000-06-18",
@@ -123,6 +131,7 @@ const TEST_USERS = [
   },
   {
     email: "alex.demo@talkfirst.local",
+    username: "alexdemo",
     nickname: "Alex",
     countryCode: "US",
     birthDate: "1999-03-12",
@@ -134,6 +143,7 @@ const TEST_USERS = [
   },
   {
     email: "mika.demo@talkfirst.local",
+    username: "mikademo",
     nickname: "Mika",
     countryCode: "KR",
     birthDate: "2001-11-02",
@@ -250,6 +260,7 @@ async function main() {
       },
       create: {
         email: fixture.email,
+        username: fixture.username,
         passwordHash,
         nickname: fixture.nickname,
         countryCode: fixture.countryCode,

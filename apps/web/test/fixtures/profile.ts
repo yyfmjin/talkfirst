@@ -167,6 +167,10 @@ export async function seed(prisma: PrismaClient): Promise<FixtureIds> {
     const user = await prisma.user.create({
       data: {
         email: account.email,
+        // P0-02 — required and unique. Derived from the fixture's own address so
+        // it is stable across runs and unique per account without another table of
+        // literals to keep in step.
+        username: `prof${account.email.split("@")[0].replace(/[^a-z0-9]/g, "")}`,
         passwordHash,
         emailVerified: true,
         status: "ACTIVE",
