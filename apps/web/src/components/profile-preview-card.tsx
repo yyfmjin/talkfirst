@@ -184,7 +184,27 @@ export function ProfilePreviewCard({
                     <TFBadge key={`${language.code}-${language.type}`} tone="brand">
                       {language.nativeName ?? language.name}
                       <span className="opacity-70">
-                        {language.type === "NATIVE" ? "母语" : "学习中"}
+                        {/*
+                          P0-05 asks for the level, and until now it was never
+                          rendered anywhere — `languages[].level` has been in the API
+                          payload all along with no label to show it with.
+
+                          The level is only shown for a language being LEARNED: for a
+                          native language the type already says it, and
+                          "母语 · 母语级" is noise.
+
+                          The four labels live inline because this is the only place
+                          that renders them. If a second one appears (a level picker on
+                          /me/interests is the obvious candidate), they should move to a
+                          shared module rather than be copied.
+                        */}
+                        {language.type === "NATIVE"
+                          ? "母语"
+                          : `学习中 · ${
+                              { BEGINNER: "入门", INTERMEDIATE: "中级", ADVANCED: "高级" }[
+                                language.level
+                              ] ?? language.level
+                            }`}
                       </span>
                     </TFBadge>
                   ))}
