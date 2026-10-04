@@ -90,7 +90,29 @@ async function enabledProvider(page: Page): Promise<string | null> {
   const response = await page.request.get(`${API_ORIGIN}/api/v1/auth/oauth/providers`);
   expect(response.ok()).toBe(true);
   const body = (await response.json()) as { data: { providers: string[] } };
-  return body.data.providers[0] ?? null;
+  const providers = body.data.providers ?? [];
+
+  /**
+   * `local` wins whenever it is offered — and that preference is the point, not a
+   * convenience.
+   *
+   * The tests below drive 跳转 → 同意 → 回调建号 to completion. Only the development
+   * provider can be driven that far without a human at a real consent screen, so it
+   * is the only one that can prove the flow; a real provider has to skip.
+   *
+   * This used to be `providers[0]`, which silently meant `local` for exactly as
+   * long as this deployment had no Google credentials. The moment
+   * `GOOGLE_CLIENT_ID` was configured in `.env` (2026-10-03), `google` could take
+   * the first slot and these three tests started clicking through to Google's real
+   * consent screen — where `local-authorize-submit` never appears. The visible
+   * failure was "the consent page did not render", which reads like a broken
+   * callback rather than a fixture whose meaning had quietly changed.
+   *
+   * Order is not part of the API contract, so leaning on it was a latent bug even
+   * when it happened to work.
+   */
+  if (providers.includes("local")) return "local";
+  return null;
 }
 
 /** Marks the current test skipped when no provider is available. */
@@ -98,7 +120,7 @@ function skipUnlessConfigured(provider: string | null): provider is string {
   if (provider) return true;
   test.skip(
     true,
-    "no OAuth provider is configured: set GOOGLE_CLIENT_ID/SECRET, or OAUTH_DEV_PROVIDER=true for the local dev provider",
+    "this flow needs the LOCAL dev provider: set OAUTH_DEV_PROVIDER=true. With only a real provider configured the flow cannot be automated — the consent screen needs a human.",
   );
   return false;
 }
