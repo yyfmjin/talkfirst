@@ -26,7 +26,7 @@
 
 | 视角 | 覆盖 | 位置 |
 |---|---|---|
-| owner 看到完整资料 | ✅ | E2E `profile.spec.ts:534`「本人能看到全部字段，包括 PRIVATE」（通过） |
+| owner 看到完整资料 | ✅ | E2E `profile.spec.ts:534`「本人能看到全部字段，包括 PRIVATE」· API `users-public-profile.spec.ts`（§3，2026-10-05 补） |
 | stranger 只看到 public | ✅ | API `discover-privacy.spec.ts:129/223`（逐字段）· E2E `:518` |
 | connection 看到 connections-only | ✅ | API `discover-privacy.spec.ts:156` · E2E `:518` |
 | private 永远不能被普通用户读取 | ✅ | API `discover-privacy.spec.ts:129` · E2E `:534` |
@@ -38,14 +38,19 @@
 - **不泄露"为什么被隐藏"**：`languages` 为 PRIVATE 时既返回空数组、也**不给出「语言互补」这条匹配理由**
   （`discover-privacy.spec.ts:261`）。理由本身就是一种泄露 —— 这条是被想到并测过的。
 
-## 3. 唯一建议补的一处（未做）
+## 3. 唯一建议补的一处（2026-10-05 已补）
 
-P0-04 的测试矩阵里，**owner 这一条只有 E2E 覆盖，没有 API 级断言**：
+P0-04 的测试矩阵里，**owner 这一条原本只有 E2E 覆盖，没有 API 级断言**：
 `users-public-profile.spec.ts` 的自视用例断言的是"本人能看到自己的资料，**无视状态**"，
 而不是"本人能看到自己的 **PRIVATE** 字段"。
 
-补一条 API 级用例即可闭合矩阵（构造一条 `visibility: PRIVATE` 字段 → 以本人身份 `GET /users/:id` →
-断言能读到），成本很小，但本轮没做（用户 2026-10-04：别在一个问题上耗太久）。
+**已按原方案补上**：`users-public-profile.spec.ts` 新增一条用例，同一个 fixture 造出
+`bio` / `languages` 两条 `visibility: PRIVATE` 行，**同一行数据读两次** —— 本人读到，
+已连接但不是本人的 stranger 读不到（`bio: null`、`languages: []`）。同一行、两个视角，
+所以能造成差异的只可能是 `canViewField` 的视角判定；顺带钉住 PRIVATE 不等于 CONNECTIONS。
+矩阵四格现均已有 API 级断言。
+
+（当时没做是成心的：用户 2026-10-04「别在一个问题上耗太久」，先记下来，等手上这件事收尾再补。）
 
 ## 4. 有意保留的设计（不是缺陷）
 

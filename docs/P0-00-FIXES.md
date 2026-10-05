@@ -190,3 +190,162 @@ docs/P0-00-FIXES.md                 本文档（新增）
 1. **P0-01（修复生产环境 API HTTPS）** —— 现在有实测证据可直接定位：源码树里 `3.141.192.106` 出现 **0 次**，本机构建产物烘焙的是 `localhost:4000`（24 处），而两个 Dockerfile 的 `NEXT_PUBLIC_API_BASE_URL` ARG 默认值就是 `http://localhost:4000/api/v1`。**结论方向：问题在服务器构建时的环境变量，修完必须重新构建 web/admin。**
 2. 部署前先按 P0-00 §H.1 补齐服务器 `.env`（现在 `deploy-pull.sh` 会替你挡住 `TOKEN_ENCRYPTION_KEY` 与 loopback `API_PUBLIC_URL`）。
 3. 之后才是 P0-02 起的真实功能开发。
+
+---
+
+## 6. FIX-8 — G10 就绪探针（2026-10-05）
+
+> 本节晚于上一节：上面那批修完之后，门禁已经真的绿了；这一节是回头把 §G 里
+> 「需要单独决策」的一项落地。G 系列里 **G10** 是**代码侧**能解决的（其余 G1/G9/G11/G12
+> 都在服务器上或需要先有真实流量），所以先做它。
+
+| 项 | 内容 |
+|---|---|
+| **症状（G10）** | `/api/v1/health` 只固定返回 `ok`，不碰任何依赖 → 一个「数据库连不上、但进程还活着」的实例在编排眼里是健康的 |
+| **为什么不能直接把 DB ping 塞进 `/health`** | `docker-compose.yml` 的 api healthcheck 探的就是它，而它撑着 `depends_on: condition: service_healthy` 的 web/admin。健康检查失败 = web/admin 永远不启动 + `docker ps` 显示 unhealthy —— **数据库抖一下就等于整栈被判死**。存活探针的语义只是「这个进程该不该重启」 |
+| **修法** | 拆成两个语义不同的端点：`GET /api/v1/health`（存活，无依赖，不变）与 `GET /api/v1/health/ready`（就绪，真的 ping 一次 DB） |
+| **就绪的判据** | `SELECT 1`；超时 `READY_TIMEOUT_MS = 2000`；不可用 → **503 + `error.code = "NOT_READY"`**（沿用仓库“用 `error.code` 说清发生了什么”的约定） |
+| **不引 `@nestjs/terminus`** | 只需要一次 `SELECT 1`，而 terminus 会带来一棵新依赖树**以及它自己的响应形状**，那会让仓库既有的 `{success, data}` 封套出现第二种写法 |
+| **凭据不外泄露** | 探活是外部（编排/监控，甚至公网）最可能打到的端点：失败时只记 `error.name`、只回固定文案。Prisma 的初始化错误里带连接目标（`DATABASE_URL` 是带凭据的 URL），所以它不能进响应、也不能进日志 |
+| **探针改成就绪的消费方** | `docker-compose.yml` 的 api healthcheck、`apps/api/Dockerfile` 的 `HEALTHCHECK`、`scripts/deploy-pull.sh` 末尾的自检提示 |
+| **改动的文件** | `apps/api/src/health/health.controller.ts`、`apps/api/src/health/health.controller.spec.ts`、`docker-compose.yml`、`apps/api/Dockerfile`、`scripts/deploy-pull.sh`、`docs/DOCKER-DEPLOY.md`、`docs/architecture/README.md` |
+| **测试** | 4 条：存活不碰 DB（断言拿 `$queryRaw` 从未被调）；就绪成功给出时延；查询失败 → 503 且底层错误文本（含假凭据）**一个字都不出现在响应里**；不回应时在 `READY_TIMEOUT_MS` 后判不可用（假定时器推进，不真等 2s） |
+| **端到端实测** | 构建后真起 API（`API_PORT=4100`）两种环境各打一次：<br>· 真库：`/health` → 200 `ok`；`/health/ready` → 200 `ready`（`database.up`，2ms）<br>· 不可达库：`/health` → **仍然 200**（存活不受影响 —— 这正是必须改 compose 探针的原因）；`/health/ready` → **503 `NOT_READY`，1898ms 返回**（被 2s 上限截住，不抱死） |
+| **有意没改** | 两个 Playwright 配置的 `webServer.url` 仍指存活探针。改成就绪在语义上更对（E2E 本来就需要库），但那两套 E2E 的既知失败已按用户决定搁置，先不动它们的启动门 —— 这是另一个决定，记在这里而不是顺手改 |
+| **顺带确认** | 全局限流是 120/min（`http-throttler.guard.ts`），而 compose 探活是 10s 一次（6/min），换成就绪后同一量级，无需给探针加 `@SkipThrottle` |
+
+---
+
+## 7. 同轮的其他核对（2026-10-05）：G12 / G11 / C13
+
+这一轮除了 FIX-8，还把 §G / §C 里几项**能就地定性**的条目查清了。
+
+### G12 —— AccessLog 写入链路：本机已实测（基线记为「未验证」）
+
+基线当时测到本机 `AccessLog` 是 **0 行**，于是判定「写入链路在当前数据上未被验证」。
+本轮重测：**14317 行**，且**刚刚那几次请求就在里面**——
+`GET /api/v1/health/ready`、`GET /api/v1/health`（多条）都有行，时间戳与探测时刻逐毫秒对齐。
+
+结论：**写入链路是通的**；基线那次看到 0 行，是因为当时这台机器上确实没有流量。
+另外，新加的就绪端点也被同一条中间件正常记下了（不需要为它单独接线）。
+
+（字段名是 `statusCode` 而不是 `status`；行里 `method` / `path` / `statusCode` / `durationMs` 均正常落库。）
+
+### G11 —— 本机 `.env` 混用：属于**你侧的动作**，本轮不动
+
+基线写的是：本机 `.env` 是「生产风格混用」——`NODE_ENV=development` 但含**真实 Gmail 应用密码与 Google 凭据**；
+修法是「生产与本地环境文件分离」。
+这需要**轮换/新建**你那边的真实凭据，不是代码改动；我不会去碰它们，列在这里作为待办。
+
+### C13 —— `docs/AI_CONTEXT.md` 文档漂移：已校准（本轮补做）
+
+三份文档（P0-00 §C、REPAIR §4.12、HANDOVER B11）都点名了同一处漂移。本轮逐条核实并改写：
+
+| 位置 | 原声明 | 实测 |
+|---|---|---|
+| §3 目录树 / §5.1 | `schema.prisma` **771 行** | **1455 行** |
+| §5.1 | **36 个 model**、**18 个 enum** | **47 / 25** |
+| §5.1 | （未记迁移数） | 补上 **30** 个 |
+| §8 表 Moments 行 | ⚠️ 部分：「无详情页、无回复、无分页、无删除、不可举报」 | ✅：详情页 `@Get(":id")` + `/moments/[id]`、回复 `parentId`、本人删评论（PC-2.4）均已在；仍缺**评论分页/评论举报**（C2） |
+| §8 表 Production P0 行 | 指向「Production Readiness 审计」 | 该文件不存在。改为指向 `docs/P0-00-FIXES.md` 与 §G |
+| §8.1 缺口清单 | 10 条「P1 核心功能缺失」 | 其中 **5 条已闭环**（1 帖子详情、2 回复/删除、5 邮箱验证/CSPRNG/真 SMTP、8 改密/找回、10 动态审核），**2 条部分闭环**（3 内容举报、4 通知），其余保留并挂上 §C 编号 |
+
+改写原则按该文档自己的规则（「文档说 MISSING 但代码已有 → 以代码为准」），
+并在 §8.1 顶部留了一条 **2026-10-05 校准** 说明，免得后来者以为这些结论是原作者的。
+**未复核**的只剩第 6 条（社交平台同步的演示内容）——它没在本轮证据里，所以标了「保持原结论」而不是改掉。
+
+---
+
+## 8. FIX-9 — C5 通知去重：按**事件**判定，不按**窗口**（2026-10-05）
+
+| 项 | 内容 |
+|---|---|
+| **基线原文** | C5「通知去重」→ 建议 `Notification(userId,type,targetId,window)` 唯一索引（§C） |
+| **产品口径** | 用户 2026-10-05：「**每次点赞都提醒**」 |
+| **为何原建议不能用** | ① `Notification` 表**没有 `targetId` 列**——目标只存在于 `data` 的 JSON 里，那个索引今天根本建不出来；② 更要紧的是：按 `(收件人, 类型, 目标)` 去重会把**同一条动态两个不同人的点赞合成一条**，与「每次点赞都提醒」直接冲突。去重键若真要建，必须把**点赞人**算进去 |
+| **核实结论：没有可去重的重复** | 13 个生产者分两类，**都不产生重复投递**：<br>· **事件型**（点赞 / 评论 / 回复 / 消息 / 认识请求 / 交换请求 / 管理操作）：以**新建行**为触发，行本身唯一 → 一次事件恰好一条通知<br>· **状态型**（封禁到期释放 `user-status.scheduler.ts`）：单条 `updateMany` + **自消耗谓词**（释放后 `status` 不再是 `SUSPENDED`、`suspendedUntil` 为 `null`），第二次 tick 匹配 0 行；接受类迁移用**条件认领**（`connections.service.ts` 注释写明「行已被上面的认领翻转过」） |
+| **因此本轮不建列、不建索引** | 建一列没有任何消费者会用的 `dedupeKey`，是给假想的将来加基础设施。**它是可加的**，触发条件是：出现以**状态**（而非事件）为触发、且可被重放的通知生产者 |
+| **顺带发现（未修）** | `toggleLike` 是**切换语义**：同一请求被重放两次（双击/网络重试）时，第二次会被当成「取消赞」而删掉那个赞。这是**幂等性**问题（**不是**重复通知问题），修它要动 API 语义（拆成显式 like/unlike，或引入幂等键）——属单独的产品/接口决定 |
+| **固化成契约** | 新增 `apps/api/src/moments/moments-like-notifications.spec.ts`（**4 条全过**）：两个不同人点赞 = **两条**通知（不折叠）· 取消赞不通知 · 取消后重新点赞 = **再提醒一次** · 自赞不提醒 |
+| **改动文件** | `apps/api/src/moments/moments-like-notifications.spec.ts`（新增）、`docs/AI_CONTEXT.md`（§8.1 的 C5 行）、本文档 |
+
+这条为什么不能只写在文档里：它很容易在后面的「通知太多了，折叠一下吧」里被无声改掉。
+上面 4 条用例就是那个改动的第一道拦网 —— 它们红的时候，意思不是「通知坏了」，
+而是「**你改了产品口径**」。
+
+---
+
+## 9. FIX-10 — C4 收藏（Bookmark）（2026-10-05）
+
+| 项 | 内容 |
+|---|---|
+| **基线原文** | C4「收藏（Bookmark）」→「需新建 `MomentBookmark`」（§C） |
+| **数据模型** | 新增 `MomentBookmark`（`id` 主键 + `@@unique([userId, momentId])` + `@@index([userId, createdAt])`，两侧 CASCADE）。**为什么不用 `MomentLike` 那种复合主键**：收藏列表按「最近收藏在前」分页，走的是全仓库共用的 `(createdAt, id)` keyset 游标；复合主键没有 `id` 可做同一毫秒的 tie-break，会逼出第二套游标形状 |
+| **迁移** | `prisma/migrations/20261005120000_moment_bookmarks/`（只建表，不改既有列与行）。已 `migrate deploy` 应用到本机库；`migrate diff --from-schema-datasource --to-schema-datamodel` = **No difference detected** |
+| **接口** | `GET /moments/bookmarks`（keyset 分页）· `POST /moments/:id/bookmark` · `DELETE /moments/:id/bookmark`。两个写方法**幂等**：收藏 `upsert`（`update: {}`，所以重复收藏不会把 createdAt 刷新、把这条挤到最前面），取消 `deleteMany`（删不存在的行不抛 P2025） |
+| **权限模型** | 「能不能收藏」=「能不能看」：复用 `resolveMomentAccess` + 作者 ACTIVE。理由写在代码注释里 —— 收藏是**按用户持久化下来的读取通道**，允许收藏看不见的东西就等于绕过了拉黑与隐私。找不到与不可见**都回 404**（不用状态码区分，免得问出别人内容是否存在） |
+| **投影** | `feed` / `userMoments` / `getMoment` / 收藏列表四处都多了 `bookmarked`，形状与既有的 `liked` 完全平行（一行 include + 一个布尔），所以卡片不需要额外请求 |
+| **列表过滤** | 每次读取都重新判一遍可见性、拉黑、审核状态 —— 收藏是**会过期的快照**：收藏之后对方可能拉黑你、把可见性收紧成 private，或动态被置为 `PENDING`。拉黑与审核在 SQL 里判，可见性（private / connections）在 JS 里判 |
+| **前端** | 卡片动作行新增收藏按钮（`aria-pressed` + 乐观翻转 + 失败回滚，与点赞完全同一套）；**收藏做成 `/moments` 的第四个标签，而不是新页面** —— 卡片 `MomentCard` 是页面内局部组件，P0-05 又要求「只有一套卡片」，所以复用同一个列表比复制（或先做一次大抽取）都对；收藏标签下平台筛选器**整个收起来**（它不看平台，留一个按下去没反应的筛选器比没有更困惑） |
+| **测试** | 新增 `moments-bookmarks.spec.ts`：**13 条**（幂等两向 · 不可见/作者非 ACTIVE/不存在不得收藏且**零写操作** · 分页 `take=limit+1` 与游标取返回页最后一行 · 拉黑与审核的**查询形状** · private/connections 的**行为** · 投影 · 畸形游标）。用例里逐条标明了哪些是「查形状」哪些是「查行为」—— 因为桩件不执行 SQL |
+| **撞到的既有断言** | `moments-detail.spec.ts` 有 5 条用例的 fixture 没有 `bookmarks`，投影处直接 TypeError。按仓库惯例（参见 `admin-user-detail.spec.ts` 的 B3 注释）**更新期望而不是删断言**：fixture 补 `bookmarks: []`，`toMatchObject` 里显式写上 `bookmarked: false` —— 下次它再变会被看到 |
+| **验证** | API **90 套件 / 1671 用例全绿**（本套 13 条含在内）；`tsc --noEmit` 与 `eslint` 退出码 0；web typecheck/lint 干净、静态 16/0、契约三件套全 OK（80 源文件 / 93 主题色 / 102 testids / 69 tsx 平衡）；启动日志的映射顺序里 `/moments/bookmarks` 在 `/moments/:id` **之前**（字面量路由没被参数路由抢）；三条新路由未带凭证均回 401 |
+| **前端（二）** | 动态详情页（`/moments/[id]`）也加了收藏按钮：那一页只有一个对象，所以**不做乐观更新** —— 失败时 `setError` 会把原因说清楚，回滚一份乐观状态在这页没有额外好处 |
+| **未做（明确）** | 无。C4 的四件（模型 / 接口 / 列表 / 两处按钮）全部落地。**未跑**的只是浏览器级 E2E（按 `docs/KNOWN-E2E-ISSUES.md` 的决定保留） |
+
+---
+
+## 10. FIX-11 — C3 已读位置与未读数（2026-10-05）
+
+| 项 | 内容 |
+|---|---|
+| **基线原文** | C3「已读回执 / 会话未读数 /「未读 ≤5」」→ 需 `ConversationMember.lastReadAt`（§C） |
+| **核对：旧值根本不是「未读」** | `GET /conversations` 早就在返回 `unreadCount`，但它是 `take: 5` 的副产品 —— 数「最近 5 条消息里不是我发的」。两个后果都不报错、只一直错：① 从没打开过的会话最多也只显示 5；② **读完之后不会归零**（已读与未读在数据上没有任何区别） |
+| **schema + 迁移** | `ConversationMember.lastReadAt DateTime?`。既有行**回填成迁移时刻** = 「此前全部已读」：另一种选法（留 NULL）会给每个老成员凭空刷出「历史全部未读」的数字，而那份「迁移前的未读」在迁移前**从未被记录过**，并没有真的丢掉什么 |
+| **未读数** | 新私有方法 `unreadCountFor`：`message.count({ conversationId, deletedAt: null, senderId: { not: me }, type: { not: "SYSTEM" }, createdAt: { gt: lastReadAt } })`；`lastReadAt = null` 时不加时间下界。**逐会话一次 count**：每个会话阈值不同，一条 SQL 表达不了（`groupBy` 只能用共同下界，会多算读得晚的会话）；会话数量级在几十、`(conversationId, createdAt)` 上有索引。**上千会话时这里就是该改的地方**（改成每用户未读计数器） |
+| **已读端点** | `POST /conversations/:id/read`：非成员 404（与消息列表同口径，不拿状态码漏存在性）；幂等（重复调用只是继续后推）；返回 `{ conversationId, lastReadAt, unreadCount: 0 }`。用 POST 而不把已读藏在「拉消息列表」里 —— 那样一来「看了一眼列表」与「读了这个会话」就再也分不开了，而红点恰恰依赖这个区别 |
+| **发消息顺带已读** | 发送事务里补一条 `conversationMember.update({ lastReadAt: now })`：发消息意味着你正看着它。不做也不会漏（自己的消息本就不计未读），但做了之后你回复时对方之前那几条不会以「仍未读」留在列表上 |
+| **顺带删掉另一个假「未读」** | 发送响应里的 `peerUnread` = `notification.count({ userId: peerId, readAt: null })`。三处都不对：名字说「对方未读消息」而算的是**未读通知**（两张毫不相干的表）；全仓库**零消费方**（只有那两行引用）；还把对方的计数透给了发送者。已删除，响应变为 `data: message` |
+| **前端** | 列表与底部导航**本来就在读 `unreadCount`**（`messages/page.tsx:196`、`tab-bar.tsx:81` 把各会话求和并轮询），所以服务端一改这两处自动变真。唯一缺的是「打开会话即已读」：新增一个以**最新消息 id** 为触发键的 effect（既覆盖进入时，也覆盖人在页面上继续收到新消息；用 id 而非长度，因为翻历史也会改长度），失败静默 |
+| **测试** | 新增 `social-unread-http.spec.ts`（**真路由 + 真控制器 + 真 DTO**，桩件只到 Prisma 层）**6 条全过**：未读数来自 count（用 `count → 7` 而窗口里只有 1 条来证明，实现退回窗口算法这条就会红）· `lastReadAt = null` 不加时间下界而其余三条排除仍在 · 打开会话写 `lastReadAt` 并回报未读归零 · 已读幂等 · 非成员 404 且一行不写 · 发消息在**同一事务**里推自己的 `lastReadAt` 且响应不再有 `peerUnread` |
+| **验证** | API **91 套件 / 1677 用例全绿**；api typecheck/lint 退出码 0；web typecheck/lint 干净、静态 16/0、契约三件套全 OK；`migrate diff` 无漂移 |
+| **未做** | ① 列表的 N+1（已注明触发条件）；② 「未读 ≤5」的**显示上限** —— 底部导航现在直接显示总数（`tab-bar.tsx`），要不要改成 `5+` 是产品决定，没有替它定 |
+
+---
+
+## 11. FIX-12 — C1 话题浏览：把 §2.22 点名缺的那个参数补上（2026-10-05）
+
+| 项 | 内容 |
+|---|---|
+| **基线原文** | C1「搜索页 / 话题页」→「API 层不存在对应接口（`FUNCTIONAL-TEST-UI-UX.md` §2.22 已核对）」→「需产品先定数据契约」（§C） |
+| **§2.22 真正说了什么** | 两个页面都没建，因为服务端没接口；同时留下两条**具体**证据：① 成员端全部 GET 路由里没有 `/search`；② `@Get("feed")` 的参数表只有 `tab/platform/limit/cursor` ——**没有 `topic`**。而话题的**数据早就存在**（动态带 `tags`，compose 有完整的话题选择/创建 UI），缺的只是「按 tag 查」 |
+| **本轮范围（有意拆开）** | **先做话题**（数据、写入归一化、UI 入口都已就位，只缺一条查询）；**成员搜索另开一轮** —— 它缺的是**产品决定**（搜谁？按昵称/语言/兴趣？要不要配额？），而这些问题 §2.22 列出来就是等人回答的，不由我替它回答 |
+| **归一化** | 查询端 `normalizeTopic` 与写入端（`publish`）**逐字同一套**：`trim → 去掉开头的 # → 小写 → 截 32`。两套「看上去一样」的规则会让 `#旅行` 与 `旅行` 互相查不到，而两边都不报错 |
+| **API（一）** | `GET /moments/feed?topic=` —— 就是 §2.22 点名缺的那个参数。`tags: { has: topic }` 直接对应 Postgres 的数组包含，不需要新表或新索引 |
+| **API（二）** | `GET /moments/topics` —— 标签 + 条数。**计数只在你看得见的动态里做**：一个 tag 的条数如果能被看不见它所属动态的人推出来，那它就是一个侧信道（「某个只被私密动态用过的话题有 3 条」本身就泄露了那 3 条的存在）。所以它用的是与 `feed` **同一个** `visibilityContext` 与同一组过滤条件 |
+| **为何是「近期窗口」** | Prisma 不能 unnest 数组列（`tags` 是 `String[]`），全库计数只能靠原生 SQL 的 `unnest + GROUP BY` ——那会是本仓库除健康探针之外的第一处原生 SQL。所以取**最近 N 条可见动态**（默认 300、上限 1000）在 JS 里聚合：语义诚实（页面说的是「近期话题」而不是历史总数）· 只 select `tags`（payload 极小）· 不引入新查询方言。**真需要全量计数时就是该上话题表或原生 SQL 的时候** —— 这句判断写在代码里，不埋在实现里 |
+| **顺手消掉的重复** | feed 与 C4 的收藏里各有一份**逐字相同**的「拉黑 + 连接」上下文；话题需要第三份。已抽成 `visibilityContext()`，三处共用 —— 否则「改了一处」就是默认结局 |
+| **前端** | 话题做成**动态页里的第二排筛选 chip**（与平台并列），而不是新建 `/topics`：底部导航只有四个位置（加第五个是设计决定），而「按话题看动态」本来就是 feed 的一种视图。chip 带条数（与列表能翻到的条数一致），在「收藏」标签下不出现 |
+| **测试** | 新增 `moments-topics.spec.ts` **12 条全过**：归一化与写入端一致（含 40 字符截 32）· 无 topic / 空串 / 只给 `#` 时**不加**条件（不能变成 `has: ""`）· 话题与拉黑/平台过滤**并存** · private 作者的标签不计入 · connections-only 未连接不计入而已连接计入 · 拉黑与审核的查询形状 · 排序（条数降序、同数按 tag 升序）· limit/window 与 `select` 只取 tags+userId |
+| **验证** | API **92 套件 / 1698 用例全绿**；api 与 web 的 typecheck/lint 退出码均为 0；web 静态 16/0、契约三件套全 OK；本轮**没有新增迁移或模型**（话题复用现有表），所以 admin 静态测试里的迁移/模型 pin 无需变更 |
+| **未做** | ① **成员搜索**（需产品决定，见上）；② 话题的**全量计数**（当前是近期窗口，边界已写在注释里）；③ 话题的浏览器级 E2E（按 `docs/KNOWN-E2E-ISSUES.md` 的约定保留） |
+
+---
+
+## 12. FIX-13 — C2 评论举报与审核侧的评论目标（2026-10-05）
+
+| 项 | 内容 |
+|---|---|
+| **基线原文** | C2「admin 评论审核视图」→「`Report` 无 `commentId` 列；动态审核已做，评论未做」（§C） |
+| **核对：评论分页其实已有** | PC-2.4 已经做过评论分页（顶层评论分页、回复内嵌，页边界不会劈开线程）。所以 C2 的实际缺口只有**评论举报**与**审核侧的评论目标** |
+| **schema + 迁移** | `Report.commentId String? @db.Uuid` + `@@index([commentId])`。**无外键是有意的**：举报是**审核历史**，而评论是**硬删除**（`MomentComment` 没有 `deletedAt`）；加 `onDelete: Cascade` 会在评论被删时把管理员正要复核的那条线索一起删掉 |
+| **举报侧** | `ReportDto.commentId`，目标从 2 个变 3 个，规则仍是**恰好一个**（`messageId` 不算目标，它是附在人举报上的证据）；新增 `resolveCommentTarget`：① 评论必须存在（硬删除 → 查不到即已删）；② 评论作者必须 ACTIVE；③ **举报人必须看得见那条动态**（与前几个端点同一个 `resolveMomentAccess` —— 没这道闸，任何人拿一个评论 id 就能让管理员读到一条自己无权看的内容里的原话，正是 audit P028 在消息上报过的同一个洞）；④ 被举报人 = 评论作者，服务端读 |
+| **为何评论路径统一 404** | 不可见时回 404 `COMMENT_NOT_FOUND`，**故意**不同于动态路径的 403 `MOMENT_LOCKED`：后者是用户正在尝试打开一个页面，说「你看不了」不泄露新东西；而这里传进来的是一串不透明 id，回 403 就等于确认「这条评论存在，只是你看不了」 |
+| **审核侧（API）** | `deriveTargetType` 3 态 → **4 态**（`MOMENT > COMMENT > MESSAGE > USER`）；`CONTENT_REPORT_TARGET` 加第三条 arm 并**每条 pin 住前面的指针**以保持分区（否则带多个指针的行会被算两次）；`buildReportWhere` 四个 arm 同步；`REPORT_DETAIL_SELECT` + `reportDetail` 加 `comment` 摘要（与 message/moment 同一两态契约：`available:false` 是普通状态，**绝不抛异常**）；新增 `commentSummary` |
+| **管理端 UI** | `lib/report-target.ts` 四态标签/徽标（琥珀色，与蓝/紫/绿分得开）+ 筛选下拉加「评论」；详情页新增 `CommentSummary` 类型与「被举报的评论」区块（含「已删除 / 无关联」两态） |
+| **用户端 UI** | 举报弹窗从「只报动态」扩成「动态 **或** 评论」：同理由列表、同失败语义，根 testid 按目标切换（`comment-report-dialog` / `moment-report-dialog`，两个字面量都在源码里，所以静态契约检查照旧通过），内部那几个 `moment-report-*` 是弹窗自己的部件、不因目标改名；评论动作菜单从「只有自己的评论」扩成**互斥**两种情形：自己的 → 编辑/删除，别人的 → 举报；**只读表面（动态卡片）不传 `onReport`**，因此依旧没有入口 |
+| **撞到的既有断言（全部按惯例更新期望）** | ① `social-reports-http.spec.ts` 两处逐字比对 `report.create` 的 data → 补 `commentId: null`；② `admin-reports.spec.ts` 12e（三目标→四目标）/29/29b/29c + `ReportRow` 类型；③ `admin-integration.spec.ts` 39c（两条 arm → 三条，并新增 COMMENT 对照）；④ `admin-user-detail.spec.ts` 的 `CONTENT_ARM_LITERAL` 与 9e/9f（新增评论行用例）；⑤ **admin 静态测试的迁移/模型 pin** —— 本轮三个迁移与 `MomentBookmark` 必须**显式写进清单**，这正是那条 pin 存在的意义（它自己注释里写着「新增迁移必须在这里具名，而不是随着计数器滑进去」） |
+| **测试** | 新增 6 条评论举报 HTTP 用例（目标解析 / 404 三态 / 自报 / 三目标互斥）+ 3 条审核详情用例（29d/e/f：标签与摘要 · 评论已删 · 从未指向评论）；另有 5 处既有期望按上表更新 |
+| **验证** | API **91 套件 / 1686 用例全绿**；api / web / admin 三端 `tsc --noEmit` 与 lint 退出码 0；web 静态 16/0、admin 静态 **28/0**；web 契约三件套全 OK（80 源文件 / 93 主题色 / **102 testids** / 69 tsx 平衡）；`migrate diff` 无漂移 |
+| **未做（明确）** | ① 评论举报的**浏览器级 E2E**（按 `docs/KNOWN-E2E-ISSUES.md` 的决定保留）；② 被举报评论审核完成后的**通知**（`REPORT_REVIEW` 类型已在契约里，但未接生产者——那属于通知闭环，不属于 C2） |
+

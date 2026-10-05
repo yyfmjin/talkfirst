@@ -28,6 +28,7 @@ const AUTHOR = "11111111-2222-4333-8444-555555555555";
 const OTHER = "99999999-8888-4777-8666-555555555555";
 const MOMENT = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
 const MESSAGE = "abcdefab-1234-4567-89ab-cdefabcdefab";
+const COMMENT = "bbbbbbbb-cccc-4ddd-8eee-ffffffffffff";
 
 class AlwaysSignedInStrategy extends PassportStrategyBase {
   name = "jwt";
@@ -45,6 +46,7 @@ describe("SocialSafetyController — report HTTP contract", () => {
     user: { findUnique: jest.Mock };
     moment: { findUnique: jest.Mock };
     message: { findUnique: jest.Mock };
+    momentComment: { findUnique: jest.Mock };
     report: { create: jest.Mock };
   };
   let moments: { resolveMomentAccess: jest.Mock };
@@ -75,6 +77,7 @@ describe("SocialSafetyController — report HTTP contract", () => {
       user: { findUnique: jest.fn() },
       moment: { findUnique: jest.fn() },
       message: { findUnique: jest.fn() },
+      momentComment: { findUnique: jest.fn() },
       report: {
         create: jest.fn().mockResolvedValue({
           id: "r1",
@@ -155,6 +158,7 @@ describe("SocialSafetyController — report HTTP contract", () => {
         reportedUserId: AUTHOR,
         momentId: MOMENT,
         messageId: null,
+        commentId: null,
         reason: "Harassment",
         description: undefined,
       },
@@ -241,6 +245,7 @@ describe("SocialSafetyController — report HTTP contract", () => {
         reportedUserId: OTHER,
         momentId: null,
         messageId: null,
+        commentId: null,
         reason: "Spam",
         description: undefined,
       },
@@ -308,5 +313,120 @@ describe("SocialSafetyController — report HTTP contract", () => {
     expect(response.status).toBe(403);
     expect(body.error?.code).toBe("CANNOT_REPORT_SELF");
     expect(prisma.report.create).not.toHaveBeenCalled();
+  });
+
+  /**
+   * C2 — 评论举报。
+   *
+   * 评论既是目标又自带证据，所以它比动态举报多一道闸：管理端会读它的 `content`，
+   * 而举报人必须**看得见那条动态**（`resolveMomentAccess`），否则任何人拿一个评论 id
+   * 就能让管理员读到一条自己无权看的内容里的原话 —— 这正是 audit P028 在消息上报过的同一个洞。
+   */
+  describe("评论举报（C2）", () => {
+    /**
+     * 调用计数必须每次归零：外层的 `afterEach` 只清 `report.create`，
+     * 而本文件前面十几个用例都调过 `resolveMomentAccess`，
+     * 直接断言 `.not.toHaveBeenCalled()` 会被它们污染。
+     * 只清调用、不清实现：外层 `beforeEach` 设的 `mockResolvedValue` 要留着。
+     */
+    beforeEach(() => {
+      moments.resolveMomentAccess.mockClear();
+    });
+
+    /** OTHER 在 AUTHOR 的动态下留的一条可举报评论。 */
+    function reportableComment(
+      overrides: { authorStatus?: string; momentAuthor?: string; access?: string } = {},
+    ) {
+      prisma.momentComment.findUnique.mockResolvedValue({
+        id: COMMENT,
+        userId: OTHER,
+        user: { status: overrides.authorStatus ?? "ACTIVE" },
+        moment: { userId: overrides.momentAuthor ?? AUTHOR },
+      });
+      moments.resolveMomentAccess.mockResolvedValue(overrides.access ?? "allowed");
+    }
+
+    it("reportedUserId 取自评论作者，commentId 落库，另外两个目标为 null", async () => {
+      reportableComment();
+
+      const { response } = await post({ commentId: COMMENT, reason: "Harassment" });
+
+      expect(response.status).toBe(201);
+      expect(prisma.report.create).toHaveBeenCalledWith({
+        data: {
+          reporterId: VIEWER,
+          reportedUserId: OTHER,
+          momentId: null,
+          messageId: null,
+          commentId: COMMENT,
+          reason: "Harassment",
+          description: undefined,
+        },
+      });
+      // 闸门用的是动态的可见性，且问的是**动态作者**，不是评论作者。
+      expect(moments.resolveMomentAccess).toHaveBeenCalledWith(VIEWER, AUTHOR);
+    });
+
+    it("评论不存在 -> 404 COMMENT_NOT_FOUND，且不落库", async () => {
+      prisma.momentComment.findUnique.mockResolvedValue(null);
+
+      const { response, body } = await post({ commentId: COMMENT, reason: "Spam" });
+
+      expect(response.status).toBe(404);
+      expect(body.error?.code).toBe("COMMENT_NOT_FOUND");
+      expect(prisma.report.create).not.toHaveBeenCalled();
+    });
+
+    it("看不见那条动态 -> 404（不是 403），也就不会确认这个评论 id 存在", async () => {
+      reportableComment({ access: "locked" });
+
+      const { response, body } = await post({ commentId: COMMENT, reason: "Spam" });
+
+      expect(response.status).toBe(404);
+      expect(body.error?.code).toBe("COMMENT_NOT_FOUND");
+      expect(prisma.report.create).not.toHaveBeenCalled();
+    });
+
+    it("评论作者非 ACTIVE -> 404，且不查动态可见性", async () => {
+      reportableComment({ authorStatus: "BANNED" });
+
+      const { response, body } = await post({ commentId: COMMENT, reason: "Spam" });
+
+      expect(response.status).toBe(404);
+      expect(body.error?.code).toBe("COMMENT_NOT_FOUND");
+      expect(moments.resolveMomentAccess).not.toHaveBeenCalled();
+      expect(prisma.report.create).not.toHaveBeenCalled();
+    });
+
+    it("commentId 与 momentId 同时给出 -> 400 INVALID_REPORT_TARGET（三个目标互斥）", async () => {
+      reportableComment();
+
+      const { response, body } = await post({
+        commentId: COMMENT,
+        momentId: MOMENT,
+        reason: "Spam",
+      });
+
+      expect(response.status).toBe(400);
+      expect(body.error?.code).toBe("INVALID_REPORT_TARGET");
+      expect(prisma.report.create).not.toHaveBeenCalled();
+    });
+
+    it("举报自己的评论 -> 403 CANNOT_REPORT_SELF", async () => {
+      // 评论作者就是举报人自己。
+      prisma.momentComment.findUnique.mockResolvedValue({
+        id: COMMENT,
+        userId: VIEWER,
+        user: { status: "ACTIVE" },
+        moment: { userId: AUTHOR },
+      });
+      moments.resolveMomentAccess.mockResolvedValue("allowed");
+
+      const { response, body } = await post({ commentId: COMMENT, reason: "Spam" });
+
+      expect(response.status).toBe(403);
+      expect(body.error?.code).toBe("CANNOT_REPORT_SELF");
+      expect(prisma.report.create).not.toHaveBeenCalled();
+    });
   });
 });

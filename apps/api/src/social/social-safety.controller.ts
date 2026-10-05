@@ -40,9 +40,11 @@ class SendImageDto {
 class ReportDto {
   /**
    * Exactly one target per request: `userId` reports a person, `momentId`
-   * reports one of their moments. A moment report does **not** carry a user id
-   * — the author is read from the moment server-side, so a client cannot name a
-   * different account than the content's owner.
+   * reports one of their moments, `commentId` reports one of their comments.
+   * A content report does **not** carry a user id — the author is read from the
+   * content server-side, so a client cannot name a different account than the
+   * content's owner. `messageId` is not a target: it is an evidence pointer
+   * attached to a person report.
    */
   @IsOptional()
   @IsUUID()
@@ -51,6 +53,11 @@ class ReportDto {
   @IsOptional()
   @IsUUID()
   momentId?: string;
+
+  /** C2 — 评论举报的目标。作者同样由服务端从评论行读出来。 */
+  @IsOptional()
+  @IsUUID()
+  commentId?: string;
 
   @IsString()
   reason!: string;
@@ -125,14 +132,19 @@ export class SocialSafetyController {
       orderBy: { conversation: { updatedAt: "desc" } },
     });
 
-    return {
-      success: true as const,
-      data: memberships.map((membership) => {
+    /**
+     * C3 — 未读数从「最近 5 条里不是我发的」改成真正的「`lastReadAt` 之后、且不是我发的」。
+     *
+     * 旧算法是 `take: 5` 的副产品：它把「未读」理解成「最近几条里别人说的」，于是
+     *   · 一个会话你从没打开过，最多也只显示 5；
+     *   · 你读完之后**不会归零** —— 已读与未读在数据上没有任何区别。
+     * 现在每个成员一行 `lastReadAt`，未读数才成为一个能被「打开会话」消掉的量。
+     */
+    const data = await Promise.all(
+      memberships.map(async (membership) => {
         const peer = membership.conversation.members.find((member) => member.userId !== user.id);
         const lastMessage = membership.conversation.messages[0];
-        const unreadCount = membership.conversation.messages.filter(
-          (message) => message.senderId !== user.id && message.type !== "SYSTEM",
-        ).length;
+        const unreadCount = await this.unreadCountFor(user.id, membership);
         return {
           id: membership.conversation.id,
           connectionId: membership.conversation.connection?.id ?? null,
@@ -150,7 +162,75 @@ export class SocialSafetyController {
           updatedAt: membership.conversation.updatedAt,
         };
       }),
-    };
+    );
+
+    return { success: true as const, data };
+  }
+
+  /**
+   * C3 — 一个会话对某人而言的未读数。
+   *
+   * 三个排除：自己的消息（不需要提醒自己）、`SYSTEM`（建会话时的系统提示，不是人说的话）、
+   * 已删除的。判据是时间戳：`createdAt > lastReadAt`。
+   *
+   * ## 为何是「逐会话一次 count」
+   *
+   * 每个会话的 `lastReadAt` 不同，所以一条 SQL 无法同时表达所有阈值：`groupBy` 只能按
+   * 共同的下界分组，而共同下界（取最早的 `lastReadAt`）会**多算**读得晚的那些会话。
+   * 会话数是「这个人的会话数」，量级在几十，而 `(conversationId, createdAt)` 上有索引，
+   * 每次 count 都很便宜。
+   *
+   * **哪天出现「上千会话」的用户，这一行就是该改的地方** —— 换成为每个用户维护一个未读
+   * 计数（写消息时 +1、读时清零），而不是继续逐个 count。
+   */
+  private async unreadCountFor(
+    userId: string,
+    membership: { conversationId: string; lastReadAt: Date | null },
+  ): Promise<number> {
+    return this.prisma.message.count({
+      where: {
+        conversationId: membership.conversationId,
+        deletedAt: null,
+        senderId: { not: userId },
+        type: { not: "SYSTEM" },
+        // `null` = 从未读过，所以不设下界（等于「全算未读」）。
+        ...(membership.lastReadAt ? { createdAt: { gt: membership.lastReadAt } } : {}),
+      },
+    });
+  }
+
+  /**
+   * C3 — 把会话标记为「读到此刻」。
+   *
+   * 用 `POST` 而不是把已读藏在「拉消息列表」里：那样一来「看了一眼列表」与「读了这个会话」
+   * 就再也分不开了，而红点/计数恰恰依赖这个区别。
+   *
+   * 幂等：重复调用只是继续把 `lastReadAt` 往后推，结果一样是「读完了」。
+   * 非成员一律 404，与消息列表同一口径 —— 不拿状态码泄漏会话是否存在。
+   */
+  @Post("conversations/:id/read")
+  @Throttle({ default: { limit: 120, ttl: 60000 } })
+  async markConversationRead(
+    @CurrentUser() user: AuthUser,
+    @Param("id", UuidParamPipe) id: string,
+  ) {
+    const membership = await this.prisma.conversationMember.findUnique({
+      where: { conversationId_userId: { conversationId: id, userId: user.id } },
+    });
+    if (!membership) {
+      throw new NotFoundException({
+        success: false,
+        error: { code: "CONVERSATION_NOT_FOUND", message: "Conversation not found" },
+      });
+    }
+
+    const lastReadAt = new Date();
+    await this.prisma.conversationMember.update({
+      where: { conversationId_userId: { conversationId: id, userId: user.id } },
+      data: { lastReadAt },
+    });
+
+    return { success: true as const, data: { conversationId: id, lastReadAt, unreadCount: 0 } };
   }
 
   @Get("conversations/:id/messages")
@@ -228,6 +308,17 @@ export class SocialSafetyController {
         data: { conversationId: id, senderId: user.id, type: "TEXT", content: dto.content.trim() },
       });
       await tx.conversation.update({ where: { id }, data: { updatedAt: new Date() } });
+      /**
+       * C3 — 发消息意味着你正看着这个会话，所以顺手把自己的已读位置推到现在。
+       *
+       * 不做也不会漏（自己发的消息本来就不计入未读），但做了之后你回复时，对方
+       * 之前那几条不会以「仍未读」的形态留在会话列表上。
+       * 放在同一个事务里：消息写进去了而已读没推进，是一个说不通的中间状态。
+       */
+      await tx.conversationMember.update({
+        where: { conversationId_userId: { conversationId: id, userId: user.id } },
+        data: { lastReadAt: new Date() },
+      });
       return created;
     });
 
@@ -268,10 +359,17 @@ export class SocialSafetyController {
       });
     }
 
-    const peerUnread = peerId
-      ? await this.prisma.notification.count({ where: { userId: peerId, readAt: null } })
-      : 0;
-    return { success: true as const, data: { ...message, peerUnread } };
+    /**
+     * C3 — 这里原本还返回一个 `peerUnread`：
+     *
+     *     await this.prisma.notification.count({ where: { userId: peerId, readAt: null } })
+     *
+     * 三处都不对：名字说「对方未读消息」，算的是**未读通知**（两张毫不相干的表）；
+     * 全仓库**没有任何**客户端读它（只有这两行引用）；而且它把对方的未读计数透给了发送者。
+     * 真正的未读消息数是会话列表里的 `unreadCount`（按各自的 `lastReadAt` 算），
+     * 它才有资格叫这个名字。契约变更记在 `docs/P0-00-FIXES.md` FIX-11。
+     */
+    return { success: true as const, data: message };
   }
 
   @Post("conversations/:id/messages/image")
@@ -410,31 +508,32 @@ export class SocialSafetyController {
         error: { code: "INVALID_REASON", message: "Invalid report reason" },
       });
     }
-    // Reporting a person and reporting their content are different questions,
-    // so a request naming both is rejected rather than silently preferring one.
-    if (dto.userId && dto.momentId) {
+    /**
+     * C2 — 目标现在有三个（人 / 动态 / 评论），规则仍是**恰好一个**。
+     *
+     * 报「人」与报「他发的内容」是两个不同的问题，所以同时给出两个目标的请求一律拒绝，
+     * 而不是静默地优先其中一个 —— 后者会在审计记录里留下一条看不出到底在说什么的举报。
+     * `messageId` **不算目标**：它只是附在人举报上的一条证据（见 P028 的注释）。
+     */
+    const targets = [dto.userId, dto.momentId, dto.commentId].filter(Boolean);
+    if (targets.length !== 1) {
       throw new BadRequestException({
         success: false,
         error: {
           code: "INVALID_REPORT_TARGET",
-          message: "Provide either userId or momentId, not both",
+          message: "Provide exactly one of userId, momentId or commentId",
         },
       });
     }
 
     let reportedUserId: string;
-    if (dto.momentId) {
+    if (dto.commentId) {
+      reportedUserId = (await this.resolveCommentTarget(user.id, dto.commentId)).authorId;
+    } else if (dto.momentId) {
       reportedUserId = (await this.resolveMomentTarget(user.id, dto.momentId)).authorId;
-    } else if (dto.userId) {
-      reportedUserId = await this.assertReportableUser(dto.userId);
     } else {
-      throw new BadRequestException({
-        success: false,
-        error: {
-          code: "INVALID_REPORT_TARGET",
-          message: "Provide either userId or momentId",
-        },
-      });
+      // 上面的计数已经保证到这里只剩 userId 一个可能。
+      reportedUserId = await this.assertReportableUser(dto.userId as string);
     }
 
     if (reportedUserId === user.id) {
@@ -461,7 +560,10 @@ export class SocialSafetyController {
      * mismatch is a 404 on the message, which also avoids confirming that an id
      * the caller cannot see exists.
      */
-    const messageId = dto.momentId ? null : await this.assertReportableMessage(user.id, reportedUserId, dto.messageId);
+    const messageId =
+      dto.momentId || dto.commentId
+        ? null
+        : await this.assertReportableMessage(user.id, reportedUserId, dto.messageId);
 
     const report = await this.prisma.report.create({
       data: {
@@ -471,6 +573,8 @@ export class SocialSafetyController {
         // A moment report and a message report are mutually exclusive in
         // practice, so a moment report never carries a message pointer.
         messageId,
+        // C2 — 评论举报把自己的目标列上；三种目标在数据库里是三个可空列。
+        commentId: dto.commentId ?? null,
         reason: dto.reason,
         description: dto.description,
       },
@@ -482,6 +586,50 @@ export class SocialSafetyController {
       success: true as const,
       data: { id: report.id, status: report.status, createdAt: report.createdAt },
     };
+  }
+
+  /**
+   * C2 — 评论举报的目标解析。
+   *
+   * 评论既是**目标**（被举报的就是这条评论），又**自带证据**（管理端会读它的 `content`），
+   * 所以它要同时满足 `momentId` 与 `messageId` 两边的规矩：
+   *
+   *  1. 评论必须存在。评论是**硬删除**的（`MomentComment` 没有 `deletedAt`），
+   *     行没了就是没了，所以「查不到」已经覆盖了「已删除」这一种情况；
+   *  2. 举报人必须**看得见那条动态** —— 用的是与详情/点赞/评论完全同一个
+   *     `resolveMomentAccess`。没有这道闸，任何人拿一个评论 id 就能让管理端读到
+   *     一条自己无权看的内容里的原话（这正是 audit P028 在消息上修过的同一个洞）；
+   *  3. 被举报人必须是**评论的作者**，由服务端从行里读，客户端无法指定成别人。
+   *
+   * ## 为什么这里统一 404，而动态路径会回 403 `MOMENT_LOCKED`
+   *
+   * 动态路径回 403 是对的：那是用户正在尝试**打开某一个页面**，告诉他「你看不了」
+   * 不泄露新东西。而这里传进来的是一串不透明 id，回 403 就等于确认「这条评论存在，
+   * 只是你看不了」—— 同一个 `COMMENT_NOT_FOUND` 则什么都不确认。
+   */
+  private async resolveCommentTarget(
+    viewerId: string,
+    commentId: string,
+  ): Promise<{ authorId: string }> {
+    const comment = await this.prisma.momentComment.findUnique({
+      where: { id: commentId },
+      select: {
+        id: true,
+        userId: true,
+        user: { select: { status: true } },
+        moment: { select: { userId: true } },
+      },
+    });
+    const notFound = new NotFoundException({
+      success: false,
+      error: { code: "COMMENT_NOT_FOUND", message: "Comment not found" },
+    });
+    if (!comment || comment.user.status !== "ACTIVE") throw notFound;
+
+    const access = await this.moments.resolveMomentAccess(viewerId, comment.moment.userId);
+    if (access !== "allowed") throw notFound;
+
+    return { authorId: comment.userId };
   }
 
   /**

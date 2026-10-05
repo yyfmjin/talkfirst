@@ -43,11 +43,14 @@ function makePrisma(opts: {
   current?: Candidate | null;
   blocks?: Array<{ blockerId: string; blockedId: string }>;
   connections?: Array<{ userAId: string; userBId: string }>;
+  /** P0-06: relationships already answered with REJECTED, in either direction. */
+  declined?: Array<{ senderId: string; receiverId: string }>;
   /** Simulates a future change that loosens the exclusion query. */
   ignoreExclusions?: boolean;
 }) {
   const blocks = opts.blocks ?? [];
   const connections = opts.connections ?? [];
+  const declined = opts.declined ?? [];
 
   const hydrate = (c: Candidate) => ({
     id: c.id,
@@ -82,11 +85,15 @@ function makePrisma(opts: {
       }),
     },
     /**
-     * P0-06：`getRecommendations` 现在还会查「已明确拒绝」的关系，所以桩件也得有。
-     * 返回空表：下面没有任何用例依赖“被拒绝过”的关系，为它写用例是另一件事，
-     * 不该顺手改到这里来。
+     * P0-06：`getRecommendations` 还会查「已明确拒绝」的关系（`status: "REJECTED"`），
+     * 所以桩件也得有。默认空表，需要时用 `declined` 传入。
      */
-    connectionRequest: { findMany: jest.fn(async () => []) },
+    connectionRequest: {
+      findMany: jest.fn(async ({ where }: { where: { OR: Array<Record<string, string>> } }) => {
+        const me = where.OR[0].senderId ?? where.OR[0].receiverId;
+        return declined.filter((r) => r.senderId === me || r.receiverId === me);
+      }),
+    },
     user: {
       findUnique: jest.fn(async () => (opts.current ? hydrate(opts.current) : null)),
       findMany: jest.fn(async ({ where }: { where: { id: { not: string; notIn: string[] } } }) => {
@@ -326,5 +333,47 @@ describe("Discover privacy projection — per field", () => {
     ]) {
       expect(keys.has(forbidden)).toBe(false);
     }
+  });
+
+  it("拒绝过我的人和我拒绝过的人都不再进推荐流（P0-06）", async () => {
+    const baseline = makePrisma({ current: viewer, candidates: [{ id: "B" }, { id: "C" }, { id: "D" }] });
+    // 没有拒绝关系时三个人都在 —— 否则下面的空结果证明不了是「拒绝」造成的。
+    const before = await new DiscoverService(baseline as never).getRecommendations("A", 20);
+    expect(before.items.map((item) => item.id).sort()).toEqual(["B", "C", "D"]);
+
+    // 两个方向都要挡：B 拒绝过我，我拒绝过 C。
+    const prisma = makePrisma({
+      current: viewer,
+      candidates: [{ id: "B" }, { id: "C" }, { id: "D" }],
+      declined: [
+        { senderId: "B", receiverId: "A" },
+        { senderId: "A", receiverId: "C" },
+      ],
+    });
+
+    const result = await new DiscoverService(prisma as never).getRecommendations("A", 20);
+    expect(result.items.map((item) => item.id).sort()).toEqual(["D"]);
+  });
+
+  it("资料完整的候选多得完整度那 5 分（P0-06）", async () => {
+    // 两个候选除「完整」外完全一致，所以分数差只可能来自完整度这一项。
+    // 「完整」= `isProfileComplete`：nickname + birthDate；`hydrate` 默认给了 birthDate，
+    // 所以缺 nickname 的那个就是不完整的那个。
+    const prisma = makePrisma({
+      current: viewer,
+      candidates: [
+        { id: "B", nickname: null },
+        { id: "C", nickname: "有昵称" },
+      ],
+    });
+
+    const result = await new DiscoverService(prisma as never).getRecommendations("A", 20);
+    const incomplete = result.items.find((item) => item.id === "B")!;
+    const complete = result.items.find((item) => item.id === "C")!;
+
+    // COMPLETENESS_SCORE = 5。写死数字是故意的：改了权重这条用例就该红。
+    expect(complete.matchScore - incomplete.matchScore).toBe(5);
+    expect(hasReason(result.items, "资料较完整")).toBe(true);
+    expect(incomplete.matchReasons).not.toContain("资料较完整");
   });
 });

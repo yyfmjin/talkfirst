@@ -205,6 +205,25 @@ export default function ChatDetailPage() {
   }, [loadHistory]);
 
   /**
+   * C3 — 人在这个会话里，就把这一条标记为已读。
+   *
+   * 触发键是**最新一条消息的 id**，而不是「组件挂载」：挂载只覆盖了「进来时它是新的」，
+   * 而人还在页面上时对方继续发消息（`useChatSocket` 会推进 `liveMessages`）也应该继续清红点。
+   * 用 id 而不是 `liveMessages.length`：翻历史加载更早的消息也会改变长度，
+   * 而那并不代表「看到了新东西」。
+   *
+   * 失败不提示、不回滚：它是一次后台记账。红点没清掉，不该变成一条错误提示
+   * 打断正在读的消息（同理也不进 `loadError`，那会把整个列表换掉）。
+   */
+  const newestMessageId = liveMessages.length ? liveMessages[liveMessages.length - 1].id : "";
+  useEffect(() => {
+    if (!conversationId || !newestMessageId) return;
+    void apiFetch(`/conversations/${conversationId}/read`, { method: "POST" }).catch(
+      () => undefined,
+    );
+  }, [conversationId, newestMessageId]);
+
+  /**
    * The peer identity is fetched separately from `GET /conversations` because
    * the message history does not carry it — it only has `senderId`s, and this
    * page never learned who the other participant is. A failure here is not a

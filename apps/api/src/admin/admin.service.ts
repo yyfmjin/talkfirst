@@ -239,6 +239,19 @@ export type ReportMomentSummary =
     }
   | { available: false; reason: "NO_MOMENT" | "DELETED" };
 
+/**
+ * C2 — what the reported comment looked like, if it still exists.
+ *
+ * 与上面两个 summary 同一契约：`commentId` 同样是一个**没有外键**的裸指针，
+ * 而评论是**硬删除**（`MomentComment` 没有 `deletedAt`），所以一条举报可以在目标消失后
+ * 继续存在。`available: false` 因此是普通状态而非错误，`reason` 用来区分
+ * 「这条举报从来没指向评论」与「评论已经没了」。**绝不允许抛异常** ——
+ * 一次缺失会把整个详情页变成 500。
+ */
+export type ReportCommentSummary =
+  | { available: true; id: string; content: string; createdAt: Date; author: PartySummary }
+  | { available: false; reason: "NO_COMMENT" | "DELETED" };
+
 /** The three columns the reports screens show for a user. */
 export type PartySummary = { id: string; nickname: string | null; email: string };
 
@@ -1091,6 +1104,7 @@ export const REPORT_DETAIL_SELECT = {
   status: true,
   messageId: true,
   momentId: true,
+  commentId: true,
   createdAt: true,
   reporter: { select: { id: true, nickname: true, email: true, status: true } },
   reportedUser: { select: { id: true, nickname: true, email: true, status: true } },
@@ -1202,19 +1216,27 @@ const RISK_ACTION_PREFIXES: readonly string[] = [
  * PC-2.5.3 widened this from two states to three, in a fixed priority order:
  *
  *     momentId IS NOT NULL  → MOMENT
+ *     commentId IS NOT NULL → COMMENT
  *     messageId IS NOT NULL → MESSAGE
  *     otherwise             → USER
  *
- * `momentId` wins over `messageId` deliberately. A moment report is always
+ * `momentId` wins over the others deliberately. A moment report is always
  * written with `messageId: null`, so a row carrying both is a data question the
  * product has not answered; labelling it MOMENT keeps the more specific target
  * visible instead of silently degrading it to a message report.
+ *
+ * C2 put COMMENT **above** MESSAGE on the same reasoning: `commentId` is a
+ * content pointer and `messageId` is evidence attached to a *person* report, so
+ * a row carrying both is better read as "a reported comment" than as "a report
+ * about someone, with a message attached".
  */
 function deriveTargetType(
   momentId: string | null,
   messageId: string | null,
-): "USER" | "MESSAGE" | "MOMENT" {
+  commentId: string | null,
+): "USER" | "MESSAGE" | "MOMENT" | "COMMENT" {
   if (momentId) return "MOMENT";
+  if (commentId) return "COMMENT";
   return messageId ? "MESSAGE" : "USER";
 }
 
@@ -1222,22 +1244,26 @@ function deriveTargetType(
  * Phase C-c: the target arm that selects every **content** report.
  *
  * "Content" means a report about something a user *published* rather than about
- * the account itself, so it is MESSAGE ∪ MOMENT and never USER. The two arms are
- * the exact negation of the USER predicate in `buildReportWhere` and are written
- * in the same priority order: MOMENT first, then MESSAGE pinned to
- * `momentId: null` so a moment report can never be counted twice.
+ * the account itself, so it is MOMENT ∪ COMMENT ∪ MESSAGE and never USER. The arms
+ * are the exact negation of the USER predicate in `buildReportWhere` and are written
+ * in the same priority order: MOMENT first, then COMMENT, then MESSAGE pinned to
+ * `momentId: null, commentId: null` so a row can never be counted twice.
  *
- * The second arm's `momentId: null` is not redundant with the first. Without it
- * an OR is not a partition — a row carrying both pointers would satisfy both
- * arms, and the count would answer a different question than
- * `targetType ∈ { MOMENT, MESSAGE }`.
+ * The pinning is not redundant with the earlier arms. Without it an OR is not a
+ * partition — a row carrying two pointers would satisfy several arms, and the
+ * count would answer a different question than `targetType ∈ { MOMENT, COMMENT,
+ * MESSAGE }`.
  *
  * Defined once because two KPIs read it. Duplicating the OR in each `count`
  * would let one of them drift into a slightly different meaning, which is
  * exactly the failure this constant exists to prevent.
  */
 export const CONTENT_REPORT_TARGET: Prisma.ReportWhereInput = {
-  OR: [{ momentId: { not: null } }, { momentId: null, messageId: { not: null } }],
+  OR: [
+    { momentId: { not: null } },
+    { momentId: null, commentId: { not: null } },
+    { momentId: null, commentId: null, messageId: { not: null } },
+  ],
 };
 
 
@@ -2897,11 +2923,13 @@ export class AdminService {
       // priority order is the one deriveTargetType() reads back.
       ...(normalizedTarget === "MOMENT"
         ? { momentId: { not: null } }
-        : normalizedTarget === "MESSAGE"
-          ? { momentId: null, messageId: { not: null } }
-          : normalizedTarget === "USER"
-            ? { messageId: null, momentId: null }
-            : {}),
+        : normalizedTarget === "COMMENT"
+          ? { momentId: null, commentId: { not: null } }
+          : normalizedTarget === "MESSAGE"
+            ? { momentId: null, commentId: null, messageId: { not: null } }
+            : normalizedTarget === "USER"
+              ? { messageId: null, momentId: null, commentId: null }
+              : {}),
       ...(this.partyFilter(reporter) ? { reporter: this.partyFilter(reporter)! } : {}),
       ...(this.partyFilter(reportedUser) ? { reportedUser: this.partyFilter(reportedUser)! } : {}),
       ...(createdFrom || createdTo
@@ -2968,9 +2996,10 @@ export class AdminService {
       });
     }
 
-    const [message, moment, history] = await Promise.all([
+    const [message, moment, comment, history] = await Promise.all([
       this.messageSummary(report.messageId),
       this.momentSummary(report.momentId),
+      this.commentSummary(report.commentId),
       this.prisma.adminAuditLog.findMany({
         where: { targetType: "REPORT", targetId: reportId },
         orderBy: { createdAt: "desc" },
@@ -2986,18 +3015,53 @@ export class AdminService {
         status: report.status,
         messageId: report.messageId,
         momentId: report.momentId,
+        commentId: report.commentId,
         createdAt: report.createdAt,
       },
       reporter: report.reporter,
       reportedUser: report.reportedUser,
       target: {
-        targetType: deriveTargetType(report.momentId, report.messageId),
+        targetType: deriveTargetType(report.momentId, report.messageId, report.commentId),
         messageId: report.messageId,
         momentId: report.momentId,
+        commentId: report.commentId,
       },
       message,
       moment,
+      comment,
       history,
+    };
+  }
+
+  /**
+   * C2 — the reported comment, or an explicit "not available".
+   *
+   * 与 `messageSummary` 同一契约、同一理由：`commentId` 是没有外键的裸指针，
+   * 所以举报可能比目标活得久。评论是**硬删除**（没有 `deletedAt`），
+   * 因此只有「存在」与「不存在」两种情形，没有软删除那一支。
+   * **绝不抛异常**：缺一条评论会把整个详情页变成 500。
+   */
+  private async commentSummary(commentId: string | null): Promise<ReportCommentSummary> {
+    if (!commentId) return { available: false, reason: "NO_COMMENT" };
+
+    const comment = await this.prisma.momentComment.findUnique({
+      where: { id: commentId },
+      select: {
+        id: true,
+        content: true,
+        createdAt: true,
+        user: { select: { id: true, nickname: true, email: true } },
+      },
+    });
+
+    if (!comment) return { available: false, reason: "DELETED" };
+
+    return {
+      available: true,
+      id: comment.id,
+      content: comment.content,
+      createdAt: comment.createdAt,
+      author: comment.user,
     };
   }
 

@@ -609,6 +609,7 @@ model User {
   momentSetting            MomentSetting?
   moments                  Moment[]
   momentLikes              MomentLike[]
+  momentBookmarks          MomentBookmark[]
   momentComments           MomentComment[]
   refreshTokens            RefreshToken[]
   // Third-party sign-in identities (Google). One user may hold several.
@@ -998,6 +999,7 @@ model Moment {
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
   likes        MomentLike[]
+  bookmarks    MomentBookmark[]
   comments     MomentComment[]
 
   @@index([userId, createdAt])
@@ -1016,6 +1018,31 @@ model MomentLike {
 
   @@id([momentId, userId])
   @@index([userId])
+}
+
+// C4 — one row per (user, moment) the user saved for later.
+//
+// `id` rather than a composite primary key like `MomentLike`: the saved list
+// paginates by "bookmarked most recently", and that uses the shared
+// `(createdAt, id)` keyset cursor (`apps/api/src/common/keyset-cursor.ts`).
+// A composite key carries no `id` to break a timestamp tie with, so bookmarks
+// would need a second cursor shape of their own — which is exactly the kind of
+// divergence the shared helper exists to prevent.
+//
+// Uniqueness of `(userId, momentId)` is therefore expressed as a unique index.
+// `CASCADE` on both sides matches `MomentLike`: deleting a moment (or a user)
+// takes their bookmarks with it, and a bookmark is not worth keeping once its
+// target is gone.
+model MomentBookmark {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  momentId  String   @db.Uuid
+  moment    Moment   @relation(fields: [momentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, momentId])
+  @@index([userId, createdAt])
 }
 
 model MomentComment {
@@ -1088,6 +1115,17 @@ model ConversationMember {
   userId         String       @db.Uuid
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   joinedAt       DateTime     @default(now())
+  /**
+   * C3 — 这位成员最后一次「看到这里」的时间。
+   *
+   * 未读数 = 本会话中 `createdAt > lastReadAt` 且**不是我发的**、且不是 SYSTEM 的消息数。
+   * 存在成员行上而不是 Conversation 上：同一个会话的两个成员各自读完到不同位置，
+   * 这是双人会话里唯一能表达「谁读到哪了」的位置。
+   *
+   * `null` = 从未读过一眼（新加入的成员）。注意它不是「全部未读」的代名词 ——
+   * 计数会排除 SYSTEM 消息，而建会话时正好只有一条 SYSTEM 消息。
+   */
+  lastReadAt     DateTime?
 
   @@id([conversationId, userId])
 }
@@ -1129,6 +1167,15 @@ model Report {
   reportedUser   User         @relation("ReportsReceived", fields: [reportedUserId], references: [id], onDelete: Cascade)
   messageId      String?      @db.Uuid
   momentId       String?      @db.Uuid
+  /**
+   * C2 — 被举报的那条评论。与 `momentId` / `messageId` 同一形状：**裸 UUID，没有外键**。
+   *
+   * 那两列本来就没有外键（已在 P0-00 的 P2 清单里），这里跟邻居保持一致。
+   * 不过对评论来说「没有外键」恰好也是想要的语义：举报是**审核历史**，
+   * 评论被删（`MomentComment` 是硬删除）之后这条举报仍应存在且可复核 ——
+   * 加了 `onDelete: Cascade` 反而会把审核记录一起删掉。
+   */
+  commentId      String?      @db.Uuid
   reason         String       @db.VarChar(64)
   description    String?      @db.VarChar(1000)
   status         ReportStatus @default(OPEN)
@@ -1137,6 +1184,7 @@ model Report {
   @@index([reportedUserId, status])
   @@index([status, createdAt])
   @@index([momentId])
+  @@index([commentId])
 }
 
 model Block {

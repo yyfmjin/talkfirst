@@ -193,6 +193,8 @@ export class MomentsController {
     @CurrentUser() user: AuthUser,
     @Query("tab") tab?: string,
     @Query("platform") platform?: string,
+    // C1 — 按话题筛。§2.22 点名缺的就是这一个参数。
+    @Query("topic") topic?: string,
     @Query("limit") limit?: string,
     @Query("cursor") cursor?: string,
   ) {
@@ -212,6 +214,7 @@ export class MomentsController {
       const data = await this.moments.feed(user.id, {
         tab,
         platform,
+        topic,
         limit: Number(limit ?? 20),
         cursor,
       });
@@ -226,6 +229,86 @@ export class MomentsController {
       }
       throw error;
     }
+  }
+
+  /**
+   * C1 — 话题列表：近期可见动态里的标签及其条数。
+   *
+   * 与 `feed` / `bookmarks` / `settings` 同一条规则：**字面量路由必须声明在 `@Get(":id")`
+   * 之前**，否则 `topics` 会被当成一个 id 去查，而它不是 UUID，`UuidParamPipe` 直接 400。
+   *
+   * 计数只在「你看得见的动态」里做 —— 否则一个话题的条数就是一个侧信道
+   * （「某个只被私密动态用过的话题有 3 条」已经泄漏了那 3 条的存在）。
+   */
+  @Get("topics")
+  async topics(
+    @CurrentUser() user: AuthUser,
+    @Query("limit") limit?: string,
+    @Query("window") window?: string,
+  ) {
+    const data = await this.moments.topics(user.id, {
+      limit: Number(limit ?? 20),
+      window: Number(window ?? 300),
+    });
+    return { success: true as const, data };
+  }
+
+  /**
+   * C4 — 我的收藏。
+   *
+   * 这条声明必须在 `@Get(":id")` **之前**：Nest 按声明顺序匹配，放在后面的话
+   * `bookmarks` 会被当成一个 id 去查，而它不是 UUID，`UuidParamPipe` 会直接 400。
+   * 同一条规则在 `feed` / `bindings` / `settings` 上已经成立，这里只是延续。
+   */
+  @Get("bookmarks")
+  async bookmarks(
+    @CurrentUser() user: AuthUser,
+    @Query("limit") limit?: string,
+    @Query("cursor") cursor?: string,
+  ) {
+    try {
+      const data = await this.moments.bookmarks(user.id, {
+        limit: Number(limit ?? 20),
+        cursor,
+      });
+      return { success: true as const, data };
+    } catch (error) {
+      if ((error as { code?: string }).code === "INVALID_CURSOR") {
+        throw new BadRequestException(
+          asError("VALIDATION_ERROR", "cursor is not a cursor issued by this API"),
+        );
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * C4 — 收藏一条动态。
+   *
+   * 用两个方法（POST / DELETE）而不是一个带 body 的 PUT：与 `:id/like` 同一取向 ——
+   * 动作放在路径里，客户端不必为「取消」造一个布尔载荷，而且两者都天然幂等。
+   *
+   * 找不到与不可见**都回 404**：`setBookmark` 对两者都给 `null`，与 `getMoment`
+   * 同一口径。拿状态码差异去问出「别人那条动态是否存在」，是不该提供的信道。
+   */
+  @Post(":id/bookmark")
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  async bookmark(@CurrentUser() user: AuthUser, @Param("id", UuidParamPipe) id: string) {
+    const data = await this.moments.setBookmark(user.id, id, true);
+    if (!data) {
+      throw new NotFoundException(asError("MOMENT_NOT_FOUND", "Moment not found"));
+    }
+    return { success: true as const, data };
+  }
+
+  @Delete(":id/bookmark")
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  async unbookmark(@CurrentUser() user: AuthUser, @Param("id", UuidParamPipe) id: string) {
+    const data = await this.moments.setBookmark(user.id, id, false);
+    if (!data) {
+      throw new NotFoundException(asError("MOMENT_NOT_FOUND", "Moment not found"));
+    }
+    return { success: true as const, data };
   }
 
   @Get("user/:id")

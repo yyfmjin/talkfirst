@@ -251,4 +251,5 @@ fi
 log "完成"
 echo "  分支 : $BRANCH"
 echo "  提交 : $AFTER"
-echo "  健康检查: curl -fsS http://localhost:${API_PORT:-4000}/api/v1/health"
+echo "  就绪自检: curl -fsS http://localhost:${API_PORT:-4000}/api/v1/health/ready   # G10：带 DB ping，503 就是还没就绪"
+echo "  存活自检: curl -fsS http://localhost:${API_PORT:-4000}/api/v1/health         # 只看进程在不在"

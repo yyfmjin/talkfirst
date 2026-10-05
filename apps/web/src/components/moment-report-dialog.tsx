@@ -7,26 +7,24 @@ import { friendlyErrorMessage } from "@/lib/errors";
 import { REPORT_REASONS, reportReasonLabel } from "@/lib/report-reasons";
 
 /**
- * PC-2.5.4 — reporting one moment, from Post Detail.
+ * PC-2.5.4 — 举报一个对象：一条动态，或（C2 起）一条评论。
  *
- * The reason list is a mirror of the allow-list in
- * `social-safety.controller.ts`, which is the authority: `Report.reason` is a
- * free-form column, so the option set can only come from the endpoint that
- * validates it. An option that is not in that list would be rejected with
- * `403 INVALID_REASON`, which is why the codes are sent verbatim and only the
- * labels are translated (PC-3.4 moved the pair into `@/lib/report-reasons` so
- * the chat safety menu and this dialog cannot drift apart).
+ * 理由列表是 `social-safety.controller.ts` 里那份 allow-list 的镜像，而那份才是权威：
+ * `Report.reason` 是一个自由文本列，所以可选项集合只能来自校验它的那个端点。
+ * 不在那份列表里的理由会被 `403 INVALID_REASON` 拒掉，所以代码逐字发送、只翻译标签
+ * （PC-3.4 把这对东西挪进 `@/lib/report-reasons`，让聊天里的安全菜单与此处不会漂移）。
  *
- * The request body carries exactly `{ momentId, reason, description }`. It never
- * names a user: the author is read from the moment server-side, so a client
- * cannot point a report at an account other than the content's owner. The
- * reporter is the JWT subject for the same reason.
+ * 请求体只带 `{ momentId | commentId, reason, description }`，**从不**带上用户 id：
+ * 作者由服务端从行里读出来，所以客户端无法把举报指向内容作者之外的账号。
+ * 举报人同理，取自 JWT subject。
  *
- * Nothing here re-implements authorization. `POST /reports` runs the same
- * `resolveMomentAccess` gate as the detail screen, so a moment this viewer may
- * not read answers `403 MOMENT_LOCKED`, and reporting one's own moment answers
- * `403 CANNOT_REPORT_SELF`. The dialog stays open on any of those and says so —
- * a rejection is never rendered as a success.
+ * C2 把「动态」扩展成「动态 或 评论」而不是再写一个弹窗：两者的请求形状、理由列表、
+ * 失败语义完全相同，分叉成两份只会让"后来只改了一个"成为默认结局。
+ *
+ * 这里不重实现任何鉴权。`POST /reports` 跑的是与详情页同一个 `resolveMomentAccess` 闸门，
+ * 所以看不见的对象会回 `403 MOMENT_LOCKED` / `404 COMMENT_NOT_FOUND`，报自己的东西会回
+ * `403 CANNOT_REPORT_SELF`。这几种情况下弹窗保持打开并如实说明 —— 被拒的举报永远不会
+ * 被渲染成成功。
  */
 
 /** `ReportDto.description` is `@MaxLength(1000)`; the field cannot exceed it. */
@@ -34,13 +32,21 @@ const DESCRIPTION_MAX = 1000;
 
 export function MomentReportDialog({
   momentId,
+  commentId,
   onCancel,
   onSubmitted,
 }: {
-  momentId: string;
+  /** 被举报的动态。与 `commentId` 恰好给一个（与 API 的 DTO 同规则）。 */
+  momentId?: string;
+  /** C2 — 被举报的评论。 */
+  commentId?: string;
   onCancel: () => void;
   onSubmitted: () => void;
 }) {
+  // 只改文案与根 testid；内部那几个 `moment-report-*` 是弹窗自己的部件
+  // （理由列表、说明框、按钮），两个目标共用同一套，不因目标不同而改名。
+  const isComment = Boolean(commentId);
+  const what = isComment ? "这条评论" : "这条动态";
   // No reason is preselected: the submit control stays disabled until one is
   // chosen, rather than silently reporting the first option on the list.
   const [reason, setReason] = useState("");
@@ -55,7 +61,12 @@ export function MomentReportDialog({
     try {
       await apiFetch("/reports", {
         method: "POST",
-        body: { momentId, reason, description: description.trim() || undefined },
+        body: {
+          // 两个目标互斥，与 `POST /reports` 的 DTO 同一条规则（同时给会被 400）。
+          ...(commentId ? { commentId } : { momentId }),
+          reason,
+          description: description.trim() || undefined,
+        },
       });
       // The dialog closes only once the API answered, so the surface cannot
       // claim a report that PostgreSQL does not hold.
@@ -71,15 +82,15 @@ export function MomentReportDialog({
 
   return (
     <div
-      data-testid="moment-report-dialog"
+      data-testid={isComment ? "comment-report-dialog" : "moment-report-dialog"}
       role="dialog"
       aria-modal="true"
-      aria-label="举报这条动态"
+      aria-label={`举报${what}`}
       /* Phase B: `absolute`, not `fixed` — see `moment-comments.tsx` for why. */
       className="absolute inset-0 z-50 grid place-items-center overflow-y-auto bg-surface-scrim p-5"
     >
       <div className="w-full max-w-[340px] rounded-sheet bg-surface p-5 text-left shadow-overlay">
-        <p className="text-heading font-semibold text-content">举报这条动态</p>
+        <p className="text-heading font-semibold text-content">举报{what}</p>
         <p className="mt-1 text-caption leading-4 text-content-muted">
           举报会提交人工审核。请选择最接近的原因。
         </p>

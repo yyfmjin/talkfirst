@@ -1,0 +1,122 @@
+# CI — C9（`docs/P0-00-BASELINE.md` §C）
+#
+# 仓库此前**没有任何 CI**，所以 `docs/P0-00-FIXES.md` 里刚被修可信的那套门禁
+# 只在有人想起来敲命令时才跑。这份工作流把它固化成每次 push / PR 都跑。
+#
+# 这里**故意不放 Playwright**：web 有 4 条稳定失败、admin 有 10 条选择器歧义
+# 失败，都记录在 `docs/KNOWN-E2E-ISSUES.md`，且那份记录的结论是「保留记录、
+# 不作为门禁」。它们还需要已构建的 API 与 3000/3001 端口。等那些清掉之后，
+# 再加一份独立的工作流（并且先非阻塞跑一段时间）。
+#
+# 两个作业都必须先 `npm run prisma:generate`：仓库**没有** postinstall 钩子，
+# 而生成的 client 落在 `node_modules/.prisma/client`，会被 `npm ci` 清掉。
+# 少了这一步 `@prisma/client` 只是一个空壳，测试会在运行期炸。
+
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: typecheck / lint / static / contracts
+    runs-on: ubuntu-latest
+    # 这一组本机实测约 35s。给足余量即可，不需要更长。
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x          # 仓库 engines 要求 >=20
+          cache: npm
+
+      - name: install
+        run: npm ci
+
+      - name: prisma generate
+        run: npm run prisma:generate
+
+      - name: typecheck（全部 workspace）
+        run: npm run typecheck
+
+      - name: lint（全部 workspace）
+        run: npm run lint
+
+      # 根上的 `test:static` 会**连带跑 api** —— 而 api 的 `test:static` 就是
+      # `jest`（整套单测）。所以这一步点名 web 与 admin 两个真正有静态测试的
+      # workspace，别让「静态测试」意外变成 40s 的单测。
+      - name: static tests（web）
+        run: npm run test:static -w @talkfirst/web
+
+      - name: static tests（admin）
+        run: npm run test:static -w @talkfirst/admin
+
+      # 三个检查器的扫描根都是 apps/web/src，所以 admin 本就没有这个脚本
+      # （`docs/P0-00-FIXES.md` §2 记过这条，别把它读成红灯）。
+      # FIX-3 之后它们从**脚本自身位置**推导仓库根，因此经由 workspace 脚本
+      # 调用才是对的，而不是必然误报。
+      - name: 静态契约（testids / 主题色 / JSX / tf props）
+        run: npm run test:contracts -w @talkfirst/web
+
+  api-tests:
+    name: API unit tests（真 PostgreSQL）
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine     # 与 docker-compose.yml 同一镜像
+        env:
+          POSTGRES_USER: talkfirst
+          POSTGRES_PASSWORD: talkfirst
+          POSTGRES_DB: talkfirst
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U talkfirst -d talkfirst"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # CI 里没有 `.env`（被 gitignore），所以这些是唯一来源。
+      DATABASE_URL: postgresql://talkfirst:talkfirst@localhost:5432/talkfirst?schema=public
+      DIRECT_URL: postgresql://talkfirst:talkfirst@localhost:5432/talkfirst?schema=public
+      # `src/auth/oauth/oauth-flow-http.spec.ts` 会真的启动应用并打真实 HTTP，
+      # 所以这个作业需要一个真库、而不是 mock。
+      # 密钥类不必配：Jest 会设 `JEST_WORKER_ID`，`allowsInsecureDefaults()`
+      # 据此把进程判定为测试运行（`src/common/security-config.ts`）。
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+
+      - name: install
+        run: npm ci
+
+      - name: prisma generate
+        run: npm run prisma:generate
+
+      # 这一步兼作**库就绪判据**。实测：库不可达时那个套件不是快速失败，而是
+      # **挂住不退出**（本机试过，900s 未返回）。`migrate deploy` 连不上会立刻
+      # 报错，于是作业在 20s 级别失败，而不是耗到 timeout-minutes 才红。
+      - name: apply migrations
+        run: npx prisma migrate deploy --schema prisma/schema.prisma
+
+      - name: seed
+        run: npx tsx prisma/seed.ts
+
+      # 串行由 `apps/api/jest.config.cjs` 的 `maxWorkers: 1` 保证（FIX-4）：
+      # 并行时那套 HTTP 套件与其它 87 个套件争同一个库，约 1/5 概率整片倒。
+      - name: unit tests
+        run: npm test -w @talkfirst/api

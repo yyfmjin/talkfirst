@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Heart, MessageCircle } from "lucide-react";
+import { ArrowLeft, Bookmark, Heart, MessageCircle } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
 import { TabBar } from "@/components/tab-bar";
 import {
@@ -97,6 +97,8 @@ type MomentDetail = {
   likeCount: number;
   commentCount: number;
   liked: boolean;
+  /** C4 — 当前浏览者是否已收藏（服务端投影给出）。 */
+  bookmarked: boolean;
   source?: "USER" | "DEMO";
   isDemo?: boolean;
   syncedAt?: string | null;
@@ -112,6 +114,8 @@ export default function MomentDetailPage() {
   const [error, setError] = useState("");
   const [errorCode, setErrorCode] = useState("");
   const [liking, setLiking] = useState(false);
+  // C4 — 与 `liking` 分开：收藏与点赞可以各自在途。
+  const [bookmarking, setBookmarking] = useState(false);
   const [previewUserId, setPreviewUserId] = useState<string | null>(null);
   const [comments, setComments] = useState<MomentComment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
@@ -128,6 +132,11 @@ export default function MomentDetailPage() {
   // dialog are open plus the acknowledgement line.
   const [menuOpen, setMenuOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  /**
+   * C2 — 被举报的那条**评论**的 id。与 `reportOpen` 分开：两者是同一个弹窗的两个目标，
+   * 同时只会有一个非空，而合成一个状态就得在里面塞一个“现在报的是什么”的标签。
+   */
+  const [reportCommentId, setReportCommentId] = useState<string | null>(null);
   const [reportNotice, setReportNotice] = useState("");
   /**
    * The owner's half of the menu. Editing and deleting a post are the two
@@ -211,6 +220,33 @@ export default function MomentDetailPage() {
       setError(requestError instanceof Error ? requestError.message : "点赞失败");
     } finally {
       setLiking(false);
+    }
+  }
+
+  /**
+   * C4 — 收藏 / 取消收藏。
+   *
+   * 与 `toggleLike` 同一套：按当前状态选 POST / DELETE（服务端两个端点都幂等），
+   * 成功后用服务端的返回值回写。这一页没有乐观更新 —— 它只有一个对象，
+   * 失败时 `setError` 会把原因说清楚，而回滚一份乐观状态在这页没有额外好处。
+   */
+  async function toggleBookmark() {
+    if (!moment || bookmarking) return;
+    setBookmarking(true);
+    try {
+      const next = !moment.bookmarked;
+      const result = await apiFetch<{ bookmarked: boolean }>(`/moments/${moment.id}/bookmark`, {
+        method: next ? "POST" : "DELETE",
+      });
+      setMoment((current) =>
+        current && current.id === moment.id
+          ? { ...current, bookmarked: result.bookmarked }
+          : current,
+      );
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "收藏失败");
+    } finally {
+      setBookmarking(false);
     }
   }
 
@@ -621,6 +657,23 @@ export default function MomentDetailPage() {
                 <Heart size={17} fill={moment.liked ? "currentColor" : "none"} aria-hidden="true" />
                 {formatCount(moment.likeCount)}
               </button>
+              {/* C4 — 收藏。`ml-auto` 把它推到行的右侧：动作在左、"收起来"在右。 */}
+              <button
+                type="button"
+                onClick={() => void toggleBookmark()}
+                disabled={bookmarking}
+                aria-label="收藏"
+                aria-pressed={moment.bookmarked}
+                className={`ml-auto flex min-h-9 items-center gap-1.5 rounded-full px-2.5 transition-colors duration-instant hover:bg-surface-sunken disabled:opacity-60 ${
+                  moment.bookmarked ? "text-brand-600" : ""
+                }`}
+              >
+                <Bookmark
+                  size={17}
+                  fill={moment.bookmarked ? "currentColor" : "none"}
+                  aria-hidden="true"
+                />
+              </button>
               {/* The comment count is a read-out here, not a control — the comment
                   section is directly below it, so making this a button would give
                   two ways to do nothing. */}
@@ -659,6 +712,8 @@ export default function MomentDetailPage() {
               onReply={submitReply}
               onDelete={deleteComment}
               onEdit={updateComment}
+              // C2 — 别人的评论给出「举报」；自己的评论仍然是编辑/删除（互斥，见组件内注释）。
+              onReport={(comment) => setReportCommentId(comment.id)}
               currentUserId={user?.id ?? null}
               hasMore={commentsPage < commentsTotalPages}
               loadingMore={commentsLoadingMore}
@@ -744,6 +799,17 @@ export default function MomentDetailPage() {
           onCancel={() => setReportOpen(false)}
           onSubmitted={() => {
             setReportOpen(false);
+            setReportNotice("举报已提交，我们会尽快审核。");
+          }}
+        />
+      ) : null}
+      {/* C2 — 同一个弹窗，目标换成一条评论。成功后的回执行复用上面那条。 */}
+      {reportCommentId ? (
+        <MomentReportDialog
+          commentId={reportCommentId}
+          onCancel={() => setReportCommentId(null)}
+          onSubmitted={() => {
+            setReportCommentId(null);
             setReportNotice("举报已提交，我们会尽快审核。");
           }}
         />

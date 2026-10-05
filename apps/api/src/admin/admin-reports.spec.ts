@@ -88,6 +88,7 @@ const ADMIN_ID = "9c4e1a52-7b3d-4e6f-8a11-2d5f9c0b7e34";
 const REPORT_ID = "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d";
 const MESSAGE_ID = "7f8e9d0c-1b2a-4c3d-9e8f-7a6b5c4d3e2f";
 const MOMENT_ID = "8e7d6c5b-4a39-4281-9706-5c4d3e2f1a0b";
+const COMMENT_ID = "9f0e1d2c-3b4a-4d5e-8f90-1a2b3c4d5e6f";
 const REPORTER_ID = "3f1c0b7e-6a2d-4f8b-9c31-8d5e2a4b7c90";
 const REPORTED_ID = "5a4b3c2d-1e0f-4a9b-8c7d-6e5f4a3b2c1d";
 const GHOST_MESSAGE_ID = "00000000-1111-4222-8333-444444444444";
@@ -101,6 +102,8 @@ type ReportRow = {
   status: string;
   messageId: string | null;
   momentId: string | null;
+  /** C2 — 与另两个目标指针并列的第三个。 */
+  commentId: string | null;
   createdAt: Date;
   reporter: Party;
   reportedUser: Party & { status: string };  // Present on the fixture on purpose: widening the select to include either of
@@ -141,6 +144,9 @@ const USER_REPORT: ReportRow = {
   status: "OPEN",
   messageId: null,
   momentId: null,
+  // C2 — 新列，真实行里总是存在（默认 null）；夹具写上它，
+  // 否则 `target.commentId` 会是 `undefined` 而不是 `null`，断言就变成在测一个不存在的形状。
+  commentId: null,
   createdAt: new Date("2026-03-04T05:06:07.000Z"),
   reporter: REPORTER,
   reportedUser: REPORTED,
@@ -168,6 +174,22 @@ const MOMENT_REPORT: ReportRow = {
   reason: "Inappropriate",
   messageId: null,
   momentId: MOMENT_ID,
+};
+
+/**
+ * C2 — a report on a Comment.
+ *
+ * Written the way the API writes one — `commentId` set, the other two null —
+ * because that shape is what the derived label has to survive. Comments are
+ * hard-deleted, so this row is expected to outlive the comment it points at.
+ */
+const COMMENT_REPORT: ReportRow = {
+  ...USER_REPORT,
+  id: "4d5e6f7a-8b9c-4d0e-9f1a-3b4c5d6e7f80",
+  reason: "Harassment",
+  messageId: null,
+  momentId: null,
+  commentId: COMMENT_ID,
 };
 
 /** The moment row as it comes back with a *wide* select, secrets included. */
@@ -225,6 +247,8 @@ type HarnessOptions = {
   message?: Record<string, unknown> | null;
   /** PC-2.5.3: `null` models the moment having been deleted. */
   moment?: Record<string, unknown> | null;
+  /** C2 — `null` models the comment having been deleted (comments are hard-deleted). */
+  comment?: Record<string, unknown> | null;
   history?: Array<Record<string, unknown>>;
   existingReport?: { id: string; status: string; reportedUserId: string } | null;
 };
@@ -236,6 +260,7 @@ function makeService(opts: HarnessOptions = {}) {
     detailFindUnique: [] as Call[],
     messageFindUnique: [] as Call[],
     momentFindUnique: [] as Call[],
+    commentFindUnique: [] as Call[],
     historyFindMany: [] as Call[],
     reportUpdate: [] as Call[],
     auditCreate: [] as Call[],
@@ -346,6 +371,20 @@ function makeService(opts: HarnessOptions = {}) {
     return { id: "audit-new" };
   });
 
+  /** C2 — `momentComment.findUnique`, the comment arm of `reportDetail`. */
+  const commentFindUnique = jest.fn(async (args: Call) => {
+    calls.commentFindUnique.push(args);
+    if (opts.comment === null) return null;
+    return (
+      opts.comment ?? {
+        id: COMMENT_ID,
+        content: "you are wrong about this",
+        createdAt: new Date("2026-03-03T10:11:12.000Z"),
+        user: REPORTED,
+      }
+    );
+  });
+
   const report = {
     count,
     findMany,
@@ -357,6 +396,7 @@ function makeService(opts: HarnessOptions = {}) {
     report,
     message: { findUnique: messageFindUnique },
     moment: { findUnique: momentFindUnique },
+    momentComment: { findUnique: commentFindUnique },
     adminAuditLog: { create: auditCreate, findMany: historyFindMany },
     user: { count: jest.fn(async () => 0), findMany: jest.fn(async () => []) },
     adminNote: { create: jest.fn(async () => ({ id: "note-1" })) },
@@ -370,6 +410,7 @@ function makeService(opts: HarnessOptions = {}) {
     report: { ...report, findUnique: reportFindUnique },
     message: { findUnique: messageFindUnique },
     moment: { findUnique: momentFindUnique },
+    momentComment: { findUnique: commentFindUnique },
     $transaction: jest.fn(async (fn: (client: typeof tx) => unknown) => fn(tx)),
   };
 
@@ -604,20 +645,24 @@ describe("Reports — derived targetType", () => {
     expect(calls.findMany[0].where?.momentId).toEqual({ not: null });
   });
 
-  it("12e. the three target predicates are mutually exclusive", async () => {
-    const [user, message, moment] = await Promise.all(
-      (["USER", "MESSAGE", "MOMENT"] as const).map(async (targetType) => {
+  it("12e. the four target predicates are mutually exclusive", async () => {
+    const [user, message, moment, comment] = await Promise.all(
+      (["USER", "MESSAGE", "MOMENT", "COMMENT"] as const).map(async (targetType) => {
         const { calls } = await list({ targetType });
         return calls.findMany[0].where ?? {};
       }),
     );
 
-    // Whatever pointers a row carries, at most one of these three filters can
+    // Whatever pointers a row carries, at most one of these four filters can
     // match it — which is what makes "filter by X" and "labelled X" the same
     // claim rather than two rules that happen to agree today.
-    expect(user).toEqual({ messageId: null, momentId: null });
-    expect(message).toEqual({ momentId: null, messageId: { not: null } });
+    //
+    // C2 把 COMMENT 排在 MESSAGE 之前（见 `deriveTargetType` 的注释）：messageId 是
+    // 附在**人举报**上的证据，commentId 才是内容目标，所以两者都有时按评论读。
+    expect(user).toEqual({ messageId: null, momentId: null, commentId: null });
+    expect(message).toEqual({ momentId: null, commentId: null, messageId: { not: null } });
     expect(moment).toEqual({ momentId: { not: null } });
+    expect(comment).toEqual({ momentId: null, commentId: { not: null } });
   });
 });
 
@@ -805,9 +850,10 @@ describe("Reports — response shape", () => {
 // ---------------------------------------------------------------------------
 
 describe("Reports — detail", () => {
-  it("29. a known id returns report, reporter, reportedUser, target, message, moment, history", async () => {
+  it("29. a known id returns report, reporter, reportedUser, target, message, moment, comment, history", async () => {
     const detail = await makeService({ detailRow: USER_REPORT }).service.reportDetail(REPORT_ID);
     expect(Object.keys(detail).sort()).toEqual([
+      "comment",
       "history",
       "message",
       "moment",
@@ -821,6 +867,7 @@ describe("Reports — detail", () => {
   it("29b. the report block carries the fields the screen needs", async () => {
     const detail = await makeService({ detailRow: USER_REPORT }).service.reportDetail(REPORT_ID);
     expect(Object.keys(detail.report).sort()).toEqual([
+      "commentId",
       "createdAt",
       "description",
       "id",
@@ -837,7 +884,47 @@ describe("Reports — detail", () => {
       targetType: "MOMENT",
       messageId: null,
       momentId: MOMENT_ID,
+      commentId: null,
     });
+  });
+
+  it("29d. a comment report is labelled COMMENT and carries the comment itself", async () => {
+    // C2 — 管理端要能直接读到被举报的那条评论：`commentId` 没有外键，
+    // 所以这里和 message/moment 一样，只能是「有 / 没有了」。
+    const detail = await makeService({ detailRow: COMMENT_REPORT }).service.reportDetail(
+      REPORT_ID,
+    );
+
+    expect(detail.target).toEqual({
+      targetType: "COMMENT",
+      messageId: null,
+      momentId: null,
+      commentId: COMMENT_ID,
+    });
+    expect(detail.comment).toEqual({
+      available: true,
+      id: COMMENT_ID,
+      content: "you are wrong about this",
+      createdAt: new Date("2026-03-03T10:11:12.000Z"),
+      author: REPORTED,
+    });
+  });
+
+  it("29e. a comment that no longer exists is an explicit 'not available', never a throw", async () => {
+    const detail = await makeService({ detailRow: COMMENT_REPORT, comment: null }).service.reportDetail(
+      REPORT_ID,
+    );
+
+    expect(detail.comment).toEqual({ available: false, reason: "DELETED" });
+    // 标签仍然按指针取值，不受目标是否还在影响。
+    expect(detail.target.targetType).toBe("COMMENT");
+  });
+
+  it("29f. a report that never pointed at a comment says so", async () => {
+    const detail = await makeService({ detailRow: USER_REPORT }).service.reportDetail(REPORT_ID);
+    expect(detail.comment).toEqual({ available: false, reason: "NO_COMMENT" });
+    // 没指针就不该去打库。
+    expect(detail.target.commentId).toBeNull();
   });
 
   it("30. an unknown id is a 404 REPORT_NOT_FOUND, never a 200 with null", async () => {

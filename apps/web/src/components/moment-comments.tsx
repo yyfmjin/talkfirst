@@ -212,6 +212,7 @@ export function MomentComments({
   onReply,
   onDelete,
   onEdit,
+  onReport,
   currentUserId,
   hasMore = false,
   loadingMore = false,
@@ -240,6 +241,12 @@ export function MomentComments({
   onDelete?: (comment: MomentComment, parentId?: string) => Promise<void>;
   /** Optional handler to update comment content. */
   onEdit?: (comment: MomentComment, newContent: string, parentId?: string) => Promise<void>;
+  /**
+   * C2 — 举报**别人**的评论。
+   *
+   * 省略它则别人的评论不出现任何菜单；动态卡片（只读表面）就是这样传的。
+   */
+  onReport?: (comment: MomentComment) => void;
   /** The signed-in user: only their own comments get the menu. */
   currentUserId?: string | null;
   hasMore?: boolean;
@@ -379,12 +386,20 @@ export function MomentComments({
   }
 
   /**
-   * A single action menu, used by top-level comments and replies alike. Nothing
-   * renders unless the surface opted in *and* the comment is the viewer's own,
-   * so a read-only surface cannot show an affordance it has no handler for.
+   * 一个动作菜单，一级评论与回复共用。
+   *
+   * C2 之后它服务两种**互斥**的情形：
+   *   · 自己的评论 → 编辑 / 删除（需要 `onDelete` / `onEdit`）
+   *   · 别人的评论 → 举报（需要 `onReport`）
+   * 两者都不满足时什么都不渲染，所以只读表面（动态卡片）仍然不会出现
+   * 没有处理函数的入口 —— 原始的克制在这里保住了。
    */
   function renderActions(comment: MomentComment, level: "comment" | "reply" = "comment") {
-    if ((!onDelete && !onEdit) || !currentUserId || comment.user.id !== currentUserId) return null;
+    if (!currentUserId) return null;
+    const isMine = comment.user.id === currentUserId;
+    const canManage = isMine && Boolean(onDelete || onEdit);
+    const canReport = !isMine && Boolean(onReport);
+    if (!canManage && !canReport) return null;
     const open = menuOpenId === comment.id;
     return (
       <span className="relative inline-block align-middle">
@@ -399,7 +414,22 @@ export function MomentComments({
         </button>
         {open ? (
           <span className="absolute right-0 top-4 z-20 flex flex-col overflow-hidden rounded-control border border-border bg-surface shadow-overlay">
-            {onEdit ? (
+            {canReport ? (
+              <button
+                type="button"
+                data-testid={`${level}-report`}
+                onClick={() => {
+                  // 先关菜单再抛出去：弹窗是另一层遮罩，留着一个展开的菜单在下面
+                  // 只会让两种浮层叠在一起。
+                  setMenuOpenId(null);
+                  onReport?.(comment);
+                }}
+                className="whitespace-nowrap px-3 py-1.5 text-left text-caption text-content hover:bg-surface-sunken"
+              >
+                举报
+              </button>
+            ) : null}
+            {canManage && onEdit ? (
               <button
                 type="button"
                 data-testid={`${level}-edit`}
@@ -409,7 +439,7 @@ export function MomentComments({
                 编辑
               </button>
             ) : null}
-            {onDelete ? (
+            {canManage && onDelete ? (
               <button
                 type="button"
                 data-testid={`${level}-delete`}

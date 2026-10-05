@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Compass, Heart, MessageCircle, Plus, Share2, SlidersHorizontal, Trash2 } from "lucide-react";
+import { Bookmark, Compass, Heart, MessageCircle, Plus, Share2, SlidersHorizontal, Trash2 } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
 import { TabBar } from "@/components/tab-bar";
 import { ProfilePreviewCard } from "@/components/profile-preview-card";
@@ -40,6 +40,8 @@ type Moment = {
   likeCount: number;
   commentCount: number;
   liked: boolean;
+  /** C4 — 当前浏览者是否已收藏。与 `liked` 同一来源（服务端投影）。 */
+  bookmarked: boolean;
   source?: "USER" | "DEMO";
   isDemo?: boolean;
   createdAt: string;
@@ -54,14 +56,33 @@ const tabItems = [
   ["recommend", "推荐"],
   ["following", "关注"],
   ["mine", "我的"],
+  // C4 — 收藏是这个页面的第四个标签，而不是另一个页面。
+  //
+  // 卡片 `MomentCard` 是这一页里的局部组件，而 P0-05 明确要求「只有一套卡片」。
+  // 为一个收藏列表复制第二套卡片（或先做一次大抽取）都不如复用同一个列表 ——
+  // 服务端两个端点的 item 本来就是同一份投影。
+  ["bookmarks", "收藏"],
 ] as const;
 
 type TabId = (typeof tabItems)[number][0];
+
+/** C1 — `GET /moments/topics` 返回的一项：标签 + 条数（只数看得见的动态）。 */
+type Topic = { tag: string; count: number };
 
 export default function MomentsPage() {
   const [tab, setTab] = useState<TabId>("recommend");
   const [platform, setPlatform] = useState("");
   const [platforms, setPlatforms] = useState<Platform[]>([]);
+  /**
+   * C1 — 话题筛选。
+   *
+   * 与平台筛选并列的第二种筛选，**放在同一个页面**而不是新建 `/topics`：
+   * 底部导航只有四个位置（加第五个是设计决定），而「按话题看动态」本来就是 feed 的一种视图。
+   * 列表来自 `GET /moments/topics`，它的计数只在**你看得见的动态**里做 ——
+   * 所以这里显示的条数与列表里实际能翻到的条数一致（公开计数会是侧信道）。
+   */
+  const [topic, setTopic] = useState("");
+  const [topics, setTopics] = useState<Topic[]>([]);
   const [feed, setFeed] = useState<Moment[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
@@ -85,6 +106,8 @@ export default function MomentsPage() {
   const [commentErrors, setCommentErrors] = useState<Record<string, string>>({});
   const [draftComment, setDraftComment] = useState("");
   const [liking, setLiking] = useState<string | null>(null);
+  // C4 — 与 `liking` 分开：两个动作可以各自在途，没必要因为收藏在飞就禁用点赞。
+  const [bookmarking, setBookmarking] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [shared, setShared] = useState<string | null>(null);
   /**
@@ -133,11 +156,21 @@ export default function MomentsPage() {
       setLoadError("");
       try {
         const cursorParam = !reset && cursor ? `&cursor=${encodeURIComponent(cursor)}` : "";
-        const [result, list] = await Promise.all([
-          apiFetch<Feed>(`/moments/feed?tab=${tab}${platform ? `&platform=${platform}` : ""}&limit=20${cursorParam}`),
+        /** 收藏走自己的端点，其余标签走 feed；两者返回同一形状的 item。 */
+        const listUrl =
+          tab === "bookmarks"
+            ? `/moments/bookmarks?limit=20${cursorParam}`
+            : `/moments/feed?tab=${tab}${platform ? `&platform=${platform}` : ""}${
+                topic ? `&topic=${encodeURIComponent(topic)}` : ""
+              }&limit=20${cursorParam}`;
+        const [result, list, topicList] = await Promise.all([
+          apiFetch<Feed>(listUrl),
           platforms.length ? Promise.resolve(platforms) : apiFetch<Platform[]>("/moments/platforms"),
+          // 话题列表每次都重取：它带条数，而条数会随着新动态变化。失败不影响 feed。
+          apiFetch<{ items: Topic[] }>("/moments/topics?limit=12").catch(() => ({ items: [] })),
         ]);
         if (!platforms.length) setPlatforms(list as Platform[]);
+        setTopics(topicList.items);
         setFeed((current) => (reset ? result.items : [...current, ...result.items]));
         setCursor(result.nextCursor);
         setHasMore(Boolean(result.nextCursor));
@@ -148,7 +181,7 @@ export default function MomentsPage() {
         setLoadingMore(false);
       }
     },
-    [cursor, platform, platforms, tab],
+    [cursor, platform, platforms, tab, topic],
   );
 
   useEffect(() => {
@@ -201,6 +234,39 @@ export default function MomentsPage() {
       setActionError(requestError instanceof Error ? requestError.message : "点赞失败");
     } finally {
       setLiking(null);
+    }
+  }
+
+  /**
+   * C4 — 收藏 / 取消收藏。
+   *
+   * 与 `toggleLike` 同一套做法：先乐观翻转，失败就回滚并给一条行内提示。
+   * 请求按**当前状态**选方法（POST 收藏 / DELETE 取消），而不是发一个布尔载荷 ——
+   * 服务端那两个端点本来就是幂等的，客户端重试不会把状态翻回去。
+   */
+  async function toggleBookmark(moment: Moment) {
+    if (bookmarking) return;
+    setBookmarking(moment.id);
+    setActionError("");
+    const previous = feed;
+    const next = !moment.bookmarked;
+    setFeed((current) =>
+      current.map((item) => (item.id === moment.id ? { ...item, bookmarked: next } : item)),
+    );
+    try {
+      const result = await apiFetch<{ bookmarked: boolean }>(`/moments/${moment.id}/bookmark`, {
+        method: next ? "POST" : "DELETE",
+      });
+      setFeed((current) =>
+        current.map((item) =>
+          item.id === moment.id ? { ...item, bookmarked: result.bookmarked } : item,
+        ),
+      );
+    } catch (requestError) {
+      setFeed(previous);
+      setActionError(requestError instanceof Error ? requestError.message : "收藏失败");
+    } finally {
+      setBookmarking(null);
     }
   }
 
@@ -380,7 +446,11 @@ export default function MomentsPage() {
 
         {/* Platform filter. `TFChip` gives it `aria-pressed`, a 36px target and the
             one selected style, instead of a fourth hand-rolled pill that marked
-            selection by filling itself with the brand gradient. */}
+            selection by filling itself with the brand gradient.
+
+            收藏列表不看平台（收藏是按人、不按来源），所以这个筛选器在那一标签下**整个收起来** ——
+            留着一个按下去没反应的筛选器，比没有它更让人困惑。 */}
+        {tab === "bookmarks" ? null : (
         <div className="tf-scroll-x mt-3 flex gap-2 overflow-x-auto px-5 pb-1">
           <TFChip selected={!platform} onClick={() => setPlatform("")}>
             全部
@@ -402,6 +472,28 @@ export default function MomentsPage() {
             </TFChip>
           ))}
         </div>
+        )}
+
+        {/* C1 — 话题筛选。与平台同一排 chip 的第二种筛选：话题本来就长在动态上，
+            所以「按话题看」是 feed 的一个视图，而不是另一个页面。
+            与平台不同，它在「收藏」标签下不出现 —— 那个视图按收藏时间走，不看话题。 */}
+        {topics.length > 0 && tab !== "bookmarks" ? (
+          <div className="tf-scroll-x mt-2 flex gap-2 overflow-x-auto px-5 pb-1">
+            <TFChip selected={!topic} onClick={() => setTopic("")}>
+              全部话题
+            </TFChip>
+            {topics.map((item) => (
+              <TFChip
+                key={item.tag}
+                selected={topic === item.tag}
+                onClick={() => setTopic(topic === item.tag ? "" : item.tag)}
+              >
+                #{item.tag}
+                <span className="ml-1 text-content-subtle">{item.count}</span>
+              </TFChip>
+            ))}
+          </div>
+        ) : null}
 
         {loading ? <FeedSkeleton /> : null}
         {/* Only an initial load failure replaces the feed. */}
@@ -445,10 +537,12 @@ export default function MomentsPage() {
                 moment={moment}
                 isMine={Boolean(user?.id) && moment.userId === user?.id}
                 liking={liking === moment.id}
+                bookmarking={bookmarking === moment.id}
                 deleting={deleting === moment.id}
                 shared={shared === moment.id}
                 onProfile={(userId) => setPreviewUserId(userId)}
                 onLike={() => void toggleLike(moment)}
+                onBookmark={() => void toggleBookmark(moment)}
                 onDelete={() => removeMoment(moment)}
                 onShare={() => void shareMoment(moment)}
                 onComments={() => void toggleComments(moment.id)}
@@ -543,10 +637,12 @@ function MomentCard({
   moment,
   isMine,
   liking,
+  bookmarking,
   deleting,
   shared,
   onProfile,
   onLike,
+  onBookmark,
   onDelete,
   onShare,
   onComments,
@@ -562,10 +658,12 @@ function MomentCard({
   moment: Moment;
   isMine: boolean;
   liking: boolean;
+  bookmarking: boolean;
   deleting: boolean;
   shared: boolean;
   onProfile: (userId: string) => void;
   onLike: () => void;
+  onBookmark: () => void;
   onDelete: () => void;
   onShare: () => void;
   onComments: () => void;
@@ -706,9 +804,25 @@ function MomentCard({
         </button>
         <button
           type="button"
+          onClick={onBookmark}
+          disabled={bookmarking}
+          aria-label="收藏"
+          aria-pressed={moment.bookmarked}
+          className={`ml-auto flex min-h-9 items-center gap-1.5 rounded-full px-2.5 transition-colors duration-instant hover:bg-surface-sunken disabled:opacity-60 ${
+            moment.bookmarked ? "text-brand-600" : ""
+          }`}
+        >
+          <Bookmark
+            size={17}
+            fill={moment.bookmarked ? "currentColor" : "none"}
+            aria-hidden="true"
+          />
+        </button>
+        <button
+          type="button"
           onClick={onShare}
           aria-label="分享"
-          className="ml-auto flex min-h-9 items-center gap-1.5 rounded-full px-2.5 transition-colors duration-instant hover:bg-surface-sunken"
+          className="flex min-h-9 items-center gap-1.5 rounded-full px-2.5 transition-colors duration-instant hover:bg-surface-sunken"
         >
           <Share2 size={17} aria-hidden="true" />
           {shared ? <span className="text-caption text-success-600">已复制</span> : null}
@@ -779,6 +893,21 @@ function FeedSkeleton() {
  */
 function EmptyFeed({ tab }: { tab: string }) {
   const mine = tab === "mine";
+  /** C4 — 收藏为空时，可做的事不是「去发布」，而是先去收几条。 */
+  if (tab === "bookmarks") {
+    return (
+      <TFEmptyState
+        icon={<Compass size={26} />}
+        title="还没有收藏过动态"
+        description="在动态卡片上点「收藏」，想再看的就会收在这里。"
+        action={
+          <TFButton href="/moments" size="md">
+            去看动态
+          </TFButton>
+        }
+      />
+    );
+  }
   return (
     <TFEmptyState
       icon={<Compass size={26} />}

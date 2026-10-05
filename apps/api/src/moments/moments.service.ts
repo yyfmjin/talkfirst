@@ -56,6 +56,17 @@ function reviewVisibilityFilter(viewerId: string): Record<string, unknown> {
 }
 
 /**
+ * C1 — 话题的归一化。
+ *
+ * 写入端早就归一化过（`publish` 与 compose 都是 `trim → 去掉开头的 # → 小写 → 截 32`），
+ * 所以查询端必须用**逐字同一套**规则：否则 `#旅行` 与 `旅行` 会是两个互相查不到的字符串，
+ * 而两边看上去都「对」。
+ */
+function normalizeTopic(raw: string): string {
+  return raw.trim().replace(/^#+/, "").toLowerCase().slice(0, 32);
+}
+
+/**
  * True when a non-owner must be refused this row.
  *
  * ## Why an absent status is treated as visible
@@ -126,6 +137,40 @@ export class MomentsService {
       return connected ? "allowed" : "locked";
     }
     return visibleTo === "everyone" ? "allowed" : "locked";
+  }
+
+  /**
+   * C1 — feed / 收藏 / 话题三处都需要的「谁能看谁」上下文。
+   *
+   * 抽出来之前这段在 feed 与 bookmarks 里各有一份**逐字相同**的副本；话题列表要按
+   * 同一套可见性聚合计数，第三份副本只会把「改了一处」变成默认结局。
+   * `blockedIds` 已剔除浏览者自己（拉黑自己不存在，而把它留在集合里
+   * 会让「我自己的动态」在 feed 里被过滤掉）。
+   */
+  private async visibilityContext(
+    viewerId: string,
+  ): Promise<{ blockedIds: Set<string>; peerIds: Set<string> }> {
+    const blockedRows = await this.prisma.block.findMany({
+      where: { OR: [{ blockerId: viewerId }, { blockedId: viewerId }] },
+      select: { blockerId: true, blockedId: true },
+    });
+    const blockedIds = new Set<string>();
+    for (const row of blockedRows) {
+      blockedIds.add(row.blockerId);
+      blockedIds.add(row.blockedId);
+    }
+    blockedIds.delete(viewerId);
+
+    const connectionRows = await this.prisma.connection.findMany({
+      where: { status: "ACTIVE", OR: [{ userAId: viewerId }, { userBId: viewerId }] },
+      select: { userAId: true, userBId: true },
+    });
+    const peerIds = new Set<string>();
+    for (const row of connectionRows) {
+      peerIds.add(row.userAId === viewerId ? row.userBId : row.userAId);
+    }
+
+    return { blockedIds, peerIds };
   }
 
   private lockedError(): Error & { code?: string; status?: number } {
@@ -248,32 +293,20 @@ export class MomentsService {
    * A malformed cursor is now a `400 VALIDATION_ERROR` rather than the
    * `new Date("garbage")` → `Invalid Date` → `500` it used to produce.
    */
-  async feed(viewerId: string, query: { tab?: string; platform?: string; limit?: number; cursor?: string }) {
+  async feed(viewerId: string, query: { tab?: string; platform?: string; topic?: string; limit?: number; cursor?: string }) {
     const limit = Math.min(Math.max(Number(query.limit ?? 20) || 20, 1), 50);
     const cursor = parseKeysetCursor(query.cursor);
     const tab = (query.tab ?? "recommend").toLowerCase();
     const platform = query.platform ? query.platform.toUpperCase() : null;
     if (platform) this.assertPlatform(platform);
+    /**
+     * C1 — 按话题筛动态。这是 `docs/FUNCTIONAL-TEST-UI-UX.md` §2.22 明确点名缺的那个参数：
+     * 动态本来就带 `tags`，缺的只是「按 tag 查」的入口。
+     * `has` 是 Postgres 的数组包含，与 `tags String[]` 直接对应，不需要额外索引或话题表。
+     */
+    const topic = query.topic ? normalizeTopic(query.topic) : "";
 
-    const blockedRows = await this.prisma.block.findMany({
-      where: { OR: [{ blockerId: viewerId }, { blockedId: viewerId }] },
-      select: { blockerId: true, blockedId: true },
-    });
-    const blockedIds = new Set<string>();
-    for (const row of blockedRows) {
-      blockedIds.add(row.blockerId);
-      blockedIds.add(row.blockedId);
-    }
-    blockedIds.delete(viewerId);
-
-    const connectionRows = await this.prisma.connection.findMany({
-      where: { status: "ACTIVE", OR: [{ userAId: viewerId }, { userBId: viewerId }] },
-      select: { userAId: true, userBId: true },
-    });
-    const peerIds = new Set<string>();
-    for (const row of connectionRows) {
-      peerIds.add(row.userAId === viewerId ? row.userBId : row.userAId);
-    }
+    const { blockedIds, peerIds } = await this.visibilityContext(viewerId);
 
     let authorIds: string[] | undefined;
     if (tab === "following" || tab === "mine") {
@@ -285,6 +318,7 @@ export class MomentsService {
       where: {
         ...keysetFilterAfter(cursor),
         ...(platform ? { platform: platform as never } : {}),
+        ...(topic ? { tags: { has: topic } } : {}),
         ...(authorIds ? { userId: { in: authorIds } } : {}),
         /**
          * Moderation visibility, expressed as an explicit `OR` rather than spread from
@@ -302,6 +336,7 @@ export class MomentsService {
       include: {
         user: { select: { id: true, nickname: true, avatarUrl: true, countryCode: true } },
         likes: { where: { userId: viewerId }, select: { userId: true } },
+        bookmarks: { where: { userId: viewerId }, select: { userId: true } },
       },
     });
 
@@ -335,6 +370,9 @@ export class MomentsService {
       likeCount: this.reportedLikeCount(moment),
       commentCount: moment.commentCount,
       liked: moment.likes.length > 0,
+      // C4 — 当前浏览者有没有收藏过它。与 `liked` 同一形状（一行 include + 一个布尔），
+      // 所以卡片不需要额外请求就能画出收藏状态。
+      bookmarked: moment.bookmarks.length > 0,
       source: moment.source,
       isDemo: moment.source === "DEMO",
       syncedAt: moment.syncedAt,
@@ -376,7 +414,10 @@ export class MomentsService {
       },
       orderBy: keysetOrderBy,
       take: limit + 1,
-      include: { likes: { where: { userId: viewerId }, select: { userId: true } } },
+      include: {
+        likes: { where: { userId: viewerId }, select: { userId: true } },
+        bookmarks: { where: { userId: viewerId }, select: { userId: true } },
+      },
     });
     const items = moments.slice(0, limit).map((moment) => ({
       id: moment.id,
@@ -391,6 +432,7 @@ export class MomentsService {
       likeCount: this.reportedLikeCount(moment),
       commentCount: moment.commentCount,
       liked: moment.likes.length > 0,
+      bookmarked: moment.bookmarks.length > 0,
       source: moment.source,
       isDemo: moment.source === "DEMO",
       syncedAt: moment.syncedAt,
@@ -433,6 +475,7 @@ export class MomentsService {
       include: {
         user: { select: { id: true, nickname: true, avatarUrl: true, countryCode: true, status: true } },
         likes: { where: { userId: viewerId }, select: { userId: true } },
+        bookmarks: { where: { userId: viewerId }, select: { userId: true } },
       },
     });
     if (!moment || moment.user.status !== "ACTIVE") return null;
@@ -466,6 +509,7 @@ export class MomentsService {
       likeCount: this.reportedLikeCount(moment),
       commentCount: moment.commentCount,
       liked: moment.likes.length > 0,
+      bookmarked: moment.bookmarks.length > 0,
       source: moment.source,
       isDemo: moment.source === "DEMO",
       syncedAt: moment.syncedAt,
@@ -505,6 +549,205 @@ export class MomentsService {
       });
     }
     return { liked: true };
+  }
+
+  /**
+   * C4 — 收藏 / 取消收藏。
+   *
+   * ## 幂等
+   *
+   * 收藏用 `upsert`、取消用 `deleteMany`，所以同一个请求重复到达既不会报错，
+   * 也不会留下第二行。`(userId, momentId)` 唯一索引是**最后一道保险**，不是主要判据 ——
+   * 靠它接住 P2002 再翻成成功，等于把并发的复杂度挪给每个调用方。
+   *
+   * ## 能不能收藏 = 能不能看
+   *
+   * 判据与 `getMoment` 完全相同（`resolveMomentAccess` + 作者 ACTIVE）。
+   * 这不是洁癖：收藏列表是一份**按用户持久化下来的读取通道**，如果允许收藏看不见的东西，
+   * 它就绕过了拉黑与隐私设置 —— 收藏之后对方即使拉黑你，内容还会躺在你的列表里。
+   *
+   * 返回 `null` 表示「不存在或不可见」，控制器据此回 404：与 `getMoment` 一样**不区分**
+   * 「不存在」与「无权」，免得用状态码把别人内容的存在性问出来。
+   */
+  async setBookmark(userId: string, momentId: string, bookmarked: boolean) {
+    const moment = await this.prisma.moment.findUnique({
+      where: { id: momentId },
+      select: { id: true, userId: true, user: { select: { status: true } } },
+    });
+    if (!moment || moment.user.status !== "ACTIVE") return null;
+    if (
+      moment.userId !== userId &&
+      (await this.resolveMomentAccess(userId, moment.userId)) !== "allowed"
+    ) {
+      return null;
+    }
+
+    if (bookmarked) {
+      await this.prisma.momentBookmark.upsert({
+        where: { userId_momentId: { userId, momentId } },
+        update: {},
+        create: { userId, momentId },
+      });
+    } else {
+      await this.prisma.momentBookmark.deleteMany({ where: { userId, momentId } });
+    }
+    return { bookmarked };
+  }
+
+  /**
+   * C1 — 话题列表（按 tag 聚合），**只在当前浏览者看得见的动态里数**。
+   *
+   * ## 为什么计数必须在同一套可见性下做
+   *
+   * 一个 tag 的计数如果能被一个看不见它所属动态的人推出来，那它就是一个侧信道：
+   * 「某个只被私密动态用过的话题有 3 条」本身就泄漏了那 3 条的存在。所以这里用的是与
+   * `feed` **同一个** `visibilityContext`、同一组过滤条件。
+   *
+   * ## 为什么是「近期窗口」而不是全库计数
+   *
+   * Prisma 不能 unnest 数组列（`tags` 是 `String[]`），而全库计数只能靠原生 SQL 的
+   * `unnest + GROUP BY` ——那会是本仓库除了健康探针之外的第一处原生 SQL。所以这里取
+   * **最近 N 条可见动态**的标签在 JS 里聚合：
+   *   · 语义诚实：页面说的是「近期话题」而不是「历史总数」；
+   *   · 只 select `tags`，payload 极小且走 `(createdAt, id)` 序；
+   *   · 不引入新的查询方言。
+   * 真需要全量计数时，那就是该上话题表或原生 SQL 的时候 —— 判断写在这里，不埋在实现里。
+   */
+  async topics(viewerId: string, query: { limit?: number; window?: number } = {}) {
+    const limit = Math.min(Math.max(Number(query.limit ?? 20) || 20, 1), 50);
+    const window = Math.min(Math.max(Number(query.window ?? 300) || 300, 1), 1000);
+
+    const { blockedIds, peerIds } = await this.visibilityContext(viewerId);
+    const moments = await this.prisma.moment.findMany({
+      where: {
+        ...(blockedIds.size > 0 ? { userId: { notIn: [...blockedIds] } } : {}),
+        AND: [reviewVisibilityFilter(viewerId)],
+      },
+      orderBy: keysetOrderBy,
+      take: window,
+      select: { tags: true, userId: true },
+    });
+
+    // 作者的 private / connections 与 feed 一样在 JS 里判：那一层要读作者的设置行。
+    const authorIdsInWindow = [...new Set(moments.map((moment) => moment.userId))];
+    const authorSettings = await this.prisma.momentSetting.findMany({
+      where: { userId: { in: authorIdsInWindow } },
+      select: { userId: true, visibleTo: true },
+    });
+    const visibilityByAuthor = new Map(authorSettings.map((row) => [row.userId, row.visibleTo]));
+
+    const counts = new Map<string, number>();
+    for (const moment of moments) {
+      if (moment.userId !== viewerId) {
+        const visibleTo = visibilityByAuthor.get(moment.userId) ?? "everyone";
+        if (visibleTo === "private") continue;
+        if (visibleTo === "connections" && !peerIds.has(moment.userId)) continue;
+      }
+      for (const tag of moment.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+    }
+
+    const items = [...counts.entries()]
+      .map(([tag, count]) => ({ tag, count }))
+      // 数量降序，同数量按 tag 升序：翻页与刷新不会因为 Map 的插入顺序而抖。
+      .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag))
+      .slice(0, limit);
+
+    return { items, window };
+  }
+
+  /**
+   * C4 — 我的收藏，最近收藏在前。
+   *
+   * 游标是**收藏行**自己的 `(createdAt, id)`，不是动态的：列表顺序由「什么时候收藏的」
+   * 决定，分页因此必须按同一把键，否则翻页会跳行或重复。走全仓库共用的
+   * `keyset-cursor`，所以形状与 `feed` / `notifications` 一致。
+   *
+   * 过滤与 `feed` 同源，且**不能省**：收藏是一份会过期的快照。收藏之后对方可能拉黑你、
+   * 可能把可见性从 everyone 收紧成 private、动态也可能被审核置为 `PENDING` ——
+   * 那时这个列表不能再把内容端出来。所以每次读取都重新判一遍拉黑、可见性、审核状态。
+   */
+  async bookmarks(viewerId: string, query: { limit?: number; cursor?: string }) {
+    const limit = Math.min(Math.max(Number(query.limit ?? 20) || 20, 1), 50);
+    const cursor = parseKeysetCursor(query.cursor);
+
+    const { blockedIds, peerIds } = await this.visibilityContext(viewerId);
+
+    const rows = await this.prisma.momentBookmark.findMany({
+      where: {
+        userId: viewerId,
+        ...keysetFilterAfter(cursor),
+        /**
+         * 拉黑与审核状态能在 SQL 里判掉；可见性（private / connections）要读作者的
+         * 设置行，放到下面用同一次查询取回来的 `momentSetting` 判，避免逐行查询。
+         */
+        moment: {
+          AND: [
+            reviewVisibilityFilter(viewerId),
+            ...(blockedIds.size > 0 ? [{ userId: { notIn: [...blockedIds] } }] : []),
+          ],
+        },
+      },
+      orderBy: keysetOrderBy,
+      take: limit + 1,
+      include: {
+        moment: {
+          include: {
+            user: { select: { id: true, nickname: true, avatarUrl: true, countryCode: true } },
+            likes: { where: { userId: viewerId }, select: { userId: true } },
+            bookmarks: { where: { userId: viewerId }, select: { userId: true } },
+          },
+        },
+      },
+    });
+
+    const authorIdsInPage = [...new Set(rows.map((row) => row.moment.userId))];
+    const authorSettings = await this.prisma.momentSetting.findMany({
+      where: { userId: { in: authorIdsInPage } },
+      select: { userId: true, visibleTo: true },
+    });
+    const visibilityByAuthor = new Map(authorSettings.map((row) => [row.userId, row.visibleTo]));
+
+    const visibleRows = rows.filter((row) => {
+      const moment = row.moment;
+      if (moment.userId === viewerId) return true;
+      const visibleTo = visibilityByAuthor.get(moment.userId) ?? "everyone";
+      if (visibleTo === "private") return false;
+      if (visibleTo === "connections") return peerIds.has(moment.userId);
+      return true;
+    });
+
+    const viewerSetting = await this.prisma.momentSetting.findUnique({
+      where: { userId: viewerId },
+    });
+    const page = visibleRows.slice(0, limit);
+    const items = page.map((row) => {
+      const moment = row.moment;
+      return {
+        id: moment.id,
+        userId: moment.userId,
+        author: moment.user,
+        platform: moment.platform,
+        platformName: moment.platformName,
+        content: this.filterContent(moment.content, viewerSetting?.filterSensitive ?? true),
+        images: this.filterMedia(moment.images, moment.platform, viewerSetting),
+        videoUrl: this.filterVideo(moment.videoUrl, viewerSetting),
+        durationSec: moment.durationSec,
+        tags: moment.tags,
+        likeCount: this.reportedLikeCount(moment),
+        commentCount: moment.commentCount,
+        liked: moment.likes.length > 0,
+        // 这个列表里的每一条按定义都是收藏过的。写成常量而不是重算：
+        // 重算一遍只会多一次判断，却让「为什么这里是 true」变得可疑。
+        bookmarked: true as const,
+        source: moment.source,
+        isDemo: moment.source === "DEMO",
+        syncedAt: moment.syncedAt,
+        createdAt: moment.createdAt,
+      };
+    });
+    // 游标始终取**客户端真正看到的那一页的最后一行**（audit P021），
+    // 而不是预先取多一行里的那一行。
+    return { items, nextCursor: keysetNextCursor(rows.length, limit, page) };
   }
 
   /**

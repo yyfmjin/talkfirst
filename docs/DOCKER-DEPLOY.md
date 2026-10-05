@@ -44,7 +44,8 @@ npm run docker:reset   # 停止并删除数据卷
 | Web 前台 | http://localhost:3000 |
 | Admin 后台 | http://localhost:3001 |
 | API | http://localhost:4000/api/v1 |
-| API 健康检查 | http://localhost:4000/api/v1/health |
+| API 就绪自检 | http://localhost:4000/api/v1/health/ready （带 DB ping；503 = 还没就绪） |
+| API 存活自检 | http://localhost:4000/api/v1/health （只看进程在不在，不碰 DB） |
 
 ## 环境变量说明
 

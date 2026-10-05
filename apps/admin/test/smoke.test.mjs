@@ -1174,6 +1174,13 @@ test("phase C5: no migration was added and the schema gained no model", () => {
     // one. Additive, but it is a column with a constraint rather than an index, so
     // it belongs on this list for the same reason as the rest.
     "20261004120000_username_login_identifier",
+    // C4 — `MomentBookmark`（收藏）。只新增一张表，不改既有列与行。
+    "20261005120000_moment_bookmarks",
+    // C3 — `ConversationMember.lastReadAt`（已读位置，未读数的基础）。
+    // 可空列 + 回填既有行为迁移时刻（详见该迁移里的理由）。
+    "20261005140000_conversation_member_last_read",
+    // C2 — `Report.commentId`（评论举报的目标）。可空列 + 索引，全为 NULL。
+    "20261005160000_report_comment_target",
   ];
   assert.deepEqual(
     migrations.slice(C5_BASELINE.length),
@@ -1221,6 +1228,8 @@ test("phase C5: no migration was added and the schema gained no model", () => {
     "Message",
     "MessageTranslation",
     "Moment",
+    // C4 — 收藏。
+    "MomentBookmark",
     "MomentComment",
     "MomentLike",
     "MomentPlatformBinding",

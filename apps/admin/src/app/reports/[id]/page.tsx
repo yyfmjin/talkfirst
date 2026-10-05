@@ -42,6 +42,22 @@ type MomentSummary =
     }
   | { available: false; reason: "NO_MOMENT" | "DELETED" };
 
+/**
+ * C2 — 被举报的评论，与上面两个 summary 同一两态形状。
+ *
+ * 评论是**硬删除**的（`MomentComment` 没有 `deletedAt`），所以只有「在」与「不在」，
+ * 没有软删除那一支。这与 API 的 `ReportCommentSummary` 一一对应。
+ */
+type CommentSummary =
+  | {
+      available: true;
+      id: string;
+      content: string;
+      createdAt: string;
+      author: { id: string; nickname: string | null; email: string };
+    }
+  | { available: false; reason: "NO_COMMENT" | "DELETED" };
+
 type HistoryEntry = {
   id: string;
   action: string;
@@ -62,6 +78,7 @@ type Detail = {
     status: string;
     messageId: string | null;
     momentId: string | null;
+    commentId: string | null;
     createdAt: string;
   };
   reporter: Party;
@@ -69,12 +86,14 @@ type Detail = {
   // The API states the target type outright, so this screen never re-derives it
   // and cannot disagree with the queue about the same row.
   target: {
-    targetType: "USER" | "MESSAGE" | "MOMENT";
+    targetType: "USER" | "MESSAGE" | "MOMENT" | "COMMENT";
     messageId: string | null;
     momentId: string | null;
+    commentId: string | null;
   };
   message: MessageSummary;
   moment: MomentSummary;
+  comment: CommentSummary;
   history: HistoryEntry[];
 };
 
@@ -317,6 +336,32 @@ function ReportDetailScreen() {
                   {data.moment.reason === "DELETED"
                     ? "该动态已被删除，内容无法查看。"
                     : "这条举报没有关联动态。"}
+                </p>
+              )}
+            </section>
+          ) : null}
+
+          {/* 被举报的评论 */}
+          {data.target.targetType === "COMMENT" ? (
+            <section data-testid="report-comment" className="rounded-2xl border border-line bg-card shadow-card p-4">
+              <p className="text-[14px] font-medium">被举报的评论</p>
+              {data.comment.available ? (
+                <>
+                  <p className="mt-2 whitespace-pre-wrap text-[13px]">{data.comment.content}</p>
+                  <p className="mt-2 text-[12px] text-muted">
+                    <Link href={`/users/${data.comment.author.id}`} className="underline">
+                      {data.comment.author.nickname ?? data.comment.author.email}
+                    </Link>{" "}
+                    · {formatTime(data.comment.createdAt)}
+                  </p>
+                </>
+              ) : (
+                // 评论同样是硬删除 + 无外键，所以「已经没了」是普通状态而不是异常 ——
+                // 与上面两个块同一契约。
+                <p data-testid="report-comment-unavailable" className="mt-2 text-[12px] text-muted">
+                  {data.comment.reason === "DELETED"
+                    ? "该评论已被删除，内容无法查看。"
+                    : "这条举报没有关联评论。"}
                 </p>
               )}
             </section>

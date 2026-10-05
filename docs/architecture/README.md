@@ -11,7 +11,8 @@ Phase 2/3 (current):
     carried by HttpOnly cookies, so cross-origin dev login requires the same
     browser session (credentials: include).
 - `apps/api` exposes:
-  - `GET /api/v1/health`
+  - `GET /api/v1/health` (liveness: no external dependency)
+  - `GET /api/v1/health/ready` (readiness: pings the database; 503 + `error.code = NOT_READY`)
   - `POST /api/v1/auth/*` (register, login, refresh, logout, me, verification)
   - `GET/PATCH/DELETE/PUT /api/v1/users/me*` (protected by Passport JWT, guard
     reads the access cookie or `Authorization: Bearer`)

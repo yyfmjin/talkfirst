@@ -188,7 +188,11 @@ type Counts = {
  * the source happens to say. A tautology would prove nothing.
  */
 const CONTENT_ARM_LITERAL = {
-  OR: [{ momentId: { not: null } }, { momentId: null, messageId: { not: null } }],
+  OR: [
+    { momentId: { not: null } },
+    { momentId: null, commentId: { not: null } },
+    { momentId: null, commentId: null, messageId: { not: null } },
+  ],
 };
 
 /** The audit row the endpoint's `findMany` returns when none is supplied. */
@@ -536,24 +540,34 @@ describe("GET /admin/users/:id — Phase B3 aggregate", () => {
     });
   });
 
-  it("9e. the content arm is exactly MOMENT ∪ MESSAGE, in the frozen priority", async () => {
-    // MOMENT first (`momentId != null`), MESSAGE second and pinned to
-    // `momentId: null`. Without that pin the OR would not be a partition and a
-    // row carrying both pointers would be counted twice.
+  it("9e. the content arm is exactly MOMENT ∪ COMMENT ∪ MESSAGE, in the frozen priority", async () => {
+    // MOMENT first (`momentId != null`), then COMMENT, then MESSAGE pinned to
+    // `momentId: null, commentId: null`. Without those pins the OR would not be
+    // a partition and a row carrying several pointers would be counted twice.
     expect(CONTENT_REPORT_TARGET).toEqual(CONTENT_ARM_LITERAL);
-    expect(CONTENT_REPORT_TARGET.OR).toHaveLength(2);
+    expect(CONTENT_REPORT_TARGET.OR).toHaveLength(3);
     expect(CONTENT_REPORT_TARGET.OR?.[0]).toEqual({ momentId: { not: null } });
-    expect(CONTENT_REPORT_TARGET.OR?.[1]).toEqual({ momentId: null, messageId: { not: null } });
+    expect(CONTENT_REPORT_TARGET.OR?.[1]).toEqual({ momentId: null, commentId: { not: null } });
+    expect(CONTENT_REPORT_TARGET.OR?.[2]).toEqual({
+      momentId: null,
+      commentId: null,
+      messageId: { not: null },
+    });
   });
 
-  it("9f. the arms classify the three targets the way the console badges them", async () => {
+  it("9f. the arms classify the four targets the way the console badges them", async () => {
     // The arms are read as a predicate over real pointer values, so this is a
     // statement about rows — not about the shape of the filter object.
     const arms = CONTENT_REPORT_TARGET.OR as unknown as Array<{
       momentId?: unknown;
       messageId?: unknown;
+      commentId?: unknown;
     }>;
-    const matches = (row: { momentId: string | null; messageId: string | null }) =>
+    const matches = (row: {
+      momentId: string | null;
+      messageId: string | null;
+      commentId: string | null;
+    }) =>
       arms.some((arm) => {
         const momentOk = arm.momentId === null ? row.momentId === null : row.momentId !== null;
         const messageOk =
@@ -562,17 +576,26 @@ describe("GET /admin/users/:id — Phase B3 aggregate", () => {
             : arm.messageId === null
               ? row.messageId === null
               : row.messageId !== null;
-        return momentOk && messageOk;
+        const commentOk =
+          arm.commentId === undefined
+            ? true
+            : arm.commentId === null
+              ? row.commentId === null
+              : row.commentId !== null;
+        return momentOk && messageOk && commentOk;
       });
 
-    // USER: neither pointer — excluded, which is what keeps the content pair a
+    // USER: no pointer at all — excluded, which is what keeps the content pair a
     // strict subset of the totals.
-    expect(matches({ momentId: null, messageId: null })).toBe(false);
-    // MESSAGE and MOMENT: included.
-    expect(matches({ momentId: null, messageId: "msg-1" })).toBe(true);
-    expect(matches({ momentId: "moment-1", messageId: null })).toBe(true);
-    // Both pointers: still one row, still content, and MOMENT wins the badge.
-    expect(matches({ momentId: "moment-1", messageId: "msg-1" })).toBe(true);
+    expect(matches({ momentId: null, messageId: null, commentId: null })).toBe(false);
+    // MESSAGE / MOMENT / COMMENT: included.
+    expect(matches({ momentId: null, messageId: "msg-1", commentId: null })).toBe(true);
+    expect(matches({ momentId: "moment-1", messageId: null, commentId: null })).toBe(true);
+    expect(matches({ momentId: null, messageId: null, commentId: "comment-1" })).toBe(true);
+    // Several pointers at once: still one row, still content, and the badge wins
+    // by the frozen priority (MOMENT > COMMENT > MESSAGE).
+    expect(matches({ momentId: "moment-1", messageId: "msg-1", commentId: null })).toBe(true);
+    expect(matches({ momentId: null, messageId: "msg-1", commentId: "comment-1" })).toBe(true);
   });
 
   it("9g. a deleted moment's report is still counted — the count never leaves Report", async () => {

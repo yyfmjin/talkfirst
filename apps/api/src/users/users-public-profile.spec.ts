@@ -103,4 +103,41 @@ describe("UsersService.getPublicProfile", () => {
     expect(profile.relationship.isSelf).toBe(true);
     expect(prisma.block.findFirst).not.toHaveBeenCalled();
   });
+
+  /**
+   * P0-04 的矩阵里唯一缺的一格：**本人**读自己的 PRIVATE 字段。
+   * `docs/P0-04-PRIVACY.md` §3 把它列为「唯一建议补的一处（未做）」——
+   * 当时只有 E2E 覆盖，API 级没有断言。
+   *
+   * 两个视角读的是同一行 fixture，所以能让结果不同的是视角本身，
+   * 而视角正是 `canViewField` 负责的那一处（BLOCK > SELF > CONNECTION > PUBLIC）。
+   * 顺带把它不是「连上了就能看」也钉住：stranger 在这里确实是 connected，PRIVATE 依旧不可见。
+   */
+  it("owner reads their own PRIVATE fields; a connected stranger reading the same row does not", async () => {
+    const prisma = makePrisma({
+      user: {
+        findUnique: jest.fn().mockResolvedValue(
+          makeUser({
+            bio: "only for me",
+            fieldVisibilities: [
+              { fieldKey: "bio", visibility: "PRIVATE" },
+              { fieldKey: "languages", visibility: "PRIVATE" },
+            ],
+          }),
+        ),
+      },
+    });
+    const service = new UsersService(prisma as never);
+
+    const own = await service.getPublicProfile("target-1", "target-1");
+    expect(own.relationship.isSelf).toBe(true);
+    expect(own.bio).toBe("only for me");
+    expect(own.languages.map((row) => row.code)).toEqual(["en"]);
+
+    // `makePrisma` 默认给出 connection，所以这里同时是「已连接但不是本人」。
+    const stranger = await service.getPublicProfile("target-1", "viewer-1");
+    expect(stranger.relationship).toEqual({ isSelf: false, isConnected: true });
+    expect(stranger.bio).toBeNull();
+    expect(stranger.languages).toEqual([]);
+  });
 });

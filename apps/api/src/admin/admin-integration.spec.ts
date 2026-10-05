@@ -1016,33 +1016,44 @@ describe("C5 §5 — User Detail ↔ the domain lists", () => {
     }
   });
 
-  it("39c. the content KPIs are exactly the MOMENT ∪ MESSAGE filters the reports list uses", async () => {
+  it("39c. the content KPIs are exactly the MOMENT ∪ COMMENT ∪ MESSAGE filters the reports list uses", async () => {
     const detail = await detailCalls();
     const moment = makePrisma();
     await new AdminService(moment.prisma).listReports({ targetType: "MOMENT" });
     const message = makePrisma();
     await new AdminService(message.prisma).listReports({ targetType: "MESSAGE" });
+    const comment = makePrisma();
+    await new AdminService(comment.prisma).listReports({ targetType: "COMMENT" });
     const user = makePrisma();
     await new AdminService(user.prisma).listReports({ targetType: "USER" });
 
     const momentArm = (firstWhere(moment.calls, "report", "count").momentId ?? {}) as object;
     const messageWhere = firstWhere(message.calls, "report", "count");
+    const commentWhere = firstWhere(comment.calls, "report", "count");
     const userWhere = firstWhere(user.calls, "report", "count");
 
     const contents = contentsOf(detail);
     expect(contents).toHaveLength(2);
 
     for (const where of contents) {
-      // Two arms, in the frozen priority: MOMENT first, MESSAGE second.
-      const [first, second] = where.OR as Array<Record<string, unknown>>;
+      // Three arms, in the frozen priority: MOMENT, COMMENT, then MESSAGE.
+      const [first, second, third] = where.OR as Array<Record<string, unknown>>;
       expect(first).toEqual({ momentId: momentArm });
-      expect(second).toEqual({ momentId: messageWhere.momentId, messageId: messageWhere.messageId });
+      expect(second).toEqual({ momentId: commentWhere.momentId, commentId: commentWhere.commentId });
+      expect(third).toEqual({
+        momentId: messageWhere.momentId,
+        commentId: messageWhere.commentId,
+        messageId: messageWhere.messageId,
+      });
       // And they partition: a person report, which is what `targetType=USER`
-      // selects, satisfies neither arm.
-      expect(userWhere).toEqual({ messageId: null, momentId: null });
-      // The second arm must pin `momentId: null`. Without it the OR would not be
-      // a partition and a row carrying both pointers would be counted twice.
+      // selects, satisfies none of the arms.
+      expect(userWhere).toEqual({ messageId: null, momentId: null, commentId: null });
+      // The later arms must pin the earlier pointers. Without it the OR would
+      // not be a partition and a row carrying several pointers would be counted
+      // more than once.
       expect(second.momentId).toBeNull();
+      expect(third.momentId).toBeNull();
+      expect(third.commentId).toBeNull();
     }
 
     // Direction is preserved: one content KPI is about the reportee, the other

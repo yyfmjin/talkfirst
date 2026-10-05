@@ -97,6 +97,8 @@ const TARGET_OPTIONS = [
   { value: "USER", label: "用户" },
   { value: "MESSAGE", label: "消息" },
   { value: "MOMENT", label: "动态" },
+  // C2 — 评论举报。值与 API 的 `targetType` 过滤参数一致（服务端就是按这个字符串拼 WHERE）。
+  { value: "COMMENT", label: "评论" },
 ];
 
 

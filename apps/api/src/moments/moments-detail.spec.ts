@@ -21,6 +21,9 @@ function makeMoment(overrides: Record<string, unknown> = {}) {
     createdAt: new Date("2026-09-19T00:00:00.000Z"),
     user: { id: AUTHOR, nickname: "Author", avatarUrl: null, countryCode: "CN", status: "ACTIVE" },
     likes: [],
+    // C4：投影现在还会读 `bookmarks`（当前浏览者有没有收藏过），所以固定 fixture 也得有这一项。
+    // 不补它会在投影处 TypeError —— 那不是断言失败，而是「形状变了两边没同步」。
+    bookmarks: [],
     ...overrides,
   };
 }
@@ -154,6 +157,8 @@ describe("MomentsService.getMoment", () => {
       likeCount: 0,
       commentCount: 2,
       liked: true,
+      // C4 新增字段：期望集里显式写出来，这样下次它再变会被看到。
+      bookmarked: false,
       source: "DEMO",
       isDemo: true,
     });

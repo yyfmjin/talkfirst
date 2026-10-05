@@ -78,7 +78,7 @@ TalkFirst/
 │  ├─ types/        共享类型
 │  └─ validation/   共享校验
 ├─ prisma/
-│  ├─ schema.prisma 单一 schema（771 行，PC-1.4 期间保持不动）
+│  ├─ schema.prisma 单一 schema（1455 行，2026-10-05 实测；随迁移增长，引用前请现测）
 │  ├─ migrations/   正式 migration 历史
 │  └─ seed.ts       本地种子数据
 ├─ scripts/         运维/冒烟脚本（db-check、phaseN-smoke 等）
@@ -151,8 +151,9 @@ THROTTLE_MULTIPLIER=100   # 本地跑 Playwright 必须，见下
 
 ### 5.1 规模
 
-- `prisma/schema.prisma`：**771 行**
-- **36 个 model**，**18 个 enum**
+- `prisma/schema.prisma`：**1455 行**（2026-10-05 实测）
+- **47 个 model**，**25 个 enum**（2026-10-05 实测；本行曾写 36 / 18，属 `DOC_DRIFT`）
+- 迁移历史共 **30** 个（`prisma/migrations/`，含 P0-02 的 username 迁移）
 - 单一 schema 文件，所有 app 共用
 
 ### 5.2 核心模型分组
@@ -386,30 +387,48 @@ oauth / clientSecret  social handle  isAdmin  status  ip  userAgent
 | Discover | 发现 + Say Hello | ✅ 完成 | `discover` 模块 + `connections` 模块，有 spec；隐私投影已闭环（见 7.7） |
 | Chat | 会话/消息/WebSocket | ✅ 完成 | REST + `chat.gateway.ts`，Socket.IO |
 | Exchange | 联系方式交换 | ✅ 完成 | `exchange` 模块，有 `exchange-privacy.spec.ts` |
-| Moments | 动态/点赞/评论 | ⚠️ 部分 | 有 feed/like/comment；**无详情页、无回复、无分页、无删除、不可举报** |
+| Moments | 动态/点赞/评论 | ✅ 完成 | feed/like/comment + **详情页**（`@Get(":id")` + `/moments/[id]`）· 回复（`parentId`）· 本人删除评论（PC-2.4）· 编辑/删除动态 · 举报 · 审核状态。**仍缺**：评论分页与评论举报（见 C2） |
 | Admin A / A+ | 管理端骨架 + RBAC | ✅ 完成 | JwtAuthGuard → AdminGuard → PermissionGuard + 审计日志 |
 | Admin B1–B5 | 仪表盘/用户/用户详情/举报 | ✅ 完成 | 有对应页面 + API + Playwright |
 | Admin C1–C5 | 连接/交换/拉黑/集成 | ✅ 完成 | 同上 |
-| Production P0 | HTTPS/Nginx/备份 | ⚠️ 未闭环 | 见 Production Readiness 审计；**生产状态 = UNKNOWN** |
+| Production P0 | HTTPS/Nginx/备份 | ⚠️ 未闭环 | 服务器侧未动（生产状态仍 = UNKNOWN）。**仓库侧能做的已做**：`deploy-pull.sh` 的启动关键校验、构建期基址守卫、G10 就绪探针 —— 见 `docs/P0-00-FIXES.md`（FIX-5/7/8）与 `docs/P0-00-BASELINE.md` §G |
 | PC-1.1 | 属性 schema 设计 | ✅ 完成 | `docs/architecture/PROFILE-ATTRIBUTE-SCHEMA-DESIGN.md` |
 | PC-1.2 | 属性 schema 迁移 | ✅ 完成 | migration `20260919050334_profile_attributes`，本地库已应用并双向 diff 为空 |
 | PC-1.3 | 属性 API | ✅ 完成 | `apps/api/src/users/profile-attributes.*`，有 spec + 418 行真实 HTTP 验证脚本全 PASS |
 | PC-1.4 | 属性/资料 UI | ✅ 完成 | Playwright **54/54**（desktop+phone）、真实 HTTP+PG **13/13**、Jest **683/683**、typecheck/lint/build 全通过；报告见 `docs/architecture/PC-1.4-PROFILE-UI-FINAL-RESULT.md` |
 
-### 8.1 已知产品缺口（来自 `docs/audit/`，仍有效）
+### 8.1 已知产品缺口（来自 `docs/audit/`）
 
-**P1（核心功能缺失）**
+> **2026-10-05 校准**：本节原来挂着多条「缺失」，而其中好几条在代码里**已经实现**。
+> 按本文开头的规则（「文档说 MISSING 但代码已有 → 标 `DOC_DRIFT`，以代码为准」），
+> 这里直接按代码实况重写，并在每条后面给出证据；仍未闭环的集中列在后面。
+> 待办编号沿用 `docs/P0-00-BASELINE.md` §C（C1…C13）。
 
-1. 帖子详情页 / `GET /moments/:id` 不存在
-2. 评论不完整：无回复、无分页、无删除、不可举报
-3. 内容举报缺失（`Report` 只支持 user + 可选 message）
-4. 通知闭环不完整（无独立页、无实时推送、多事件不发通知）
-5. 邮箱验证未强制 + `Math.random` 生成验证码 + 无 SMTP
-6. 社交平台同步是 **MOCK**（`seedDemoMoments()` 硬编码文案 + Unsplash 图 + `source: "DEMO"`）
-7. 消息已读/送达回执缺失
-8. 未实现「修改密码 / 忘记密码」找回流程
-9. 收藏（Bookmark）缺失
-10. Admin 无内容/评论管理能力
+**已闭环（曾经记为缺口）**
+
+1. ~~帖子详情页 / `GET /moments/:id` 不存在~~ → **已实现**：`moments.controller.ts` 的 `@Get(":id")`（`:417`）+ `apps/web/src/app/moments/[id]`。
+2. 评论：**回复**（`parentId`，PC-2.3.2）与**本人删除**（PC-2.4，`moments.controller.ts` 的注释写明了「更具体的路由要声明在 `@Delete(":id")` 之前」）**已实现**；评论分页与举报仍缺（→ C2）。
+3. ~~内容举报缺失（`Report` 只支持 user + 可选 message）~~ → **部分闭环**：`Report` 已有 `momentId` 与 `messageId` 两列，动态/聊天举报可用；**评论举报**仍缺（`Report` 没有 `commentId` → C2）。
+4. ~~通知闭环不完整（无独立页、多事件不发通知）~~ → **部分闭环**：`/notifications` 页 + `notifications` 模块（10 种类型、游标分页、全部已读）已在；**13 处**生产者在发通知（admin ×2、chat、connections ×2、exchange ×2、moments ×3、social-safety ×2、user-status）。**仍缺**：实时推送（`chat.gateway.ts` 里没有任何通知类 socket 事件）。
+5. ~~邮箱验证未强制 + `Math.random` 生成验证码 + 无 SMTP~~ → **已实现**：`ENFORCE_EMAIL_VERIFICATION` 策略（`auth/email-verification.policy.ts`）· 验证码走 `common/crypto.ts` 的 CSPRNG（生产代码里已无 `Math.random`，残留只在演示种子注释里）· `apps/api/src/mail/` 有真实 `smtp-mail.provider.ts`（另配 console / fake 两个 provider）。
+8. ~~未实现「修改密码 / 忘记密码」找回流程~~ → **已实现**：`/me/password` + 忘记密码/重置（P0-00 §B 的 Auth 行）。
+10. ~~Admin 无内容/评论管理能力~~ → **已闭环**：动态审核队列与举报复核已在；**评论**举报从 2026-10-05（C2）起也通了 —— 举报目标、审核侧标签/筛选/详情面板都已接（FIX-12）。
+11. ~~收藏（Bookmark）缺失~~ → **已实现**（2026-10-05，C4）：新建 `MomentBookmark` + `GET /moments/bookmarks`、`POST/DELETE /moments/:id/bookmark`，`/moments` 多了「收藏」标签，卡片与详情页各多一个收藏按钮。详见 `docs/P0-00-FIXES.md` FIX-10。
+12. ~~会话未读数~~ → **已实现**（2026-10-05，C3）：`ConversationMember.lastReadAt` + `POST /conversations/:id/read`。旧 `unreadCount` 是 `take: 5` 的副产品（从没打开过的会话最多显示 5，读完也不会归零），现在是真值；发送响应里那个名不符实的 `peerUnread`（算的是未读**通知**、零消费方）已删。**仍未做**：送达回执（「已发送/已送达」需要对方在线状态与投递记录，是另一个特性，不只是未读数）。详见 FIX-11。
+13. ~~评论分页 / 评论举报~~ → **已实现**（2026-10-05，C2）：评论分页 PC-2.4 就有；本轮补的是**举报** —— `Report.commentId` + `POST /reports` 的第三个目标、审核侧的 `COMMENT` 标签/筛选/详情面板，以及用户端「别人的评论 → 举报」入口。详见 FIX-12。
+
+**仍未闭环**
+
+- 送达回执（C3 的另一半：「已送达」需要对方的在线/投递记录，与本次的未读数不是同一件事）
+- 浏览器端 E2E 的既知失败（见 `docs/KNOWN-E2E-ISSUES.md`；按决定保留，不作为门禁）
+- ~~通知去重（C5）~~ → **已核实：无需机制**。口径由用户 2026-10-05 定为「**每次点赞都提醒**」，按 `(收件人, 类型, 目标)` 去重会把两个不同人的点赞合成一条，与它直接冲突；而 13 个生产者可分两类、都不产生重复投递（事件型以**新建行**为触发；状态型用**自消耗谓词 + 条件认领**）。结论与理由见 `docs/P0-00-FIXES.md` FIX-9，契约测试在 `apps/api/src/moments/moments-like-notifications.spec.ts`
+- 通知实时推送（无 socket 事件）
+- ~~话题页~~ → **已实现**（2026-10-05，C1 的一半）：`GET /moments/feed?topic=` + `GET /moments/topics`，动态页多了话题筛选 chip。详见 `docs/P0-00-FIXES.md` FIX-12
+- 成员搜索（C1 的另一半，2026-10-05 ✓ 已拆出；**待产品决定**：搜谁？按昵称/语言/兴趣？是否配额？）
+- 法律文件正文（C6，需法务/产品文本）
+- 移动端可验证性（C10，需真机/模拟器）
+- 会话状态转换矩阵 / 日期时区（C12，需产品确认）
+- 第 6 条（社交平台同步的演示内容）**本次未复核**，保持原结论
 
 **P2**：计数漂移、SSO 占位、`login`/`refresh` 对 DISABLED/SUSPENDED 门禁不一致、
 翻译降级为 `local-demo`、WS 单机内存态、Admin audit 页缺 loading/empty、
