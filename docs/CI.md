@@ -113,8 +113,9 @@ jest 阶段红 = 环境变量或库状态）；② 是哪个套件（`FAIL` 行�
 |---|---|
 | 工作流已被 GitHub 认到 | `actions/workflows` 里有 `id 375330121` / `name CI` / `path .github/workflows/ci.yml` / **`state: active`** |
 | 远端文件与本机一致 | 提交 `d2e33fb` 上的远端 `ci.yml` 与本地 `diff` 为空（同为 4719 字节）—— **不是「本地改了没推」** |
-| 运行 1（push 触发） | run `37300805528`，`2026-10-05T11:06:32Z`，`conclusion = startup_failure`（运行根本没起来） |
-| 运行 2（手动 `workflow_dispatch`） | run `37361032602`，`2026-10-05T19:06:47Z`，`conclusion = failure`；两个作业 `checks`（id `111935404816`，**7 秒**）与 `api-tests`（id `111935404724`，**11 秒**）的 `steps` 都是**空数组** |
+| 运行 A（push `d2e33fb`） | run `37300805528`（`run_number 1`），`2026-10-05T11:06:32Z`，`conclusion = startup_failure`（运行根本没起来） |
+| 运行 B（手动 `workflow_dispatch`，`d2e33fb`） | run `37361032602`（`run_number 1`），`2026-10-05T19:06:47Z`，`conclusion = failure`；两个作业 `checks`（id `111935404816`，**7 秒**）与 `api-tests`（id `111935404724`，**11 秒**）的 `steps` 都是**空数组** |
+| 运行 C（push `e546005`，即本文档那次提交） | run `37362348075`（`run_number 2`），`2026-10-05T19:17:28Z`；作业 `api-tests`（id `111939718259`）7 秒失败、`steps` 同样为空。**因此这不是偶发**：与运行 B 隔着 11 分钟、另一种触发方式、另一个提交，注释一字不变 |
 | 失败原因（check-run 注释原文） | `The job was not started because your account is locked due to a billing issue.` |
 
 **关键读法：一个步骤都没跑。** 7 / 11 秒连 `npm ci` 都装不完，`steps: []` 也说明事情发生在下发 runner **之前**。
