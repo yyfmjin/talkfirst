@@ -82,7 +82,7 @@ P0-00-FIXES 的结论是「工程门禁现在是真的绿了，所以可以安�
 
 | 项 | 说明 |
 |---|---|
-| **没在真实 GitHub runner 上跑过** | 本机没有 runner。已做的是：YAML 用 `js-yaml` 解析通过并逐项核对结构（2 个作业、9 / 7 个步骤、service 与 env 键），命令逐条本机实测。**首次推上去仍可能因 runner 环境差异而红** |
+| **没在真实 GitHub runner 上跑过** | 本机没有 runner。已做的是：YAML 用 `js-yaml` 解析通过并逐项核对结构（2 个作业、9 / 7 个步骤、service 与 env 键），命令逐条本机实测。**首次真实运行的结果见 §6 —— 两个作业连第一步都没进，所以「runner 环境差异」这一项至今仍未被暴露，仍然未知** |
 | `npm ci` 在 runner 上对 `apps/mobile` | 该 workspace 带 expo 依赖，安装耗时与是否成功未在 runner 上验证（本机 node_modules 是既有的） |
 | 无 `.env` 时的环境变量完整性 | CI 里 job `env` 是唯一来源。本机所有实验都在「有 `.env`」的前提下做的，所以「还缺哪个键」这类问题只能由首次运行暴露。若红，先看是哪一步、哪个套件 |
 
@@ -102,3 +102,39 @@ jest 阶段红 = 环境变量或库状态）；② 是哪个套件（`FAIL` 行�
   没有可跑的东西。它的 `typecheck` / `lint` 如果有脚本，会被 `--if-present` 自动带上。
 - **doc-only 的 push 跳过 CI**：考虑过（`paths-ignore: docs/**`），没做。
   这个仓库文档提交很频繁，但**先让它跑起来**比省那点 CI 分钟更重要。
+
+---
+
+## 6. 首次真实运行（2026-10-05）：工作流认得，作业起不来 —— 原因在账号
+
+推上去之后，GitHub 侧的状态是**核实过的**（仓库是 public，所以下面这些都能匿名读）：
+
+| 事实 | 证据 |
+|---|---|
+| 工作流已被 GitHub 认到 | `actions/workflows` 里有 `id 375330121` / `name CI` / `path .github/workflows/ci.yml` / **`state: active`** |
+| 远端文件与本机一致 | 提交 `d2e33fb` 上的远端 `ci.yml` 与本地 `diff` 为空（同为 4719 字节）—— **不是「本地改了没推」** |
+| 运行 1（push 触发） | run `37300805528`，`2026-10-05T11:06:32Z`，`conclusion = startup_failure`（运行根本没起来） |
+| 运行 2（手动 `workflow_dispatch`） | run `37361032602`，`2026-10-05T19:06:47Z`，`conclusion = failure`；两个作业 `checks`（id `111935404816`，**7 秒**）与 `api-tests`（id `111935404724`，**11 秒**）的 `steps` 都是**空数组** |
+| 失败原因（check-run 注释原文） | `The job was not started because your account is locked due to a billing issue.` |
+
+**关键读法：一个步骤都没跑。** 7 / 11 秒连 `npm ci` 都装不完，`steps: []` 也说明事情发生在下发 runner **之前**。
+所以这次红**不是** YAML 的问题、**不是**命令的问题、也**不是**「runner 环境差异」——
+是**账号被账单问题锁住，GitHub 拒绝为它启动任何作业**。工作流本身不需要改。
+
+恢复要做的都在账号侧（需要你本人操作）：
+
+1. GitHub → Settings → **Billing and plans**：结清未付账单 / 更新支付方式。
+   GitHub Free 本身不收费，所以这多半是历史欠款或已失效的支付方式，而不是「免费额度用超了」。
+2. 解锁后**不需要动任何代码**：在 Actions 页面 **Re-run all jobs**，或再触发一次
+   `workflow_dispatch`，就能拿到第一次「真的跑过」的结果。
+3. 在此之前，§4 里剩下的两条（runner 上 `npm ci` 对 `apps/mobile`、无 `.env` 时的环境变量完整性）
+   **仍然无法验证** —— 它们只能由第一次真正执行来暴露。
+
+另外两条附带信息，都来自 GitHub 自己：
+
+- 两个 check-run 各带一条 notice：`The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026.`
+  （`actions/runner-images#14748`）。这不是失败，但 2026-10-19 之后这条工作流的 runner 镜像会换代，
+  届时值得回头看一次「首次真跑」的结果。
+- 作业日志接口（`/actions/jobs/{id}/logs`）**匿名取不到**，返回
+  `403 Must have admin rights to Repository`。所以上面那条结论是从 check-run 的 **annotations** 拿到的，
+  不是推测。以后再查同类问题，走 `commits/{sha}/check-runs` → `check-runs/{id}/annotations`。
