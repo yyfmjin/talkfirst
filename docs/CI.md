@@ -139,3 +139,41 @@ jest 阶段红 = 环境变量或库状态）；② 是哪个套件（`FAIL` 行�
 - 作业日志接口（`/actions/jobs/{id}/logs`）**匿名取不到**，返回
   `403 Must have admin rights to Repository`。所以上面那条结论是从 check-run 的 **annotations** 拿到的，
   不是推测。以后再查同类问题，走 `commits/{sha}/check-runs` → `check-runs/{id}/annotations`。
+
+---
+
+## 7. 账单锁期间的替代：本机 `npm run gate`
+
+CI 跑不起来（§6），但门禁不必跟着消失：**同样的那几步已经收进根 `package.json` 的 `gate` 脚本**，
+顺序与工作流一致（typecheck → lint → web 静态 → admin 静态 → 契约 → api 单测）。
+
+```
+npm run gate
+```
+
+跑的就是 CI 里那几条命令，只少两步 —— 不做 `npm ci`、不做 `prisma:generate`。
+理由是那两步的存在前提在 CI（`npm ci` 会清掉生成的 client），本机 `node_modules` 一直是现成的。
+**这两个步骤因此仍然只在 CI 里验证**，见 §4 最后两条。
+
+| 步骤 | 命令 | 实测（2026-10-06 本机） |
+|---|---|---|
+| 类型检查 | `npm run typecheck`（7 个 workspace） | exit 0 |
+| lint | `npm run lint` | exit 0 |
+| web 静态测试 | `npm run test:static -w @talkfirst/web` | **16 pass / 0 fail** |
+| admin 静态测试 | `npm run test:static -w @talkfirst/admin` | **28 pass / 0 fail** |
+| 静态契约 | `npm run test:contracts -w @talkfirst/web` | 80 源文件 / 93 主题色 / 102 testids；22 个 tf 组件无未声明 props |
+| api 全量单测 | `npm test -w @talkfirst/api` | **92 suites / 1698 tests 全绿（62.4s）** |
+
+整条命令 **exit 0**。（§3 记的是探针库上的 88 套件 / 1651 用例，数字变大是那之后又补了用例。）
+
+三条随时会踩的：
+
+- **api 那一步要真库**（`.env` 的 `DATABASE_URL`，本机 `localhost:5433`）。库没起时它**挂住不退出**，
+  与 §2 第 6 条是同一个坑 —— 先 `npx prisma migrate status` 确认 schema up to date 再跑。
+- **本机 5433 是谁在提供**：是 Windows 服务 `postgresql-x64-18`（原生 PostgreSQL 18，开机自启），
+  **不是** compose 容器 —— `docker info` 连不上 `dockerDesktopLinuxEngine`，而整套单测照样全绿。
+  但 `docker-compose.yml` 的 postgres 用的是**同一个** `POSTGRES_PORT=5433`，**两者互斥**：
+  Docker 一启动再 `npm run db:up` 就会撞端口。所以**本地跑 gate 不需要 Docker**；
+  若以后要改成「容器提供测试库」，得先把其中一个端口挪开（属于环境决定，不在这套检查的范围内）。
+- 日志里会出现 `database is down`、`audit table is gone` 这类 **ERROR**，那是**故意构造失败场景的用例在打日志**，
+  不是失败在发生。判据只有两个：最后一行 `Tests: ... passed` 和整条命令的退出码。
