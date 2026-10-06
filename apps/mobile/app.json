@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#6B7CFF"
+      "backgroundColor": "#3B82F6"
     },
     "ios": {
       "supportsTablet": true,
@@ -21,7 +21,7 @@
       "package": "com.talkfirst.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#6B7CFF"
+        "backgroundColor": "#3B82F6"
       },
       "edgeToEdgeEnabled": true
     },
