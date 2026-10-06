@@ -277,3 +277,29 @@ TRUST_PROXY=2 pm2 restart talkfirst-api --update-env   # 这才写进去
 
 这两段步骤与 `scripts/backup-db.sh` 的文件头写的是同一套：
 放在两处是因为**部署时**最先看到的往往是本文档，而**真要恢复时**最先看到的会是那个脚本。
+
+## 10. 后续部署记录
+
+每次部署在这里加一节 —— 只记**可核对的事实**（提交 / 迁移 / 探针结果），不记过程。
+
+### 10.1 送花（虚拟礼物），2026-10-06
+
+| 项 | 值 |
+|---|---|
+| 提交 | `f45cc84 → c6ac2cc`（1 个提交：`feat(gifts)`） |
+| 迁移前备份 | `~/talkfirst-backups/talkfirst-20261006-1714.sql.gz`（136K） |
+| 部署方式 | 服务器后台 `bash scripts/deploy-pull.sh`，日志 `~/deploy-gifts.log`，约 4 分钟 |
+| 迁移 | `20261006190000_user_flowers` 应用成功（纯加法：新表 + `User.flowerCount` 默认 0） |
+| 重启 | pm2 `reload all` → talkfirst-api / -web / -admin 全部 online |
+| 就绪探针 | 本机 `/health/ready` → **200**（`database: up`，2ms）；公网 → **200** |
+| 新端点 | `POST /api/v1/users/<uuid>/flowers` 未登录 → **401**（对照：不存在的路由 → **404**） |
+| 既有页面 | `talkfirst.ccwu.cc` → 200；`admin.talkfirst.ccwu.cc/login` → 200 |
+
+**两个坑（这次踩到的，下次直接省掉）**：
+
+1. 服务器上 **`pm2` 不在非交互式 ssh 的 PATH 里** —— 它在
+   `~/.nvm/versions/node/v22.23.3/bin/`。后台跑 `deploy-pull.sh` 前要
+   `export PATH=/home/ubuntu/.nvm/versions/node/v22.23.3/bin:$PATH`，
+   否则脚本第 5 步找不到 pm2（会走到它自己的降级分支）。
+2. 本机 `~/.ssh/talkfirst_ed25519` 的公钥注释是 `github-talkfirst`（为 GitHub 准备的），
+   **不是服务器登录密钥**；登服务器用默认的 `~/.ssh/id_ed25519`（`ubuntu@18.216.101.31`）。
