@@ -1,3 +1,4 @@
+import { Logger } from "@nestjs/common";
 import {
   MailConfigurationError,
   assertMailConfigurationForProduction,
@@ -83,6 +84,43 @@ describe("assertMailConfigurationForProduction（SEC-005 启动保护）", () =>
     expect(() =>
       assertMailConfigurationForProduction({ ...COMPLETE_SMTP, MAIL_PROVIDER: "console" }),
     ).toThrow(MailConfigurationError);
+  });
+
+  /**
+   * 2026-10-06 事故：`.env` 写的是 `MAIL_PROVIDER=console`、`SMTP_*` 全空，
+   * 而 `ENFORCE_EMAIL_VERIFICATION=false` —— 于是启动检查直接放行，
+   * 注册验证码只写日志、一封信不发，注册页却说「已发送到你的邮箱」。
+   * 这两条钉住修法：**同一种配置现在必须出声**，而配全了就不该再叫。
+   */
+  it("生产 + 不强制验证 + console 通道 -> 不拦启动，但必须告警", () => {
+    const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+    try {
+      expect(() =>
+        assertMailConfigurationForProduction({
+          NODE_ENV: "production",
+          ENFORCE_EMAIL_VERIFICATION: "false",
+          MAIL_PROVIDER: "console",
+        }),
+      ).not.toThrow();
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(String(warn.mock.calls[0][0])).toContain("不会真正送达");
+      expect(String(warn.mock.calls[0][0])).toContain("console");
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("生产 + 不强制验证 + SMTP 完整 -> 不告警", () => {
+    const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+    try {
+      assertMailConfigurationForProduction({
+        ...COMPLETE_SMTP,
+        ENFORCE_EMAIL_VERIFICATION: "false",
+      });
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
   });
 });
 

@@ -170,6 +170,39 @@ log "校验交付构建的前端基址"
 node scripts/check-build-env.mjs --socket || die "前端基址不能用于交付（原因见上）。改成对外 https 地址后重跑；
   确实要在内网 http 下交付时才用 ALLOW_INSECURE_API_BASE_URL=true 降级为警告。"
 
+# FIX (2026-10-06)：生产上 `MAIL_PROVIDER=console` + SMTP 四项全空时，
+# 注册/找回密码的验证码只写日志、**一封信不发**，而注册页照旧显示
+# 「我们已发送验证码到你的邮箱」—— 成员一直在等一封不存在的信。
+# API 启动时现在会为此告警（`mail.config.ts` 的 `warnIfVerificationMailIsUndeliverable`），
+# 但告警埋在三进程的日志里容易被忽略，所以在部署阶段先喊一次。
+#
+# 为什么不一概 die：`ENFORCE_EMAIL_VERIFICATION` 没开时邮件不是关键路径，
+# 因为发不出信就不让部署属于过度拦截。真正致命的那种组合（强制验证 + 发不出信）
+# API 自己也会拒绝启动，这里只是把它提前到部署阶段。
+MAIL_KIND_V=$(env_value MAIL_PROVIDER)
+MAIL_KIND_V=$(printf '%s' "$MAIL_KIND_V" | tr '[:upper:]' '[:lower:]')
+SMTP_HOST_V=$(env_value SMTP_HOST)
+SMTP_USER_V=$(env_value SMTP_USER)
+SMTP_PASS_V=$(env_value SMTP_PASSWORD)
+SMTP_FROM_V=$(env_value SMTP_FROM)
+SMTP_READY=不完整
+if [ -n "$SMTP_HOST_V" ] && [ -n "$SMTP_USER_V" ] && [ -n "$SMTP_PASS_V" ] && [ -n "$SMTP_FROM_V" ]; then
+  SMTP_READY=已配置
+fi
+
+if [ "$MAIL_KIND_V" != "smtp" ] || [ "$SMTP_READY" != "已配置" ]; then
+  if [ "$(env_value ENFORCE_EMAIL_VERIFICATION)" = "true" ]; then
+    die "ENFORCE_EMAIL_VERIFICATION=true，但邮件发不出去（MAIL_PROVIDER=${MAIL_KIND_V:-未设置}，SMTP ${SMTP_READY}）。
+  API 启动时会以「强制验证却发不出信」为由拒绝启动。先配好：MAIL_PROVIDER=smtp + SMTP_HOST / SMTP_USER / SMTP_PASSWORD / SMTP_FROM。"
+  fi
+  warn "邮件发不出去（MAIL_PROVIDER=${MAIL_KIND_V:-未设置}，SMTP ${SMTP_READY}）：
+    注册与找回密码的验证码只会写进 API 日志，成员收不到。
+    要真正送达：MAIL_PROVIDER=smtp + SMTP_HOST / SMTP_USER / SMTP_PASSWORD / SMTP_FROM
+    （QQ 邮箱：smtp.qq.com:465 + 授权码；用自己邮箱发 QQ 收件人，送达率最好）。"
+else
+  echo "  邮件通道=SMTP（$SMTP_HOST_V），验证码会真正发出"
+fi
+
 # ---------------------------------------------------------------- 3. 依赖与构建
 if [ "$RUN_INSTALL" -eq 1 ]; then
   log "安装依赖（npm ci）"
