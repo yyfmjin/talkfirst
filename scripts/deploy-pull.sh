@@ -183,6 +183,22 @@ else
   log "跳过依赖安装（--skip-install）"
 fi
 
+# FIX (2026-10-06)：没有本地 prisma 时**直接停下**，不要交给 npx 「自己解决」。
+# 2026-10-06 在临时克隆（无 node_modules）上实测到两种后果，第二种比原问题严重得多：
+#   1. `npx prisma` 可能抓到最新大版本（实测 7.10.0）。Prisma 7 已移除 schema 里的
+#      `directUrl`，于是报错指向 `prisma/schema.prisma`，看着像「schema 写错了」；
+#      而同一条命令另一次又抓到 6.19.3 —— 抓哪个大版本看 npx 的缓存，不稳定。
+#   2. 无论哪个版本，npm 都会把依赖**装进这个仓库并改写 package.json / package-lock.json**：
+#      实测 `"prisma": "^6.6.0"` 与 `"@prisma/client": "^6.6.0"` 被就地改成 `"^6.19.3"`
+#      （抓到 7.x 时就会写成 `^7.10.0`）。也就是说：一次「只看看环境对不对」的部署调用，
+#      会悄悄改掉两个受版本控制的文件，而这比它要解决的问题严重得多。
+if [ ! -e node_modules/.bin/prisma ] && [ ! -e node_modules/.bin/prisma.cmd ]; then
+  die "node_modules/.bin 下没有 prisma —— 这台机器还没装依赖，而这一步不能交给 npx 兜底：
+  它会顺手把依赖装进仓库，并改写 package.json / package-lock.json（实测会把
+  \"prisma\": \"^6.6.0\" 就地改成抓到的那个版本，包括 7.x）。
+  先跑一次完整的部署（即 npm ci），或在服务器上补跑 npm ci 后再来。"
+fi
+
 # 根 package.json 没有 postinstall，npm ci 之后 Prisma Client 是不存在的；
 # 不生成它，下面的 api 构建会直接失败。
 log "生成 Prisma Client"

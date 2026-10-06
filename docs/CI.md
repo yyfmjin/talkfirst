@@ -177,3 +177,15 @@ npm run gate
   若以后要改成「容器提供测试库」，得先把其中一个端口挪开（属于环境决定，不在这套检查的范围内）。
 - 日志里会出现 `database is down`、`audit table is gone` 这类 **ERROR**，那是**故意构造失败场景的用例在打日志**，
   不是失败在发生。判据只有两个：最后一行 `Tests: ... passed` 和整条命令的退出码。
+
+仓库里还有**另一个更早的总检查**，别把两者弄混：
+
+| | `npm run gate`（本文） | `node scripts/verify.mjs`（2026-10-02） |
+|---|---|---|
+| 范围 | 与 `.github/workflows/ci.yml` 逐条对应 | 在 gate 的重叠部分之外**多跑三个 build** |
+| 失败行为 | `&&` 串联，**第一步红就停** | 不提前停，一次看完所有坏掉的东西 |
+| 产出 | 只有 stdout | 另写 `scripts/verify-report.txt` 与 `verify-status.txt` |
+
+两者**都**需要数据库：`verify.mjs` 的 `tests` 步就是 `npm run test:static`，而 api 的 `test:static`
+就是整套 jest（含真打库的 HTTP 套件）。它注释里原写的「默认步骤不需要数据库」已于 2026-10-06 更正 ——
+那句话是从 `grep "new PrismaClient" apps/api` 无命中推出来的，而那条指令至今仍无命中（PrismaService 在应用内部构造 client，不由 spec 直调）。

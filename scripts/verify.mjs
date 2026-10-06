@@ -30,12 +30,23 @@
  *
  * Exit code: 0 if every step passed, 1 otherwise.
  *
- * ## No database is needed for the default steps
+ * ## A database IS needed for the default steps（2026-10-06 更正）
  *
- * Verified rather than assumed: `grep "new PrismaClient" apps/api` returns
- * nothing, so the API suite runs entirely against mocked Prisma, and the web and
- * admin `node:test` files only read source text. Postgres is required ONLY for
- * `--e2e`, whose Playwright fixtures connect to localhost:5433 directly.
+ * The paragraph that used to sit here said no database was needed, on the grounds
+ * that `grep "new PrismaClient" apps/api` returns nothing. That grep still returns
+ * nothing — but the conclusion drawn from it was wrong: the API suite no longer
+ * runs "entirely against mocked Prisma". `src/auth/oauth/oauth-flow-http.spec.ts`
+ * boots a real Nest application (`moduleRef.createNestApplication()`) and talks to
+ * a real PostgreSQL, and the whole `apps/api` tier is a single `jest` run, so the
+ * `tests` step below inherits that requirement.
+ *
+ * Measured, not assumed: with an unreachable database that suite does not fail
+ * fast — it **hangs** (2026-10-05, a bogus DB address, 900s without returning).
+ * That is why `.github/workflows/ci.yml` provisions a `postgres:16` service and
+ * uses `prisma migrate deploy` as its liveness probe.
+ *
+ * Postgres is required for `tests` as well as for `--e2e`, whose Playwright
+ * fixtures connect to localhost:5433 directly.
  *
  * That is also why the unit tier is `test:static` and not `test`: admin's `test`
  * script chains `playwright test`, which would pull a database requirement into
@@ -90,7 +101,7 @@ const STEPS = [
     id: "tests",
     label: "unit tests: api jest plus web and admin smoke",
     shell: "npm run test:static",
-    hint: "No database required. If this fails with a Prisma connection error, that is a bug in this script, not your setup.",
+    hint: "需要数据库（2026-10-06 更正）：`test:static` 在 api 上就是 `jest`（整套单测），其中 src/auth/oauth/oauth-flow-http.spec.ts 会真的启动应用并打真库。库不可达时它**挂住不退出**（实测 900s 未返回），所以看到「卡住不动」先查数据库，而不是查脚本。先跑 npx prisma migrate status。",
   },
   { id: "build", label: "build web", shell: "npm run build -w @talkfirst/web" },
   { id: "build", label: "build api", shell: "npm run build -w @talkfirst/api" },
