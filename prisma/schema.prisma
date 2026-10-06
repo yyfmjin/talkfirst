@@ -1303,10 +1303,26 @@ model Notification {
   title     String    @db.VarChar(128)
   body      String?   @db.VarChar(500)
   data      String?   @db.VarChar(2000)
+  /**
+   * 同一条被合并了多少次（目前只用于聊天消息）。
+   *
+   * 未读期间同一个会话只保留一行，后续消息 = `count + 1` + 正文换成最新一条，
+   * 而不是插入新行。详见 `NotificationService.notifyNewMessage`。
+   */
+  count     Int       @default(1)
+  /**
+   * 「哪几行应该合并成一行」的判据（目前是 `NEW_MESSAGE:<会话 id>`）。
+   *
+   * 为什么单独一列而不塞进 `data`：`data` 是字符串，用 `contains` 匹配会话 id
+   * 会误命中别的字段，而且没法建索引。空值 = 不参与合并的类型。
+   */
+  dedupeKey String?   @db.VarChar(120)
   readAt    DateTime?
   createdAt DateTime  @default(now())
 
   @@index([userId, createdAt])
+  /// 合并时的查找：某人的、某会话的、还没读的那一行。
+  @@index([userId, dedupeKey])
 }
 
 model ExchangeRequest {

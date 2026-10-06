@@ -51,6 +51,12 @@ export const NOTIFICATION_ITEM_SELECT = {
   title: true,
   body: true,
   data: true,
+  /**
+   * 合并了几条（聊天消息）。客户端用它显示「3 条新消息」。
+   * `dedupeKey` 故意**不**在这里：那是内部判据，对客户端没有意义，
+   * 与本注释上面的原则一致（不因为模型里多了列就跟着往外发）。
+   */
+  count: true,
   readAt: true,
   createdAt: true,
 } as const;

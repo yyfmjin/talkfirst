@@ -230,6 +230,10 @@ export class SocialSafetyController {
       data: { lastReadAt },
     });
 
+    // 读完会话 → 它的未读消息通知一并清掉。这是「未读期间只占一行」的另一半：
+    // 只合并不清，用户会看到「12 条新消息」永远挂在那里。
+    await this.notificationService.markConversationMessageNotificationsRead(user.id, id);
+
     return { success: true as const, data: { conversationId: id, lastReadAt, unreadCount: 0 } };
   }
 
@@ -344,18 +348,12 @@ export class SocialSafetyController {
     }
 
     if (peerId) {
-      await this.notificationService.notify({
+      await this.notificationService.notifyNewMessage({
         userId: peerId,
-        type: "NEW_MESSAGE",
+        actorId: user.id,
+        conversationId: id,
         title: "New message",
         body: dto.content.trim().slice(0, 120),
-        data: {
-          actorId: user.id,
-          targetType: "CONVERSATION",
-          targetId: id,
-          conversationId: id,
-          messageId: message.id,
-        },
       });
     }
 
@@ -413,18 +411,12 @@ export class SocialSafetyController {
       return created;
     });
     if (peerId) {
-      await this.notificationService.notify({
+      await this.notificationService.notifyNewMessage({
         userId: peerId,
-        type: "NEW_MESSAGE",
+        actorId: user.id,
+        conversationId: id,
         title: "New image",
         body: "对方发来一张图片",
-        data: {
-          actorId: user.id,
-          targetType: "CONVERSATION",
-          targetId: id,
-          conversationId: id,
-          messageId: message.id,
-        },
       });
     }
     return { success: true as const, data: message };

@@ -73,6 +73,8 @@ export type NotificationRecord = {
   title: string;
   body: string | null;
   data: string | null;
+  /** 合并了几条（目前只有聊天消息会 > 1）：未读期间同一会话只占一行。 */
+  count: number;
   readAt: string | null;
   createdAt: string;
 };

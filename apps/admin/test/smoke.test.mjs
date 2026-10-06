@@ -1187,6 +1187,9 @@ test("phase C5: no migration was added and the schema gained no model", () => {
     // 2026-10-06 — 送花（虚拟礼物）：`UserFlower` 表 + `User.flowerCount` 冗余计数。
     // 纯加法，既有行的 `flowerCount` 一律为 0。
     "20261006190000_user_flowers",
+    // 2026-10-06 — 通知合并：`Notification.count` + `dedupeKey`（+ 索引）。
+    // 纯加法：既有行 `count` 默认 1、`dedupeKey` 为空（空 = 不参与合并）。
+    "20261006230000_notification_message_aggregate",
   ];
   assert.deepEqual(
     migrations.slice(C5_BASELINE.length),

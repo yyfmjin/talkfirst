@@ -74,6 +74,11 @@ export type NotificationRecord = {
   body: string | null;
   /** A JSON string, or null on legacy rows. Never parsed by the API. */
   data: string | null;
+  /**
+   * 合并了几条（目前只有聊天消息会 > 1）。
+   * 服务端在未读期间把同一会话的消息并成一行，这里用来显示「3 条」。
+   */
+  count: number;
   readAt: string | null;
   createdAt: string;
 };

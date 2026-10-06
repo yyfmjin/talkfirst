@@ -94,6 +94,118 @@ export class NotificationService {
   }
 
   /**
+   * 聊天消息专用：**未读期间同一个会话只占一行**，后来的消息并进去。
+   *
+   * 需求（2026-10-06）：同一个人连发三条消息，收件人收到三条通知。
+   * 线上实测那三条是 21:04:15 / 21:04:35 / 21:04:42，其中两条来自同一人。
+   *
+   * 为什么不给 `notify` 加开关了事：`MOMENT_LIKE` 那类已被契约钉死
+   * 「每次都要提醒一次」（见 `notifications-api.spec.ts` 的 C5 用例），
+   * 改了 `notify` 就会静默破坏那条契约。合并规则只属于消息。
+   *
+   * 查找条件里的 `readAt: null` 是关键的：**读完之后再来消息应当是新的一条**。
+   * 若把已读那条改活，用户就看不出这是新消息。
+   *
+   * 顺带把 `createdAt` 推到最新一条：列表按时间倒序，合并后应该浮到最上面。
+   */
+  async notifyNewMessage(input: {
+    userId: string;
+    actorId: string;
+    conversationId: string;
+    title: string;
+    body: string;
+  }): Promise<void> {
+    try {
+      if (!input.userId) {
+        this.logger.warn("notification skipped: missing recipient userId");
+        return;
+      }
+      // 自己发的消息不必提醒自己（与 `notify` 同一条规则）。
+      if (input.actorId === input.userId) return;
+
+      const dedupeKey = messageDedupeKey(input.conversationId);
+      const title = truncate(input.title, NOTIFICATION_LIMITS.title);
+      const body = truncate(input.body, NOTIFICATION_LIMITS.body);
+      const data: NotificationData = {
+        actorId: input.actorId,
+        targetType: "CONVERSATION",
+        targetId: input.conversationId,
+        conversationId: input.conversationId,
+      };
+
+      const existing = await this.prisma.notification.findFirst({
+        where: { userId: input.userId, type: "NEW_MESSAGE", dedupeKey, readAt: null },
+        orderBy: { createdAt: "desc" },
+        select: { id: true },
+      });
+
+      if (existing) {
+        await this.prisma.notification.update({
+          where: { id: existing.id },
+          data: {
+            title,
+            body,
+            data: this.encodeData(data),
+            count: { increment: 1 },
+            createdAt: new Date(),
+          },
+        });
+        return;
+      }
+
+      await this.prisma.notification.create({
+        data: {
+          userId: input.userId,
+          type: "NEW_MESSAGE",
+          title,
+          body,
+          data: this.encodeData(data),
+          count: 1,
+          dedupeKey,
+        },
+      });
+    } catch (error) {
+      this.logger.warn(
+        `notification not delivered (NEW_MESSAGE): ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  /**
+   * 会话被读完时，把它的未读消息通知标为已读 —— 合并的另一半。
+   *
+   * 不做这一步，合并会变成新的麻烦：用户明明看过了，那条通知还挂着，
+   * 而且下一条消息会让计数继续涨（“12 条新消息”）。
+   *
+   * 为什么放在写入方而不是读侧服务：合并的不变式是「未读期间只有一行」，
+   * 而「读完了」恰好是这条不变式的另一半；两半分住两个模块，早晚会有一半忘了跟上。
+   *
+   * 幂等：只改 `readAt: null` 的行，重复调用结果为 0。
+   */
+  async markConversationMessageNotificationsRead(
+    userId: string,
+    conversationId: string,
+  ): Promise<number> {
+    try {
+      const result = await this.prisma.notification.updateMany({
+        where: {
+          userId,
+          type: "NEW_MESSAGE",
+          dedupeKey: messageDedupeKey(conversationId),
+          readAt: null,
+        },
+        data: { readAt: new Date() },
+      });
+      return result.count;
+    } catch (error) {
+      this.logger.warn(
+        `notification read-marking failed (NEW_MESSAGE): ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return 0;
+    }
+  }
+
+  /**
    * Serializes the envelope, shedding optional extras until it fits the column.
    * Returns `null` when the payload carries nothing worth storing.
    */
@@ -152,4 +264,14 @@ export class NotificationService {
     );
     return null;
   }
+}
+
+/**
+ * 参与合并的通知行的键。
+ *
+ * 带会话 id 就够：同一个人在不同会话里发的消息是两件事，不该并成一条。
+ * 以类型开头是为了将来万一有别的类型也用这套合并时，不会跟消息的键撞上。
+ */
+export function messageDedupeKey(conversationId: string): string {
+  return `NEW_MESSAGE:${conversationId}`;
 }

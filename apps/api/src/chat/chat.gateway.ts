@@ -263,18 +263,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(this.conversationRoom(payload.conversationId)).emit("message.new", event);
 
     if (peerId) {
-      await this.notifications.notify({
+      await this.notifications.notifyNewMessage({
         userId: peerId,
-        type: "NEW_MESSAGE",
+        actorId: user.id,
+        conversationId: payload.conversationId,
         title: "New message",
         body: content.slice(0, 120),
-        data: {
-          actorId: user.id,
-          targetType: "CONVERSATION",
-          targetId: payload.conversationId,
-          conversationId: payload.conversationId,
-          messageId: message.id,
-        },
       });
     }
   }

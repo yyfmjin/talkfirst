@@ -225,7 +225,10 @@ function NotificationRow({
       accessibilityLabel={unread ? `未读：${item.title}` : item.title}
     >
       <View style={styles.rowTop}>
-        <Text style={styles.typeLabel}>{TYPE_LABELS[item.type] ?? "通知"}</Text>
+        <Text style={styles.typeLabel}>
+          {TYPE_LABELS[item.type] ?? "通知"}
+          {item.count > 1 ? ` · ${item.count} 条` : ""}
+        </Text>
         <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
       </View>
       <Text style={styles.rowTitle}>{item.title}</Text>
