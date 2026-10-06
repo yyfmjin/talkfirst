@@ -12,6 +12,17 @@ type AdminIdentity = {
   legacy: boolean;
 };
 
+/**
+ * Same convention as `apps/web/src/app/admin/page.tsx`: which host the console
+ * lives on is build-time configuration, not a literal. It used to be the string
+ * "http://localhost:3001" here, so production had to keep a local edit on the
+ * server to show the real domain — and that local edit made the working tree
+ * dirty, which `scripts/deploy-pull.sh` refuses to deploy. Edit it in `.env`
+ * (NEXT_PUBLIC_ADMIN_URL) instead.
+ */
+const ADMIN_CONSOLE_URL =
+  process.env.NEXT_PUBLIC_ADMIN_URL ?? "http://localhost:3001";
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -56,7 +67,7 @@ export default function LoginPage() {
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center p-6">
       <div className="rounded-2xl bg-white p-6 shadow-sm">
         <h1 className="text-[20px] font-semibold">TalkFirst 管理后台</h1>
-        <p className="mt-1 text-[13px] text-muted">独立后台 · http://localhost:3001</p>
+        <p className="mt-1 text-[13px] text-muted">独立后台 · {ADMIN_CONSOLE_URL}</p>
         <label className="mt-5 block text-[12px] text-muted">
           管理员邮箱
           <input

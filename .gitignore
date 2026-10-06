@@ -50,3 +50,11 @@ scripts/verify-status.txt
 .git-commit*.txt
 
 talkfirst-*.tar.gz
+
+# Per-machine Next.js env files (apps/web/.env.production.local,
+# apps/admin/.env.production.local). They hold build-time NEXT_PUBLIC_* values
+# only — but they are machine state, and leaving them unignored makes the working
+# tree dirty, which `scripts/deploy-pull.sh` refuses to deploy. That is exactly
+# how this was found: on the server, two of these files were sitting untracked
+# and blocked every deploy (2026-10-06).
+.env.production.local
