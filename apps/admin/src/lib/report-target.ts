@@ -41,10 +41,18 @@ export const REPORT_TARGET_LABELS: Record<ReportTargetType, string> = {
   COMMENT: "评论举报",
 };
 
+/**
+ * 徽标配色。
+ *
+ * 三个目标（用户 / 动态 / 评论）的色值与 `tailwind.config.ts` 里已有的 token
+ * **逐一相同**，所以直接写成 token 名 —— 视觉零变化，属于 C7 「token 收敛」的尾巴。
+ * `MESSAGE` 保留字面值：紫罗兰那一对（`#EDE9FE` / `#5B21B6`）在色板里没有同值 token，
+ * 硬套最近的 token 会**改变颜色**而且不会有任何报错 —— 与 `status-badge.tsx` 同一取舍。
+ */
 export const REPORT_TARGET_BADGE_CLASS: Record<ReportTargetType, string> = {
-  USER: "bg-[#DBEAFE] text-[#1E40AF]",
+  USER: "bg-info-wash text-info-ink",
   MESSAGE: "bg-[#EDE9FE] text-[#5B21B6]",
-  MOMENT: "bg-[#DCFCE7] text-[#166534]",
+  MOMENT: "bg-success-wash text-success-ink",
   // 与上面三个都分得开（蓝 / 紫 / 绿之后的琥珀）。
-  COMMENT: "bg-[#FEF3C7] text-[#92400E]",
+  COMMENT: "bg-warning-wash text-warning-ink",
 };

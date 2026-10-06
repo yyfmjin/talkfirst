@@ -188,3 +188,55 @@ bash scripts/deploy-pull.sh                       # 后台执行并写日志，�
 - **`seed`** 未在服务器跑过（生产库只有 2 个用户、0 条动态，本来也不需要）。
 - **服务器那把 GitHub deploy key 仍未配**（当前靠 HTTPS 拉取），要恢复 SSH 方式得往仓库加公钥。
 - CI 仍被 GitHub 账号的账单锁挡着（与服务器无关，见 `docs/CI.md` §6）。
+
+---
+
+## 8. 上线后发现的拓扑事故：Cloudflare 在前，而 `TRUST_PROXY=1`（2026-10-06 已修）
+
+### 8.1 怎么发现的
+
+验证新上线的法律页时，发现邮箱被换成了 `[email protected]` —— 那是 **Cloudflare 的邮箱混淆**
+（`/cdn-cgi/l/email-protection` + `data-cfemail`，客户端解码后才显示）。也就是说：
+**站点在 Cloudflare 后面**（`Server: cloudflare`、`CF-RAY` 都在）。
+
+顺着这条线查「应用到底把谁当访客」，得到一对对不上的证据：
+
+| 位置 | 看到的 IP |
+|---|---|
+| nginx access log（一次外部探测） | `162.158.167.105` —— **Cloudflare 边缘**，不是访客 |
+| 应用的 `AccessLog`（同一次探测） | **同一个** `162.158.167.105` |
+
+### 8.2 为什么这件事要紧
+
+访客 IP 是**限流与 IP 封禁的键**。把它记成 Cloudflare 边缘 IP，后果不是“日志难看”：
+
+- 一个边缘后面挂着大量真实用户，所以「封一个滥用者的 IP」会**连带封掉同一边缘上的所有人**；
+- 限流变成“整个边缘共用一个桶”，无辜用户容易被误伤；
+- 安全事件的审计记录里，IP 不再指向当事人。
+
+正确值是 **2**（`deploy-pull.sh` 自己的注释就是：「CDN + 反向代理 = 2」），而 `.env` 当时是 **1**。
+
+### 8.3 一个真会坑人的细节：`.env` 不是唯一真源
+
+改完 `.env` 后，实测**没有任何变化**。原因不在代码：
+
+```bash
+pm2 env 0 | grep TRUST_PROXY     # → TRUST_PROXY: 1   （pm2 进程环境里有一份陈旧的）
+# dotenv 默认**不覆盖**已存在的环境变量，所以 .env 里的新值永远轮不到
+pm2 restart talkfirst-api --update-env   # 也没用：--update-env 是**合并**，不清旧值
+TRUST_PROXY=2 pm2 restart talkfirst-api --update-env   # 这才写进去
+```
+
+### 8.4 验收（实跑）
+
+| 检查 | 修复前 | 修复后 |
+|---|---|---|
+| `pm2 env 0` 里的 `TRUST_PROXY` | `1` | `2` |
+| 同一次外部探测在 `AccessLog` 里记的 IP | `162.158.167.105`（边缘） | **`104.28.166.44`（访客自己的出口 IP）** |
+| `/api/v1/health/ready` | 200 | 200 |
+
+`.env` 已备份为 `~/.env.pre-trustproxy.bak`（服务器上）。
+
+> **给后来者的两条**：① 只要站点在 Cloudflare（或其他 CDN）后面，`TRUST_PROXY` 就绝不是 1，
+> 而且**每次换拓扑都要重新数跳数**；② 在 pm2 下跑的变量，改完 `.env` 后先 `pm2 env <id>`
+> 看一眼有没有同名陈旧值，否则会白改。

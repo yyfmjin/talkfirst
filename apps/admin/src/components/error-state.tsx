@@ -39,7 +39,7 @@ export function ErrorState({
           type="button"
           onClick={onRetry}
           disabled={retrying}
-          className="tf-btn tf-btn-sm mt-3 border-[#FCA5A5] bg-card hover:bg-[#FEE2E2]"
+          className="tf-btn tf-btn-sm mt-3 border-[#FCA5A5] bg-card hover:bg-danger-wash"
         >
           {retrying ? `${retryLabel}中…` : retryLabel}
         </button>

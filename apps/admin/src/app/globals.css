@@ -50,7 +50,7 @@
     font-weight: 600;
     letter-spacing: 0.04em;
     color: theme("colors.muted");
-    background: #fbfcfe;
+    background: theme("colors.surface");
     border-bottom: 1px solid theme("colors.line");
     white-space: nowrap;
   }

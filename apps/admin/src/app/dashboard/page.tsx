@@ -379,7 +379,7 @@ function QuickActions({ can }: { can: (permission: Permission) => boolean }) {
           <Link
             key={action.href}
             href={action.href}
-            className="flex items-center justify-between rounded-xl border border-line/60 bg-surface px-3 py-2 text-[13px] text-ink transition-colors hover:border-[#D6DAE1] hover:bg-white"
+            className="flex items-center justify-between rounded-xl border border-line/60 bg-surface px-3 py-2 text-[13px] text-ink transition-colors hover:border-[#D6DAE1] hover:bg-card"
           >
             <span>{action.label}</span>
             <span aria-hidden="true" className="text-muted">
