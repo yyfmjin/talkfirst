@@ -609,6 +609,21 @@ model User {
   momentSetting            MomentSetting?
   moments                  Moment[]
   momentLikes              MomentLike[]
+  /**
+   * 送花（虚拟礼物，2026-10-06）—— 点赞式的人对人动作。
+   *
+   * 一条 `UserFlower` = 「A 给过 B 一朵花」。复合主键保证同一对只有一条，
+   * 所以再点一次是**收回**而不是叠加 —— 与 `MomentLike` 同一形状。
+   */
+  flowersSent              UserFlower[]            @relation("FlowerSender")
+  flowersReceived          UserFlower[]            @relation("FlowerReceiver")
+  /**
+   * 收到的花的朵数（冗余计数）。
+   *
+   * 与 `Moment.likeCount` 同一取向：读资料时不为一个数字做聚合查询，写时在同一事务里增减。
+   * **它是派生值** —— 万一与 `flowersReceived` 的行数不一致，以行数为准。
+   */
+  flowerCount              Int                     @default(0)
   momentBookmarks          MomentBookmark[]
   momentComments           MomentComment[]
   refreshTokens            RefreshToken[]
@@ -1018,6 +1033,31 @@ model MomentLike {
 
   @@id([momentId, userId])
   @@index([userId])
+}
+
+/**
+ * 送花（虚拟礼物）—— 人对人的一次性动作，形状刻意与 `MomentLike` 一致。
+ *
+ * ## 为什么是复合主键而不是 `id`
+ *
+ * 「点赞」这个语义本身就包含「同一对只有一次」：复合主键把这条不变式写在数据库里，
+ * 应用层不需要先查再写，也不存在两个并发请求各插一条的窗口。
+ *
+ * ## 两个关系必须具名
+ *
+ * `sender` / `receiver` 都指向 `User`，不具名时 Prisma 无法区分，
+ * 会在生成客户端时直接报错。
+ */
+model UserFlower {
+  senderId   String   @db.Uuid
+  sender     User     @relation("FlowerSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId String   @db.Uuid
+  receiver   User     @relation("FlowerReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@id([senderId, receiverId])
+  /// 谁的收花列表 / 计数：按收花人 + 时间读。
+  @@index([receiverId, createdAt])
 }
 
 // C4 — one row per (user, moment) the user saved for later.

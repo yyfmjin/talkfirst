@@ -1,4 +1,5 @@
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { NotificationService } from "../notifications/notification.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { normalizeUploadUrl } from "../uploads/upload-url";
 import { isProfileComplete } from "./profile-completion";
@@ -35,6 +36,16 @@ export type PublicProfile = {
   preferredCountries: Array<{ code: string; name: string; flag: string | null }>;
   attributes: AttributeGroups;
   relationship: { isSelf: boolean; isConnected: boolean };
+  /**
+   * 送花（虚拟礼物，2026-10-06）。
+   *
+   * `flowerCount` 是**收到的朵数**（多少人给过）—— 与动态的点赞数同一性质，
+   * 对能看到这份资料的人公开。它目前不受逐字段可见范围控制（那套字段表里没有它）；
+   * 如果以后要能隐藏，就得在 `ProfileFieldVisibility` 里增一个字段再加开关。
+   * `flowerFromViewer` 只用于渲染按钮状态，不泄露「还有谁也送过」。
+   */
+  flowerCount: number;
+  flowerFromViewer: boolean;
 };
 
 export type PublicCard = {
@@ -61,7 +72,11 @@ export type PublicCard = {
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    /** PC-3.1b —— 通知只有这一个写入点，送花走它（NotificationModule 是 @Global）。 */
+    private readonly notifications: NotificationService,
+  ) {}
 
   async getFullCard(userId: string): Promise<PublicCard> {
     const user = await this.prisma.user.findUnique({
@@ -163,7 +178,7 @@ export class UsersService {
       }
     }
 
-    const [connection, country] = await Promise.all([
+    const [connection, country, flower] = await Promise.all([
       isSelf
         ? null
         : this.prisma.connection.findFirst({
@@ -177,6 +192,13 @@ export class UsersService {
             select: { id: true },
           }),
       user.countryCode ? this.prisma.country.findUnique({ where: { code: user.countryCode } }) : null,
+      // 看自己的人不必查（按钮不显示）—— 少一次查询，也没有「给自己送花」这种状态。
+      isSelf
+        ? null
+        : this.prisma.userFlower.findUnique({
+            where: { senderId_receiverId: { senderId: viewerId, receiverId: targetId } },
+            select: { senderId: true },
+          }),
     ]);
 
     // PC-1.3: the block check above has already run, so "Block > visibility"
@@ -232,7 +254,94 @@ export class UsersService {
         ? filterAttributesForViewer(user.attributes as UserAttributeRecord[], viewer)
         : { aboutMe: [], lookingFor: [] },
       relationship: { isSelf, isConnected: Boolean(connection) },
+      // 计数来自 `User.flowerCount`（与 `Moment.likeCount` 同一取向：读时不聚合）。
+      flowerCount: Math.max(0, user.flowerCount),
+      flowerFromViewer: Boolean(flower),
     };
+  }
+
+  /**
+   * 送花 / 收回（点赞式的一次性动作，2026-10-06）。
+   *
+   * ## 守卫刻意与 `getPublicProfile` 用同一套判断
+   *
+   *   · 目标不存在或非 ACTIVE → 返回 `null`（控制器转 404）
+   *   · 给自己送 → 招 `FLOWER_SELF`（控制器转 400）
+   *   · 任一方拉黑 → 招 `BLOCKED`（控制器转 403）
+   *
+   * 不另写一份「宽松版」的理由：送花会给对方产生**可见的后果**（计数 + 通知），
+   * 一旦这里比资料页宽松，它就成了一条绕过拉黑与可见性的旁路。
+   *
+   * ## 为什么用事务
+   *
+   * 花的行与 `flowerCount` 必须一起变：只插入行而计数未加，资料页会显示少一朵；
+   * 反过来则会凭空多出一朵。与 `toggleLike` 同一理由。
+   */
+  async toggleFlower(senderId: string, receiverId: string) {
+    if (senderId === receiverId) {
+      throw new BadRequestException({
+        success: false,
+        error: { code: "FLOWER_SELF", message: "You cannot send flowers to yourself" },
+      });
+    }
+
+    const receiver = await this.prisma.user.findUnique({
+      where: { id: receiverId },
+      select: { id: true, status: true },
+    });
+    if (!receiver || receiver.status !== "ACTIVE") return null;
+
+    const blocked = await this.prisma.block.findFirst({
+      where: {
+        OR: [
+          { blockerId: senderId, blockedId: receiverId },
+          { blockerId: receiverId, blockedId: senderId },
+        ],
+      },
+      select: { blockerId: true },
+    });
+    if (blocked) {
+      throw new ForbiddenException({
+        success: false,
+        error: { code: "BLOCKED", message: "This profile is unavailable" },
+      });
+    }
+
+    const key = { senderId_receiverId: { senderId, receiverId } };
+    const existing = await this.prisma.userFlower.findUnique({ where: key, select: { senderId: true } });
+
+    if (existing) {
+      const [, updated] = await this.prisma.$transaction([
+        this.prisma.userFlower.delete({ where: key }),
+        this.prisma.user.update({
+          where: { id: receiverId },
+          data: { flowerCount: { decrement: 1 } },
+          select: { flowerCount: true },
+        }),
+      ]);
+      // 夹到 0：计数是冗余值，万一历史上有过一次漂移，不能因为收回一朵花
+      // 就让资料页显示「-1 朵」。
+      return { sent: false, flowerCount: Math.max(0, updated.flowerCount) };
+    }
+
+    const [, updated] = await this.prisma.$transaction([
+      this.prisma.userFlower.create({ data: { senderId, receiverId } }),
+      this.prisma.user.update({
+        where: { id: receiverId },
+        data: { flowerCount: { increment: 1 } },
+        select: { flowerCount: true },
+      }),
+    ]);
+
+    // 通知写在事务**之后**：一条送花的成功不应因为通知表的问题而回滚（与点赞同一取向）。
+    await this.notifications.notify({
+      userId: receiverId,
+      type: "FLOWER_RECEIVED",
+      title: "你收到了一朵花",
+      data: { actorId: senderId, targetType: "USER", targetId: senderId },
+    });
+
+    return { sent: true, flowerCount: updated.flowerCount };
   }
 
   private calculateAge(birthDate: Date | null): number | null {

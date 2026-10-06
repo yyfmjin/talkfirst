@@ -1,5 +1,11 @@
 import { UsersService } from "./users.service";
 
+/**
+ * 送花会产出通知，但这一组用例不涉及它 —— `UsersService` 的第二个依赖
+ * 只需要一个够用的桩。
+ */
+const noopNotifications = () => ({ notify: jest.fn().mockResolvedValue(undefined) }) as never;
+
 type UserRow = {
   id: string;
   email: string;
@@ -20,6 +26,8 @@ type UserRow = {
   // surface and the target's per-field visibility rows.
   attributes: Array<Record<string, unknown>>;
   fieldVisibilities: Array<{ fieldKey: string; visibility: string }>;
+  /** 送花（虚拟礼物）：读资料时会投影收到花的朵数。 */
+  flowerCount: number;
 };
 
 function makeUser(overrides: Partial<UserRow> = {}): UserRow {
@@ -41,6 +49,7 @@ function makeUser(overrides: Partial<UserRow> = {}): UserRow {
     preferredCountries: [{ countryCode: "JP", country: { code: "JP", name: "Japan", flag: "🇯🇵" } }],
     attributes: [],
     fieldVisibilities: [],
+    flowerCount: 0,
     ...overrides,
   };
 }
@@ -51,6 +60,7 @@ function makePrisma(overrides: Record<string, unknown> = {}) {
       findUnique: jest.fn().mockResolvedValue(makeUser()),
     },
     block: { findFirst: jest.fn().mockResolvedValue(null) },
+    userFlower: { findUnique: jest.fn().mockResolvedValue(null) },
     connection: { findFirst: jest.fn().mockResolvedValue({ id: "conn-1" }) },
     country: { findUnique: jest.fn().mockResolvedValue({ code: "US", name: "United States", flag: "🇺🇸" }) },
     ...overrides,
@@ -60,7 +70,7 @@ function makePrisma(overrides: Record<string, unknown> = {}) {
 describe("UsersService.getPublicProfile", () => {
   it("returns a sanitized profile with no email / admin / status fields", async () => {
     const prisma = makePrisma();
-    const service = new UsersService(prisma as never);
+    const service = new UsersService(prisma as never, noopNotifications());
     const profile = await service.getPublicProfile("target-1", "viewer-1");
 
     expect(profile.id).toBe("target-1");
@@ -76,7 +86,7 @@ describe("UsersService.getPublicProfile", () => {
 
   it("rejects a blocked target in either direction", async () => {
     const prisma = makePrisma({ block: { findFirst: jest.fn().mockResolvedValue({ id: "b1" }) } });
-    const service = new UsersService(prisma as never);
+    const service = new UsersService(prisma as never, noopNotifications());
     await expect(service.getPublicProfile("target-1", "viewer-1")).rejects.toMatchObject({
       response: { error: { code: "BLOCKED" } },
     });
@@ -86,7 +96,7 @@ describe("UsersService.getPublicProfile", () => {
     const prisma = makePrisma({
       user: { findUnique: jest.fn().mockResolvedValue(makeUser({ status: "BANNED" })) },
     });
-    const service = new UsersService(prisma as never);
+    const service = new UsersService(prisma as never, noopNotifications());
     await expect(service.getPublicProfile("target-1", "viewer-1")).rejects.toMatchObject({
       response: { error: { code: "USER_NOT_FOUND" } },
     });
@@ -98,7 +108,7 @@ describe("UsersService.getPublicProfile", () => {
       block: { findFirst: jest.fn() },
       connection: { findFirst: jest.fn() },
     });
-    const service = new UsersService(prisma as never);
+    const service = new UsersService(prisma as never, noopNotifications());
     const profile = await service.getPublicProfile("target-1", "target-1");
     expect(profile.relationship.isSelf).toBe(true);
     expect(prisma.block.findFirst).not.toHaveBeenCalled();
@@ -127,7 +137,7 @@ describe("UsersService.getPublicProfile", () => {
         ),
       },
     });
-    const service = new UsersService(prisma as never);
+    const service = new UsersService(prisma as never, noopNotifications());
 
     const own = await service.getPublicProfile("target-1", "target-1");
     expect(own.relationship.isSelf).toBe(true);

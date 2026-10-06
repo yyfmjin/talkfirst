@@ -76,7 +76,10 @@ function emptyCard() {
 }
 
 function makeService(prisma: ReturnType<typeof makePrisma>["prisma"]) {
-  return new UsersService(prisma as never);
+  // 第二个参数是通知：这一组用例不涉及送花，桩够用即可。
+  return new UsersService(prisma as never, {
+    notify: jest.fn().mockResolvedValue(undefined),
+  } as never);
 }
 
 describe("replaceLanguages — 数据丢失回归 (audit P001)", () => {

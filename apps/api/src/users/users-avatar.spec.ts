@@ -1,6 +1,12 @@
 import { UsersService } from "./users.service";
 import { normalizeUploadUrl } from "../uploads/upload-url";
 
+/**
+ * 送花会产出通知，但这一组用例不涉及它 —— `UsersService` 的第二个依赖
+ * 只需要一个够用的桩。
+ */
+const noopNotifications = () => ({ notify: jest.fn().mockResolvedValue(undefined) }) as never;
+
 describe("UsersService.updateAvatar persistence contract", () => {
   it("normalizes the avatar URL before persistence so read/write use one rule", async () => {
     const prisma = {
@@ -15,7 +21,7 @@ describe("UsersService.updateAvatar persistence contract", () => {
       purpose: { findMany: jest.fn() },
       country: { findMany: jest.fn() },
     };
-    const service = new UsersService(prisma as never);
+    const service = new UsersService(prisma as never, noopNotifications());
     const spy = jest.spyOn(service, "getFullCard").mockResolvedValue({ avatarUrl: "x" } as never);
 
     await service.updateAvatar(
@@ -34,7 +40,7 @@ describe("UsersService.updateAvatar persistence contract", () => {
     const prisma = {
       user: { update: jest.fn() },
     };
-    const service = new UsersService(prisma as never);
+    const service = new UsersService(prisma as never, noopNotifications());
     await expect(service.updateAvatar("user-1", "data:image/png;base64,abcd")).rejects.toMatchObject({
       code: "INVALID_IMAGE",
     });

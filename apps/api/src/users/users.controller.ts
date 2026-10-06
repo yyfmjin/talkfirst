@@ -11,6 +11,7 @@ import {
   Put,
   UseGuards,
 } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CurrentUser, type AuthUser } from "../auth/current-user.decorator";
 import { UuidParamPipe } from "../common/uuid-param.pipe";
@@ -103,6 +104,28 @@ export class UsersController {
   @Get(":id")
   async publicProfile(@CurrentUser() user: AuthUser, @Param("id", UuidParamPipe) id: string) {
     const data = await this.usersService.getPublicProfile(id, user.id);
+    return { success: true as const, data };
+  }
+
+  /**
+   * 送花 / 收回（虚拟礼物，2026-10-06）。
+   *
+   * 与 `POST /moments/:id/like` 同一取向：一个端点做 toggle，再点一次是收回；
+   * 限流也照拄那条 —— 它是人对人的可重复动作，不设上限就会变成骚扰工具。
+   *
+   * 守卫（目标是否存在且 ACTIVE、是否被拉黑、是否给自己送）都在
+   * `UsersService.toggleFlower` 里，与资料页共用同一套判断；这里只负责把 `null` 译成 404。
+   */
+  @Post(":id/flowers")
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  async toggleFlower(@CurrentUser() user: AuthUser, @Param("id", UuidParamPipe) id: string) {
+    const data = await this.usersService.toggleFlower(user.id, id);
+    if (!data) {
+      throw new NotFoundException({
+        success: false,
+        error: { code: "USER_NOT_FOUND", message: "User not found" },
+      });
+    }
     return { success: true as const, data };
   }
 

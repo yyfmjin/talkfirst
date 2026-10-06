@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { BadgeCheck } from "lucide-react";
+import { BadgeCheck, Flower2 } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
 import { TabBar } from "@/components/tab-bar";
 import { ScreenHeader } from "@/components/screen-header";
@@ -37,6 +37,10 @@ export default function ProfileDetailPage() {
   const [error, setError] = useState("");
   const [helloSending, setHelloSending] = useState(false);
   const [helloDone, setHelloDone] = useState(false);
+  // 送花（虚拟礼物）：服务端回答是权威 —— 切换后直接用响应里的数字。
+  const [flowerSent, setFlowerSent] = useState(false);
+  const [flowerCount, setFlowerCount] = useState(0);
+  const [flowerSending, setFlowerSending] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -45,6 +49,8 @@ export default function ProfileDetailPage() {
     try {
       const data = await apiFetch<PublicProfile>(`/users/${id}`);
       setProfile(data);
+      setFlowerSent(data.flowerFromViewer);
+      setFlowerCount(data.flowerCount);
     } catch (requestError) {
       setProfile(null);
       setError(friendlyErrorMessage(requestError, "资料加载失败，请稍后再试。"));
@@ -59,7 +65,33 @@ export default function ProfileDetailPage() {
 
   useEffect(() => {
     setHelloDone(false);
+    setFlowerSent(false);
+    setFlowerCount(0);
   }, [id]);
+
+  /**
+   * 送花 / 收回 —— 一个端点做 toggle，与动态的点赞同一形状。
+   *
+   * 计数以**响应**为准而不是本地 +1：同一对只有一条花，服务端才知道真实朵数
+   * （别人也可能同时在送）。
+   */
+  async function toggleFlower() {
+    if (!profile || flowerSending) return;
+    setFlowerSending(true);
+    setError("");
+    try {
+      const result = await apiFetch<{ sent: boolean; flowerCount: number }>(
+        `/users/${profile.id}/flowers`,
+        { method: "POST" },
+      );
+      setFlowerSent(result.sent);
+      setFlowerCount(result.flowerCount);
+    } catch (requestError) {
+      setError(friendlyErrorMessage(requestError, "送花失败，请稍后再试。"));
+    } finally {
+      setFlowerSending(false);
+    }
+  }
 
   async function sayHello() {
     if (!profile || helloSending) return;
@@ -251,30 +283,52 @@ export default function ProfileDetailPage() {
             ) : null}
 
             {!isSelf ? (
-              <div className="mt-6 flex gap-2">
-                <TFButton
-                  variant="secondary"
-                  href={`/moments/user/${profile.id}`}
-                  className="flex-1"
-                >
-                  查看动态
-                </TFButton>
-                {profile.relationship.isConnected ? (
-                  <TFButton variant="secondary" className="flex-[2]" disabled>
-                    已连接
-                  </TFButton>
-                ) : (
+              <>
+                <div className="mt-6 flex gap-2">
                   <TFButton
-                    className="flex-[2]"
-                    onClick={() => void sayHello()}
-                    disabled={helloSending || helloDone}
-                    /* `aria-label` is how the suite finds this button. */
-                    aria-label="打招呼"
+                    variant="secondary"
+                    href={`/moments/user/${profile.id}`}
+                    className="flex-1"
                   >
-                    {helloDone ? "已打招呼" : helloSending ? "发送中…" : "打招呼"}
+                    查看动态
                   </TFButton>
-                )}
-              </div>
+                  {profile.relationship.isConnected ? (
+                    <TFButton variant="secondary" className="flex-[2]" disabled>
+                      已连接
+                    </TFButton>
+                  ) : (
+                    <TFButton
+                      className="flex-[2]"
+                      onClick={() => void sayHello()}
+                      disabled={helloSending || helloDone}
+                      /* `aria-label` is how the suite finds this button. */
+                      aria-label="打招呼"
+                    >
+                      {helloDone ? "已打招呼" : helloSending ? "发送中…" : "打招呼"}
+                    </TFButton>
+                  )}
+                </div>
+                {/*
+                  送花（虚拟礼物）：点赞式的一次性动作，再点一次是收回。
+                  它排在打招呼下面而不是并排：主位只有一个。
+                */}
+                <TFButton
+                  variant={flowerSent ? "secondary" : "primary"}
+                  fullWidth
+                  className="mt-2"
+                  loading={flowerSending}
+                  loadingLabel="送出中…"
+                  leadingIcon={<Flower2 size={18} aria-hidden="true" />}
+                  onClick={() => void toggleFlower()}
+                  aria-label="送花"
+                  aria-pressed={flowerSent}
+                >
+                  {flowerSent ? "已送花" : "送一朵花"}
+                </TFButton>
+                <p className="mt-2 text-center text-caption text-content-muted">
+                  {flowerCount > 0 ? `已收到 ${flowerCount} 朵花` : "还没有收到花"}
+                </p>
+              </>
             ) : (
               <div className="mt-6 space-y-2">
                 <TFButton size="lg" fullWidth onClick={() => router.push("/me/edit")}>

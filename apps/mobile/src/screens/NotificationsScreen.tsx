@@ -22,6 +22,7 @@ const TYPE_LABELS: Record<string, string> = {
   MOMENT_REPLY: "评论收到回复",
   REPORT_REVIEW: "举报处理结果",
   USER_STATUS: "账号状态更新",
+  FLOWER_RECEIVED: "收到一朵花",
 };
 
 function formatTime(iso: string): string {

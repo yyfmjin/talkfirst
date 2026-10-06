@@ -2,6 +2,7 @@ import {
   Bell,
   CheckCircle2,
   CornerDownRight,
+  Flower2,
   Hand,
   Heart,
   MessageCircle,
@@ -34,7 +35,7 @@ import {
  * server already answered that when it built the list.
  */
 
-/** The frozen ten. Mirrors `apps/api/src/notifications/notification.types.ts`. */
+/** The frozen set. Mirrors `apps/api/src/notifications/notification.types.ts`. */
 export const NOTIFICATION_TYPES = [
   "NEW_MESSAGE",
   "SAY_HELLO",
@@ -46,6 +47,7 @@ export const NOTIFICATION_TYPES = [
   "MOMENT_REPLY",
   "REPORT_REVIEW",
   "USER_STATUS",
+  "FLOWER_RECEIVED",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -101,6 +103,7 @@ const META: Record<NotificationType, { label: string; icon: LucideIcon }> = {
   MOMENT_REPLY: { label: "评论收到回复", icon: CornerDownRight },
   REPORT_REVIEW: { label: "举报处理结果", icon: ShieldCheck },
   USER_STATUS: { label: "账号状态更新", icon: UserCog },
+  FLOWER_RECEIVED: { label: "收到一朵花", icon: Flower2 },
 };
 
 const UNKNOWN_META = { label: "通知", icon: Bell };

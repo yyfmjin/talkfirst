@@ -1184,6 +1184,9 @@ test("phase C5: no migration was added and the schema gained no model", () => {
     // 2026-10-06 — `AccessLog.channel`（渠道分流：后台默认只看成员流量）。
     // 纯加法：新增列（默认 'USER'）+ 索引，并把历史行按同一口径回填（先 OPS、再 ADMIN）。
     "20261006180000_access_log_channel",
+    // 2026-10-06 — 送花（虚拟礼物）：`UserFlower` 表 + `User.flowerCount` 冗余计数。
+    // 纯加法，既有行的 `flowerCount` 一律为 0。
+    "20261006190000_user_flowers",
   ];
   assert.deepEqual(
     migrations.slice(C5_BASELINE.length),
@@ -1253,6 +1256,8 @@ test("phase C5: no migration was added and the schema gained no model", () => {
     "SocialSyncPost",
     "User",
     "UserAttribute",
+    // 送花（虚拟礼物）—— 人对人的一次性动作，形状与 `MomentLike` 一致。
+    "UserFlower",
     "UserInterest",
     "UserLanguage",
     "UserPreferredCountry",

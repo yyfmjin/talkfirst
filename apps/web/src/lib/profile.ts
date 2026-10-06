@@ -86,6 +86,12 @@ export type PublicProfile = {
   preferredCountries: Array<{ code: string; name: string; flag: string | null }>;
   attributes: AttributeGroups;
   relationship: { isSelf: boolean; isConnected: boolean };
+  /**
+   * 送花（虚拟礼物，2026-10-06）：收到花的朵数，以及查看者自己送过没有。
+   * 镜像 `apps/api/src/users/users.service.ts` 的 `PublicProfile`。
+   */
+  flowerCount: number;
+  flowerFromViewer: boolean;
 };
 
 /**

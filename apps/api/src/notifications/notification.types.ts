@@ -9,6 +9,9 @@
 /**
  * The complete set of notification types. `MOMENT_REPLY`, `REPORT_REVIEW` and
  * `USER_STATUS` are part of the frozen contract and are produced by PC-3.1c.
+ *
+ * `FLOWER_RECEIVED`（送花，2026-10-06）是后面加的：虚拟礼物就是「送花」，
+ * 形状与 `MOMENT_LIKE` 一致 —— 收花人有知情权，所以新类型而不是复用点赞。
  */
 export const NOTIFICATION_TYPES = [
   "NEW_MESSAGE",
@@ -21,6 +24,7 @@ export const NOTIFICATION_TYPES = [
   "MOMENT_REPLY",
   "REPORT_REVIEW",
   "USER_STATUS",
+  "FLOWER_RECEIVED",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
