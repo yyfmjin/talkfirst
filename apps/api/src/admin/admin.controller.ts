@@ -491,6 +491,8 @@ export class AdminController {
     @Query("riskLevel") riskLevel?: string,
     @Query("authenticated") authenticated?: string,
     @Query("isAdmin") isAdmin?: string,
+    /** `USER`（默认）/ `ADMIN` / `OPS` / `ALL` —— 见 `access-channel.ts`。 */
+    @Query("channel") channel?: string,
     @Query("createdFrom") createdFrom?: string,
     @Query("createdTo") createdTo?: string,
     @Query("page") page = "1",
@@ -505,6 +507,7 @@ export class AdminController {
         riskLevel,
         authenticated: optionalBoolean(authenticated),
         isAdmin: optionalBoolean(isAdmin),
+        channel,
         createdFrom,
         createdTo,
         page: Number(page),
@@ -526,9 +529,10 @@ export class AdminController {
   accessLogStats(
     @Query("createdFrom") createdFrom?: string,
     @Query("createdTo") createdTo?: string,
+    @Query("channel") channel?: string,
   ) {
     return this.adminService
-      .accessLogStats({ createdFrom, createdTo })
+      .accessLogStats({ createdFrom, createdTo, channel })
       .then((data) => ({ success: true as const, data }));
   }
 

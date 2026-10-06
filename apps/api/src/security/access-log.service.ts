@@ -22,6 +22,8 @@ export interface AccessLogEntry {
   userId?: string;
   authenticated: boolean;
   isAdmin: boolean;
+  /** `USER` / `ADMIN` / `OPS` —— 见 `access-channel.ts`。 */
+  channel: string;
   ip?: string;
   deviceHash?: string;
   userAgent?: string;
@@ -53,6 +55,7 @@ export class AccessLogService {
           userId: entry.userId ?? null,
           authenticated: entry.authenticated,
           isAdmin: entry.isAdmin,
+          channel: entry.channel,
           ip: entry.ip ?? null,
           deviceHash: entry.deviceHash ?? null,
           userAgent: entry.userAgent ? entry.userAgent.slice(0, 512) : null,

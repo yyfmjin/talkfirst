@@ -87,10 +87,35 @@ describe("AdminService.listAccessLogs — 过滤在数据库执行", () => {
     expect(accessLog.count.mock.calls[0]?.[0]?.where).toEqual(where);
   });
 
-  it("空过滤器不产生任何条件（不会误匹配空集）", async () => {
+  it("空过滤器只剩渠道默认值：默认只看成员流量", async () => {
+    /**
+     * 2026-10-06：这里本来断言 `{}`（「空过滤器不产生任何条件」）。渠道分流之后，
+     * 默认就带一个 `channel = 'USER'` —— 这正是运营方要的：后台自己的操作与
+     * 服务器自身的探活 / 运维操作**单独记录、不进默认视图**。
+     * 想看全部得显式传 `channel: "ALL"`。
+     */
     const { service, accessLog } = makeService();
     await service.listAccessLogs({});
-    expect(accessLog.findMany.mock.calls[0]?.[0]?.where).toEqual({});
+    expect(accessLog.findMany.mock.calls[0]?.[0]?.where).toEqual({ channel: "USER" });
+  });
+
+  it("渠道筛选：ADMIN / OPS 各看一类，ALL 回到不过滤，未知值收敛成默认视图", async () => {
+    const admin = makeService();
+    await admin.service.listAccessLogs({ channel: "ADMIN" });
+    expect(admin.accessLog.findMany.mock.calls[0]?.[0]?.where).toEqual({ channel: "ADMIN" });
+
+    const ops = makeService();
+    await ops.service.listAccessLogs({ channel: "OPS" });
+    expect(ops.accessLog.findMany.mock.calls[0]?.[0]?.where).toEqual({ channel: "OPS" });
+
+    const all = makeService();
+    await all.service.listAccessLogs({ channel: "ALL" });
+    expect(all.accessLog.findMany.mock.calls[0]?.[0]?.where).toEqual({});
+
+    // 人手拼错的值不该让整页 400：收敛成默认视图。
+    const typo = makeService();
+    await typo.service.listAccessLogs({ channel: "nonsense" });
+    expect(typo.accessLog.findMany.mock.calls[0]?.[0]?.where).toEqual({ channel: "USER" });
   });
 
   it("非法日期被忽略，而不是放宽成整表", async () => {
@@ -235,6 +260,11 @@ describe("AdminService.accessLogStats", () => {
     const { service, accessLog } = makeService();
     await service.accessLogStats({ createdFrom: "2026-10-01T00:00:00.000Z" });
     const countWhere = accessLog.count.mock.calls[0]?.[0]?.where;
-    expect(countWhere).toEqual({ createdAt: { gte: new Date("2026-10-01T00:00:00.000Z") } });
+    // 2026-10-06：这里多了渠道默认值 —— 统计与列表一起只看成员流量。
+    // 而这恰好又是「两者共用同一个构造」的证明：改一处，这里和列表的用例一起会红。
+    expect(countWhere).toEqual({
+      createdAt: { gte: new Date("2026-10-01T00:00:00.000Z") },
+      channel: "USER",
+    });
   });
 });

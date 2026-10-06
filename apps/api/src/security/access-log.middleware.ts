@@ -4,6 +4,7 @@ import type { DeviceIdentityService } from "./device-identity.service";
 import { summarizeQuery } from "../common/redact";
 import { deviceHash } from "./device-hash";
 import { getRequestContext } from "./request-context";
+import { accessChannel } from "./access-channel";
 import { accessRiskLevel } from "./security.constants";
 
 /**
@@ -76,6 +77,10 @@ export function createAccessLogMiddleware(
         const user = request.user as { id?: string } | undefined;
         const statusCode = response.statusCode ?? 200;
 
+        // 「是否后台路径」只算一次：`isAdmin` 字段与渠道分类必须用同一个判断，
+        // 两处各算一遍退了迟早会漂（改了一处前缀、另一处忘了）。
+        const adminPath = isAdminPath(path);
+
         void accessLogs.write({
           requestId: context?.requestId ?? "unknown",
           method: request.method,
@@ -85,7 +90,8 @@ export function createAccessLogMiddleware(
           durationMs: Date.now() - startedAt,
           userId: user?.id,
           authenticated: Boolean(user?.id),
-          isAdmin: isAdminPath(path),
+          isAdmin: adminPath,
+          channel: accessChannel({ isAdminPath: adminPath, ip: context?.ip }),
           ip: context?.ip,
           deviceHash: deviceHash(userAgent),
           userAgent,

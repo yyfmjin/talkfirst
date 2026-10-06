@@ -95,6 +95,8 @@ type Filters = {
   riskLevel: string;
   authenticated: string;
   isAdmin: string;
+  /** `USER`（默认）/ `ADMIN` / `OPS` / `ALL`。 */
+  channel: string;
   createdFrom: string;
   createdTo: string;
 };
@@ -106,6 +108,8 @@ const DEFAULT_FILTERS: Filters = {
   riskLevel: "",
   authenticated: "",
   isAdmin: "",
+  // 默认只看成员流量 —— 后台自己管后台、服务器被自己探来探去，是运营方要求不要混进来的两类。
+  channel: "USER",
   createdFrom: "",
   createdTo: "",
 };
@@ -120,8 +124,23 @@ const AUTH_OPTIONS = [
   { value: "false", label: "未登录" },
 ];
 
+/**
+ * 渠道选项（2026-10-06）。
+ *
+ * 默认「成员」：另两类（后台自己的操作 / 服务器自身的探活与运维）会被单独记录、
+ * 不进默认视图。想看它们就切到对应项，「全部」会把三类一起拿出来。
+ */
+const CHANNEL_OPTIONS = [
+  { value: "USER", label: "成员（默认）" },
+  { value: "ADMIN", label: "后台操作" },
+  { value: "OPS", label: "服务器 / 运维" },
+  { value: "ALL", label: "全部" },
+];
+
 function hasAnyFilter(filters: Filters): boolean {
-  return Object.values(filters).some((value) => value.trim() !== "");
+  // `channel` 有默认值，不算「运营方加了筛选」—— 否则页面一打开就显示成已筛选。
+  const { channel: _channel, ...rest } = filters;
+  return Object.values(rest).some((value) => value.trim() !== "");
 }
 
 /**
@@ -142,6 +161,9 @@ function buildPath(filters: Filters, page: number): string {
   if (filters.riskLevel) params.set("riskLevel", filters.riskLevel);
   if (filters.authenticated) params.set("authenticated", filters.authenticated);
   if (filters.isAdmin) params.set("isAdmin", filters.isAdmin);
+  // 渠道总是显式带上（默认 USER）：把默认值写进请求而不是靠服务端默认，
+  // 这样「你看到的这份列表到底筛了什么」在 URL 里就能读出来。
+  if (filters.channel) params.set("channel", filters.channel);
   if (filters.createdFrom) params.set("createdFrom", filters.createdFrom);
   if (filters.createdTo) params.set("createdTo", `${filters.createdTo}T23:59:59.999Z`);
   params.set("page", String(page));
@@ -336,6 +358,23 @@ function AccessLogsScreen() {
             className="h-10 rounded-xl border border-line px-3 text-[13px]"
           >
             {AUTH_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-[11px] text-muted">渠道</span>
+          <select
+            aria-label="渠道筛选"
+            data-testid="access-logs-channel-filter"
+            value={draft.channel}
+            onChange={(event) => patchDraft({ channel: event.target.value })}
+            className="h-10 rounded-xl border border-line px-3 text-[13px]"
+          >
+            {CHANNEL_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>

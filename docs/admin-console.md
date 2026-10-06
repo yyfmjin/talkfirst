@@ -68,3 +68,34 @@ docker compose up -d --build
 - `GET /admin/audit?page=&pageSize=` 审计日志
 - `dashboard` 新增 `admins/banned`
 - 所有 `user.ban/disable/activate/note`、`report.*` 写 `AdminAuditLog`
+
+---
+
+## 访问日志的「渠道」分流（2026-10-06）
+
+运营方的要求：**后台自己的操作、服务器自身的探活/运维，单独记录，不要混进访问日志**。
+
+所以 `AccessLog` 新增一列 `channel`，只有三个取值：
+
+| 值 | 什么算 | 怎么判 |
+|---|---|---|
+| `USER` | 普通成员流量 | 剩下的都算它（**默认视图**） |
+| `ADMIN` | 命中后台路由的请求 | `isAdminPath()`（按路径判，不做每次请求的角色查询） |
+| `OPS` | 服务器自身 / 环回地址 | 环回三种写法 + `OPS_IPS` 里列的来源 |
+
+**优先级是 `OPS > ADMIN > USER`**：用 curl 打后台接口是运维操作，
+记成 `ADMIN` 会让人以为有人登录了后台。分类函数在 `apps/api/src/security/access-channel.ts`，
+两个写入点（访问日志中间件、限流器）共用它。
+
+页面上多了一个「**渠道**」下拉（默认「成员」），接口参数是 `channel=USER|ADMIN|OPS|ALL`：
+
+- 不传 = 默认只看成员；
+- `ALL` = 不过滤渠道（三类一起看）。
+
+默认值放在**共用**的 `accessLogWhere()` 里，而不是控制器里 —— 列表与统计都从它出 `where`，
+两处各给一个默认值早晚会出现「列表的条数和数字说的不是同一批数据」。
+
+历史行也回填了（先 `OPS`、再 `ADMIN`，剩下的 `USER`）：
+不填的话，此前那些噪音会永远留在默认视图里。回填在迁移 `20261006180000_access_log_channel` 里，
+口径与运行时的分类函数一致。`OPS_IPS` 用来补上**这台服务器自己的公网 IP**（见 `.env.example`），
+环回地址不需要配置。

@@ -7,6 +7,8 @@ import {
 import type { Request } from "express";
 import { summarizeQuery } from "./redact";
 import { AccessLogService } from "../security/access-log.service";
+import { accessChannel } from "../security/access-channel";
+import { isAdminPath } from "../security/access-log.middleware";
 import { deviceHash } from "../security/device-hash";
 import { getRequestContext } from "../security/request-context";
 import { SecurityEventService } from "../security/security-event.service";
@@ -158,6 +160,11 @@ export class HttpThrottlerGuard extends ThrottlerGuard {
         detail: { reasonCode: "RATE_LIMITED" },
       });
 
+      // 「是否后台路径」共用同一个判断：这里原本是一行内联的 `startsWith`，
+      // 既与中间件重复，又少了分隔符校验 —— `/api/v1/administrators` 这种普通公开路径
+      // 会被它当成后台请求（中间件那边已经把这条修掉了，这里跟着收敛）。
+      const adminPath = isAdminPath(path);
+
       void this.accessLogs?.write({
         requestId: ambient?.requestId ?? "unknown",
         method: request.method,
@@ -169,7 +176,8 @@ export class HttpThrottlerGuard extends ThrottlerGuard {
         durationMs: 0,
         userId,
         authenticated: Boolean(userId),
-        isAdmin: path.startsWith("/api/v1/admin") || path.startsWith("/admin"),
+        isAdmin: adminPath,
+        channel: accessChannel({ isAdminPath: adminPath, ip: ambient?.ip }),
         ip: ambient?.ip,
         deviceHash: hash,
         userAgent,

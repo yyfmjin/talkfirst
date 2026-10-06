@@ -15,6 +15,7 @@ import type {
 import { NotificationService } from "../notifications/notification.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { normalizeIp } from "../security/client-ip";
+import { normalizeChannelFilter } from "../security/access-channel";
 /**
  * A VALUE import, and that is load-bearing.
  *
@@ -860,6 +861,13 @@ export interface AccessLogListQuery {
   riskLevel?: string;
   authenticated?: boolean;
   isAdmin?: boolean;
+  /**
+   * 渠道筛选（2026-10-06）：`USER` / `ADMIN` / `OPS` / `ALL`。
+   *
+   * **缺省即 `USER`** —— 后台的默认视图只看成员流量（运营方要求后台与运维的行不混进来）。
+   * 想看另两类就显式传 `ADMIN` / `OPS`，想看全部传 `ALL`。
+   */
+  channel?: string;
   /** ISO date strings, matching `createdFrom` / `createdTo` on the other reads. */
   createdFrom?: string;
   createdTo?: string;
@@ -869,9 +877,9 @@ export interface AccessLogListQuery {
  * Builds the `where` for every access-log read, so the list and the stats can
  * never disagree about what "the same filter" means.
  *
- * An empty filter set produces `{}`, which Prisma treats as "no predicate" — so
- * the unfiltered case performs no extra work and cannot accidentally match
- * nothing.
+ * An empty filter set is **no longer** `{}`: `channel` 默认就是 `USER`（见下）。
+ * 这是运营方要的行为 —— 后台默认只看成员流量。想读回「全部」得显式传 `channel=ALL`。
+ * 其余条件仍遵循「没给就不加谓词」的旧规矩。
  *
  * Dates come in as strings, exactly like `createdFrom`/`createdTo` on the users
  * and reports reads. An unparseable date is **ignored**, not widened to the
@@ -888,6 +896,11 @@ function accessLogWhere(query: AccessLogListQuery): Prisma.AccessLogWhereInput {
   if (query.riskLevel) where.riskLevel = query.riskLevel;
   if (query.authenticated !== undefined) where.authenticated = query.authenticated;
   if (query.isAdmin !== undefined) where.isAdmin = query.isAdmin;
+
+  // 渠道默认值放在这个共用函数里，而不是控制器里：list 与 stats 都从这里出 where，
+  // 两处各给一个默认值早晚会出现「列表的条数和数字说的不是同一批数据」。
+  const channel = normalizeChannelFilter(query.channel);
+  if (channel) where.channel = channel;
 
   const from = parseOptionalDate(query.createdFrom);
   const to = parseOptionalDate(query.createdTo);
@@ -3305,6 +3318,7 @@ export class AdminService {
     userId: true,
     authenticated: true,
     isAdmin: true,
+    channel: true,
     ip: true,
     deviceHash: true,
     userAgent: true,
@@ -3389,8 +3403,11 @@ export class AdminService {
    *
    * `distinctIpCount` answers "how many visitors", which `total` cannot: one
    * client polling a feed inflates `total` without adding a visitor.
+   *
+   * `channel` 与列表同口径（**默认只看 `USER`**）：两个读共用 `accessLogWhere`，
+   * 所以「列表的条数」与「这里的合计」不会各说各话。
    */
-  async accessLogStats(query: { createdFrom?: string; createdTo?: string } = {}) {
+  async accessLogStats(query: { createdFrom?: string; createdTo?: string; channel?: string } = {}) {
     const where = accessLogWhere(query);
     const from = parseOptionalDate(query.createdFrom) ?? null;
     const to = parseOptionalDate(query.createdTo) ?? null;

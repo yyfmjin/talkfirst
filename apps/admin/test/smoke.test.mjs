@@ -1181,6 +1181,9 @@ test("phase C5: no migration was added and the schema gained no model", () => {
     "20261005140000_conversation_member_last_read",
     // C2 — `Report.commentId`（评论举报的目标）。可空列 + 索引，全为 NULL。
     "20261005160000_report_comment_target",
+    // 2026-10-06 — `AccessLog.channel`（渠道分流：后台默认只看成员流量）。
+    // 纯加法：新增列（默认 'USER'）+ 索引，并把历史行按同一口径回填（先 OPS、再 ADMIN）。
+    "20261006180000_access_log_channel",
   ];
   assert.deepEqual(
     migrations.slice(C5_BASELINE.length),

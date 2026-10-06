@@ -1446,6 +1446,19 @@ model AccessLog {
   // True when the request targeted an admin route. Resolving the real role
   // would need a database read on every request, which P1 deliberately avoids.
   isAdmin       Boolean @default(false)
+  /**
+   * 2026-10-06 — 这条请求属于哪个「渠道」，后台的访问日志默认只看 `USER`。
+   *
+   * 取值只有三个：
+   *   USER  —— 普通成员流量（默认视图，也是 `要看的对象`）
+   *   ADMIN —— 命中了后台路由（与 `isAdmin` 同源：按路径判，不做每次请求的角色查询）
+   *   OPS   —— 来自服务器自身/环回的请求（探针、运维命令、部署自检）
+   *
+   * 为什么需要它：运营方要看的是**成员**的访问，而后台自己管后台、服务器被自己探来探去，
+   * 会让真实流量淹在噪音里。分流之后这些行仍然**被记录**（单独可查），只是不进默认列表。
+   * 分类函数在 `src/security/access-channel.ts`，优先级 OPS > ADMIN > USER。
+   */
+  channel       String  @db.VarChar(8) @default("USER")
 
   ip         String? @db.VarChar(45)
   deviceHash String? @db.VarChar(64)
@@ -1475,6 +1488,8 @@ model AccessLog {
   @@index([riskLevel, createdAt])
   @@index([isAdmin, createdAt])
   @@index([authenticated, createdAt])
+  // 2026-10-06 — 后台默认按 `channel = 'USER'` 读，所以这条索引就是默认视图的索引。
+  @@index([channel, createdAt])
 }
 
 /// One row per distinct device identifier seen by the platform.
