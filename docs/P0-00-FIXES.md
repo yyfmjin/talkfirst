@@ -349,3 +349,17 @@ docs/P0-00-FIXES.md                 本文档（新增）
 | **验证** | API **91 套件 / 1686 用例全绿**；api / web / admin 三端 `tsc --noEmit` 与 lint 退出码 0；web 静态 16/0、admin 静态 **28/0**；web 契约三件套全 OK（80 源文件 / 93 主题色 / **102 testids** / 69 tsx 平衡）；`migrate diff` 无漂移 |
 | **未做（明确）** | ① 评论举报的**浏览器级 E2E**（按 `docs/KNOWN-E2E-ISSUES.md` 的决定保留）；② ~~被举报评论审核完成后的**通知**（`REPORT_REVIEW` 类型已在契约里，但未接生产者）~~ —— **本条写错了，2026-10-06 更正**：`REPORT_REVIEW` 的生产者自 `f7c3b6d`（2026-09-20「complete notification event producers」）就已存在，`reviewReport` 在状态**真正变化**时通知 `reporterId`（提交之后发送、不带 `actorId`，见 `apps/api/src/admin/admin.service.ts`），并有用例 `admin-report-review-notification.spec.ts` 在跑。当时写成「未接生产者」，是没查这一步 —— C2 剩下的确实只有 E2E。 |
 
+---
+
+## 13. FIX-14 — C8 三个死包：**删除**（2026-10-06）
+
+| 项 | 内容 |
+|---|---|
+| **基线原文** | C8「`packages/{types,config,validation}` —— 三个包在 `apps/` 下引用数均为 **0**（实测）」→「死代码，需决定删除或启用」 |
+| **它们到底是什么**（运营方要求先说清用处） | 三个包合计 **24 行**，是初始 monorepo 导入时留下的「共享层」占位：<br>· `@talkfirst/types`（10 行）：`ApiSuccess<T>` 与 `HealthStatus` 两个类型别名<br>· `@talkfirst/config`（7 行）：`API_PREFIX = "api/v1"` 与 `defaultPorts = {web:3000, api:4000, admin:3001}`<br>· `@talkfirst/validation`（7 行）：`isEmail()` 与 `isPasswordStrongEnough()`（后者只判「≥ 8 位」） |
+| **为何判定无用** | ① 全仓 `@talkfirst/{types,config,validation}` 的 import 数 = **0**（唯一命中是 `package-lock.json` 的 workspace 记录）；② 没有 tsconfig paths 映射；③ 文档从未描述过它们；④ 能力在各 app 里**已有实现且被测**：响应类型在各自的 `lib/api.ts` / DTO，端口在 `.env`，邮箱与密码校验在 `*.dto.ts` 用 `@IsEmail` / `@MinLength`（比「≥ 8 位」严格） |
+| **处置** | **删除**（运营方指示「没用就删了」）：`git rm -r packages/*`，`packages/` 目录随之消失。根 `package.json` 的 `workspaces` 保留 `packages/*` 通配（空目录无影响，也为将来真正的共享包留位）。**未改任何应用代码** |
+| **顺带揪出的 lockfile 漂移** | 刷 lockfile 时发现：`apps/api/package.json` 声明了 `jsonwebtoken` 与 `@types/jsonwebtoken`，而 `package-lock.json` 里**没有**（早就存在的不同步；因为 `jsonwebtoken` 同时是 `@nestjs/jwt` 的依赖，实际树里有它，所以 `npm ci` 一直不报错）。已由 `npm install --package-lock-only` 补上 |
+| **三条 `extraneous` 记录的清理（教训）** | `npm prune --package-lock-only` 不肯删那三条已不存在的 workspace 记录，于是手工移除 —— 结果**先留下一个多余逗号，把 lockfile 变成了非法 JSON**，随即修正。记在这里是因为「手工改 lockfile」本身值得警惕，下次直接重建更稳 |
+| **验证** | `package-lock.json` 可 `JSON.parse`；三个包名残留 **0**；`npm ci --dry-run` **exit 0**（lock 与 package.json 同步）；`npm run typecheck` exit 0；lint 两处 `✔ No ESLint warnings or errors`；web 静态 16/0、admin 静态 28/0；契约三件套 OK（82 源文件 / 93 主题色 / 102 testids / 71 tsx） |
+
