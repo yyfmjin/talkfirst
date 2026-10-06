@@ -1,135 +1,91 @@
 import type { Config } from "tailwindcss";
 
+import {
+  consoleColors,
+  duration,
+  ease,
+  fontFamily,
+  fontSize,
+  fontWeight,
+  radius,
+  shadow,
+} from "./src/design/tokens";
+
 /**
- * Admin console design tokens.
+ * 管理后台主题 —— 值全部来自 `src/design/tokens.ts`（B 方案，2026-10-06）。
  *
- * A single source of truth for the console's palette, radii and elevation, so a
- * screen never invents its own hex value. The intent is a calm, dense,
- * trustworthy operations surface — closer to a tool than to a marketing page:
- * one accent, a flat near-white canvas, hairline borders and almost no shadow.
+ * 上一版把色值直接写在这里，与成员端各一套：主色一边 indigo `#4F46E5`、
+ * 一边 TalkFirst Blue `#3B82F6`。现在两边消费同一套值，映射表在 tokens.ts 文件头。
  *
- * `ink` / `muted` / `line` are the historical names the twenty existing screens
- * already use; their *values* were retuned here rather than renamed, so the
- * whole console moves to the new palette without a per-screen refactor. The
- * `card` / `bg` / `primary` / `success` / `warning` / `danger` tokens are the
- * forward-looking names new code should use.
+ * 三条**必须继续成立**的结构约定（改这一行前先读）：
+ *
+ * 1. **状态色是扁平的键**（`bg-success-wash`、`text-danger`），不能写成嵌套刻度
+ *    （`success: { wash: … }`）：`stat-card.tsx` 用 `text-success` 与 `bg-success/10`，
+ *    `error-state.tsx` / `shell.tsx` 用 `text-danger`。写成对象会让这些类名解析不到，
+ *    状态数字静默退回默认字色 —— 没有编译错误，只有看不出来。
+ * 2. `primary-ink` 保留为独立类名，但**值已并入 `ink`**（成员端迁移表把 `#16213A`
+ *    映射到 `content`）。保留名字是为了不动二十个页面里已有的类名。
+ * 3. 半径仍是控制台密度（见 tokens.ts 文件头第 1 条），**不是**成员端的 18/20/24/28/32。
  */
 const config: Config = {
   content: ["./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
       colors: {
-        /** Canvas behind the content column. */
-        bg: "#F7F8FA",
-        /** Surfaces: cards, tables, popovers. */
-        card: "#FFFFFF",
-        /** Primary text. */
-        ink: "#171A1F",
-        /** Secondary text, labels, table headers. */
-        muted: "#6B7280",
-        /** Hairline borders and dividers. */
-        line: "#E8EBEF",
-        /** The single accent — links, primary buttons, active nav. */
-        primary: "#4F46E5",
-        /** Pressed/hover shade of `primary` (was an inline `#4338CA`). */
-        "primary-hover": "#4338CA",
-        /*
-         * Status colours. These MUST stay flat keys: `stat-card.tsx` uses
-         * `text-success` / `text-warning` / `text-danger` and `bg-success/10`, and
-         * `error-state.tsx` / `shell.tsx` use `text-danger`. Tailwind has no
-         * built-in `danger`, so without these the classes resolve to nothing and
-         * the status figures render in the default text colour.
-         */
-        success: "#16A34A",
-        warning: "#D97706",
-        danger: "#DC2626",
-        /** Pressed/hover shade of `danger` (was an inline `#B91C1C`). */
-        "danger-hover": "#B91C1C",
+        bg: consoleColors.bg,
+        card: consoleColors.card,
+        ink: consoleColors.ink,
+        muted: consoleColors.muted,
+        body: consoleColors.body,
+        line: consoleColors.line,
+        surface: consoleColors.surface,
+        subtle: consoleColors.subtle,
+        primary: consoleColors.primary,
+        "primary-hover": consoleColors.primaryHover,
+        "primary-active": consoleColors.primaryActive,
+        "primary-ink": consoleColors.primaryInk,
+        accent: consoleColors.accent,
 
-        /*
-         * ---------------------------------------------------------------------
-         * Phase I — the missing steps.
-         *
-         * The docblock above claims "a screen never invents its own hex value",
-         * but 63 arbitrary hexes had accumulated across 18 screens anyway. These
-         * are the ones that repeat, promoted to names in the same visual family as
-         * the tokens already here.
-         *
-         * `primary-ink` is the interesting one: `bg-[#16213A]` appeared as the
-         * filled-button colour on SIX different screens. It is a near-black navy
-         * rather than the indigo accent, which reads as a deliberate choice for
-         * heavyweight submit buttons in an ops tool — so it is recorded as a peer
-         * of `primary`, not merged into it.
-         */
+        success: consoleColors.success,
+        warning: consoleColors.warning,
+        danger: consoleColors.danger,
+        "danger-hover": consoleColors.dangerHover,
 
-        /** Recessed panels inside a card: log entries, detail blocks. */
-        surface: "#FBFCFE",
-        /** Row hover and neutral chips. */
-        subtle: "#F3F4F6",
-        /** Accent wash: icon tiles, active nav row, accent chips. */
-        accent: "#EEF2FF",
-        /** Legacy `#374151` — nav labels and secondary body text. */
-        body: "#374151",
-        /** The filled-button navy. `primary-ink` = the ink of a primary action. */
-        "primary-ink": "#16213A",
-
-        /*
-         * Status shades as FLAT keys (`bg-success-wash`), deliberately NOT nested
-         * scales (`success: { wash: … }`).
-         *
-         * Replacing the existing `success: "#16A34A"` with an object would break
-         * `text-danger`, `text-success` and `bg-success/10` — all of which are in
-         * use in `stat-card.tsx` / `error-state.tsx` / `shell.tsx`. Flat keys keep
-         * every current utility resolving to the same colour while making the
-         * dozens of `bg-[#DCFCE7]`-style literals nameable.
-         */
-        "success-wash": "#DCFCE7",
-        "success-ink": "#166534",
-        "warning-wash": "#FEF3C7",
-        "warning-ink": "#92400E",
-        "danger-wash": "#FEE2E2",
-        "danger-ink": "#991B1B",
-        "info-wash": "#DBEAFE",
-        "info-ink": "#1E40AF",
-        /*
-         * The neutral status pair. `#EDEFF3` / `#5A6472` is NOT `subtle`
-         * (`#F3F4F6`) — it is a cooler grey, used for "cancelled / removed /
-         * rejected" states on four screens. Kept as its own pair because folding
-         * it into `subtle` would visibly warm every inactive badge.
-         */
-        "neutral-wash": "#EDEFF3",
-        "neutral-ink": "#5A6472",
-        /*
-         * The "SYSTEM · automatic" actor badge — a violet-slate pair used on the
-         * risk list and the audit timeline. Distinct from BOTH `accent`
-         * (#EEF2FF/#4338CA, the brighter indigo) and `neutral` (#EDEFF3/#5A6472,
-         * the cooler grey): it marks "no human did this", which is a different
-         * statement from "inactive".
-         */
-        "system-wash": "#E4EAF7",
-        "system-ink": "#4A5A7A",
+        "success-wash": consoleColors.successWash,
+        "success-ink": consoleColors.successInk,
+        "warning-wash": consoleColors.warningWash,
+        "warning-ink": consoleColors.warningInk,
+        "danger-wash": consoleColors.dangerWash,
+        "danger-ink": consoleColors.dangerInk,
+        "info-wash": consoleColors.infoWash,
+        "info-ink": consoleColors.infoInk,
+        "neutral-wash": consoleColors.neutralWash,
+        "neutral-ink": consoleColors.neutralInk,
+        "system-wash": consoleColors.systemWash,
+        "system-ink": consoleColors.systemInk,
       },
-      /**
-       * Tighter than Tailwind's defaults on purpose: 16px cards read as
-       * consumer-app bubbles, not as an operations console. The class names are
-       * unchanged so no existing markup has to be migrated.
+      borderRadius: radius,
+      boxShadow: shadow,
+      /*
+       * 逐项展开（而不是直接把 `fontSize` 传进去）是成员端同一处的写法：
+       * `tokens.ts` 里的值带 `as const`，得到的是**只读元组**，而 Tailwind 的类型
+       * 要的是可变元组 —— 直接传会以 `The type ... is 'readonly' and cannot be
+       * assigned to the mutable type` 编译失败（2026-10-06 实测到了这条）。
        */
-      borderRadius: {
-        md: "8px",
-        lg: "10px",
-        xl: "10px",
-        "2xl": "12px",
-        "3xl": "14px",
-      },
-      boxShadow: {
-        card: "0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06)",
-        raised: "0 4px 12px rgba(16, 24, 40, 0.08), 0 1px 3px rgba(16, 24, 40, 0.04)",
-        overlay: "0 16px 40px rgba(16, 24, 40, 0.18)",
-      },
       fontSize: {
-        /** Console-scale type: 11 for meta, 12 for secondary, 13 body, 20 title. */
-        "2xs": ["11px", "16px"],
+        display: [...fontSize.display],
+        title: [...fontSize.title],
+        heading: [...fontSize.heading],
+        body: [...fontSize.body],
+        ui: [...fontSize.ui],
+        caption: [...fontSize.caption],
+        overline: [...fontSize.overline],
+        "2xs": [...fontSize["2xs"]],
       },
+      fontWeight: fontWeight,
+      fontFamily: { sans: [...fontFamily.sans] },
+      transitionDuration: duration,
+      transitionTimingFunction: ease,
     },
   },
   plugins: [],

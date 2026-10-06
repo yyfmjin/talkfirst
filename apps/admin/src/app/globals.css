@@ -14,18 +14,18 @@
   body {
     background: theme("colors.bg");
     color: theme("colors.ink");
-    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC",
-      "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+    font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Segoe UI",
+      system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   /* Page titles: one size, one weight, one tracking — no per-screen drift. */
   main h1 {
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 600;
     letter-spacing: -0.01em;
-    line-height: 28px;
+    line-height: 30px;
     color: theme("colors.ink");
   }
 
@@ -84,12 +84,17 @@
   /** Buttons. Three intents, one geometry. */
   .tf-btn {
     @apply inline-flex h-9 shrink-0 select-none items-center justify-center gap-1.5
-      rounded-xl border border-line bg-card px-3.5 text-[13px] font-medium text-ink
+      rounded-xl border border-line bg-card px-3.5 text-ui font-medium text-ink
       transition-colors hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-40;
   }
 
   .tf-btn-primary {
-    @apply border-transparent bg-primary text-white hover:bg-primary-hover;
+    /*
+     * 底色用 600 而不是 500：白字在 brand-500（#3B82F6）上只有 **3.68**，
+     * 正文级 AA 要求 4.5；600（#2563EB）是 **5.17**。按下态用 700（**6.70**）。
+     * 成员端的 `tf/button.tsx` 用的是 `bg-brand-500 text-white`，同一个问题，待那边修。
+     */
+    @apply border-transparent bg-primary-hover text-white hover:bg-primary-active;
   }
 
   .tf-btn-danger {
@@ -102,27 +107,27 @@
 
   /** A smaller variant for inline row actions. */
   .tf-btn-sm {
-    @apply h-8 px-3 text-[12px];
+    @apply h-8 px-3 text-caption;
   }
 
   /** Inputs: text, select, date, textarea. */
   .tf-input {
-    @apply h-9 w-full rounded-xl border border-line bg-card px-3 text-[13px] text-ink
+    @apply h-9 w-full rounded-xl border border-line bg-card px-3 text-ui text-ink
       placeholder:text-muted focus:border-primary focus:outline-none;
   }
 
   .tf-label {
-    @apply mb-1 block text-[12px] font-medium text-muted;
+    @apply mb-1 block text-caption font-medium text-muted;
   }
 
   /** Muted meta line under a title (「共 128 条 · 第 1 / 7 页」). */
   .tf-meta {
-    @apply text-[12px] text-muted;
+    @apply text-caption text-muted;
   }
 
   /** Section heading inside a detail page. */
   .tf-section-title {
-    @apply text-[13px] font-semibold text-ink;
+    @apply text-ui font-semibold text-ink;
   }
 
   /** Horizontal scroll wrapper so a wide table never widens the page. */
@@ -159,7 +164,7 @@
   main table tr {
     margin-bottom: 8px;
     border: 1px solid theme("colors.line");
-    border-radius: 12px;
+    border-radius: theme("borderRadius.2xl");
     background: theme("colors.card");
     padding: 8px 12px;
   }
