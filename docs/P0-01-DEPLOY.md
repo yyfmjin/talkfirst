@@ -96,18 +96,18 @@
 
 ---
 
-## 4. 仍未验证（只能由真服务器暴露）
+## 4. 本节写于部署之前 —— 其中大部分已在 2026-10-06 的真机部署中得到验证（见 §7）
 
-- `npm ci` 在服务器上的耗时与结果（本机 `node_modules` 是既有的，`apps/mobile` 还带 expo 依赖）。
-- 三个构建（`api` / `web` / `admin`）在 Linux 上的结果 —— 本机只跑过 typecheck 与单测。
-- `prisma migrate deploy` 与 `seed` 在服务器库上的结果。
-- 重启路径：`pm2 reload` / `systemctl restart`（脚本会自己探测，但没在真机上跑过）。
-- nginx / TLS / 域名 / 对外可达性。
-- 备份与回滚（这一条目前仓库里连脚本都没有）。
+- `npm ci` 在服务器上的耗时与结果 —— **已验（§7）**。
+- 三个构建（`api` / `web` / `admin`）在 Linux 上的结果 —— **已验（§7）**。
+- `prisma migrate deploy` 在服务器库上的结果 —— **已验（§7）**；`seed` 仍未在服务器跑过。
+- 重启路径 `pm2 reload` —— **已验（§7）**；`systemctl restart` 那条分支仍未跑过。
+- nginx / TLS / 域名 / 对外可达性 —— **已验（§7，含公网 https）**。
+- 备份与回滚 —— **仍无自动化**：本次部署前是**手工** `pg_dump`（路径见 §7），回滚仍没有脚本。
 
 ---
 
-## 5. 首次上线的顺序（给拿到连接信息之后）
+## 5. 首次上线的顺序（2026-10-06 已按此执行完毕；保留给下次 / 新机器）
 
 ```bash
 # 1. 服务器装好：git、node 20+、npm、postgres（或让它指向已有的库）
@@ -141,3 +141,50 @@ curl -fsS http://localhost:4000/api/v1/health
 `deploy-pull.sh --skip-install` 的前提是**依赖已经装好**。
 在没有 `node_modules` 的目录上跑它，不但没意义，还会让 npm 顺手改写 `package.json` ——
 所以脚本现在会直接拦下。
+
+---
+
+## 7. 首次真实部署（2026-10-06）
+
+真机：AWS EC2 / Ubuntu，`ubuntu@18.216.101.31`，项目在 `/home/ubuntu/talkfirst`，
+pm2 跑三个进程（api `4000` / web `3000` / admin `3001`），nginx 在前（80/443），
+域名 `talkfirst.ccwu.cc` / `api.talkfirst.ccwu.cc` / `admin.talkfirst.ccwu.cc`。
+
+### 7.1 动手前发现的四件事（每一件都会挡住部署）
+
+| # | 现象 | 处置 |
+|---|---|---|
+| 1 | 服务器代码停在 `0a64afd`（**落后 22 个提交**），连 `scripts/deploy-pull.sh` 都还没有 —— 它本身是 10-04 才加的 | 先手工 `git fetch` + `git merge --ff-only`（= 脚本的第 1 步），脚本到位后再跑它（此时它自己的 fetch 变成 no-op） |
+| 2 | `git fetch` 报 `git@github.com: Permission denied (publickey)` —— 服务器那把 SSH 密钥没被 GitHub 授权 | **origin 改用 HTTPS**（公开仓库匿名可读）。要恢复成 SSH 的话：往仓库加 deploy key，再改回 `git@github-talkfirst:...` |
+| 3 | `.env` 里**没有** `TOKEN_ENCRYPTION_KEY`（脚本会拒绝部署，上游代码在生产也会拒绝启动） | 生成并追加（**值不落任何文档或日志**）；写前备份 `.env` → `~/backup-env-pre-deploy.bak`。当时库里**还没有 `SocialSyncAccount` 表**，所以不存在「已加密的 token 会解不开」的问题 |
+| 4 | 工作区脏：`apps/admin/src/app/login/page.tsx` 有 1 行未提交改动（登录页文案把 `http://localhost:3001` 换成了真实域名）；另有 2 个未跟踪的 `apps/*/.env.production.local` | 那行改动**并进了仓库**，改成与 web 端同一写法（`NEXT_PUBLIC_ADMIN_URL ?? localhost:3001`），服务器那份随之 checkout 掉；两个 env 文件写进服务器的 `.git/info/exclude`（本机级忽略，不动任何受版本控制的文件），仓库 `.gitignore` 也补了 `.env.production.local` |
+
+### 7.2 部署与验收（全部实跑）
+
+```bash
+pg_dump ... > ~/backup-talkfirst-<时间>.sql      # 696K，迁移前的安全网
+git fetch origin master && git merge --ff-only    # 0a64afd -> 501f04d（22 个提交）
+bash scripts/deploy-pull.sh                       # 后台执行并写日志，约 4 分钟
+```
+
+| 验收项 | 结果 |
+|---|---|
+| 脚本自身校验 | 工作区干净 ✓ · `TRUST_PROXY=1` ✓ · 前端基址校验 OK ✓ |
+| `npm ci` | 成功（只有传递依赖的 deprecation warn，无 error） |
+| 三个构建 | `apps/api/dist/main.js`、`apps/web/.next/BUILD_ID`、`apps/admin/.next/BUILD_ID` 均已生成 ✓ |
+| `prisma migrate deploy` | **9 个迁移全部应用成功**（含 `moment_bookmarks` / `conversation_member_last_read` / `report_comment_target`） |
+| 重启 | 检测到 pm2，`pm2 reload all` → 三个进程全部 online、`restarts=1` ✓ |
+| 就绪探针（服务器内） | `/health/ready` → **200**，`{"status":"ready","database":{"status":"up","latencyMs":1}}`；`/health` → 200 |
+| 就绪探针（公网 https） | `https://api.talkfirst.ccwu.cc/api/v1/health/ready` → **200** 且 `database: up` |
+| 用户端 / 后台 | `https://talkfirst.ccwu.cc` → 200；`https://admin.talkfirst.ccwu.cc/login` → 200 |
+| 那行文案 | 后台登录页 HTML 里 `admin.talkfirst.ccwu.cc` 出现、`localhost:3001` **0 次** —— env 化改写真的生效 |
+
+**新的就绪探针返回 200 本身就是「新代码在跑」的证据**：部署前那个端点在旧代码里不存在，实测 **404**。
+
+### 7.3 仍然是缺的
+
+- **回滚**：没有脚本。本次只有手工 `pg_dump`；代码回滚靠 git（`0a64afd` 仍在历史里）。
+- **备份自动化**：没有 cron、没有保留策略。
+- **`seed`** 未在服务器跑过（生产库只有 2 个用户、0 条动态，本来也不需要）。
+- **服务器那把 GitHub deploy key 仍未配**（当前靠 HTTPS 拉取），要恢复 SSH 方式得往仓库加公钥。
+- CI 仍被 GitHub 账号的账单锁挡着（与服务器无关，见 `docs/CI.md` §6）。
