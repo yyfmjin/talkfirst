@@ -43,9 +43,13 @@ type Size = "sm" | "md" | "lg";
 
 const VARIANT: Record<Variant, string> = {
   /* The sticky CTA from the composer is the reference: solid brand, pill,
-     very light brand shadow, 120ms press. */
+     very light brand shadow, 120ms press.
+
+     底色用 600 而不是 500（2026-10-06）：白字压在 `brand-500`（#3B82F6）上只有 **3.68**，
+     不到正文级 AA 要求的 4.5；`brand-600`（#2563EB）是 **5.17**，按下用 700。
+     主色 token 本身不变（链接、激活态、选中态仍用 500）。 */
   primary:
-    "bg-brand-500 text-white shadow-brand hover:bg-brand-600 active:bg-brand-700 focus-visible:ring-brand-300 disabled:bg-brand-200 disabled:shadow-none",
+    "bg-brand-600 text-white shadow-brand hover:bg-brand-700 active:bg-brand-700 focus-visible:ring-brand-300 disabled:bg-brand-200 disabled:shadow-none",
   secondary:
     "border border-border bg-surface text-content hover:bg-surface-sunken active:bg-neutral-100 focus-visible:ring-neutral-300 disabled:text-content-subtle",
   ghost:
@@ -181,7 +185,7 @@ export const TFIconButton = forwardRef<HTMLButtonElement, TFIconButtonProps>(fun
         size === "sm" ? "h-9 w-9" : "h-11 w-11",
         variant === "ghost" && "bg-transparent text-content hover:bg-surface-sunken",
         variant === "secondary" && "border border-border bg-surface text-content hover:bg-surface-sunken",
-        variant === "primary" && "bg-brand-500 text-white hover:bg-brand-600",
+        variant === "primary" && "bg-brand-600 text-white hover:bg-brand-700",
         variant === "danger" && "bg-danger-50 text-danger-600 hover:bg-danger-100",
         className,
       )}

@@ -206,11 +206,11 @@ export function TFCard({
 export type TFTone = "neutral" | "brand" | "accent" | "success" | "warning" | "danger" | "info";
 
 const TONE: Record<TFTone, string> = {
-  neutral: "bg-neutral-100 text-content-muted",
+  neutral: "bg-neutral-100 text-neutral-600",
   brand: "bg-brand-100 text-brand-600",
-  accent: "bg-accent-100 text-accent-600",
+  accent: "bg-accent-100 text-accent-700",
   success: "bg-success-50 text-success-700",
-  warning: "bg-warning-100 text-warning-800",
+  warning: "bg-warning-100 text-warning-900",
   danger: "bg-danger-50 text-danger-700",
   info: "bg-info-50 text-info-700",
 };
