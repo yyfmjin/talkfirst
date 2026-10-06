@@ -347,5 +347,5 @@ docs/P0-00-FIXES.md                 本文档（新增）
 | **撞到的既有断言（全部按惯例更新期望）** | ① `social-reports-http.spec.ts` 两处逐字比对 `report.create` 的 data → 补 `commentId: null`；② `admin-reports.spec.ts` 12e（三目标→四目标）/29/29b/29c + `ReportRow` 类型；③ `admin-integration.spec.ts` 39c（两条 arm → 三条，并新增 COMMENT 对照）；④ `admin-user-detail.spec.ts` 的 `CONTENT_ARM_LITERAL` 与 9e/9f（新增评论行用例）；⑤ **admin 静态测试的迁移/模型 pin** —— 本轮三个迁移与 `MomentBookmark` 必须**显式写进清单**，这正是那条 pin 存在的意义（它自己注释里写着「新增迁移必须在这里具名，而不是随着计数器滑进去」） |
 | **测试** | 新增 6 条评论举报 HTTP 用例（目标解析 / 404 三态 / 自报 / 三目标互斥）+ 3 条审核详情用例（29d/e/f：标签与摘要 · 评论已删 · 从未指向评论）；另有 5 处既有期望按上表更新 |
 | **验证** | API **91 套件 / 1686 用例全绿**；api / web / admin 三端 `tsc --noEmit` 与 lint 退出码 0；web 静态 16/0、admin 静态 **28/0**；web 契约三件套全 OK（80 源文件 / 93 主题色 / **102 testids** / 69 tsx 平衡）；`migrate diff` 无漂移 |
-| **未做（明确）** | ① 评论举报的**浏览器级 E2E**（按 `docs/KNOWN-E2E-ISSUES.md` 的决定保留）；② 被举报评论审核完成后的**通知**（`REPORT_REVIEW` 类型已在契约里，但未接生产者——那属于通知闭环，不属于 C2） |
+| **未做（明确）** | ① 评论举报的**浏览器级 E2E**（按 `docs/KNOWN-E2E-ISSUES.md` 的决定保留）；② ~~被举报评论审核完成后的**通知**（`REPORT_REVIEW` 类型已在契约里，但未接生产者）~~ —— **本条写错了，2026-10-06 更正**：`REPORT_REVIEW` 的生产者自 `f7c3b6d`（2026-09-20「complete notification event producers」）就已存在，`reviewReport` 在状态**真正变化**时通知 `reporterId`（提交之后发送、不带 `actorId`，见 `apps/api/src/admin/admin.service.ts`），并有用例 `admin-report-review-notification.spec.ts` 在跑。当时写成「未接生产者」，是没查这一步 —— C2 剩下的确实只有 E2E。 |
 
