@@ -95,8 +95,8 @@ export default function CommunityRulesPage() {
 
         <Section title="5. 如果你被处理了">
           <p>
-            你可以通过【支持邮箱待填】申诉，并请说明你的账号与当时的情况，我们会复核。
-            临时暂停的账号会在到期后自动恢复。
+            你可以通过 support@talkfirst.ccwu.cc 申诉，并请说明你的账号与当时的情况，
+            我们会复核。临时暂停的账号会在到期后自动恢复。
           </p>
         </Section>
 

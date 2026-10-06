@@ -20,9 +20,10 @@ import { ScreenHeader } from "@/components/screen-header";
  * **事实部分**逐条对照实现写过 —— 年龄限制、用户名与昵称的区别、
  * 密码的存储方式（不可逆哈希）、Google 登录无密码、注销后发生什么、
  * 违规处理有哪些手段，都能在代码与 `docs/P0-01-*` / `docs/P0-04-*` 里找到对应。
- * **但有两处只有运营方能提供**，页面上以【】标出：
- * 运营主体与联系方式、适用法律与管辖地。填入之前，这两页不应被当作已生效的
- * 法律文件对外依赖（见 `docs/LEGAL-TEXTS.md`）。
+ * 运营主体、联系方式与管辖地：2026-10-06 按运营方指示先填占位值 ——
+ * 运营主体写作 TalkFirst，联系方式写作 support@talkfirst.ccwu.cc，管辖写成
+ * 「运营主体注册地有管辖权的法院」。**注册完成后必须替换**；在此之前
+ * 这两页不应被当作已生效的法律文件对外依赖（见 `docs/LEGAL-TEXTS.md`）。
  */
 
 /** Shared paragraph shape, so the page reads as one document. */
@@ -49,8 +50,8 @@ export default function TermsPage() {
 
         <Section title="1. 关于本协议">
           <p>
-            本协议适用于 TalkFirst 的手机应用与网站。本产品由
-            【运营主体名称待填】运营，联系方式【支持邮箱待填】。
+            本协议适用于 TalkFirst 的手机应用与网站。运营方 TalkFirst，
+            联系方式 support@talkfirst.ccwu.cc。
           </p>
           <p>如果你不同意本协议，请不要注册或继续使用本产品。</p>
         </Section>
@@ -147,7 +148,10 @@ export default function TermsPage() {
               我们不对因不可抗力、第三方服务中断（例如你使用 Google 登录时的 Google 服务）、
               或你自身设备与网络问题造成的损失负责。
             </li>
-            <li>【本条的责任限制范围需由法务确认】</li>
+            <li>
+              以上责任边界以适用法律允许的最大范围为限；法律不允许限制的部分，
+              不因本协议而受限。
+            </li>
           </ul>
         </Section>
 
@@ -159,7 +163,10 @@ export default function TermsPage() {
         </Section>
 
         <Section title="10. 适用法律与争议解决">
-          <p>【适用法律与管辖地待填】。填入之前，本条的效力需由法务确认。</p>
+          <p>
+            如果你与我们之间发生争议，请先用上面的联系方式与我们联系，我们会尽力协商解决。
+            协商不成时，交由运营主体注册地有管辖权的法院处理。
+          </p>
         </Section>
 
         <p className="mt-8 rounded-row bg-surface-sunken px-4 py-3 text-caption leading-5 text-content-muted">
