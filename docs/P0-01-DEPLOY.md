@@ -303,3 +303,42 @@ TRUST_PROXY=2 pm2 restart talkfirst-api --update-env   # 这才写进去
    否则脚本第 5 步找不到 pm2（会走到它自己的降级分支）。
 2. 本机 `~/.ssh/talkfirst_ed25519` 的公钥注释是 `github-talkfirst`（为 GitHub 准备的），
    **不是服务器登录密钥**；登服务器用默认的 `~/.ssh/id_ed25519`（`ubuntu@18.216.101.31`）。
+
+### 10.2 pm2 进程环境会盖过 `.env` —— 改完不生效时先重建进程
+
+（同一天第二次踩到，这次是邮件。上一个同类事故是 `TRUST_PROXY`。）
+
+**现象**：把 `.env` 的 `MAIL_PROVIDER` 从 `console` 改成 `smtp` 并补齐 `SMTP_*` 之后
+跑 `pm2 reload all`，接口**仍然按 console 工作**（日志仍是
+`EMAIL VERIFICATION SENT (console) …`），验证码依旧只进日志。
+
+**原因**：`main.ts` 用 dotenv 读 `.env`，而 **dotenv 不覆盖已存在的进程变量**。
+这个进程的 pm2 环境里存着一份**启动时**的快照（`MAIL_PROVIDER=console`、
+`ENFORCE_EMAIL_VERIFICATION=false`、`SMTP_*` 全空），于是 `.env` 的新值全被无视；
+`pm2 reload` 会连这份快照一起沿用 —— 所以改 `.env` 对它无效。
+
+**怎么确认**（注意 `pm2 env` 输出是 `KEY: value`，用 `^KEY=` 去 grep 会永远搜不到，
+我因此误判过一次）：
+
+```bash
+PID=$(pm2 pid talkfirst-api)
+tr '\0' '\n' < /proc/$PID/environ | grep -iE '^(MAIL_PROVIDER|SMTP_|ENFORCE_EMAIL)'
+```
+
+**怎么修**（让进程环境回到干净状态，配置只由 `.env` 决定）：
+
+```bash
+cd /home/ubuntu/talkfirst
+# 先确认「只在进程里、不在 .env 里」的键不会丢：
+PID=$(pm2 pid talkfirst-api)
+tr '\0' '\n' < /proc/$PID/environ | grep -E '^[A-Z_]+=' | cut -d= -f1 | sort -u > /tmp/penv.keys
+grep -oE '^[A-Z_]+=' .env | cut -d= -f1 | sort -u > /tmp/env.keys
+comm -23 /tmp/penv.keys /tmp/env.keys | grep -vE '^(PATH|HOME|PM2_|NODE_|npm_|_)'
+pm2 delete talkfirst-api
+pm2 start npm --name talkfirst-api -- run start:prod -w @talkfirst/api
+pm2 save
+curl -fsS http://localhost:4000/api/v1/health/ready   # 200 才算回来了
+```
+
+**给后来者的规则**：`.env` 是唯一真源，pm2 环境里不该出现应用变量。
+往 `.env` 新增变量后发现不生效，第一件事是重建进程，而不是怀疑代码。
