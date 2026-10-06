@@ -138,6 +138,61 @@ describe("TranslationProvider.translateExternal", () => {
     expect(fetchMock.mock.calls[0][0]).toContain("de=me%40example.com");
   });
 
+  it("mymemory：候选里挑真正像译文的那条（线上实测的真实响应形状）", async () => {
+    process.env.TRANSLATION_PROVIDER = "mymemory";
+    // 2026-10-06 实测：`responseData.translatedText` 就是 `matches[0]`（脏），
+    // 而同一个响应里质量 100 的那条才是要展示给用户的。
+    fetchMock.mockReturnValue(
+      okJson({
+        responseData: { translatedText: "359：哈啰 很高兴见到你", match: 1 },
+        matches: [
+          { translation: "359：哈啰 很高兴见到你", quality: "74", "created-by": "MateCat" },
+          { translation: "你好，很高兴认识你...", quality: "74", "created-by": "MateCat" },
+          { translation: "你好，很高兴认识你", quality: "100", "created-by": "MateCat" },
+        ],
+      }),
+    );
+
+    await expect(
+      provider.translateExternal("Hello, nice to meet you.", "en", "zh"),
+    ).resolves.toEqual({ text: "你好，很高兴认识你", provider: "mymemory" });
+  });
+
+  it("mymemory：目标语是中日韩时丢掉夹拉丁字母的乱码条，并跳过维基词条释义", async () => {
+    process.env.TRANSLATION_PROVIDER = "mymemory";
+    fetchMock.mockReturnValue(
+      okJson({
+        responseData: { translatedText: "penian ferein OU潘托斯所有安卓sofou", match: 1 },
+        matches: [
+          {
+            translation: "penian ferein OU潘托斯所有安卓sofou",
+            quality: "74",
+            "created-by": "MateCat",
+          },
+          { translation: "你们好。", quality: "74", "created-by": "MateCat" },
+          { translation: "问候", quality: "80", "created-by": "Wikipedia" },
+        ],
+      }),
+    );
+
+    await expect(provider.translateExternal("こんにちは", "ja", "zh")).resolves.toEqual({
+      text: "你们好。",
+      provider: "mymemory",
+    });
+  });
+
+  it("mymemory：候选全是脏条 -> 判失败，而不是把它自己回的那条端上来", async () => {
+    process.env.TRANSLATION_PROVIDER = "mymemory";
+    fetchMock.mockReturnValue(
+      okJson({
+        responseData: { translatedText: "junk junk junk" },
+        matches: [{ translation: "junk junk junk", quality: "74", "created-by": "MateCat" }],
+      }),
+    );
+
+    await expect(provider.translateExternal("こんにちは", "ja", "zh")).resolves.toBeNull();
+  });
+
   it("mymemory：把「额度用尽」的警告当译文回（HTTP 200）时必须判失败", async () => {
     process.env.TRANSLATION_PROVIDER = "mymemory";
     fetchMock.mockReturnValue(
