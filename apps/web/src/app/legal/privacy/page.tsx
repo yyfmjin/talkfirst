@@ -132,8 +132,9 @@ export default function PrivacyPolicyPage() {
         <Section title="6. 保存期限">
           <p>
             账号存续期间保存你的资料。安全审计记录按固定期限自动清理
-            （访问记录默认 30 天，安全事件默认 180 天），**删除账号后审计记录仍会保留**——
-            因为审计的意义正在于记录发生过的事，这部分不随账号删除而消失。
+            （访问记录默认 30 天，安全事件默认 180 天），
+            <strong className="text-content">删除账号后审计记录仍会保留</strong>
+            ——因为审计的意义正在于记录发生过的事，这部分不随账号删除而消失。
           </p>
         </Section>
 
@@ -155,10 +156,14 @@ export default function PrivacyPolicyPage() {
 
         <p className="mt-8 rounded-row bg-surface-sunken px-4 py-3 text-caption leading-5 text-content-muted">
           另外请阅读
-          <Link href="/legal" className="mx-1 font-medium text-brand-600">
+          <Link href="/legal/terms" className="mx-1 font-medium text-brand-600">
             用户协议
           </Link>
-          中的账号规则与内容规范。
+          中的账号规则，以及
+          <Link href="/legal/rules" className="mx-1 font-medium text-brand-600">
+            社区规则
+          </Link>
+          。
         </p>
       </div>
     </PhoneShell>

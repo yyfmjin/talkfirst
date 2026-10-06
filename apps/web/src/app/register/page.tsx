@@ -181,7 +181,11 @@ export default function RegisterPage() {
               announced to assistive tech when the field is focused rather than
               only being visible. */}
           <p id="register-hint" className="text-caption leading-4 text-content-subtle">
-            仅限 18 岁以上使用。注册即表示同意社区规则。
+            仅限 18 岁以上使用。注册即表示同意
+            <Link href="/legal/rules" className="font-medium text-brand-600">
+              社区规则
+            </Link>
+            。
           </p>
           {error ? (
             <p id="register-error" role="alert" className="break-words text-caption text-danger-600">

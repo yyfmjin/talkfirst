@@ -18,17 +18,18 @@ import { TFButton } from "@/components/tf";
  * tappable pages that were never there. A consent screen for documents the user
  * cannot read is not consent; in the EU it is a GDPR Article 7 problem on its face.
  *
- * ## What I did about it, and what I deliberately did NOT do
+ * ## Where it stands now (2026-10-06)
  *
- * I did **not** invent a privacy policy or a terms of service. Those are legal
- * instruments that state what the operator actually does with personal data, and
- * fabricating plausible text would be worse than the placeholder — it would read
- * as a binding commitment nobody has agreed to. Authoring them is a decision for
- * you (see docs/FUNCTIONAL-TEST-UI-UX.md §2.8 and §9.1).
+ * Half of that gap was closed when the privacy policy got its own address at
+ * `/legal/privacy` (Google's OAuth consent screen requires a publicly reachable
+ * policy URL). **The other half was still open**: the gate let a member tick
+ * 「我已阅读并同意用户协议」 with no 用户协议 anywhere to read, and its own copy
+ * promised 「两项都会在注册流程中提供完整文本」 — a promise the screen could not
+ * keep. `/legal/terms` and `/legal/rules` now exist, and both are linked below.
  *
- * Instead the screen now says exactly what is true: both documents exist, they are
- * shown during sign-up, and continuing means you accept them. The false link
- * affordance is gone.
+ * The texts themselves are engineer-drafted and marked as such in their own
+ * headers — see `docs/LEGAL-TEXTS.md` for what is still missing (operator entity,
+ * jurisdiction) before they can be relied on as binding documents.
  *
  * ## The other fixes
  *
@@ -74,7 +75,10 @@ export default function LegalPage() {
             Google's OAuth consent screen requires a publicly reachable privacy
             policy URL, and a checkbox list is not one — so the text has its own
             address and this is the way in. */}
-        <p className="mt-3 text-center text-caption">
+        <p className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-caption">
+          <Link href="/legal/terms" className="font-medium text-brand-600">
+            阅读用户协议全文
+          </Link>
           <Link href="/legal/privacy" className="font-medium text-brand-600">
             阅读隐私政策全文
           </Link>
