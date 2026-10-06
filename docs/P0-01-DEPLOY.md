@@ -183,8 +183,8 @@ bash scripts/deploy-pull.sh                       # 后台执行并写日志，�
 
 ### 7.3 仍然是缺的
 
-- **回滚**：没有脚本。本次只有手工 `pg_dump`；代码回滚靠 git（`0a64afd` 仍在历史里）。
-- **备份自动化**：没有 cron、没有保留策略。
+- ~~回滚：没有脚本~~ —— **已补写步骤**（在 `scripts/backup-db.sh` 的文件头，含恢复命令与「先停 API 再恢复」的提醒）；仍是**手工**执行，没有自动化。
+- ~~备份自动化：没有 cron、没有保留策略~~ —— **已做**（2026-10-06）：`scripts/backup-db.sh` + 服务器 crontab 每天 03:15，保留 14 份。详见 §9。
 - **`seed`** 未在服务器跑过（生产库只有 2 个用户、0 条动态，本来也不需要）。
 - **服务器那把 GitHub deploy key 仍未配**（当前靠 HTTPS 拉取），要恢复 SSH 方式得往仓库加公钥。
 - CI 仍被 GitHub 账号的账单锁挡着（与服务器无关，见 `docs/CI.md` §6）。
@@ -240,3 +240,40 @@ TRUST_PROXY=2 pm2 restart talkfirst-api --update-env   # 这才写进去
 > **给后来者的两条**：① 只要站点在 Cloudflare（或其他 CDN）后面，`TRUST_PROXY` 就绝不是 1，
 > 而且**每次换拓扑都要重新数跳数**；② 在 pm2 下跑的变量，改完 `.env` 后先 `pm2 env <id>`
 > 看一眼有没有同名陈旧值，否则会白改。
+
+---
+
+## 9. 数据库备份与回滚（2026-10-06 起备份自动化）
+
+### 9.1 备份
+
+| 项 | 值 |
+|---|---|
+| 脚本 | `scripts/backup-db.sh`（在仓库里，随部署同步） |
+| 由谁调用 | 服务器 crontab：`15 3 * * * bash /home/ubuntu/talkfirst/scripts/backup-db.sh >> /home/ubuntu/talkfirst-backups/backup.log 2>&1` |
+| 输出 | `~/talkfirst-backups/talkfirst-YYYYmmdd-HHMM.sql.gz` |
+| 保留 | 最近 **14** 份（`--keep N` 可改） |
+| 为什么用 `bash` 显式调用 | 仓库里的文件没有可执行位（Windows 上提交的），显式 `bash` 才不依赖它 |
+| 为什么写在仓库**外** | `deploy-pull.sh` 要求工作区干净；备份落在仓库里会让每次部署被自己拦下 |
+
+**两个顺序要点**（脚本里也写着）：先校验（非空 + `gzip -t`）**再**清理旧份 ——
+今天这次没成功就不动历史；dump 中途被中断时，留一个能看出是坏的 `.gz`
+好过留一个看不出坏在哪的 `.sql`。
+
+**实测**（2026-10-06）：装好后立即跑一次（120K，`gzip -t` 通过）；又造到 4 份后用
+`--keep 2` 再跑一次 —— 保留最新两份、删掉最旧一份，余下两份完整性均通过。
+
+**停用**：`crontab -e` 删掉那一行即可（这台机器目前 crontab 里只有这一条）。
+
+### 9.2 回滚
+
+- **代码**：`git fetch origin && git log --oneline -5` 找准目标提交 →
+  `git checkout <commit> -- .`（或 `git reset --hard <commit>`，后者会丢本地改动）→
+  再跑 `scripts/deploy-pull.sh`。
+- **数据库**：先 `pm2 stop talkfirst-api`，然后
+  `gunzip -c ~/talkfirst-backups/talkfirst-<时间>.sql.gz | psql "$DATABASE_URL"`，
+  最后 `pm2 start talkfirst-api`。
+  （先停 API 是因为 dump 里有 DROP/CREATE，跑到一半时应用还在写会打架。）
+
+这两段步骤与 `scripts/backup-db.sh` 的文件头写的是同一套：
+放在两处是因为**部署时**最先看到的往往是本文档，而**真要恢复时**最先看到的会是那个脚本。
