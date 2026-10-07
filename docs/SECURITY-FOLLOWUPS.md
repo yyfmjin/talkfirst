@@ -30,6 +30,16 @@
 
 ## 🟡 需要你做（我做不了）
 
+### GitHub 账号被账单问题锁住 → CI 一直没跑过（需要你处理）
+现状（2026-10-07 复核）：Actions 的 **36 次运行全部是「作业未启动」**，GitHub 给的原话是
+`The job was not started because your account is locked due to a billing issue.`
+也就是说这个仓库的 CI **从来没有真正执行过任何一步**（作业 `steps` 一直是空数组）——
+所以「CI 红了」不能读成「代码红了」，真正把关的是本机 `npm run gate`。
+要做的只有一件事：GitHub → Settings → **Billing and plans**，结清欠款 / 更新支付方式；
+解锁后在 Actions 页 **Re-run all jobs**，**不需要改任何代码**。
+细节与证据在 `docs/CI.md` §6、§6.1。
+（同一天早些时候 `git push` 被接收端连续 500 拒收、当晚又自己好了 —— 看起来是账号层的同一件事。）
+
 ### Gmail 应用专用密码轮换（暂缓，你说回头再弄）
 它曾出现在对话里，任何人都能用它从任何地方以你的名义发信。步骤在下面，
 **新密码不要贴进任何对话**（上次就是这么泄的）：
@@ -58,7 +68,26 @@ bash scripts/deploy-pull.sh --skip-install --skip-build --skip-migrate
 
 ## 已知仍未修的依赖问题（与安全无关，但会挡 app）
 
-`@nestjs/cli` 在根级（11）与 api（12）各一份，api 那份嵌套子树的传递依赖很脆弱：
-一旦重新生成锁文件，`@sindresorhus/is`、`stdin-discarder` 这类会掉出来，`nest build` 直接失败。
-**修法不是简单对齐版本**（试过 ✗）：需要钉住整串并在**临时克隆**里验证
-「全新 `npm ci` → `nest build` → api 用例」全过，再动 master。app 的代码在 `ce4015f` 里等这一步。
+`@nestjs/cli` 在根级（11）与 api（12）各一份；**expo 依赖树也是嵌套布局**（expo 原本住在
+`apps/mobile/node_modules/expo`，它自己的依赖又套在 `expo/node_modules/` 下）。两者都说明
+这份锁文件不是「正常重解」出来的。
+
+2026-10-07 的处置是**不重解**：只手工重排了 6 个 expo 相关条目的位置（**版本一个没动**：
+1510 → 1510 个 name@version），然后在本机用全新安装验证完整链路：
+
+| 验证 | 结果 |
+|---|---|
+| 全新 `npm ci` → `prisma generate` → `nest build`（api） | ✅（部署链路不受影响） |
+| `npm run typecheck` / `lint` / web 静态 16 · 契约 3 项 | ✅ |
+| `expo export --platform android` | ✅ 579 模块 / 1.06 MB |
+| 真机或模拟器运行 | ❌ 本机无 JDK/SDK/gradle，打不出 APK（待 EAS） |
+
+所以 **app 已经落地**（提交 `734de51`）。但**将来若重新生成锁文件**，两处会再次成为雷：
+api 那份 `@nestjs/cli` 的嵌套子树（`@sindresorhus/is`、`stdin-discarder` 之类可能掉出来）、
+以及 expo 若又被嵌回 `apps/mobile/node_modules`（打包重新报 `Cannot find module 'expo/config'`）。
+做这件事务必先在临时克隆里跑通「全新 `npm ci` → `nest build` → api 用例 → `expo export`」，再动 master。
+
+⚠️ 另：**不要在这个仓库跑裸的 `npm install`**。expo-* 包的 peer 是 `expo: "*"`，
+expo 不在根级时 npm 会为满足 peer 在根级再装一份**最新 expo**（实测一次多出 192 个包，
+含 `expo@57` 与 `react-native@0.87.1`，而本 app 是 SDK 52 / RN 0.76 → 打包挂在 Flow 语法错）。
+部署脚本用的是 `npm ci`，不受影响。

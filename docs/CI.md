@@ -140,6 +140,29 @@ jest 阶段红 = 环境变量或库状态）；② 是哪个套件（`FAIL` 行�
   `403 Must have admin rights to Repository`。所以上面那条结论是从 check-run 的 **annotations** 拿到的，
   不是推测。以后再查同类问题，走 `commits/{sha}/check-runs` → `check-runs/{id}/annotations`。
 
+### 6.1 2026-10-07 复核：**仍在锁中 —— CI 至今一次都没真跑过**
+
+把整个运行历史翻完（`actions/runs?per_page=30`，`total_count = 36`）：**36 次运行全部 `failure`**，
+最早能追到 2026-10-05。不是偶发，也不是某次改动弄坏的。
+
+| 事实 | 证据 |
+|---|---|
+| 最新一次运行（本次 app 落地的提交） | run `37662866636`（commit `734de51`，`2026-10-07T17:55:44Z`）；两个作业 `checks` 与 `api-tests` 都是 `conclusion = failure`，**`steps` 仍然是空数组**（`steps: 0`） |
+| 失败原因与 §6 一字不变 | 运行页原文：`The job was not started because your account is locked due to a billing issue.` |
+| 推算 | 作业都在秒级失败且没有任何步骤，`npm ci` 都不可能在那么短内跑完 —— 和 §6 同一个结论：事情发生在下发 runner **之前** |
+
+**因此请把「CI 是红的」与「代码是红的」彻底分开读**：在这个仓库里，CI 的红至今不携带任何
+关于代码的信息；真正把关的是本机 `npm run gate`（§7）。
+
+两个附带观察（同一天、同一个账号）：
+
+- 2026-10-07 早些时候，`git push` 被 GitHub 接收端连续以 **500** 拒收（多次、不同时间、
+  仓库并未禁用、状态页正常）；当晚同一分支再推 **成功**了。push 被拒与 Actions 起不来，
+  看起来是账号层同一件事的两张脸 —— 排查时不要只盯仓库设置。
+- 解锁之后**不需要改任何代码**：Actions 页面 **Re-run all jobs**，或再触发一次
+  `workflow_dispatch` 即可。那时才第一次能看到真实结果，§4 里剩下的两条（runner 上 `npm ci` 对
+  `apps/mobile`、无 `.env` 时的环境变量完整性）也才第一次有机会被验证。
+
 ---
 
 ## 7. 账单锁期间的替代：本机 `npm run gate`
