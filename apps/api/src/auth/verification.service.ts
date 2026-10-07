@@ -46,6 +46,38 @@ export class VerificationService {
   ) {}
 
   /**
+   * 全局发信窗口（2026-10-07）。
+   *
+   * 下面已有的冷却与每小时上限都**按地址**计数 —— 换个地址就重置。而从
+   * 2026-10-06 起每一封都真的经我们的 Gmail 账号发出，于是「换地址刷」的后果是：
+   * 账号日额度被打满 / 被判定为垃圾邮件发送源，连带把注册与找回密码一起打死，
+   * 而且等于替别人群发。
+   *
+   * 这不是「防住某个人」，而是给「一次事故最多烧掉多少封」定一个上限：超了就拒。
+   * 代价是**真的有人群发时正常用户也会被挡一会儿** —— 两害相权。
+   *
+   * 单进程内存窗口就够：当前部署是一个 api 实例（pm2 单实例）。
+   * 将来扩到多实例时必须换 Redis，否则每个实例各放 N 条。
+   */
+  private readonly globalSends: number[] = [];
+  private readonly globalMaxPerHour = 200;
+
+  /**
+   * 只在**真的要发信**的路径上消耗全局额度。
+   *
+   * 调用点放在 `assertSendAllowed` 末尾，是为了继承它上方那段注释的语义：
+   * 对一条未过期验证码的重发不算新的外发邮件，不该占额度。
+   */
+  private consumeGlobalSendBudget(now: number): boolean {
+    const hourAgo = now - 60 * 60 * 1000;
+    const window = this.globalSends;
+    while (window.length > 0 && window[0] <= hourAgo) window.shift();
+    if (window.length >= this.globalMaxPerHour) return false;
+    window.push(now);
+    return true;
+  }
+
+  /**
    * Issue (or re-issue) a verification code.
    *
    * ## Why an active code short-circuits the cooldown (post-audit fix)
@@ -156,6 +188,12 @@ export class VerificationService {
       now - latest.createdAt.getTime() < EMAIL_VERIFICATION_POLICY.resendCooldownMs
     ) {
       await this.recordRateLimited(normalized, purpose, "RESEND_COOLDOWN");
+      throw this.rateLimited();
+    }
+
+    // 全局闸门：见 `globalSends` 的说明。按地址的上限挡不住「换地址刷」。
+    if (!this.consumeGlobalSendBudget(now)) {
+      await this.recordRateLimited(normalized, purpose, "GLOBAL_SEND_BUDGET");
       throw this.rateLimited();
     }
 
