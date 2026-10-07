@@ -97,3 +97,71 @@ export type ApiErrorBody = {
   message: string;
   details?: Record<string, string[]>;
 };
+
+/* ──────────────────────────── 动态 / 视频流 ──────────────────────────── */
+
+/** 动态作者。与 `PublicProfile` 里同一个人的最小形状。 */
+export type MomentAuthor = {
+  id: string;
+  nickname: string | null;
+  avatarUrl: string | null;
+  countryCode: string | null;
+};
+
+/**
+ * 一条动态。**与 web 端同形**：服务端在 `MomentsService.feedItem()` 里统一投影，
+ * `feed` 与 `videoFeed`（视频流）共用那一份 —— 所以这里的字段也就是视频流的字段。
+ */
+export type Moment = {
+  id: string;
+  userId: string;
+  author: MomentAuthor;
+  platform: string;
+  platformName: string | null;
+  content: string;
+  images: string[];
+  videoUrl: string | null;
+  durationSec: number | null;
+  tags: string[];
+  likeCount: number;
+  commentCount: number;
+  liked: boolean;
+  bookmarked: boolean;
+  source: string;
+  isDemo: boolean;
+  syncedAt: string | null;
+  createdAt: string;
+};
+
+export type MomentPage = { items: Moment[]; nextCursor: string | null };
+
+/**
+ * 视频流的一页。
+ *
+ * `exhausted` = 「库里的视频已经翻完了」：客户端应当从头循环，而不是继续拉取
+ * （服务端的 `exclude` 只认最后 50 个 id）。
+ */
+export type VideoFeedPage = { items: Moment[]; exhausted: boolean };
+
+/* ──────────────────────────────── 聊天 ──────────────────────────────── */
+
+export type ConversationItem = {
+  id: string;
+  connectionId: string | null;
+  updatedAt: string;
+  unreadCount?: number;
+  peer: MomentAuthor | null;
+  lastMessage: { content: string; senderId: string; createdAt: string } | null;
+};
+
+export type ChatMessage = {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  content: string;
+  type: string;
+  createdAt: string;
+};
+
+/** `GET /conversations/:id/messages`：**最旧在前**，`nextCursor` 指向更早的一页。 */
+export type MessagePage = { items: ChatMessage[]; nextCursor: string | null };

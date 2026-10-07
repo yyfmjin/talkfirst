@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -152,7 +153,7 @@ export function ProfilePreview({
   );
 }
 
-function TagSection({ title, children }: { title: string; children: React.ReactNode }) {
+function TagSection({ title, children }: { title: string; children: ReactNode }) {
   if (!children || (Array.isArray(children) && children.length === 0)) return null;
   return (
     <View style={styles.section}>
@@ -162,7 +163,7 @@ function TagSection({ title, children }: { title: string; children: React.ReactN
   );
 }
 
-function Tag({ children, tone }: { children: React.ReactNode; tone?: "warm" }) {
+function Tag({ children, tone }: { children: ReactNode; tone?: "warm" }) {
   return (
     <View style={[styles.tag, tone === "warm" ? styles.tagWarm : null]}>
       <Text style={[styles.tagText, tone === "warm" ? styles.tagTextWarm : null]}>{children}</Text>
