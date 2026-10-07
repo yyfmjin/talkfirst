@@ -23,7 +23,7 @@
  * · **`playsInline`**：iOS Safari 缺了它会把视频弹成全屏播放器。
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Heart, MessageCircle, Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
@@ -48,7 +48,23 @@ const BATCH = 6;
 /** 已看过的 id 最多带 50 个（服务端也只认最后 50 个）。 */
 const SEEN_MAX = 50;
 
+/**
+ * `useSearchParams()` 必须包在 `<Suspense>` 里。
+ *
+ * 它是 2026-10-06 那次事故的直接原因：没包时 `next build` 在**预渲染这一页**时
+ * 报错退出 → `.next` 产物不完整 → web 进程崩溃循环（重启 356 次）→ 整站 502，
+ * 而且构建失败后部署脚本在构建段就停了，所以当时的探针只看了 api 与就绪端点，
+ * 没看出 web 已经挂了。
+ */
 export default function VideosPage() {
+  return (
+    <Suspense fallback={<div className="absolute inset-0 bg-black" />}>
+      <VideosFeed />
+    </Suspense>
+  );
+}
+
+function VideosFeed() {
   const router = useRouter();
   const params = useSearchParams();
   const startId = params.get("start");
