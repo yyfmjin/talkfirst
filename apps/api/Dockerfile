@@ -14,7 +14,10 @@ RUN npm run build -w @talkfirst/api
 FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
-RUN apk add --no-cache wget \
+# ffmpeg / ffprobe 是**运行期**依赖：上传视频要先探测再转码，缺了它
+# `POST /uploads` 会以 FFMPEG_NOT_INSTALLED 失败，而且应用**每次启动**都会报一条 ERROR。
+# 2026-10-06 发现宿主机与镜像都漏装 —— 这行是那次补的（容器与裸机要一致）。
+RUN apk add --no-cache wget ffmpeg \
   && addgroup -S app && adduser -S app -G app
 COPY package.json package-lock.json ./
 COPY apps/web/package.json apps/web/

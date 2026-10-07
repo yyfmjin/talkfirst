@@ -340,5 +340,37 @@ pm2 save
 curl -fsS http://localhost:4000/api/v1/health/ready   # 200 才算回来了
 ```
 
-**给后来者的规则**：`.env` 是唯一真源，pm2 环境里不该出现应用变量。
-往 `.env` 新增变量后发现不生效，第一件事是重建进程，而不是怀疑代码。
+**给后来者的规则**：`.env` 是唯一真源，pm2 环境里不该出现应用变量。往 `.env`
+新增变量后发现不生效，第一件事是重建进程，而不是怀疑代码。
+
+**已经从「手工步骤」升级为「脚本默认」**（2026-10-06 晚）：`scripts/deploy-pull.sh`
+的重启段不再是 `pm2 reload all`，而是按名字**重建**三个进程（`pm2 delete` +
+`pm2 start` + `pm2 save`），并在重启后自检一次 `/health/ready`。所以以后改 `.env`
+只要走一次部署就会被正确应用；上面那段手工步骤只在「旧版脚本」或进程已在跑、
+又不想完整部署时才需要。
+
+### 10.3 服务器上的系统级依赖：ffmpeg
+
+（2026-10-06 补装。同一件事在两个部署路径上都漏了。）
+
+**现象**：API 日志每次启动都有一条 ERROR：
+
+```
+[UploadsModule] FFmpeg is required for video processing: neither `ffmpeg` nor `ffprobe`
+could be run. Video uploads will fail with FFMPEG_NOT_INSTALLED until it is installed
+```
+
+含义：**上传视频这个功能在线上是坏的**（上传图片不受影响）。`UploadsModule` 故意在
+启动时报，而不是等到第一次上传才失败。
+
+**修法（裸机 / 这台服务器）**：
+
+```bash
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ffmpeg
+pm2 restart talkfirst-api        # 重启后日志应变成
+# [UploadsModule] ffmpeg/ffprobe detected — video uploads will be transcoded
+```
+
+**修法（容器）**：`apps/api/Dockerfile` 的 runtime 阶段已加上 `ffmpeg`
+（`apk add --no-cache wget ffmpeg`）—— 两个路径要一致，否则「裸机能发视频、
+容器不能」会成为一个很难查的差异。
