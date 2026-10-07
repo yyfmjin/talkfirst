@@ -272,7 +272,7 @@ fi
 
 log "重启进程"
 if command -v pm2 >/dev/null 2>&1 && pm2 pid >/dev/null 2>&1; then
-  # 2026-10-06（同一天第二次踩到同一个坑之后改的）：原来这里是 `pm2 reload all`。
+  # 2026-10-06（当天第二次踩到同一个坑之后改的）：原来这里是 `pm2 reload all`。
   #
   # 坑在哪：`pm2 reload` 会连**进程启动时**的环境快照一起沿用，而应用用 dotenv 读 `.env`，
   # 而 dotenv **不覆盖已存在的进程变量**。于是改 `.env` 里的**已有变量完全无效** ——
@@ -280,27 +280,27 @@ if command -v pm2 >/dev/null 2>&1 && pm2 pid >/dev/null 2>&1; then
   # 工作（验证码只进日志，一封信不发），查了很久才定位到进程环境里那份旧快照。
   # 上一次同类事故是 `TRUST_PROXY`（访客 IP 被记成 Cloudflare 边缘 IP）。
   #
-  # 现在按名字**重建**：进程环境回到干净状态，`.env` 成为唯一真源。
-  # 代价是这几秒的真实停机 —— 而且三个应用都是 fork 模式，`reload` 本来也不零停机。
+  # 修法：重载**之前**把 `.env` 里的键值显式导出到当前 shell，再 `--update-env`，
+  # 于是进程拿到的是 `.env` 的当前值 —— 这正是「`.env` 是唯一真源」想要的。
   #
-  # 启动命令与 pm2 列表里现有的完全一致（exec cwd = 仓库根；web/admin 的端口
-  # 写在各自的 `start` 脚本里，不依赖进程环境）。不存在的应用**不替它新建**。
-  pm2_rebuild() {
-    name="$1"; shift
-    if ! pm2 describe "$name" >/dev/null 2>&1; then
-      warn "pm2 里没有 $name —— 跳过重建（不会替你新建进程）"
-      return 0
-    fi
-    echo "  重建进程 $name（清掉启动时的旧环境快照）"
-    pm2 delete "$name" >/dev/null 2>&1 || true
-    pm2 start "$@" --name "$name"
-  }
-  pm2_rebuild talkfirst-api npm -- run start:prod -w @talkfirst/api
-  pm2_rebuild talkfirst-web npm -- run start -w @talkfirst/web
-  pm2_rebuild talkfirst-admin npm -- run start -w @talkfirst/admin
+  # 为什么不用「`pm2 delete` + `pm2 start` 重建」（我试过，当场把线上弄 502 了）：
+  # 删除与启动之间有一个「pm2 里什么都没有」的窗口，而启动命令的 `--name` 一旦写错
+  # （必须写在 `--` **之前**）就会没有进程被登记 —— 脚本 `set -e` 又在中途停住。
+  # reload 不会注销进程，不会有这个窗口；这里要的只是「环境跟 `.env` 一致」。
+  #
+  # 取键值用的是 `env_value`（现有的安全解析），**不** `source .env` ——
+  # 那等于把 .env 当 shell 脚本执行，`$(...)` 会在部署时被真的跑起来。
+  env_exported=0
+  while IFS= read -r key; do
+    [ -n "$key" ] || continue
+    export "$key=$(env_value "$key")"
+    env_exported=$((env_exported + 1))
+  done < <(grep -oE '^[A-Z_][A-Z0-9_]*=' .env 2>/dev/null | tr -d '=' | sort -u)
+  echo "  已从 .env 导出 $env_exported 个变量，执行 pm2 reload all --update-env"
+  pm2 reload all --update-env
   pm2 save >/dev/null 2>&1 || true
 
-  # 重启后立刻自检一次就绪探针：进程“online”不等于应用真的可用。
+  # 重启后自检一次就绪探针：进程“online”不等于应用真的可用。
   # 只警告不中止 —— 端口可能不是默认的 4000，误报不该把一次正常部署判失败。
   ready=0
   for _ in 1 2 3 4 5; do

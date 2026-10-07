@@ -341,13 +341,37 @@ curl -fsS http://localhost:4000/api/v1/health/ready   # 200 才算回来了
 ```
 
 **给后来者的规则**：`.env` 是唯一真源，pm2 环境里不该出现应用变量。往 `.env`
-新增变量后发现不生效，第一件事是重建进程，而不是怀疑代码。
+新增变量后发现不生效，先怀疑进程环境，而不是代码。
 
-**已经从「手工步骤」升级为「脚本默认」**（2026-10-06 晚）：`scripts/deploy-pull.sh`
-的重启段不再是 `pm2 reload all`，而是按名字**重建**三个进程（`pm2 delete` +
-`pm2 start` + `pm2 save`），并在重启后自检一次 `/health/ready`。所以以后改 `.env`
-只要走一次部署就会被正确应用；上面那段手工步骤只在「旧版脚本」或进程已在跑、
-又不想完整部署时才需要。
+**已经在脚本里修掉**（2026-10-06 晚）：`scripts/deploy-pull.sh` 的重启段现在会在
+重载**之前**把 `.env` 里的键值逐个导出（用现有的 `env_value` 安全解析，
+**不** `source .env` —— 那等于把配置文件当 shell 脚本执行），然后
+`pm2 reload all --update-env`，最后自检一次 `/health/ready`。于是进程拿到的就是
+`.env` 的当前值。上面那段手工步骤只给「旧版脚本」或「不想完整部署」的场合用。
+
+#### 一个被当场验证的教训：不要用 `pm2 delete` + `pm2 start` 做这件事
+
+我第一版写成「按名字重建三个进程」（以为这样能让环境回到干净状态），结果：
+
+- `pm2 start "$@" --name "$name"` 里的 `--name` 写在了 `--` **之后** —— 那是传给
+  npm 的参数，不是 pm2 的选项。进程没被正确登记。
+- 而 `delete` 已经执行过了，脚本又 `set -e`，于是中途停住：
+  **pm2 列表空了，站点 502**。恢复方式就是手工把三个进程按正确语法拉起来：
+
+```bash
+cd /home/ubuntu/talkfirst && export PATH=/home/ubuntu/.nvm/versions/node/v22.23.3/bin:$PATH
+pm2 start npm --name talkfirst-api   -- run start:prod -w @talkfirst/api
+pm2 start npm --name talkfirst-web   -- run start -w @talkfirst/web
+pm2 start npm --name talkfirst-admin -- run start -w @talkfirst/admin
+pm2 save
+```
+
+教训有两条，都写在这里免得再犯：
+
+1. **删除型操作不要出现在部署脚本的必经路径上** —— `reload` 不会注销进程，
+   删除会，而“删了没起来”的窗口就是一次真实停机。要改环境用 `--update-env`。
+2. **`--name` 必须在 `--` 之前**（`pm2 start npm --name X -- run start`）。
+   这是 pm2 的命令行约定，写反了不会报错，只是静默地没登记进程。
 
 ### 10.3 服务器上的系统级依赖：ffmpeg
 
