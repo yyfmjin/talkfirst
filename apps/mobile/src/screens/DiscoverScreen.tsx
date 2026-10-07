@@ -10,20 +10,24 @@ import {
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { apiFetch } from "../lib/api";
+import { useI18n } from "../lib/i18n-context";
+import type { MsgKey } from "../lib/messages";
 import type { Recommendation, RecommendationResponse } from "../lib/types";
 import { colors } from "../theme";
 import { ProfilePreview } from "./ProfilePreview";
 
+/** 筛选条存词典键（不是中文串）：语言一变，标签跟着变。 */
 const FILTERS = [
-  { id: "all", label: "全部" },
-  { id: "language", label: "语言交换" },
-  { id: "gaming", label: "游戏搭子" },
-] as const;
+  { id: "all", labelKey: "discover.filterAll" },
+  { id: "language", labelKey: "discover.filterLanguage" },
+  { id: "gaming", labelKey: "discover.filterGaming" },
+] as const satisfies readonly { id: string; labelKey: MsgKey }[];
 
 type FilterId = (typeof FILTERS)[number]["id"];
 const DAILY_LIMIT = 20;
 
 export function DiscoverScreen() {
+  const { t } = useI18n();
   const [filter, setFilter] = useState<FilterId>("all");
   const [items, setItems] = useState<Recommendation[]>([]);
   const [remaining, setRemaining] = useState(DAILY_LIMIT);
@@ -43,12 +47,12 @@ export function DiscoverScreen() {
       setItems(data.items);
       setRemaining(data.remaining);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "推荐加载失败，请稍后再试。");
+      setError(err instanceof Error ? err.message : t("discover.errorBody"));
     } finally {
       setLoading(false);
       setSwitching(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadRecommendations("all", true);
@@ -64,7 +68,7 @@ export function DiscoverScreen() {
     return (
       <View style={styles.center}>
         <ActivityIndicator color={colors.primary} size="large" accessibilityRole="progressbar" />
-        <Text style={styles.muted}>正在发现新朋友…</Text>
+        <Text style={styles.muted}>{t("discover.loading")}</Text>
       </View>
     );
   }
@@ -72,7 +76,7 @@ export function DiscoverScreen() {
   if (error) {
     return (
       <View style={styles.center}>
-        <Text style={styles.errorTitle}>推荐暂时不可用</Text>
+        <Text style={styles.errorTitle}>{t("discover.errorTitle")}</Text>
         {/* The failure resolves asynchronously from a retry/filter change, so
             nothing is focused when it appears: the live region is what makes
             TalkBack/VoiceOver announce it instead of staying silent. */}
@@ -80,7 +84,7 @@ export function DiscoverScreen() {
           {error}
         </Text>
         <View style={{ marginTop: 16, alignSelf: "stretch" }}>
-          <Button label="重试" onPress={() => void loadRecommendations(filter)} />
+          <Button label={t("common.retry")} onPress={() => void loadRecommendations(filter)} />
         </View>
       </View>
     );
@@ -91,13 +95,13 @@ export function DiscoverScreen() {
       <View style={styles.center}>
         <Text style={styles.emptyEmoji}>🌎</Text>
         <Text style={styles.emptyTitle}>
-          {remaining === 0 ? "今天的推荐看完啦" : "暂时没有合适的人"}
+          {remaining === 0 ? t("discover.emptyDoneTitle") : t("discover.emptyNoneTitle")}
         </Text>
         <Text style={styles.muted} accessibilityLiveRegion="polite">
-          {remaining === 0 ? "明天再来看看，认真认识一个人。" : "完善语言、兴趣和目的后，会得到更好的推荐。"}
+          {remaining === 0 ? t("discover.emptyDoneBody") : t("discover.emptyNoneBody")}
         </Text>
         <View style={{ marginTop: 16, alignSelf: "stretch" }}>
-          <Button label="重新加载" onPress={() => void loadRecommendations(filter)} />
+          <Button label={t("common.reload")} onPress={() => void loadRecommendations(filter)} />
         </View>
       </View>
     );
@@ -107,11 +111,11 @@ export function DiscoverScreen() {
     <View style={styles.root}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>发现</Text>
-          <Text style={styles.subtitle}>先聊聊，再成为朋友。</Text>
+          <Text style={styles.title}>{t("discover.title")}</Text>
+          <Text style={styles.subtitle}>{t("discover.subtitle")}</Text>
         </View>
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>今日剩余 {remaining}</Text>
+          <Text style={styles.badgeText}>{t("discover.remaining", { n: remaining })}</Text>
         </View>
       </View>
 
@@ -126,7 +130,7 @@ export function DiscoverScreen() {
             accessibilityState={{ selected: filter === option.id }}
           >
             <Text style={[styles.filterLabel, filter === option.id ? styles.filterLabelActive : null]}>
-              {option.label}
+              {t(option.labelKey)}
             </Text>
           </Pressable>
         ))}
@@ -156,19 +160,24 @@ export function DiscoverScreen() {
 }
 
 function Bubble({ item, onPress }: { item: Recommendation; onPress: () => void }) {
+  const { t } = useI18n();
+  const name = item.nickname ?? t("common.user");
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [styles.bubble, pressed ? styles.bubblePressed : null]}
       accessibilityRole="button"
-      accessibilityLabel={`查看 ${item.nickname ?? "用户"} 的资料`}
+      accessibilityLabel={t("discover.viewProfile", { name })}
     >
       <Avatar uri={item.avatarUrl} nickname={item.nickname} size={64} />
       <Text style={styles.bubbleName} numberOfLines={1}>
-        {item.nickname ?? "用户"}
+        {name}
       </Text>
       <Text style={styles.bubbleMeta} numberOfLines={1}>
-        {[item.age !== null ? `${item.age} 岁` : null, item.countryName ?? item.countryCode]
+        {[
+          item.age !== null ? t("common.age", { n: item.age }) : null,
+          item.countryName ?? item.countryCode,
+        ]
           .filter(Boolean)
           .join(" · ")}
       </Text>

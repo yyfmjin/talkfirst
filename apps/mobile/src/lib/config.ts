@@ -57,6 +57,9 @@ function resolveApiBaseUrl(): string {
   }
 
   throw new Error(
+    // 这条（以及本文件下面那条 `[config]`）**故意不进 i18n 词典**：它们不是用户文案，
+    // 是「开发者把 API 地址配错了」的启动期诊断，只在开发/构建时被看到，
+    // 写给的是维护这个 app 的人（本仓库的维护语言是中文）。
     `API 地址未配置。请设置环境变量 EXPO_PUBLIC_API_BASE_URL，例如 ` +
       `EXPO_PUBLIC_API_BASE_URL=http://192.168.1.20:4000/api/v1，然后重启 Metro（npm run start -w @talkfirst/mobile）。` +
       ` 手机与开发机必须处于同一局域网，且用开发机的局域网 IP，不能用 localhost。` +

@@ -8,21 +8,30 @@ import {
   View,
 } from "react-native";
 import { apiFetch } from "../lib/api";
+import { useI18n } from "../lib/i18n-context";
+import type { MsgKey } from "../lib/messages";
 import type { NotificationPage, NotificationRecord } from "../lib/types";
 import { colors } from "../theme";
 
-const TYPE_LABELS: Record<string, string> = {
-  NEW_MESSAGE: "新消息",
-  SAY_HELLO: "有人向你打招呼",
-  REQUEST_ACCEPTED: "连接已接受",
-  EXCHANGE_REQUEST: "交换请求",
-  EXCHANGE_ACCEPTED: "交换已接受",
-  MOMENT_LIKE: "动态收到赞",
-  MOMENT_COMMENT: "动态收到评论",
-  MOMENT_REPLY: "评论收到回复",
-  REPORT_REVIEW: "举报处理结果",
-  USER_STATUS: "账号状态更新",
-  FLOWER_RECEIVED: "收到一朵花",
+/**
+ * 通知类型 → 词典键（不是中文串）：类型是服务端给的枚举，标签在本端翻译，
+ * 所以「新消息」这类标签会跟着 App 语言走。
+ *
+ * ⚠️ 通知的 `title` / `body` 是**服务端**生成的，目前只有中文 —— 那是另一件事
+ * （服务端要按请求的语言选模板），见 apps/mobile/README.md 的后续项。
+ */
+const TYPE_KEYS: Record<string, MsgKey> = {
+  NEW_MESSAGE: "notifications.type.NEW_MESSAGE",
+  SAY_HELLO: "notifications.type.SAY_HELLO",
+  REQUEST_ACCEPTED: "notifications.type.REQUEST_ACCEPTED",
+  EXCHANGE_REQUEST: "notifications.type.EXCHANGE_REQUEST",
+  EXCHANGE_ACCEPTED: "notifications.type.EXCHANGE_ACCEPTED",
+  MOMENT_LIKE: "notifications.type.MOMENT_LIKE",
+  MOMENT_COMMENT: "notifications.type.MOMENT_COMMENT",
+  MOMENT_REPLY: "notifications.type.MOMENT_REPLY",
+  REPORT_REVIEW: "notifications.type.REPORT_REVIEW",
+  USER_STATUS: "notifications.type.USER_STATUS",
+  FLOWER_RECEIVED: "notifications.type.FLOWER_RECEIVED",
 };
 
 function formatTime(iso: string): string {
@@ -41,6 +50,7 @@ function formatTime(iso: string): string {
 }
 
 export function NotificationsScreen() {
+  const { t } = useI18n();
   const [items, setItems] = useState<NotificationRecord[]>([]);
   const [unread, setUnread] = useState(0);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -70,11 +80,11 @@ export function NotificationsScreen() {
       setNextCursor(data.nextCursor);
     } catch (err) {
       if (!mountedRef.current) return;
-      setError(err instanceof Error ? err.message : "通知加载失败，请稍后再试。");
+      setError(err instanceof Error ? err.message : t("notifications.errorLoading"));
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [load]);
+  }, [load, t]);
 
   useEffect(() => {
     void reload();
@@ -139,20 +149,22 @@ export function NotificationsScreen() {
     <View style={styles.root}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>通知</Text>
-          {unread > 0 ? <Text style={styles.subtitle}>{unread} 条未读</Text> : null}
+          <Text style={styles.title}>{t("notifications.title")}</Text>
+          {unread > 0 ? (
+            <Text style={styles.subtitle}>{t("notifications.unreadCount", { n: unread })}</Text>
+          ) : null}
         </View>
         <Pressable
           onPress={() => void markAllRead()}
           disabled={unread === 0 || markingAll}
           style={[styles.markAll, unread === 0 ? styles.markAllDisabled : null]}
           accessibilityRole="button"
-          accessibilityLabel="全部已读"
+          accessibilityLabel={t("notifications.markAllLabel")}
         >
           {markingAll ? (
             <ActivityIndicator color={colors.primary} size="small" />
           ) : (
-            <Text style={styles.markAllLabel}>全部已读</Text>
+            <Text style={styles.markAllLabel}>{t("notifications.markAll")}</Text>
           )}
         </Pressable>
       </View>
@@ -171,17 +183,17 @@ export function NotificationsScreen() {
             onPress={() => void reload()}
             style={styles.retry}
             accessibilityRole="button"
-            accessibilityLabel="重试加载通知"
+            accessibilityLabel={t("notifications.retryLabel")}
             hitSlop={8}
           >
-            <Text style={styles.retryLabel}>重试</Text>
+            <Text style={styles.retryLabel}>{t("notifications.retry")}</Text>
           </Pressable>
         </View>
       ) : null}
 
       {!error && items.length === 0 ? (
         <View style={styles.center}>
-          <Text style={styles.emptyTitle}>暂无通知</Text>
+          <Text style={styles.emptyTitle}>{t("notifications.empty")}</Text>
         </View>
       ) : null}
 
@@ -199,7 +211,7 @@ export function NotificationsScreen() {
               {loadingMore ? (
                 <ActivityIndicator color={colors.primary} />
               ) : (
-                <Text style={styles.loadMoreLabel}>加载更多</Text>
+                <Text style={styles.loadMoreLabel}>{t("notifications.loadMore")}</Text>
               )}
             </Pressable>
           ) : null
@@ -216,18 +228,19 @@ function NotificationRow({
   item: NotificationRecord;
   onPress: () => void;
 }) {
+  const { t } = useI18n();
   const unread = item.readAt === null;
   return (
     <Pressable
       onPress={onPress}
       style={[styles.row, unread ? styles.rowUnread : null]}
       accessibilityRole="button"
-      accessibilityLabel={unread ? `未读：${item.title}` : item.title}
+      accessibilityLabel={unread ? t("notifications.unreadItemLabel", { title: item.title }) : item.title}
     >
       <View style={styles.rowTop}>
         <Text style={styles.typeLabel}>
-          {TYPE_LABELS[item.type] ?? "通知"}
-          {item.count > 1 ? ` · ${item.count} 条` : ""}
+          {t(TYPE_KEYS[item.type] ?? "notifications.typeFallback")}
+          {item.count > 1 ? t("notifications.countSuffix", { n: item.count }) : ""}
         </Text>
         <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
       </View>

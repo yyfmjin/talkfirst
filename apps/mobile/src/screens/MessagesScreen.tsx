@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { apiFetch } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { Avatar } from "../components/Avatar";
+import { useI18n, type TranslateFn } from "../lib/i18n-context";
 import { colors } from "../theme";
 import type { ChatMessage, ConversationItem, MessagePage } from "../lib/types";
 
@@ -35,6 +36,7 @@ import type { ChatMessage, ConversationItem, MessagePage } from "../lib/types";
  */
 export function MessagesScreen() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -50,11 +52,11 @@ export function MessagesScreen() {
       const data = await apiFetch<ConversationItem[]>("/conversations");
       setConversations(data);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "会话加载失败，请稍后再试。");
+      setError(requestError instanceof Error ? requestError.message : t("messages.errorList"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadConversations();
@@ -75,9 +77,9 @@ export function MessagesScreen() {
         previous.map((item) => (item.id === id ? { ...item, unreadCount: 0 } : item)),
       );
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "消息加载失败。");
+      setError(requestError instanceof Error ? requestError.message : t("messages.errorThread"));
     }
-  }, []);
+  }, [t]);
 
   /** 更早的一页：服务端最旧在前，`nextCursor` 指向更早。 */
   async function loadOlder() {
@@ -108,7 +110,7 @@ export function MessagesScreen() {
       setDraft("");
       void loadConversations();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "发送失败，请稍后再试。");
+      setError(requestError instanceof Error ? requestError.message : t("messages.errorSend"));
     } finally {
       setSending(false);
     }
@@ -137,13 +139,13 @@ export function MessagesScreen() {
               void loadConversations();
             }}
             accessibilityRole="button"
-            accessibilityLabel="返回会话列表"
+            accessibilityLabel={t("messages.backToList")}
             style={styles.backButton}
           >
             <Ionicons name="chevron-back" size={22} color={colors.ink} />
           </Pressable>
           <Avatar uri={peer?.avatarUrl ?? null} nickname={peer?.nickname ?? null} size={32} />
-          <Text style={styles.threadName}>{peer?.nickname ?? "对话"}</Text>
+          <Text style={styles.threadName}>{peer?.nickname ?? t("messages.conversationFallback")}</Text>
         </View>
 
         <FlatList
@@ -155,7 +157,7 @@ export function MessagesScreen() {
           ListHeaderComponent={
             cursor ? (
               <Pressable onPress={() => void loadOlder()} style={styles.loadOlder}>
-                <Text style={styles.loadOlderText}>加载更早的消息</Text>
+                <Text style={styles.loadOlderText}>{t("messages.loadOlder")}</Text>
               </Pressable>
             ) : null
           }
@@ -177,18 +179,18 @@ export function MessagesScreen() {
           <TextInput
             value={draft}
             onChangeText={setDraft}
-            placeholder="发条消息…"
+            placeholder={t("messages.composerPlaceholder")}
             placeholderTextColor={colors.muted}
             style={styles.input}
             maxLength={2000}
             multiline
-            accessibilityLabel="消息输入框"
+            accessibilityLabel={t("messages.composerLabel")}
           />
           <Pressable
             onPress={() => void send()}
             disabled={!draft.trim() || sending}
             accessibilityRole="button"
-            accessibilityLabel="发送"
+            accessibilityLabel={t("messages.send")}
             style={[styles.sendButton, !draft.trim() || sending ? styles.sendDisabled : null]}
           >
             {sending ? (
@@ -205,7 +207,7 @@ export function MessagesScreen() {
   return (
     <View style={styles.root}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>消息</Text>
+        <Text style={styles.headerTitle}>{t("messages.title")}</Text>
       </View>
       <FlatList
         data={conversations}
@@ -214,7 +216,7 @@ export function MessagesScreen() {
         ListEmptyComponent={
           <View style={styles.center}>
             <Ionicons name="chatbubbles-outline" size={32} color={colors.muted} />
-            <Text style={styles.emptyText}>还没有对话。去发现页打个招呼，双方接受后就能聊了。</Text>
+            <Text style={styles.emptyText}>{t("messages.empty")}</Text>
           </View>
         }
         renderItem={({ item }) => (
@@ -227,12 +229,12 @@ export function MessagesScreen() {
             <View style={styles.rowText}>
               <View style={styles.rowTop}>
                 <Text style={styles.peerName} numberOfLines={1}>
-                  {item.peer?.nickname ?? "对话"}
+                  {item.peer?.nickname ?? t("messages.conversationFallback")}
                 </Text>
-                <Text style={styles.time}>{compactTime(item.lastMessage?.createdAt ?? item.updatedAt)}</Text>
+                <Text style={styles.time}>{compactTime(item.lastMessage?.createdAt ?? item.updatedAt, t)}</Text>
               </View>
               <Text style={styles.preview} numberOfLines={1}>
-                {item.lastMessage?.content ?? "开始聊天"}
+                {item.lastMessage?.content ?? t("messages.startChat")}
               </Text>
             </View>
             {item.unreadCount && item.unreadCount > 0 ? (
@@ -248,16 +250,17 @@ export function MessagesScreen() {
   );
 }
 
-function compactTime(iso: string): string {
+/** 会话列表右侧那个时间：与 `MomentsScreen.relativeTime` 同形状，`t` 由调用方传入。 */
+function compactTime(iso: string, t: TranslateFn): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
   const minutes = Math.floor((Date.now() - date.getTime()) / 60000);
-  if (minutes < 1) return "刚刚";
-  if (minutes < 60) return `${minutes} 分钟前`;
+  if (minutes < 1) return t("common.justNow");
+  if (minutes < 60) return t("common.minutesAgo", { n: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} 小时前`;
+  if (hours < 24) return t("common.hoursAgo", { n: hours });
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days} 天前`;
+  if (days < 7) return t("common.daysAgo", { n: days });
   return date.toLocaleDateString();
 }
 

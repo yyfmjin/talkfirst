@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { apiFetch } from "../lib/api";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
+import { useI18n, type TranslateFn } from "../lib/i18n-context";
 import { colors } from "../theme";
 import type { Moment, MomentPage } from "../lib/types";
 
@@ -29,6 +30,7 @@ import type { Moment, MomentPage } from "../lib/types";
  * 播放能力（点封面进全屏、上下滑切换）等构建链路通了再接回来。
  */
 export function MomentsScreen() {
+  const { t } = useI18n();
   const [items, setItems] = useState<Moment[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,13 +49,13 @@ export function MomentsScreen() {
       setItems((previous) => (mode === "more" ? [...previous, ...data.items] : data.items));
       setCursor(data.nextCursor);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "动态加载失败，请稍后再试。");
+      setError(requestError instanceof Error ? requestError.message : t("moments.errorLoading"));
     } finally {
       setLoading(false);
       setRefreshing(false);
       setLoadingMore(false);
     }
-  }, [cursor]);
+  }, [cursor, t]);
 
   useEffect(() => {
     void load("initial");
@@ -102,7 +104,7 @@ export function MomentsScreen() {
   return (
     <View style={styles.root}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>动态</Text>
+        <Text style={styles.headerTitle}>{t("moments.title")}</Text>
       </View>
 
       <FlatList
@@ -117,7 +119,7 @@ export function MomentsScreen() {
         ListEmptyComponent={
           <View style={styles.center}>
             <Ionicons name="images-outline" size={32} color={colors.muted} />
-            <Text style={styles.emptyText}>还没有动态。发布一条，或者去发现页认识新朋友。</Text>
+            <Text style={styles.emptyText}>{t("moments.empty")}</Text>
           </View>
         }
         ListFooterComponent={
@@ -128,9 +130,9 @@ export function MomentsScreen() {
             <View style={styles.cardHead}>
               <Avatar uri={item.author.avatarUrl} nickname={item.author.nickname} size={40} />
               <View style={styles.cardHeadText}>
-                <Text style={styles.nickname}>{item.author.nickname ?? "用户"}</Text>
+                <Text style={styles.nickname}>{item.author.nickname ?? t("common.user")}</Text>
                 <Text style={styles.meta}>
-                  {item.author.countryCode ?? ""} {relativeTime(item.createdAt)}
+                  {item.author.countryCode ?? ""} {relativeTime(item.createdAt, t)}
                 </Text>
               </View>
             </View>
@@ -155,7 +157,7 @@ export function MomentsScreen() {
               <Pressable
                 onPress={() => void toggleLike(item)}
                 accessibilityRole="button"
-                accessibilityLabel={item.liked ? "取消点赞" : "点赞"}
+                accessibilityLabel={item.liked ? t("moments.unlike") : t("moments.like")}
                 accessibilityState={{ selected: item.liked }}
                 style={styles.action}
               >
@@ -180,17 +182,24 @@ export function MomentsScreen() {
   );
 }
 
-/** 「刚刚 / 12 分钟前 / 3 小时前 / 2 天前」，超过一周就显示日期。 */
-function relativeTime(iso: string): string {
+/**
+ * 「刚刚 / 12 分钟前 / 3 小时前 / 2 天前」，超过一周就显示日期。
+ *
+ * `t` 从调用方传进来（而不是 import 模块级那个）：时区与语序都不是英文语序，
+ * 而且它是**纯函数**，没有自己的重渲染时机 —— 语言变了要靠父组件重渲染时
+ * 把新的 `t` 传进来（见 `TranslateFn` 的说明）。
+ */
+function relativeTime(iso: string, t: TranslateFn): string {
   const then = new Date(iso).getTime();
   if (!Number.isFinite(then)) return "";
   const diffMinutes = Math.floor((Date.now() - then) / 60000);
-  if (diffMinutes < 1) return "刚刚";
-  if (diffMinutes < 60) return `${diffMinutes} 分钟前`;
+  if (diffMinutes < 1) return t("common.justNow");
+  if (diffMinutes < 60) return t("common.minutesAgo", { n: diffMinutes });
   const hours = Math.floor(diffMinutes / 60);
-  if (hours < 24) return `${hours} 小时前`;
+  if (hours < 24) return t("common.hoursAgo", { n: hours });
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days} 天前`;
+  if (days < 7) return t("common.daysAgo", { n: days });
+  // 超过一周用日期：`toLocaleDateString()` 按设备语言给出格式（中/英都能看）。
   return new Date(iso).toLocaleDateString();
 }
 

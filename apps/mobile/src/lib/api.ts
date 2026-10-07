@@ -1,4 +1,5 @@
 import { API_BASE_URL, API_REQUEST_TIMEOUT_MS } from "./config";
+import { t } from "./i18n";
 import { clearTokens, getAccessToken, getRefreshToken, saveTokens } from "./storage";
 import type { ApiErrorBody } from "./types";
 
@@ -16,7 +17,7 @@ export class ApiRequestError extends Error {
 /** Raised when a request is aborted by our own timeout rather than by the peer. */
 class RequestTimeoutError extends Error {
   constructor() {
-    super("请求超时。");
+    super(t("common.timeout"));
     this.name = "RequestTimeoutError";
   }
 }
@@ -132,7 +133,8 @@ async function doFetch<T>(path: string, options: RequestOptions): Promise<T> {
     throw new ApiRequestError(
       envelope?.error ?? {
         code: "NETWORK_ERROR",
-        message: "无法连接服务器，请检查网络后重试。",
+        // 非 React 代码拿不到 context，所以走模块级 `t()`（见 i18n.ts 的说明）。
+        message: t("common.networkError"),
       },
     );
   }

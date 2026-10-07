@@ -4,6 +4,8 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { AuthProvider, useAuth } from "./src/lib/auth-context";
+import { I18nProvider, useI18n } from "./src/lib/i18n-context";
+import type { MsgKey } from "./src/lib/messages";
 import { AuthScreen } from "./src/screens/AuthScreen";
 import { DiscoverScreen } from "./src/screens/DiscoverScreen";
 import { MeScreen } from "./src/screens/MeScreen";
@@ -37,26 +39,37 @@ import { colors } from "./src/theme";
  * 也无法重新出一版构建来验证 —— 先不引入，避免包变重却无法验证。
  * 构建链路通了之后：把 `VideosScreen` 加回来（它在提交 ce4015f 里），
  * 并在动态顶部挂回「看视频」入口。
+ *
+ * ## 语言
+ *
+ * tab 标签存的是**词典键**（`tab.discover` 之类），不是中文串 —— 标签在渲染时
+ * 才翻译，所以用户在「我的」里改语言，底部导航会跟着变。
  */
 type Tab = "discover" | "moments" | "messages" | "notifications" | "me";
 
 type TabSpec = {
   id: Tab;
-  label: string;
+  labelKey: MsgKey;
   icon: keyof typeof Ionicons.glyphMap;
   iconActive: keyof typeof Ionicons.glyphMap;
 };
 
 const TABS: TabSpec[] = [
-  { id: "discover", label: "发现", icon: "compass-outline", iconActive: "compass" },
-  { id: "moments", label: "动态", icon: "albums-outline", iconActive: "albums" },
-  { id: "messages", label: "消息", icon: "chatbubble-outline", iconActive: "chatbubble" },
-  { id: "notifications", label: "通知", icon: "notifications-outline", iconActive: "notifications" },
-  { id: "me", label: "我的", icon: "person-outline", iconActive: "person" },
+  { id: "discover", labelKey: "tab.discover", icon: "compass-outline", iconActive: "compass" },
+  { id: "moments", labelKey: "tab.moments", icon: "albums-outline", iconActive: "albums" },
+  { id: "messages", labelKey: "tab.messages", icon: "chatbubble-outline", iconActive: "chatbubble" },
+  {
+    id: "notifications",
+    labelKey: "tab.notifications",
+    icon: "notifications-outline",
+    iconActive: "notifications",
+  },
+  { id: "me", labelKey: "tab.me", icon: "person-outline", iconActive: "person" },
 ];
 
 function Root() {
   const { user, loading } = useAuth();
+  const { t } = useI18n();
   const [tab, setTab] = useState<Tab>("moments");
 
   if (loading) {
@@ -101,7 +114,7 @@ function Root() {
                 /* 读屏用：`selected` 让「当前在哪一页」可被朗读，
                    而不是只靠颜色（颜色不应当独自承载状态）。 */
                 accessibilityState={{ selected: active }}
-                accessibilityLabel={item.label}
+                accessibilityLabel={t(item.labelKey)}
               >
                 <Ionicons
                   name={active ? item.iconActive : item.icon}
@@ -112,7 +125,7 @@ function Root() {
                   accessible={false}
                 />
                 <Text style={[styles.tabLabel, active ? styles.tabLabelActive : null]}>
-                  {item.label}
+                  {t(item.labelKey)}
                 </Text>
                 {active ? <View style={styles.tabIndicator} /> : null}
               </Pressable>
@@ -126,9 +139,12 @@ function Root() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Root />
-    </AuthProvider>
+    // I18nProvider 在最外层：未登录时的 AuthScreen 也要能翻译。
+    <I18nProvider>
+      <AuthProvider>
+        <Root />
+      </AuthProvider>
+    </I18nProvider>
   );
 }
 

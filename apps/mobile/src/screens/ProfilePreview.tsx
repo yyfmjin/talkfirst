@@ -12,6 +12,7 @@ import {
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { apiFetch } from "../lib/api";
+import { useI18n } from "../lib/i18n-context";
 import type { PublicProfile } from "../lib/types";
 import { colors } from "../theme";
 
@@ -22,6 +23,7 @@ export function ProfilePreview({
   userId: string | null;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -38,11 +40,11 @@ export function ProfilePreview({
       setProfile(data);
     } catch (requestError) {
       setProfile(null);
-      setError(requestError instanceof Error ? requestError.message : "资料加载失败，请稍后再试。");
+      setError(requestError instanceof Error ? requestError.message : t("profile.errorLoading"));
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId, t]);
 
   useEffect(() => {
     if (userId) {
@@ -62,7 +64,7 @@ export function ProfilePreview({
       });
       setHelloDone(true);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "发送失败，请稍后再试。");
+      setError(requestError instanceof Error ? requestError.message : t("profile.errorSend"));
     } finally {
       setHelloSending(false);
     }
@@ -78,8 +80,13 @@ export function ProfilePreview({
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>个人资料</Text>
-            <Pressable onPress={onClose} style={styles.close} accessibilityRole="button" accessibilityLabel="关闭">
+            <Text style={styles.headerTitle}>{t("profile.title")}</Text>
+            <Pressable
+              onPress={onClose}
+              style={styles.close}
+              accessibilityRole="button"
+              accessibilityLabel={t("common.close")}
+            >
               <Text style={styles.closeText}>✕</Text>
             </Pressable>
           </View>
@@ -89,16 +96,16 @@ export function ProfilePreview({
           ) : error && !profile ? (
             <View style={styles.errorBox}>
               <Text style={styles.errorText}>{error}</Text>
-              <Button label="重试" onPress={() => void load()} variant="ghost" />
+              <Button label={t("common.retry")} onPress={() => void load()} variant="ghost" />
             </View>
           ) : profile ? (
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={styles.identity}>
                 <Avatar uri={profile.avatarUrl} nickname={profile.nickname} size={84} />
                 <Text style={styles.name}>
-                  {profile.nickname ?? "TalkFirst 用户"}
+                  {profile.nickname ?? t("common.talkfirstUser")}
                   {profile.age !== null ? (
-                    <Text style={styles.age}> {profile.age} 岁</Text>
+                    <Text style={styles.age}>{t("profile.age", { n: profile.age })}</Text>
                   ) : null}
                 </Text>
                 {place ? <Text style={styles.place}>🌎 {place}</Text> : null}
@@ -106,22 +113,24 @@ export function ProfilePreview({
 
               {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
 
-              <TagSection title="语言">
+              <TagSection title={t("profile.sectionLanguages")}>
                 {profile.languages.map((lang) => (
                   <Tag key={`${lang.code}-${lang.type}`}>
                     {lang.nativeName ?? lang.name}
-                    <Text style={styles.tagSub}>{lang.type === "NATIVE" ? " 母语" : " 学习中"}</Text>
+                    <Text style={styles.tagSub}>
+                      {lang.type === "NATIVE" ? t("profile.languageNative") : t("profile.languageLearning")}
+                    </Text>
                   </Tag>
                 ))}
               </TagSection>
 
-              <TagSection title="兴趣">
+              <TagSection title={t("profile.sectionInterests")}>
                 {profile.interests.map((interest) => (
                   <Tag key={interest.slug}>{interest.nameZh ?? interest.name}</Tag>
                 ))}
               </TagSection>
 
-              <TagSection title="交友目的">
+              <TagSection title={t("profile.sectionPurposes")}>
                 {profile.purposes.map((purpose) => (
                   <Tag key={purpose.slug} tone="warm">
                     {purpose.nameZh ?? purpose.name}
@@ -134,10 +143,16 @@ export function ProfilePreview({
               {showActions ? (
                 <View style={styles.actions}>
                   {profile.relationship.isConnected ? (
-                    <Button label="已连接" onPress={() => undefined} disabled variant="ghost" />
+                    <Button label={t("profile.connected")} onPress={() => undefined} disabled variant="ghost" />
                   ) : (
                     <Button
-                      label={helloDone ? "已打招呼" : helloSending ? "发送中…" : "打招呼"}
+                      label={
+                        helloDone
+                          ? t("profile.helloDone")
+                          : helloSending
+                            ? t("profile.helloSending")
+                            : t("profile.hello")
+                      }
                       onPress={() => void sayHello()}
                       loading={helloSending}
                       disabled={helloDone}

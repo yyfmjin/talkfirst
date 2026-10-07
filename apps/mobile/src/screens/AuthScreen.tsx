@@ -5,6 +5,7 @@ import { Input } from "../components/Input";
 import { Logo } from "../components/Logo";
 import { ApiRequestError } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
+import { useI18n } from "../lib/i18n-context";
 import { colors } from "../theme";
 
 /**
@@ -19,6 +20,7 @@ const PASSWORD_MAX_LENGTH = 72;
 
 export function AuthScreen() {
   const { signIn, signUp } = useAuth();
+  const { t } = useI18n();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,19 +31,19 @@ export function AuthScreen() {
     setError("");
     const trimmed = email.trim().toLowerCase();
     if (!trimmed || !password) {
-      setError("请填写邮箱和密码。");
+      setError(t("auth.errorMissingFields"));
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setError("请输入有效的邮箱地址。");
+      setError(t("auth.errorInvalidEmail"));
       return;
     }
     if (mode === "register" && password.length < PASSWORD_MIN_LENGTH) {
-      setError(`密码至少需要 ${PASSWORD_MIN_LENGTH} 位字符。`);
+      setError(t("auth.errorPasswordTooShort", { n: PASSWORD_MIN_LENGTH }));
       return;
     }
     if (password.length > PASSWORD_MAX_LENGTH) {
-      setError(`密码不能超过 ${PASSWORD_MAX_LENGTH} 位字符。`);
+      setError(t("auth.errorPasswordTooLong", { n: PASSWORD_MAX_LENGTH }));
       return;
     }
     setLoading(true);
@@ -50,7 +52,7 @@ export function AuthScreen() {
       else await signUp(trimmed, password);
     } catch (requestError) {
       setError(
-        requestError instanceof ApiRequestError ? requestError.message : "操作失败，请稍后再试。",
+        requestError instanceof ApiRequestError ? requestError.message : t("common.actionFailed"),
       );
     } finally {
       setLoading(false);
@@ -70,26 +72,28 @@ export function AuthScreen() {
       <View style={styles.inner}>
         <View style={styles.header}>
           <Logo size={60} />
-          <Text style={styles.title}>{mode === "login" ? "欢迎回来" : "创建账号"}</Text>
+          <Text style={styles.title}>
+            {mode === "login" ? t("auth.welcomeBack") : t("auth.createAccount")}
+          </Text>
           <Text style={styles.subtitle}>
-            {mode === "login" ? "很高兴再次见到你" : "先聊聊，再成为朋友"}
+            {mode === "login" ? t("auth.loginSubtitle") : t("auth.registerSubtitle")}
           </Text>
         </View>
 
         <View style={styles.form}>
           <Input
-            label="邮箱地址"
+            label={t("auth.email")}
             value={email}
             onChangeText={setEmail}
-            placeholder="请输入邮箱地址"
+            placeholder={t("auth.emailPlaceholder")}
             keyboardType="email-address"
             maxLength={254}
           />
           <Input
-            label="密码"
+            label={t("auth.password")}
             value={password}
             onChangeText={setPassword}
-            placeholder="请输入密码"
+            placeholder={t("auth.passwordPlaceholder")}
             secureTextEntry
             maxLength={PASSWORD_MAX_LENGTH}
           />
@@ -106,7 +110,7 @@ export function AuthScreen() {
             </Text>
           ) : null}
           <Button
-            label={mode === "login" ? "登录" : "注册"}
+            label={mode === "login" ? t("auth.login") : t("auth.register")}
             onPress={() => void handleSubmit()}
             loading={loading}
           />
@@ -114,7 +118,7 @@ export function AuthScreen() {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            {mode === "login" ? "还没有账号？" : "已经有账号？"}
+            {mode === "login" ? t("auth.noAccount") : t("auth.haveAccount")}
           </Text>
           {/* Was a bare <Text onPress>: no button role and a hit target the size
               of the glyphs, which fails the 44x44 minimum for touch and is
@@ -122,11 +126,11 @@ export function AuthScreen() {
           <Pressable
             onPress={toggleMode}
             accessibilityRole="button"
-            accessibilityLabel={mode === "login" ? "立即注册" : "去登录"}
+            accessibilityLabel={mode === "login" ? t("auth.toRegister") : t("auth.toLogin")}
             hitSlop={12}
           >
             <Text style={styles.footerLink}>
-              {mode === "login" ? "立即注册" : "去登录"}
+              {mode === "login" ? t("auth.toRegister") : t("auth.toLogin")}
             </Text>
           </Pressable>
         </View>
