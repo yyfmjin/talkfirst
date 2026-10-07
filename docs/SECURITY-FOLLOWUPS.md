@@ -30,15 +30,22 @@
 
 ## 🟡 需要你做（我做不了）
 
-### GitHub 账号被账单问题锁住 → CI 一直没跑过（需要你处理）
-现状（2026-10-07 复核）：Actions 的 **36 次运行全部是「作业未启动」**，GitHub 给的原话是
-`The job was not started because your account is locked due to a billing issue.`
-也就是说这个仓库的 CI **从来没有真正执行过任何一步**（作业 `steps` 一直是空数组）——
-所以「CI 红了」不能读成「代码红了」，真正把关的是本机 `npm run gate`。
-要做的只有一件事：GitHub → Settings → **Billing and plans**，结清欠款 / 更新支付方式；
-解锁后在 Actions 页 **Re-run all jobs**，**不需要改任何代码**。
-细节与证据在 `docs/CI.md` §6、§6.1。
-（同一天早些时候 `git push` 被接收端连续 500 拒收、当晚又自己好了 —— 看起来是账号层的同一件事。）
+### ⏭️ 已决定跳过：GitHub 账单锁 → CI 不走 GitHub Actions（2026-10-07 你定的）
+**决定**：卡绑不上 GitHub，不折腾这条线，**跳过**。因此：
+
+- 仓库的 Actions **会长期是红的**，而且它**不携带任何关于代码的信息**（作业从未启动过：
+  36/36 次运行 `steps` 都是空数组，原话是 `The job was not started because your account is
+  locked due to a billing issue.`）。看到红不要当成代码坏了。
+- **推送不受影响**：2026-10-07 实测 `git push` 正常（早上那几次 500 是同一账号状态的余波）。
+- **真正把关的就是本机 `npm run gate`**（与 CI 逐条对应，见 `docs/CI.md` §7）：
+  类型检查 → lint → web 静态 → admin 静态 → 契约 → api 单测。
+  **每次 push 前跑一次**；api 那一步需要本地库（`localhost:5433`）在运行。
+- 另外两道赛门仍然在：部署脚本 `scripts/deploy-pull.sh` 自身会 `npm ci` + 构建 api/web/admin，
+  任何一步失败就在 **reload 之前中止**（线上继续跑旧版本）；
+  而 `docs/CI.md` §6.1 里那两个「只有真实 runner 能验证」的项，现在改成只有你换机器/换策略时再验。
+
+将来若要恢复 CI：先把账号账单解锁（Settings → Billing and plans），再在 Actions 页
+**Re-run all jobs**，**不需要改任何代码**；细节与证据在 `docs/CI.md` §6、§6.1。
 
 ### Gmail 应用专用密码轮换（暂缓，你说回头再弄）
 它曾出现在对话里，任何人都能用它从任何地方以你的名义发信。步骤在下面，
