@@ -23,7 +23,10 @@ export function resolveTranslationProviderKind(
 ): TranslationProviderKind {
   const raw = (env[TRANSLATION_PROVIDER_ENV] ?? "").trim().toLowerCase();
   if (raw === "external" || raw === "mymemory" || raw === "none") return raw;
-  return env.TRANSLATION_API_URL && env.TRANSLATION_API_KEY ? "external" : "none";
+  // 只要有 URL 就算 external：**key 是可选的**。
+  // 自建的 LibreTranslate（本机 127.0.0.1，不对外暴露）不需要 key；
+  // 而旧规则要求 key 才认这个地址，等于把「不要钱的正式服务」排除在外。
+  return env.TRANSLATION_API_URL ? "external" : "none";
 }
 
 /**
@@ -115,9 +118,14 @@ export class TranslationProvider {
   /**
    * 自带的 / 自建的翻译服务（LibreTranslate 自托管，或任何接受同一形状的服务）。
    *
-   * 请求体与鉴权沿用仓库既有约定：`{ q, source, target, format }` + `Bearer`，
+   * 请求体与鉴权沿用仓库既有约定：`{ q, source, target, format }`，
    * 响应兼容两种形状 —— LibreTranslate 的 `translatedText`、
    * Google Cloud Translation v2 的 `data.translations[0].translatedText`。
+   *
+   * **key 是可选的**（2026-10-06 改）：自建的 LibreTranslate 监听在本机，
+   * 不对外暴露、不需要 key；有 key 时才带 `Bearer`（Google Cloud 用 OAuth token，
+   * 云端付费实例用 key）。旧实现要求 URL + KEY 同时存在，结果是
+   * 「零成本的正式服务」根本接不进来。
    */
   private async viaConfiguredEndpoint(
     content: string,
@@ -125,12 +133,15 @@ export class TranslationProvider {
     targetLang: string,
   ): Promise<ExternalTranslation> {
     const endpoint = process.env.TRANSLATION_API_URL;
-    const apiKey = process.env.TRANSLATION_API_KEY;
-    if (!endpoint || !apiKey) return null;
+    if (!endpoint) return null;
+    const apiKey = (process.env.TRANSLATION_API_KEY ?? "").trim();
 
     const payload = await this.fetchJson(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      headers: {
+        "Content-Type": "application/json",
+        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+      },
       body: JSON.stringify({ q: content, source: sourceLang, target: targetLang, format: "text" }),
     });
 

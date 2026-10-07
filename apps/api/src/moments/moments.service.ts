@@ -356,7 +356,54 @@ export class MomentsService {
 
     const viewerSetting = await this.prisma.momentSetting.findUnique({ where: { userId: viewerId } });
     const page = visibleMoments.slice(0, limit);
-    const items = page.map((moment) => ({
+    const items = page.map((moment) => this.feedItem(moment, viewerSetting));
+    // The cursor is the LAST ITEM OF THE RETURNED PAGE (audit P021) — never an
+    // index into the pre-filter array, and never a row the client did not see.
+    const nextCursor = keysetNextCursor(moments.length, limit, page);
+    return { items, nextCursor };
+  }
+
+  /**
+   * 动态 → 前端 item 的投影（`feed` 与 `videoFeed` 共用一份）。
+   *
+   * 抽出来的理由：视频流与普通 feed 必须给出**完全一样**的字段形状
+   * （前端复用同一套卡片类型），而里面的 `filterContent` / `filterMedia` /
+   * `filterVideo` 三步直接决定「查看者的敏感内容设置有没有被尊重」——
+   * 两份拷贝早晚会有一份忘了跟上。
+   */
+  private feedItem(
+    moment: {
+      id: string;
+      userId: string;
+      user: { id: string; nickname: string | null; avatarUrl: string | null; countryCode: string | null };
+      platform: string;
+      platformName: string | null;
+      content: string;
+      images: string[];
+      videoUrl: string | null;
+      durationSec: number | null;
+      tags: string[];
+      source: string;
+      likeCount: number;
+      commentCount: number;
+      createdAt: Date;
+      syncedAt: Date | null;
+      likes: Array<{ userId: string }>;
+      bookmarks: Array<{ userId: string }>;
+    },
+    /**
+     * 查看者的动态设置（`MomentSetting` 行，或没设置过时的 `null`）。
+     * 只声明这里真正会读到的四个开关：多出来的字段由结构化类型自然接受，
+     * 而少声明一个就会被 `filterMedia` / `filterVideo` 的签名报出来。
+     */
+    viewerSetting: {
+      filterSensitive?: boolean;
+      showPhotos?: boolean;
+      showVideos?: boolean;
+      showReels?: boolean;
+    } | null,
+  ) {
+    return {
       id: moment.id,
       userId: moment.userId,
       author: moment.user,
@@ -370,18 +417,97 @@ export class MomentsService {
       likeCount: this.reportedLikeCount(moment),
       commentCount: moment.commentCount,
       liked: moment.likes.length > 0,
-      // C4 — 当前浏览者有没有收藏过它。与 `liked` 同一形状（一行 include + 一个布尔），
-      // 所以卡片不需要额外请求就能画出收藏状态。
       bookmarked: moment.bookmarks.length > 0,
       source: moment.source,
       isDemo: moment.source === "DEMO",
       syncedAt: moment.syncedAt,
       createdAt: moment.createdAt,
-    }));
-    // The cursor is the LAST ITEM OF THE RETURNED PAGE (audit P021) — never an
-    // index into the pre-filter array, and never a row the client did not see.
-    const nextCursor = keysetNextCursor(moments.length, limit, page);
-    return { items, nextCursor };
+    };
+  }
+
+  /**
+   * 视频流（2026-10-06）—— 给「点视频 → 全屏沉浸、上下滑」用的候选集。
+   *
+   * ## 可见性一条不少地复用
+   *
+   * 拉黑、审核、作者可见范围（`MomentSetting.visibleTo`）、查看者的敏感内容过滤 ——
+   * 与 `feed` 同一套，一步都不另写。沉浸模式最容易变成绕过隐私的后门
+   * （全屏、快滑、看不出这是谁的），所以这里宁可多跑几次同样的查询。
+   * 投影也走同一个 `feedItem`，前端可以直接复用卡片类型。
+   *
+   * ## 「随机」的实现与代价
+   *
+   * 先取最近 `candidates` 条**有视频**的动态，按可见范围过滤、剔掉客户端已看过的
+   * (`exclude`)，再在内存里 Fisher–Yates 打散取前 `limit` 条。
+   *
+   * 不用 `ORDER BY random()` 的原因：Prisma 表达不了，而用 `$queryRaw` 重写一遍
+   * 可见性等于把最容易出错的逻辑复制成两份。候选集上限是有意为之：
+   * 数据量上来后应换成「随机游标」（对某个随机键做 keyset），而不是把上限调大。
+   *
+   * `exclude` 只认最后 50 个：它来自查询串，不能让它无限长。
+   * 库里视频不够时 `exhausted: true`，客户端应当从头再循环而不是无限拉取。
+   */
+  async videoFeed(viewerId: string, query: { limit?: number; exclude?: string }) {
+    const candidates = 200;
+    const excludeMax = 50;
+    const limit = Math.min(Math.max(Number(query.limit ?? 6) || 6, 1), 20);
+    const excludeIds = (query.exclude ?? "")
+      .split(",")
+      .map((id) => id.trim())
+      .filter((id) => id.length > 0)
+      .slice(-excludeMax);
+
+    const { blockedIds, peerIds } = await this.visibilityContext(viewerId);
+
+    const rows = await this.prisma.moment.findMany({
+      where: {
+        videoUrl: { not: null },
+        ...(excludeIds.length > 0 ? { id: { notIn: excludeIds } } : {}),
+        // 与 `feed` 完全相同的两层：拉黑 + 审核可见性。
+        AND: [
+          ...(blockedIds.size > 0 ? [{ userId: { notIn: [...blockedIds] } }] : []),
+          reviewVisibilityFilter(viewerId),
+        ],
+      },
+      orderBy: { createdAt: "desc" },
+      take: candidates,
+      include: {
+        user: { select: { id: true, nickname: true, avatarUrl: true, countryCode: true } },
+        likes: { where: { userId: viewerId }, select: { userId: true } },
+        bookmarks: { where: { userId: viewerId }, select: { userId: true } },
+      },
+    });
+
+    const authorIds = [...new Set(rows.map((row) => row.userId))];
+    const authorSettings = await this.prisma.momentSetting.findMany({
+      where: { userId: { in: authorIds } },
+      select: { userId: true, visibleTo: true },
+    });
+    const visibilityByAuthor = new Map(authorSettings.map((row) => [row.userId, row.visibleTo]));
+    const viewerSetting = await this.prisma.momentSetting.findUnique({ where: { userId: viewerId } });
+
+    const visible = rows.filter((moment) => {
+      if (moment.userId === viewerId) return true;
+      const visibleTo = visibilityByAuthor.get(moment.userId) ?? "everyone";
+      if (visibleTo === "private") return false;
+      if (visibleTo === "connections") return peerIds.has(moment.userId);
+      return true;
+    });
+
+    const shuffled = [...visible];
+    for (let i = shuffled.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    const items = shuffled
+      .map((moment) => this.feedItem(moment, viewerSetting))
+      // 投影可能把 videoUrl 抹掉（查看者的敏感内容设置）—— 那种条目在全屏流里
+      // 就是一块空白，直接丢掉，而不是让前端猜。
+      .filter((item) => Boolean(item.videoUrl))
+      .slice(0, limit);
+
+    return { items, exhausted: visible.length === 0 && excludeIds.length > 0 };
   }
 
   async userMoments(viewerId: string, authorId: string, query: { platform?: string; limit?: number; cursor?: string }) {

@@ -188,6 +188,27 @@ export class MomentsController {
     return { success: true as const, data: this.moments.platforms() };
   }
 
+  /**
+   * 视频流（2026-10-06）—— 全屏沉浸、「上下滑」的候选集。
+   *
+   * 与 `feed` 同一套可见性（拉黑 / 审核 / 作者可见范围 / 敏感内容过滤），
+   * 见 `MomentsService.videoFeed`。`exclude` 是客户端已经看过的 id
+   * （逗号分隔，只认最后 50 个），用来避免连续重复。
+   *
+   * 与 `@Get(":id")` 的关系：字面量路由必须声明在它**之前**（Nest 按声明顺序匹配），
+   * 所以这条与 `feed` / `bookmarks` / `topics` 同属上面那一组。
+   */
+  @Get("videos")
+  @Throttle({ default: { limit: 120, ttl: 60000 } })
+  async videos(
+    @CurrentUser() user: AuthUser,
+    @Query("limit") limit?: string,
+    @Query("exclude") exclude?: string,
+  ) {
+    const data = await this.moments.videoFeed(user.id, { limit: Number(limit), exclude });
+    return { success: true as const, data };
+  }
+
   @Get("feed")
   async feed(
     @CurrentUser() user: AuthUser,

@@ -54,6 +54,14 @@ describe("resolveTranslationProviderKind", () => {
     ).toBe("external");
   });
 
+  it("只配 URL（自建实例，无 key）-> 仍是 external", () => {
+    // 自建 LibreTranslate 监听 127.0.0.1，不需要 key。旧规则要求 URL+KEY 同时存在，
+    // 结果是「零成本的正式服务」接不进来。
+    expect(
+      resolveTranslationProviderKind({ TRANSLATION_API_URL: "http://127.0.0.1:5000/translate" }),
+    ).toBe("external");
+  });
+
   it("显式开关优先：mymemory / none 都能盖过已配好的 external", () => {
     const withKey = {
       TRANSLATION_API_URL: "https://translate.example.com/translate",
@@ -92,6 +100,25 @@ describe("TranslationProvider.translateExternal", () => {
     expect(url).toBe("https://translate.example.com/translate");
     expect(init.method).toBe("POST");
     expect((init.headers as Record<string, string>).Authorization).toBe("Bearer secret");
+    expect(JSON.parse(String(init.body))).toEqual({
+      q: "Hello",
+      source: "en",
+      target: "zh",
+      format: "text",
+    });
+  });
+
+  it("external：无 key 时不带 Authorization 头（自建实例的形状）", async () => {
+    process.env.TRANSLATION_API_URL = "http://127.0.0.1:5000/translate";
+    fetchMock.mockReturnValue(okJson({ translatedText: "你好" }));
+
+    await expect(provider.translateExternal("Hello", "en", "zh")).resolves.toEqual({
+      text: "你好",
+      provider: "external",
+    });
+
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
     expect(JSON.parse(String(init.body))).toEqual({
       q: "Hello",
       source: "en",

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Bookmark, Compass, Heart, MessageCircle, Plus, Share2, SlidersHorizontal, Trash2 } from "lucide-react";
+import { Bookmark, Compass, Heart, MessageCircle, Play, Plus, Share2, SlidersHorizontal, Trash2 } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
 import { TabBar } from "@/components/tab-bar";
 import { ProfilePreviewCard } from "@/components/profile-preview-card";
@@ -746,9 +746,36 @@ function MomentCard({
 
         {moment.videoUrl ? (
           <div className="relative bg-black">
-            <video src={moment.videoUrl} poster={moment.images[0]} controls preload="metadata" playsInline className="aspect-video max-h-[420px] w-full" />
+            {/*
+              点视频 → 进沉浸式视频流（`/videos`）。这里**不再**用原生 `controls`：
+              两者会抢同一次点击（一个是播放/暂停，一个是跳转），点一下到底发生什么
+              就变得不可预测。要带控件的播放就去那个流里，那里有完整的控制。
+
+              静音 + loop + 不自动播：feed 里可能同时有好几条视频，不静音会一起出声，
+              自动播则会变成看一屏就消耗一屏的流量。
+            */}
+            <Link
+              href={`/videos?start=${moment.id}`}
+              aria-label="全屏播放视频"
+              className="group relative block w-full"
+            >
+              <video
+                src={moment.videoUrl}
+                poster={moment.images[0]}
+                muted
+                loop
+                playsInline
+                preload="metadata"
+                className="aspect-video max-h-[420px] w-full object-cover"
+              />
+              <span className="absolute inset-0 grid place-items-center">
+                <span className="grid h-12 w-12 place-items-center rounded-full bg-black/45 text-white transition-transform duration-instant group-hover:scale-105 motion-reduce:transition-none">
+                  <Play size={20} aria-hidden="true" />
+                </span>
+              </span>
+            </Link>
             {moment.durationSec ? (
-              <span className="absolute bottom-2 right-2 rounded-md bg-black/60 px-1.5 py-0.5 text-overline text-white">
+              <span className="pointer-events-none absolute bottom-2 right-2 rounded-md bg-black/60 px-1.5 py-0.5 text-overline text-white">
                 {formatDuration(moment.durationSec)}
               </span>
             ) : null}
