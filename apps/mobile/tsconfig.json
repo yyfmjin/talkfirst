@@ -3,7 +3,18 @@
   "compilerOptions": {
     "strict": true,
     "noUnusedLocals": false,
-    "noUnusedParameters": false
+    "noUnusedParameters": false,
+    /*
+     * `@expo/vector-icons` 的类型是按 React 19 生成的，而本 app 是 React 18
+     * （monorepo 里 web 端 React 19 的类型被提升，导致每个 <Ionicons /> 都报
+     * TS2786）。这里把包名指向本地的类型门面 `src/components/icons.ts`：
+     * 只影响**类型解析**，Metro 打包仍然加载真正的包。
+     * 见该文件里的说明（以及删掉它的条件）。
+     */
+    "baseUrl": ".",
+    "paths": {
+      "@expo/vector-icons": ["./src/components/icons.ts"]
+    }
   },
   "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]
 }

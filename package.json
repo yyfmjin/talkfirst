@@ -7,6 +7,11 @@
     "apps/*",
     "packages/*"
   ],
+  "_comment-mobile-pins": "2026-10-07 — 根级为什么直接声明了 expo / react-native：apps/mobile 是 Expo SDK 52（expo ~52.0.37 + react-native 0.76.7），但那些 expo 包对 expo 的 peer 范围很宽，npm 的 peer 自动安装会去抓最新版（实测抓到 expo@57 + react-native@0.87.1）。后果不是小毛病：提升到根级的 expo 包按 peer 依赖 import 到 0.87 的 react-native 源码，而做 Flow 转译的是 mobile 那份 0.76 的 babel preset，于是 expo export / eas build 直接挂在 react-native/Libraries/vendor/emitter/EventEmitter.js: ':' or '?' expected —— 即这个 app 从来没在 monorepo 里打通过包。两个 override 让全树只剩一份一致版本；mobile 升 SDK 时把这里一起改。overrides 单独写没用（实测 npm 不重解），必须在这里声明成直接依赖。",
+  "overrides": {
+    "expo": "~52.0.37",
+    "react-native": "0.76.7"
+  },
   "scripts": {
     "dev": "npm run dev --workspaces --if-present",
     "dev:web": "npm run dev -w @talkfirst/web",
@@ -32,7 +37,9 @@
   "devDependencies": {
     "prisma": "^6.6.0",
     "tsx": "^4.19.3",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "expo": "~52.0.37",
+    "react-native": "0.76.7"
   },
   "dependencies": {
     "@nestjs/cli": "^11.0.24",
