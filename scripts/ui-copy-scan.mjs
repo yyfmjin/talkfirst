@@ -72,6 +72,22 @@ export const BASE_ALLOWED = [
   "Facebook",
   "Google",
   "Apple",
+  /**
+   * 手机平台名，随官网页（`app/site/page.tsx`）一起加进来。
+   *
+   * `Android` / `iOS` / `iPhone` 是平台品牌名，与上面的 `Apple` / `Google` 同一类：
+   * 没有中文形式，也不代表“这里漏译了一句话”——一个中文页面写「下载 Android 版」
+   * 才是正常的写法。
+   *
+   * `APK` 跟在一块：它是**文件格式**（同 `jpg` / `pdf`），不是一个可以翻译的词。
+   *
+   * 注意：官网上那些**能写成中文的**词没有加进来，而是改成了中文（`App` → 「应用」、
+   * 演示用的人名 `Aki` → 「小秋」）。这就是这条检查的意义：白名单只装没中文形式的词。
+   */
+  "Android",
+  "iOS",
+  "iPhone",
+  "APK",
   // The same names as `SocialPlatform` enum values, which every picker shows.
   "INSTAGRAM",
   "TIKTOK",
