@@ -10,10 +10,10 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { apiFetch } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { Avatar } from "../components/Avatar";
+import { Icon } from "../components/Icon";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
 import { colors } from "../theme";
 import type { ChatMessage, ConversationItem, MessagePage } from "../lib/types";
@@ -142,7 +142,7 @@ export function MessagesScreen() {
             accessibilityLabel={t("messages.backToList")}
             style={styles.backButton}
           >
-            <Ionicons name="chevron-back" size={22} color={colors.ink} />
+            <Icon name="chevron-back" size={22} color={colors.ink} />
           </Pressable>
           <Avatar uri={peer?.avatarUrl ?? null} nickname={peer?.nickname ?? null} size={32} />
           <Text style={styles.threadName}>{peer?.nickname ?? t("messages.conversationFallback")}</Text>
@@ -196,7 +196,7 @@ export function MessagesScreen() {
             {sending ? (
               <ActivityIndicator color={colors.white} size="small" />
             ) : (
-              <Ionicons name="arrow-up" size={18} color={colors.white} />
+              <Icon name="arrow-up" size={18} color={colors.white} />
             )}
           </Pressable>
         </View>
@@ -215,7 +215,7 @@ export function MessagesScreen() {
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <View style={styles.center}>
-            <Ionicons name="chatbubbles-outline" size={32} color={colors.muted} />
+            <Icon name="chatbubbles-outline" size={32} color={colors.muted} />
             <Text style={styles.emptyText}>{t("messages.empty")}</Text>
           </View>
         }

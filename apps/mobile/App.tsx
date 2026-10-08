@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { Icon } from "./src/components/Icon";
 import { AuthProvider, useAuth } from "./src/lib/auth-context";
 import { ErrorBoundary } from "./src/components/error-boundary";
 import { I18nProvider, useI18n } from "./src/lib/i18n-context";
@@ -117,14 +118,7 @@ function Root() {
                 accessibilityState={{ selected: active }}
                 accessibilityLabel={t(item.labelKey)}
               >
-                <Ionicons
-                  name={active ? item.iconActive : item.icon}
-                  size={22}
-                  color={tint}
-                  /* 图标是装饰：名字已由 accessibilityLabel 给出，
-                     否则读屏会念一遍图标名、再念一遍标签。 */
-                  accessible={false}
-                />
+                <Icon name={active ? item.iconActive : item.icon} size={22} color={tint} />
                 <Text style={[styles.tabLabel, active ? styles.tabLabelActive : null]}>
                   {t(item.labelKey)}
                 </Text>

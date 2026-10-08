@@ -27,22 +27,37 @@ import { colors } from "../theme";
  * 代价是：如果崩在语言初始化之前，这一屏会用默认语言（英文）。
  */
 type Props = { children: ReactNode };
-type State = { error: Error | null };
+type State = { error: Error | null; componentStack: string };
 
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = { error: null };
+  state: State = { error: null, componentStack: "" };
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { error };
   }
 
-  componentDidCatch(error: Error) {
-    // 目前没有接远端上报；先打到控制台 —— 至少在连电脑时看得到。
-    console.error("[ErrorBoundary]", error);
+  componentDidCatch(error: Error, info: { componentStack?: string | null }) {
+    /*
+     * 组件栈是定位渲染崩溃最有用的信息：它直接点名「哪棵子树」出的问题。
+     *
+     * 真机上没有控制台，所以它不能只进日志 —— 要**显示到屏幕上**。
+     * 2026-10-08 就是因为只显示了 `error.message`（"Element type is invalid ...
+     * but got: undefined"），定位时多花了一整轮构建去猜是哪个组件。
+     */
+    const componentStack = (info?.componentStack ?? "").trim();
+    this.setState({ componentStack });
+    console.error("[ErrorBoundary]", error, componentStack);
   }
 
   render() {
     if (!this.state.error) return this.props.children;
+
+    /* 只取前面几层：屏幕上放不下，而第一个组件名几乎总是答案。 */
+    const stackLines = this.state.componentStack
+      .split("\n")
+      .filter((line) => line.trim())
+      .slice(0, 4)
+      .join("\n");
 
     return (
       <View style={styles.root}>
@@ -52,6 +67,11 @@ export class ErrorBoundary extends Component<Props, State> {
         <Text style={styles.detail} numberOfLines={6}>
           {this.state.error.message}
         </Text>
+        {stackLines ? (
+          <Text style={styles.stack} numberOfLines={10} selectable>
+            {stackLines}
+          </Text>
+        ) : null}
         <Pressable
           onPress={() => this.setState({ error: null })}
           accessibilityRole="button"
@@ -69,6 +89,16 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: "600", color: colors.ink, textAlign: "center" },
   body: { fontSize: 14, lineHeight: 21, color: colors.muted, textAlign: "center" },
   detail: { fontSize: 12, lineHeight: 18, color: colors.muted, textAlign: "center" },
+  stack: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: colors.ink,
+    textAlign: "left",
+    alignSelf: "stretch",
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: colors.bgSoft,
+  },
   retry: {
     marginTop: 8,
     paddingHorizontal: 20,

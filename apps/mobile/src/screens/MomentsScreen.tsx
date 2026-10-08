@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Image, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { apiFetch } from "../lib/api";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
+import { Icon } from "../components/Icon";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
 import { colors } from "../theme";
 import type { Moment, MomentPage } from "../lib/types";
@@ -118,7 +118,7 @@ export function MomentsScreen() {
         onEndReached={() => void load("more")}
         ListEmptyComponent={
           <View style={styles.center}>
-            <Ionicons name="images-outline" size={32} color={colors.muted} />
+            <Icon name="images-outline" size={32} color={colors.muted} />
             <Text style={styles.emptyText}>{t("moments.empty")}</Text>
           </View>
         }
@@ -161,7 +161,7 @@ export function MomentsScreen() {
                 accessibilityState={{ selected: item.liked }}
                 style={styles.action}
               >
-                <Ionicons
+                <Icon
                   name={item.liked ? "heart" : "heart-outline"}
                   size={20}
                   color={item.liked ? colors.danger : colors.muted}
@@ -169,7 +169,7 @@ export function MomentsScreen() {
                 <Text style={styles.actionLabel}>{item.likeCount}</Text>
               </Pressable>
               <View style={styles.action}>
-                <Ionicons name="chatbubble-outline" size={19} color={colors.muted} />
+                <Icon name="chatbubble-outline" size={19} color={colors.muted} />
                 <Text style={styles.actionLabel}>{item.commentCount}</Text>
               </View>
             </View>
