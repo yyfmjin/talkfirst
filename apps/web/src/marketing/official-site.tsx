@@ -26,13 +26,14 @@ import { localePath, t, type Locale, type MsgKey } from "@/lib/i18n";
 /**
  * Android 安装包地址（EAS 构建产物 —— `artifacts.buildUrl`）。
  *
- * 现在指向的是**双语版**那次构建（`a570e616`，2026-10-08）。这个地址是长期有效的，
- * 但它绑在某一次构建上：以后用 `eas build` 出了新的包，要把这里换成新的地址。
+ * 指向构建 `f981a3ad`（提交 `58efe92`，2026-10-08）—— **这就是修掉「白屏」那一个**。
+ * 前两个包（`6f8a0532` / `a570e616`）都是同一个缺陷（发布版在模块加载期抛错），
+ * 已经作废：官网绝不能指向一个装完打不开的包。
  *
- * 留空时下载按钮显示「生成中」并且**不可点**：摆一个 `#` 死链给用户看，比说
- * 「还在生成」更糟。
+ * 这个地址绑在某一次构建上：以后用 `eas build` 出了新包，要把这里换成新的。
+ * 留空时下载按钮显示「生成中」并且**不可点**：摆一个 `#` 死链给用户看，比说「还在生成」更糟。
  */
-const ANDROID_APK_URL = "https://expo.dev/artifacts/eas/ooGgbmoKR_6s3Rq4BYVO76oVoqNCQlDY5sP7AfhkrcM.apk";
+const ANDROID_APK_URL = "https://expo.dev/artifacts/eas/I41YmQlfDywVfpERhnwyf3mwOdRkTKkEzbW18-an2c4.apk";
 
 export function OfficialSite({ locale }: { locale: Locale }) {
   const hasApk = ANDROID_APK_URL.length > 0;
