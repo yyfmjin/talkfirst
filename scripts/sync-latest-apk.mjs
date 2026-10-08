@@ -40,10 +40,21 @@ const dryRun = argv.includes("--dry-run");
 const profileIndex = argv.indexOf("--profile");
 const profile = profileIndex >= 0 ? argv[profileIndex + 1] : "preview";
 
-/** Windows 上 `npx` 是个 .cmd，直接 execFile 找不到 —— 按平台换名字。 */
+/**
+ * Windows 上 `npx` 是个 `.cmd`，直接 execFile 找不到它；而且 Node 从 18.20 / 20.12 起
+ * （CVE-2024-27980 的修复）**不允许**在没有 `shell: true` 时启动 `.cmd` / `.bat`，
+ * 会直接抛 EINVAL。
+ *
+ * 2026-10-08 的一次发布就是这样静默失败的：脚本一启动就崩，退出码不清不楚，
+ * 结果官网继续挂着上一版（而那版登录有 bug）。所以这里必须开 shell。
+ */
 function npx(args, options) {
-  const bin = process.platform === "win32" ? "npx.cmd" : "npx";
-  return execFileSync(bin, args, { encoding: "utf8", ...options });
+  const isWindows = process.platform === "win32";
+  return execFileSync(isWindows ? "npx.cmd" : "npx", args, {
+    encoding: "utf8",
+    shell: isWindows,
+    ...options,
+  });
 }
 
 console.log(`[sync:apk] 查询 EAS 最近的成功构建（profile=${profile}）…`);
