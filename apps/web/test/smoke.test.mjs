@@ -6,36 +6,32 @@ import test from "node:test";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-test("welcome screen renders TalkFirst branding", () => {
+test("home page is the official site and keeps the product promise", () => {
   const source = readFileSync(join(root, "src/app/page.tsx"), "utf8");
-  /**
-   * 启动屏在双语化之后分成了两层：`app/page.tsx`（中文路由，只声明 metadata）与
-   * `src/welcome/launch-screen.tsx`（中英文共用的页面本体）。文案则搬进了词典
-   * （`src/lib/i18n/dictionary.ts`）。所以下面每条断言都跟到它现在真正在的文件 ——
-   * 断言跟着搬家，而不是把旧位置的字串硬留下来。
-   */
-  const screen = readFileSync(join(root, "src/welcome/launch-screen.tsx"), "utf8");
+  const site = readFileSync(join(root, "src/marketing/official-site.tsx"), "utf8");
   const dictionary = readFileSync(join(root, "src/lib/i18n/dictionary.ts"), "utf8");
 
-  assert.match(screen, /Wordmark/);
-  assert.match(dictionary, /仅限 18 岁以上使用/);
-  // Phase B: the launch screen owns the product promise as its own <h1>. The
-  // brand lockup below it is decorative, so the sentence moved out of
-  // `brand.tsx` and into the page — the assertion follows the design change
-  // rather than forcing the page to keep a heading-shaped logo caption.
-  assert.match(dictionary, /先聊聊/);
+  /**
+   * 2026-10-08：首页从「启动屏」改成**官网**（运营方要求：一打开就是介绍 + 下载 + 登录），
+   * 启动屏组件已删除。页面本体在 `src/marketing/official-site.tsx`（中英文共用一份），
+   * 文案在词典 —— 所以断言跟到它们现在真正在的文件，而不是把旧字串留在原处。
+   */
+  assert.match(source, /OfficialSite/);
+  assert.match(site, /LogoMark/);
+  assert.match(site, /ANDROID_APK_PATH/, "下载按钮必须走固定入口，而不是把某一次构建的地址写死");
+  assert.match(dictionary, /先聊聊/, "产品那句话还在");
   assert.match(dictionary, /再成为朋友/);
-  // It must remain a Server Component: this is one of the few routes whose content
-  // is in the first byte of HTML, which is what makes it indexable at all.
+  assert.match(dictionary, /仅限 18 岁以上使用/, "年龄声明还在（注册页渲染它）");
+  assert.match(source, /localePath/, "中英文首页要互相声明 hreflang");
+
+  // 首页必须仍是 Server Component：它是少数几个首屏就是真 HTML 的路由之一，
+  // 也是整个站唯一真正会被搜索引擎收录的页面。
   //
-  // Matched as a DIRECTIVE (own line, quoted, no leading prose) rather than as the
-  // bare substring `"use client"`. The bare form also matches a comment that
-  // explains why the route is not a client component — i.e. it would fail the test
-  // for documenting the very rule the test enforces. `apps/admin/test/smoke.test.mjs`
-  // already matches call positions for exactly this reason; this brings the web
-  // suite in line with it.
-  assert.doesNotMatch(source, /^\s*["']use client["']\s*;?\s*$/m, "route must stay a Server Component");
-  assert.doesNotMatch(screen, /^\s*["']use client["']\s*;?\s*$/m, "shared body must stay a Server Component");
+  // 按**指令**匹配（独占一行、带引号），而不是裸子串 `"use client"` ——
+  // 后者会命中「解释为什么这里不是客户端组件」的注释，等于因为写清楚规则而挂掉。
+  assert.doesNotMatch(source, /^\s*["']use client["']\s*;?\s*$/m, "home must stay a Server Component");
+  assert.doesNotMatch(site, /^\s*["']use client["']\s*;?\s*$/m, "shared site body must stay a Server Component");
+
   const brand = readFileSync(join(root, "src/components/brand.tsx"), "utf8");
   assert.match(brand, /TalkFirst/);
   assert.match(brand, /Talk First\. Connect Later\./);

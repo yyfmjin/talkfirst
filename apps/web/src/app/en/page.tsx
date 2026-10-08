@@ -1,15 +1,19 @@
 import type { Metadata } from "next";
 import { HtmlLang } from "@/components/html-lang";
-import { LaunchScreen } from "@/welcome/launch-screen";
+import { OfficialSite } from "@/marketing/official-site";
 import { localePath, t } from "@/lib/i18n";
 
 /**
- * Launch screen (English, `/en`).
+ * English home page (`/en`) — the same official-site component as the Chinese
+ * route, with `locale="en"`.
  *
- * Same component as the Chinese route with `locale="en"`. The two buttons currently
- * lead to the Chinese sign-in pages because those have no English version yet —
- * that is spelled out where the links are built, in
- * `src/welcome/launch-screen.tsx`.
+ * `<HtmlLang>` is here rather than inside the shared component because only the
+ * non-default locale needs it (the root layout hard-codes `lang="zh-CN"`; see that
+ * component for why it is a client-side patch rather than route groups).
+ *
+ * `openGraph` is written out because the root layout's is Chinese and a page's
+ * `title`/`description` do not override it — without this, sharing the English
+ * homepage renders a Chinese card.
  */
 export const metadata: Metadata = {
   title: t("en", "welcome.title"),
@@ -21,11 +25,6 @@ export const metadata: Metadata = {
       en: localePath("en", "/"),
     },
   },
-  /*
-   * 社交预览（微信/Telegram/Slack 分享链接时看到的那张卡）要单独写：根布局的
-   * `openGraph` 是中文的，页面只改 `title`/`description` 不会覆盖它 —— 不写这几行，
-   * 分享英文链接时弹出的标题是中文字。
-   */
   openGraph: {
     title: t("en", "welcome.title"),
     description: t("en", "welcome.description"),
@@ -35,12 +34,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default function WelcomePageEn() {
+export default function HomePageEn() {
   return (
     <>
-      {/* 根布局写死 `lang="zh-CN"`，英文页要在客户端把它改成 `en`（见该组件里的取舍说明）。 */}
       <HtmlLang locale="en" />
-      <LaunchScreen locale="en" />
+      <OfficialSite locale="en" />
     </>
   );
 }

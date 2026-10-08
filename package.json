@@ -20,6 +20,7 @@
     "build": "npm run build --workspaces --if-present",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
     "prisma:migrate": "prisma migrate dev --schema prisma/schema.prisma",
+    "sync:apk": "node scripts/sync-latest-apk.mjs",
     "db:up": "docker compose up -d postgres redis",
     "db:down": "docker compose down",
     "docker:build": "docker compose --env-file .env.docker build",

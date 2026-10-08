@@ -3,6 +3,7 @@ import { LogoMark } from "@/components/brand";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { TFBadge, TFButton, TFCard } from "@/components/tf";
 import { localePath, t, type Locale, type MsgKey } from "@/lib/i18n";
+import { ANDROID_APK_PATH, ANDROID_APK_URL } from "@/lib/downloads";
 
 /**
  * 官网主体（`/site` 与 `/en/site` 共用这一份实现）。
@@ -24,20 +25,18 @@ import { localePath, t, type Locale, type MsgKey } from "@/lib/i18n";
  */
 
 /**
- * Android 安装包地址（EAS 构建产物 —— `artifacts.buildUrl`）。
+ * 下载按钮指向 `/download/android` —— **固定入口**，不必每出一版就改这里。
  *
- * 指向构建 `f981a3ad`（提交 `58efe92`，2026-10-08）—— **这就是修掉「白屏」那一个**。
- * 前两个包（`6f8a0532` / `a570e616`）都是同一个缺陷（发布版在模块加载期抛错），
- * 已经作废：官网绝不能指向一个装完打不开的包。
+ * 该路由 302 到 `lib/downloads.ts` 里的当前地址；出新版只需跑一次 `npm run sync:apk`。
+ * 以前是把 EAS 的产物地址直接写在这儿，于是每出一版都要改代码 —— 漏一次就会把一个
+ * 装完打不开的旧包挂在官网上（已经发生过一次）。
  *
- * 这个地址绑在某一次构建上：以后用 `eas build` 出了新包，要把这里换成新的。
- * 留空时下载按钮显示「生成中」并且**不可点**：摆一个 `#` 死链给用户看，比说「还在生成」更糟。
+ * `ANDROID_APK_URL` 只用来判断「有没有包」（没有时按钮显示「生成中」且不可点）；
+ * 那个路由 503 的判断用的是同一个常量。
  */
-const ANDROID_APK_URL = "https://expo.dev/artifacts/eas/I41YmQlfDywVfpERhnwyf3mwOdRkTKkEzbW18-an2c4.apk";
+const hasApk = ANDROID_APK_URL.length > 0;
 
 export function OfficialSite({ locale }: { locale: Locale }) {
-  const hasApk = ANDROID_APK_URL.length > 0;
-
   const features: { titleKey: MsgKey; bodyKey: MsgKey; icon: "language" | "spark" | "bubble" }[] = [
     { titleKey: "site.featureLanguagesTitle", bodyKey: "site.featureLanguagesBody", icon: "language" },
     { titleKey: "site.featureInterestsTitle", bodyKey: "site.featureInterestsBody", icon: "spark" },
@@ -109,7 +108,7 @@ export function OfficialSite({ locale }: { locale: Locale }) {
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
               {hasApk ? (
-                <TFButton variant="primary" size="lg" href={ANDROID_APK_URL}>
+                <TFButton variant="primary" size="lg" href={ANDROID_APK_PATH}>
                   {t(locale, "site.downloadApk")}
                 </TFButton>
               ) : (
@@ -196,7 +195,7 @@ export function OfficialSite({ locale }: { locale: Locale }) {
                 <p className="mt-2 text-body text-content-muted">{t(locale, "site.androidBody")}</p>
                 <div className="mt-5">
                   {hasApk ? (
-                    <TFButton variant="primary" href={ANDROID_APK_URL}>
+                    <TFButton variant="primary" href={ANDROID_APK_PATH}>
                       {t(locale, "site.downloadApkShort")}
                     </TFButton>
                   ) : (

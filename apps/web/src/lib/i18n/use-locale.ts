@@ -14,7 +14,7 @@ import { DEFAULT_LOCALE, type Locale } from "./locales";
  * 按钮、错误提示要稳得多 —— 少一层就少一次「有人忘了传、于是显示中文」的机会。
  *
  * 服务端组件拿不到 `usePathname()`，所以那边仍然把 `locale` 当参数传
- * （见 `marketing/official-site.tsx` 与 `welcome/launch-screen.tsx`）。
+ * （见 `marketing/official-site.tsx`）。
  *
  * ## 只有两种语言，所以规则简单
  *
