@@ -1,0 +1,5 @@
+{
+  "name": "talkfirst-mobile-jest-preset",
+  "private": true,
+  "main": "jest-preset.js"
+}

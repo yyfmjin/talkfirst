@@ -15,21 +15,26 @@
  * 两个都是**纯行为**问题：类型检查全绿，真机才炸。所以补一套能在本机跑的测试，
  * 让"改完先跑测试"能替代一部分"改完出个包去真机试"。
  *
- * ## 两个只有在这个仓库里才成立的坑
+ * ## 三个只有在这个仓库里才成立的坑
  *
  * **① 有两份 React。** 移动端 `apps/mobile/node_modules/react` = 18.3.1（Expo SDK 52），
  * 仓库根 `node_modules/react` = 19.3.0（网页端 Next 用的）。而 `react-test-renderer`
  * 是 hoist 到根目录的，它按自己的位置 `require("react")` 会拿到 **19** —— 拿 19 的
- * 渲染器去渲染 18 的树是错的（装上时的 ERESOLVE 冲突就是这个）。下面的
- * `moduleNameMapper` 把它显式指回移动端那份，让测试环境与真机一致。
+ * 渲染器去渲染 18 的树是错的（装上时的 ERESOLVE 冲突就是这个）。`moduleNameMapper`
+ * 把它显式指回移动端那份。
  *
- * **② preset 要写绝对路径。** 这个仓库是 npm workspaces，`jest-expo` 被 hoist 到根目录；
- * 写模块名 `"jest-expo"` 时 jest 的 preset 解析会扑空，报
- * "Module jest-expo should have \"jest-preset.js\""。用 `require.resolve` 拿到真实路径，
- * 它就是这个配置文件解析得到的同一份。
+ * **② preset 只能走本地中转。** `jest-expo` hoist 在仓库根、且带 `exports` 映射，
+ * 写模块名或指向它的目录都拿不到 `jest-preset.js`。preset 指向 `./jest/preset`
+ * （本地目录，内部用绝对路径转出真身）。
+ *
+ * **③ 依赖被拆成两处。** `jest-expo` 在仓库根，`react-native` 留在了
+ * `apps/mobile/node_modules` —— jest-expo 内部（含它的 setup 文件）按自己的位置
+ * 往上找 `react-native/...` 会扑空。`NODE_PATH` 对 jest **无效**（jest 有自己的
+ * 解析器），要靠 jest 的 `modulePaths` 把移动端的 node_modules 显式加进搜索路径。
  */
 module.exports = {
-  preset: require.resolve("jest-expo/jest-preset.js"),
+  preset: "./jest/preset",
+  modulePaths: ["<rootDir>/node_modules"],
   moduleNameMapper: {
     "^react$": "<rootDir>/node_modules/react",
     "^react/(.*)$": "<rootDir>/node_modules/react/$1",

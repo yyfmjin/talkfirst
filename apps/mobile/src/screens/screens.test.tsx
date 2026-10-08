@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import renderer, { act } from "react-test-renderer";
 import { AuthProvider } from "../lib/auth-context";
 import { I18nProvider } from "../lib/i18n-context";
@@ -39,23 +39,29 @@ jest.mock("../lib/api", () => ({
   tryRefresh: jest.fn(async () => false),
 }));
 
+/*
+ * `storage` 的 mock 必须覆盖它**导出的一切**：Providers 在挂载时会读语言偏好
+ * （`getLocalePreference`），少一个函数就是 "(0, _storage.x) is not a function"。
+ */
 jest.mock("../lib/storage", () => ({
-  saveTokens: jest.fn(async () => undefined),
-  clearTokens: jest.fn(async () => undefined),
   getAccessToken: jest.fn(async () => null),
   getRefreshToken: jest.fn(async () => null),
+  saveTokens: jest.fn(async () => undefined),
+  clearTokens: jest.fn(async () => undefined),
+  getLocalePreference: jest.fn(async () => null),
+  saveLocalePreference: jest.fn(async () => undefined),
 }));
 
-const SCREENS: [string, ComponentType<never>][] = [
-  ["AuthScreen", AuthScreen as ComponentType<never>],
-  ["MomentsScreen", MomentsScreen as ComponentType<never>],
-  ["MessagesScreen", MessagesScreen as ComponentType<never>],
-  ["NotificationsScreen", NotificationsScreen as ComponentType<never>],
-  ["DiscoverScreen", DiscoverScreen as ComponentType<never>],
-  ["MeScreen", MeScreen as ComponentType<never>],
+const SCREENS: [string, ComponentType][] = [
+  ["AuthScreen", AuthScreen],
+  ["MomentsScreen", MomentsScreen],
+  ["MessagesScreen", MessagesScreen],
+  ["NotificationsScreen", NotificationsScreen],
+  ["DiscoverScreen", DiscoverScreen],
+  ["MeScreen", MeScreen],
 ];
 
-async function renderInProviders(node: React.ReactElement) {
+async function renderInProviders(node: ReactNode) {
   let tree: renderer.ReactTestRenderer | null = null;
   await act(async () => {
     tree = renderer.create(
@@ -71,12 +77,33 @@ describe("屏幕冒烟渲染", () => {
   it.each(SCREENS)("%s 能渲染出来", async (_name, Screen) => {
     const tree = await renderInProviders(<Screen />);
 
+    /*
+     * 关键就是**这一步之前没抛错**：任一屏幕里出现 undefined 组件，render 会直接以
+     * React 的 "Element type is invalid" 失败。这里不断言 `toJSON()` 非空 ——
+     * 像 MeScreen 在**没有会话**时本来就渲染空，那是正确行为，不是崩溃；
+     * 已登录的那条路径由下一个用例覆盖。
+     */
+    expect(tree).toBeTruthy();
+    tree.unmount();
+  });
+
+  it("MeScreen 在已登录状态下能渲染出内容", async () => {
+    const storage = jest.requireMock("../lib/storage") as { getAccessToken: jest.Mock };
+    const api = jest.requireMock("../lib/api") as { apiFetch: jest.Mock };
+
+    storage.getAccessToken.mockResolvedValue("token");
+    api.apiFetch.mockResolvedValue({ id: "u1", email: "a@b.c", nickname: "Ann" });
+
+    const tree = await renderInProviders(<MeScreen />);
+
     expect(tree.toJSON()).toBeTruthy();
     tree.unmount();
   });
 
   it("ComposeScreen（发动态）带 props 也能渲染出来", async () => {
-    const tree = await renderInProviders(<ComposeScreen onPublished={() => undefined} onCancel={() => undefined} />);
+    const tree = await renderInProviders(
+      <ComposeScreen onPublished={() => undefined} onCancel={() => undefined} />,
+    );
 
     expect(tree.toJSON()).toBeTruthy();
     tree.unmount();
