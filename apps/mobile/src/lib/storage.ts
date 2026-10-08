@@ -28,6 +28,16 @@ export async function getRefreshToken(): Promise<string | null> {
 }
 
 export async function saveTokens(accessToken: string, refreshToken: string): Promise<void> {
+  /*
+   * 明确断言，而不是把 `undefined` 交给 SecureStore 去炸。
+   *
+   * 2026-10-08：登录响应被拆掉信封后，这里收到的是 `undefined`，SecureStore 抛的是
+   * "Value ... is not a string" —— 指向存储层，完全看不出真正的错在调用方。
+   * 会话相关的错误必须能一眼看出是会话出的。
+   */
+  if (!accessToken || !refreshToken) {
+    throw new Error("saveTokens() requires both a non-empty access token and refresh token");
+  }
   await Promise.all([
     SecureStore.setItemAsync(ACCESS_KEY, accessToken),
     SecureStore.setItemAsync(REFRESH_KEY, refreshToken),

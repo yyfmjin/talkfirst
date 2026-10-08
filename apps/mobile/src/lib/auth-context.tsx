@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { apiFetch, ApiRequestError, tryRefresh } from "./api";
+import { apiFetch, apiFetchEnvelope, ApiRequestError, tryRefresh } from "./api";
+import { t } from "./i18n";
 import { clearTokens, getAccessToken, getRefreshToken, saveTokens } from "./storage";
 import type { AuthSession, SessionUser } from "./types";
 
@@ -59,23 +60,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const session = await apiFetch<AuthSession>("/auth/login", {
-      method: "POST",
-      body: { email, password },
-    });
+  /**
+   * 把一次登录 / 注册的结果落地：token 进 SecureStore，用户进状态。
+   *
+   * 用 `apiFetchEnvelope` 而不是 `apiFetch`：token 在响应信封的**顶层**，
+   * 拆了信封就把它丢了（见 `api.ts` 里 `apiFetchEnvelope` 的注释）。
+   * token 缺失时在这里就报错，而不是让 `undefined` 走进 SecureStore 再炸 ——
+   * 那边的报错（"Value ... is not a string"）根本指不出真正的原因。
+   */
+  const applySession = useCallback(async (session: AuthSession) => {
+    if (!session.accessToken || !session.refreshToken) {
+      throw new Error(t("common.actionFailed"));
+    }
     await saveTokens(session.accessToken, session.refreshToken);
     setUser(session.data);
   }, []);
 
-  const signUp = useCallback(async (email: string, password: string) => {
-    const session = await apiFetch<AuthSession>("/auth/register", {
-      method: "POST",
-      body: { email, password },
-    });
-    await saveTokens(session.accessToken, session.refreshToken);
-    setUser(session.data);
-  }, []);
+  const signIn = useCallback(
+    async (email: string, password: string) => {
+      await applySession(
+        await apiFetchEnvelope<SessionUser>("/auth/login", {
+          method: "POST",
+          body: { email, password },
+        }),
+      );
+    },
+    [applySession],
+  );
+
+  const signUp = useCallback(
+    async (email: string, password: string) => {
+      await applySession(
+        await apiFetchEnvelope<SessionUser>("/auth/register", {
+          method: "POST",
+          body: { email, password },
+        }),
+      );
+    },
+    [applySession],
+  );
 
   const signOut = useCallback(async () => {
     try {

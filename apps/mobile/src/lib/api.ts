@@ -102,7 +102,25 @@ export async function tryRefresh(): Promise<boolean> {
   return refreshPromise;
 }
 
-async function doFetch<T>(path: string, options: RequestOptions): Promise<T> {
+/**
+ * 接口的响应信封。
+ *
+ * `data` 是业务数据；**登录类接口把 `accessToken`/`refreshToken` 放在顶层**，
+ * 与 `data` 平级 —— 拆信封时会一起丢掉（原生端就靠它们存会话）。
+ */
+type Envelope<T> = {
+  success?: boolean;
+  data?: T;
+  error?: ApiErrorBody;
+  accessToken?: string;
+  refreshToken?: string;
+};
+
+async function doFetch<T>(
+  path: string,
+  options: RequestOptions,
+  keepEnvelope = false,
+): Promise<T | Envelope<T>> {
   /*
    * 基址在**发请求时**才解析（不是模块级常量）：模块级抛错会让整个 bundle 起不来，
    * 用户看到白屏 —— 2026-10-08 的事故就是这么来的，见 `config.ts` 文件头。
@@ -124,12 +142,12 @@ async function doFetch<T>(path: string, options: RequestOptions): Promise<T> {
     payload = null;
   }
 
-  const envelope = payload as { success?: boolean; data?: T; error?: ApiErrorBody } | null;
+  const envelope = payload as Envelope<T> | null;
 
   if ((!response.ok || !envelope?.success) && response.status === 401 && options.retry !== false) {
     const refreshed = await tryRefresh();
     if (refreshed) {
-      return doFetch<T>(path, { ...options, retry: false });
+      return doFetch<T>(path, { ...options, retry: false }, keepEnvelope);
     }
   }
 
@@ -143,9 +161,29 @@ async function doFetch<T>(path: string, options: RequestOptions): Promise<T> {
     );
   }
 
+  if (keepEnvelope) return envelope;
   return envelope.data as T;
 }
 
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  return doFetch<T>(path, options);
+  return (await doFetch<T>(path, options)) as T;
+}
+
+/**
+ * 和 `apiFetch` 一样，但**不拆信封**。
+ *
+ * 登录 / 注册 / 刷新是唯一把 token 放在信封**顶层**的接口
+ * （`{ success, data: 用户对象, accessToken, refreshToken }`）。`apiFetch` 只返回 `data`，
+ * token 会在这一层被丢掉；而原生端不靠 HttpOnly cookie，token 必须自己存进
+ * SecureStore —— 拿不到就等于登录不进去。
+ *
+ * 2026-10-08 的事故就出在这里：`signIn` 用 `apiFetch` 取信封，拿到的其实是用户对象，
+ * `session.accessToken` 是 `undefined`，写 SecureStore 时直接抛错 —— 用户看到「登录失败」
+ * 并停在登录页，而服务端日志里那次登录其实返回了 200，/users/me 一个请求都没发。
+ */
+export async function apiFetchEnvelope<T>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<Envelope<T>> {
+  return (await doFetch<T>(path, options, true)) as Envelope<T>;
 }

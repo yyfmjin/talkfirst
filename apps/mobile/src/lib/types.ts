@@ -85,8 +85,15 @@ export type NotificationPage = {
   nextCursor: string | null;
 };
 
+/**
+ * 登录 / 注册 / 刷新的响应信封（**未拆封**的那一层）。
+ *
+ * token 在信封**顶层**，和 `data` 平级；`data` 里只有用户对象。
+ * 这个区别曾经让 App「登录成功却停在登录页」：`signIn` 用会拆信封的 `apiFetch`
+ * 取它，拿到的其实是用户对象，`accessToken` 成了 `undefined`。
+ * 取信封必须用 `apiFetchEnvelope`。
+ */
 export type AuthSession = {
-  success: boolean;
   data: SessionUser;
   accessToken: string;
   refreshToken: string;
