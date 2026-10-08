@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { AuthProvider, useAuth } from "./src/lib/auth-context";
+import { ErrorBoundary } from "./src/components/error-boundary";
 import { I18nProvider, useI18n } from "./src/lib/i18n-context";
 import type { MsgKey } from "./src/lib/messages";
 import { AuthScreen } from "./src/screens/AuthScreen";
@@ -141,9 +142,12 @@ export default function App() {
   return (
     // I18nProvider 在最外层：未登录时的 AuthScreen 也要能翻译。
     <I18nProvider>
-      <AuthProvider>
-        <Root />
-      </AuthProvider>
+      {/* 边界放在 Provider 之内：语言先就位，崩溃屏才能说人话而不是又一片空白。 */}
+      <ErrorBoundary>
+        <AuthProvider>
+          <Root />
+        </AuthProvider>
+      </ErrorBoundary>
     </I18nProvider>
   );
 }

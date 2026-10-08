@@ -24,7 +24,15 @@ const appRoot = join(here, "..");
 const repoRoot = join(here, "..", "..", "..");
 
 test("member app has no untranslated English UI copy", () => {
-  const findings = scanUiCopy({ root: join(appRoot, "src") });
+  const findings = scanUiCopy({
+    root: join(appRoot, "src"),
+    /*
+     * 词典是唯一允许装英文的地方 —— 英文站点的文案就从那里来。这条检查管的是
+     * 「页面/组件里不许出现没翻译的英文」，所以只把词典排除在外；其余 88 个源文件
+     * 仍然一个字都不许漏译。
+     */
+    ignore: ["lib/i18n/dictionary.ts"],
+  });
 
   assert.deepEqual(
     findings.map((finding) => `${finding.file}:${finding.line} [${finding.kind}] ${finding.text}`),

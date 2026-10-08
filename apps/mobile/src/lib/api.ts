@@ -1,4 +1,4 @@
-import { API_BASE_URL, API_REQUEST_TIMEOUT_MS } from "./config";
+import { apiBaseUrl, API_REQUEST_TIMEOUT_MS } from "./config";
 import { t } from "./i18n";
 import { clearTokens, getAccessToken, getRefreshToken, saveTokens } from "./storage";
 import type { ApiErrorBody } from "./types";
@@ -76,7 +76,7 @@ export async function tryRefresh(): Promise<boolean> {
       const refreshToken = await getRefreshToken();
       if (!refreshToken) return false;
       try {
-        const response = await fetchWithTimeout(`${API_BASE_URL}/auth/refresh`, {
+        const response = await fetchWithTimeout(`${apiBaseUrl()}/auth/refresh`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ refreshToken }),
@@ -103,11 +103,15 @@ export async function tryRefresh(): Promise<boolean> {
 }
 
 async function doFetch<T>(path: string, options: RequestOptions): Promise<T> {
+  /*
+   * 基址在**发请求时**才解析（不是模块级常量）：模块级抛错会让整个 bundle 起不来，
+   * 用户看到白屏 —— 2026-10-08 的事故就是这么来的，见 `config.ts` 文件头。
+   */
   const accessToken = await getAccessToken();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
-  const response = await fetchWithTimeout(`${API_BASE_URL}${path}`, {
+  const response = await fetchWithTimeout(`${apiBaseUrl()}${path}`, {
     method: options.method ?? "GET",
     headers,
     body: options.body === undefined ? undefined : JSON.stringify(options.body),

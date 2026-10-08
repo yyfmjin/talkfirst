@@ -34,6 +34,11 @@ export const zh = {
   "common.daysAgo": "{n} 天前",
   "common.age": "{n} 岁",
 
+  /* 顶层错误边界（万一把界面崩了，至少说一句人话、而不是白屏） */
+  "error.title": "出了点问题",
+  "error.body":
+    "App 遇到了无法继续的错误。可以先点下面的按钮重试；如果一直这样，请把这一屏截图发给我们。",
+
   /* ───────────────────────── 底部导航 ───────────────────────── */
   "tab.discover": "发现",
   "tab.moments": "动态",
@@ -173,6 +178,11 @@ export const en: Record<MsgKey, string> = {
   "common.hoursAgo": "{n} hr ago",
   "common.daysAgo": "{n} days ago",
   "common.age": "{n} y/o",
+
+  /* top-level error boundary */
+  "error.title": "Something went wrong",
+  "error.body":
+    "The app hit an error it couldn't recover from. Try again below — if it keeps happening, please send us a screenshot of this screen.",
 
   /* tabs */
   "tab.discover": "Discover",

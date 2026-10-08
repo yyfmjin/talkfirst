@@ -8,14 +8,23 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 test("welcome screen renders TalkFirst branding", () => {
   const source = readFileSync(join(root, "src/app/page.tsx"), "utf8");
-  assert.match(source, /Wordmark/);
-  assert.match(source, /仅限 18 岁以上使用/);
+  /**
+   * 启动屏在双语化之后分成了两层：`app/page.tsx`（中文路由，只声明 metadata）与
+   * `src/welcome/launch-screen.tsx`（中英文共用的页面本体）。文案则搬进了词典
+   * （`src/lib/i18n/dictionary.ts`）。所以下面每条断言都跟到它现在真正在的文件 ——
+   * 断言跟着搬家，而不是把旧位置的字串硬留下来。
+   */
+  const screen = readFileSync(join(root, "src/welcome/launch-screen.tsx"), "utf8");
+  const dictionary = readFileSync(join(root, "src/lib/i18n/dictionary.ts"), "utf8");
+
+  assert.match(screen, /Wordmark/);
+  assert.match(dictionary, /仅限 18 岁以上使用/);
   // Phase B: the launch screen owns the product promise as its own <h1>. The
   // brand lockup below it is decorative, so the sentence moved out of
   // `brand.tsx` and into the page — the assertion follows the design change
   // rather than forcing the page to keep a heading-shaped logo caption.
-  assert.match(source, /先聊聊/);
-  assert.match(source, /再成为朋友/);
+  assert.match(dictionary, /先聊聊/);
+  assert.match(dictionary, /再成为朋友/);
   // It must remain a Server Component: this is one of the few routes whose content
   // is in the first byte of HTML, which is what makes it indexable at all.
   //
@@ -25,7 +34,8 @@ test("welcome screen renders TalkFirst branding", () => {
   // for documenting the very rule the test enforces. `apps/admin/test/smoke.test.mjs`
   // already matches call positions for exactly this reason; this brings the web
   // suite in line with it.
-  assert.doesNotMatch(source, /^\s*["']use client["']\s*;?\s*$/m, "must stay a Server Component");
+  assert.doesNotMatch(source, /^\s*["']use client["']\s*;?\s*$/m, "route must stay a Server Component");
+  assert.doesNotMatch(screen, /^\s*["']use client["']\s*;?\s*$/m, "shared body must stay a Server Component");
   const brand = readFileSync(join(root, "src/components/brand.tsx"), "utf8");
   assert.match(brand, /TalkFirst/);
   assert.match(brand, /Talk First\. Connect Later\./);
