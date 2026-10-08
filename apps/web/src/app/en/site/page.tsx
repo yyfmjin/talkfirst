@@ -22,6 +22,14 @@ export const metadata: Metadata = {
       en: localePath("en", "/site"),
     },
   },
+  // 与 `/en` 同一理由：页面只改 title/description 盖不住根布局里那份中文的 openGraph。
+  openGraph: {
+    title: t("en", "site.metaTitle"),
+    description: t("en", "site.metaDescription"),
+    locale: "en_US",
+    siteName: "TalkFirst",
+    type: "website",
+  },
 };
 
 export default function OfficialSitePageEn() {

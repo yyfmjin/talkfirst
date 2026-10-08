@@ -21,6 +21,18 @@ export const metadata: Metadata = {
       en: localePath("en", "/"),
     },
   },
+  /*
+   * 社交预览（微信/Telegram/Slack 分享链接时看到的那张卡）要单独写：根布局的
+   * `openGraph` 是中文的，页面只改 `title`/`description` 不会覆盖它 —— 不写这几行，
+   * 分享英文链接时弹出的标题是中文字。
+   */
+  openGraph: {
+    title: t("en", "welcome.title"),
+    description: t("en", "welcome.description"),
+    locale: "en_US",
+    siteName: "TalkFirst",
+    type: "website",
+  },
 };
 
 export default function WelcomePageEn() {
