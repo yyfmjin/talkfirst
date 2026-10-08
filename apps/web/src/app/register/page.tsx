@@ -41,15 +41,17 @@ import { useSession, type SessionUser } from "@/lib/session";
  */
 
 /**
- * The account-name refusals, as dictionary keys.
+ * 注册被拒时的文案，按错误码取词典键。
  *
- * `EMAIL_TAKEN` is deliberately NOT in this map: it has always reached the screen
- * as the API's English string, and changing that is a separate copy cleanup rather
- * than part of adding an account name. Adding only the new codes keeps this file
- * honest about what it does rather than pretending to be a general mapping.
+ * `EMAIL_TAKEN` 原来**故意**不在这里 —— 它一直是把接口的英文原句直接显示出来。
+ * 2026-10-08 改掉了：线上真有人撞上它，而一个中文界面里冒出一句英文，用户只会得到
+ * 「注册/登录失败」这种模糊印象，根本不知道下一步该干什么。
+ *
+ * 仍然只列**已知**的码：未知错误直接显示服务端的话，比盖成一句模糊的失败更有用。
  */
-const USERNAME_ERROR_KEYS: Record<string, MsgKey> = {
+const REGISTER_ERROR_KEYS: Record<string, MsgKey> = {
   USERNAME_TAKEN: "auth.errorUsernameTaken",
+  EMAIL_TAKEN: "auth.errorEmailTaken",
   USERNAME_RESERVED: "auth.errorUsernameReserved",
   USERNAME_INVALID: "auth.errorUsernameFormat",
 };
@@ -109,7 +111,7 @@ export default function RegisterPage() {
     } catch (requestError) {
       const mapped =
         requestError instanceof ApiRequestError
-          ? USERNAME_ERROR_KEYS[requestError.code ?? ""]
+          ? REGISTER_ERROR_KEYS[requestError.code ?? ""]
           : undefined;
       setError(
         mapped

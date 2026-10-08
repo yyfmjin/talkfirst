@@ -171,6 +171,16 @@ export default function LoginPage() {
       if (requestError instanceof ApiRequestError && requestError.code === "EMAIL_NOT_VERIFIED") {
         setNeedsVerification(true);
         setError(t("auth.errorEmailNotVerified"));
+      } else if (
+        requestError instanceof ApiRequestError &&
+        requestError.code === "INVALID_CREDENTIALS"
+      ) {
+        /*
+         * 接口给的是英文原文（`Email, username or password is incorrect`），摆在中文
+         * 界面里很突兀 —— 所以按语言换掉它。其它未知错误码仍直接显示服务端的话：
+         * 宁可让人看到一句不准的英文，也不要把他真正的错误盖成一个模糊的“失败”。
+         */
+        setError(t("auth.errorInvalidCredentials"));
       } else {
         setError(
           requestError instanceof ApiRequestError ? requestError.message : t("auth.errorSignInFailed"),
