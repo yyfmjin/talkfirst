@@ -1,7 +1,7 @@
 import { apiBaseUrl, API_REQUEST_TIMEOUT_MS } from "./config";
 import { t } from "./i18n";
 import { clearTokens, getAccessToken, getRefreshToken, saveTokens } from "./storage";
-import type { ApiErrorBody } from "./types";
+import type { ApiErrorBody, AuthSession, SessionUser } from "./types";
 
 export class ApiRequestError extends Error {
   readonly code: string;
@@ -181,9 +181,21 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
  * `session.accessToken` 是 `undefined`，写 SecureStore 时直接抛错 —— 用户看到「登录失败」
  * 并停在登录页，而服务端日志里那次登录其实返回了 200，/users/me 一个请求都没发。
  */
-export async function apiFetchEnvelope<T>(
+export async function apiFetchEnvelope(
   path: string,
   options: RequestOptions = {},
-): Promise<Envelope<T>> {
-  return (await doFetch<T>(path, options, true)) as Envelope<T>;
+): Promise<AuthSession> {
+  const envelope = (await doFetch<SessionUser>(path, options, true)) as Envelope<SessionUser>;
+  /*
+   * token 缺失就在这里失败，而且报的是「会话响应不完整」——
+   * 让 `undefined` 走到 SecureStore，得到的只会是一句指向存储层的报错。
+   */
+  if (!envelope.data || !envelope.accessToken || !envelope.refreshToken) {
+    throw new ApiRequestError({ code: "INCOMPLETE_SESSION", message: t("common.actionFailed") });
+  }
+  return {
+    data: envelope.data,
+    accessToken: envelope.accessToken,
+    refreshToken: envelope.refreshToken,
+  };
 }
