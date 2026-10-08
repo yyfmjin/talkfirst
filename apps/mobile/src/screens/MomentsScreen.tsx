@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Image, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { apiFetch } from "../lib/api";
+import { ComposeScreen } from "./ComposeScreen";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
@@ -37,6 +38,8 @@ export function MomentsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
+  /** 发动态是一个全屏接管的状态，不是第二个 tab：发完就回到时间线（见下方渲染）。 */
+  const [composing, setComposing] = useState(false);
 
   const load = useCallback(async (mode: "initial" | "refresh" | "more") => {
     if (mode === "more" && !cursor) return;
@@ -93,6 +96,19 @@ export function MomentsScreen() {
     }
   }
 
+  if (composing) {
+    return (
+      <ComposeScreen
+        onCancel={() => setComposing(false)}
+        onPublished={() => {
+          setComposing(false);
+          // 发完重拉第一页：新动态的位置以服务端为准（不往本地列表里插）。
+          void load("refresh");
+        }}
+      />
+    );
+  }
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -105,6 +121,14 @@ export function MomentsScreen() {
     <View style={styles.root}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{t("moments.title")}</Text>
+        <Pressable
+          onPress={() => setComposing(true)}
+          accessibilityRole="button"
+          accessibilityLabel={t("moments.compose")}
+          style={styles.composeButton}
+        >
+          <Icon name="create-outline" size={22} color={colors.white} />
+        </Pressable>
       </View>
 
       <FlatList
@@ -215,6 +239,14 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   headerTitle: { fontSize: 24, fontWeight: "700", color: colors.ink },
+  composeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.primary,
+  },
   list: { paddingHorizontal: 16, paddingBottom: 24, gap: 12 },
   card: { backgroundColor: colors.white, borderRadius: 16, borderWidth: 1, borderColor: colors.line, padding: 14, gap: 10 },
   cardHead: { flexDirection: "row", alignItems: "center", gap: 10 },

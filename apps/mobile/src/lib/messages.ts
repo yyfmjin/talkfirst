@@ -90,6 +90,15 @@ export const zh = {
   "moments.errorLoading": "动态加载失败，请稍后再试。",
   "moments.like": "点赞",
   "moments.unlike": "取消点赞",
+  "moments.compose": "发动态",
+
+  /* ───────────────────────── 发动态 ───────────────────────── */
+  "compose.title": "发动态",
+  "compose.placeholder": "说点什么…",
+  "compose.publish": "发布",
+  "compose.cancel": "取消",
+  "compose.errorPublish": "发布失败，请稍后再试。",
+  "compose.mediaNote": "这一版先支持文字；图片和视频在下一版接上。",
 
   /* ───────────────────────── 消息 ───────────────────────── */
   "messages.title": "消息",
@@ -237,6 +246,15 @@ export const en: Record<MsgKey, string> = {
   "moments.errorLoading": "Couldn't load posts. Please try again.",
   "moments.like": "Like",
   "moments.unlike": "Unlike",
+  "moments.compose": "New post",
+
+  /* compose */
+  "compose.title": "New post",
+  "compose.placeholder": "Say something…",
+  "compose.publish": "Post",
+  "compose.cancel": "Cancel",
+  "compose.errorPublish": "Couldn't publish. Please try again.",
+  "compose.mediaNote": "Text only for now — photos and video land in the next update.",
 
   /* messages */
   "messages.title": "Messages",
