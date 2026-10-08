@@ -96,12 +96,39 @@ function Root() {
     <SafeAreaProvider>
       <View style={styles.root}>
         <StatusBar style="dark" />
+        {/*
+         * 每个 tab 各自一层错误边界：某一页渲染崩了，只挡住**那一页**，
+         * 底部导航还能用、能切到别的页面继续。
+         *
+         * 2026-10-08：主界面一崩，顶层边界把整屏换成了错误页，用户连「换个 tab 试试」
+         * 都做不到，也看不出是哪一页的问题。
+         */}
         <View style={styles.body}>
-          {tab === "discover" ? <DiscoverScreen /> : null}
-          {tab === "moments" ? <MomentsScreen /> : null}
-          {tab === "messages" ? <MessagesScreen /> : null}
-          {tab === "notifications" ? <NotificationsScreen /> : null}
-          {tab === "me" ? <MeScreen /> : null}
+          {tab === "discover" ? (
+            <ErrorBoundary>
+              <DiscoverScreen />
+            </ErrorBoundary>
+          ) : null}
+          {tab === "moments" ? (
+            <ErrorBoundary>
+              <MomentsScreen />
+            </ErrorBoundary>
+          ) : null}
+          {tab === "messages" ? (
+            <ErrorBoundary>
+              <MessagesScreen />
+            </ErrorBoundary>
+          ) : null}
+          {tab === "notifications" ? (
+            <ErrorBoundary>
+              <NotificationsScreen />
+            </ErrorBoundary>
+          ) : null}
+          {tab === "me" ? (
+            <ErrorBoundary>
+              <MeScreen />
+            </ErrorBoundary>
+          ) : null}
         </View>
         <View style={styles.tabBar}>
           {TABS.map((item) => {
