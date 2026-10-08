@@ -18,13 +18,10 @@ import { localePath, t, type Locale } from "@/lib/i18n";
  * 所以切换入口放在最上沿（`pt-6` 那一行），而不是藏进"我的 → 设置"。
  */
 export function LaunchScreen({ locale }: { locale: Locale }) {
-  /*
-   * 英文站的登录/注册页还没做（下一步）。在那之前，英文启动屏的两个按钮指向中文页面：
-   * 一个能用的中文登录页，好过一个 404。`/en/login` 做出来之后，这两行直接换成
-   * `localePath(locale, "/login")` / `localePath(locale, "/register")` 并删掉注释。
-   */
-  const loginHref = locale === "en" ? "/login" : localePath(locale, "/login");
-  const registerHref = locale === "en" ? "/register" : localePath(locale, "/register");
+  // 两个目标页现在都有英文路由（`/en/login`、`/en/register`），所以直接按语言算地址。
+  // 以前这里是"英文暂时去中文页"的临时分支 —— 那种分支会在做完之后被人忘掉，别再加。
+  const loginHref = localePath(locale, "/login");
+  const registerHref = localePath(locale, "/register");
 
   return (
     <PhoneShell>

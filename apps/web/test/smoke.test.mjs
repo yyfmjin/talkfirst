@@ -43,8 +43,16 @@ test("welcome screen renders TalkFirst branding", () => {
 
 test("login screen offers email sign-in", () => {
   const source = readFileSync(join(root, "src/app/login/page.tsx"), "utf8");
-  assert.match(source, /欢迎回来/);
-  assert.match(source, /邮箱/);
+  /**
+   * 文案在 2026-10-08 双语化时搬进了词典（`src/lib/i18n/dictionary.ts`）。
+   * 断言因此分两半，合起来守的还是原来那件事：**登录页用邮箱登录，且成员界面的
+   * 中文文案还在**。只断言词典会漏掉「页面不再引用它」；只断言页面则管不住文案本身。
+   */
+  const dictionary = readFileSync(join(root, "src/lib/i18n/dictionary.ts"), "utf8");
+  assert.match(source, /t\("auth\.welcomeBack"\)/);
+  assert.match(source, /t\("auth\.identifierLabel"\)/);
+  assert.match(dictionary, /欢迎回来/);
+  assert.match(dictionary, /邮箱/);
 });
 
 test("auth screens call the real API client", () => {

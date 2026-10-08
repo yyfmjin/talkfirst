@@ -8,6 +8,7 @@ import { PhoneShell } from "@/components/phone-shell";
 import { TFCard, TFInput, TFButton } from "@/components/tf";
 import { OAuthButtons, oauthErrorMessage } from "@/components/oauth-buttons";
 import { ApiRequestError, apiFetch } from "@/lib/api";
+import { localePath, useT } from "@/lib/i18n";
 import { useSession, type SessionUser } from "@/lib/session";
 
 /**
@@ -39,10 +40,24 @@ import { useSession, type SessionUser } from "@/lib/session";
  *    but the SECOND pinned string moved: `test/fixtures/browser.ts` resolves the
  *    field with `getByLabel(...)`, so that one line had to be renamed with it.
  *    The label is an exact match there, so the two are not free to drift apart.
+ *
+ * ## 双语（2026-10-08）
+ *
+ * 文案搬进了词典（`lib/i18n/dictionary.ts`）—— 包括 `test/smoke.test.mjs` 与
+ * `test/email-verification.test.mjs` 盯过的那几条（`欢迎回来`、`邮箱`、`邮箱尚未验证`、
+ * `验证码`）：它们的断言跟着搬到词典去断言，而不是把中文串硬留在这里。
+ *
+ * 语言由**路径**决定（`useT()`，见 `lib/i18n/use-locale.ts`）：本页在 `/login` 是中文、
+ * 在 `/en/login` 是英文（后者是一个只做转出的两行文件）。
+ *
+ * 指向**自己兄弟页**（注册）的链接用 `localePath()`，所以英文站会去 `/en/register`；
+ * 指向**还没双语化**的页面的链接（找回密码、邮箱验证、登录后的发现页）暂时留着
+ * 中文路径 —— 那些页还没有英文版。**不要**把它们改成 `localePath()`，那会变成 404。
  */
 export default function LoginPage() {
   const router = useRouter();
   const { setUser } = useSession();
+  const { locale, t } = useT();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -70,7 +85,7 @@ export default function LoginPage() {
    */
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const message = oauthErrorMessage(params);
+    const message = oauthErrorMessage(params, locale);
     if (!message) return;
     setError(message);
     /**
@@ -93,7 +108,7 @@ export default function LoginPage() {
      * a plain lie — the request could not have produced a code.
      */
     if (!looksLikeEmail) {
-      setError("验证码只能发送到邮箱地址，请填写邮箱后重试。");
+      setError(t("auth.errorVerificationEmailOnly"));
       return;
     }
     try {
@@ -101,9 +116,9 @@ export default function LoginPage() {
         method: "POST",
         body: { email: normalizedIdentifier },
       });
-      setNotice("验证码已重新发送，请查收邮箱。");
+      setNotice(t("auth.noticeCodeSent"));
     } catch {
-      setError("验证码发送失败，请稍后再试。");
+      setError(t("auth.errorCodeSendFailed"));
     }
   }
 
@@ -120,7 +135,7 @@ export default function LoginPage() {
     } catch {
       // Fall through: an unverifiable read is treated as "not verified yet".
     }
-    setNotice("尚未检测到验证结果，请先输入邮箱验证码。");
+    setNotice(t("auth.noticeVerificationPending"));
     router.push("/verify");
   }
 
@@ -131,7 +146,7 @@ export default function LoginPage() {
     setNeedsVerification(false);
     const trimmed = normalizedIdentifier;
     if (!trimmed || !password) {
-      setError("请填写邮箱或账户名和密码。");
+      setError(t("auth.errorMissingIdentifier"));
       return;
     }
     /**
@@ -141,7 +156,7 @@ export default function LoginPage() {
      * names the server accepts.
      */
     if (looksLikeEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setError("请输入有效的邮箱地址。");
+      setError(t("auth.errorInvalidEmail"));
       return;
     }
     setLoading(true);
@@ -155,10 +170,10 @@ export default function LoginPage() {
     } catch (requestError) {
       if (requestError instanceof ApiRequestError && requestError.code === "EMAIL_NOT_VERIFIED") {
         setNeedsVerification(true);
-        setError("邮箱尚未验证，请先完成邮箱验证。");
+        setError(t("auth.errorEmailNotVerified"));
       } else {
         setError(
-          requestError instanceof ApiRequestError ? requestError.message : "登录失败，请稍后再试",
+          requestError instanceof ApiRequestError ? requestError.message : t("auth.errorSignInFailed"),
         );
       }
     } finally {
@@ -172,18 +187,22 @@ export default function LoginPage() {
         <div className="mb-6 flex justify-center">
           <LogoMark size={56} />
         </div>
-        <h1 className="text-center text-title font-semibold text-content">欢迎回来</h1>
-        <p className="mt-1.5 text-center text-ui text-content-muted">很高兴再次见到你</p>
+        <h1 className="text-center text-title font-semibold text-content">{t("auth.welcomeBack")}</h1>
+        <p className="mt-1.5 text-center text-ui text-content-muted">{t("auth.loginSubtitle")}</p>
 
         <form className="mt-7 space-y-4" onSubmit={(event) => void handleSubmit(event)} noValidate>
           <div>
-            {/* The label keeps the substring 「邮箱」: `test/smoke.test.mjs` asserts
-                it. `test/fixtures/browser.ts` signs in with
-                `getByLabel("邮箱或用户名")` — an EXACT match — and that helper is
-                the entry point for nearly every authenticated spec, so this
-                string is not free to drift on its own. */}
+            {/*
+              The label still reads 「邮箱或用户名」 in Chinese: the E2E helper
+              `test/fixtures/browser.ts` signs in with `getByLabel("邮箱或用户名")` — an
+              EXACT match — and that helper is the entry point for nearly every
+              authenticated spec. The string now lives in the dictionary (with the
+              assertions in `test/smoke.test.mjs`); running E2E against the English
+              route would need the English label, which is a separate decision about
+              which language E2E runs in.
+            */}
             <label htmlFor="login-identifier" className="mb-1.5 block text-caption font-medium text-content-muted">
-              邮箱或用户名
+              {t("auth.identifierLabel")}
             </label>
             <TFInput
               id="login-identifier"
@@ -192,7 +211,7 @@ export default function LoginPage() {
               // before the request is ever sent.
               type="text"
               autoComplete="username"
-              placeholder="请输入邮箱地址或账户名"
+              placeholder={t("auth.identifierPlaceholder")}
               value={identifier}
               invalid={Boolean(error) && !needsVerification}
               describedBy={error && !needsVerification ? "login-error" : undefined}
@@ -202,13 +221,13 @@ export default function LoginPage() {
 
           <div>
             <label htmlFor="login-password" className="mb-1.5 block text-caption font-medium text-content-muted">
-              密码
+              {t("auth.passwordLabel")}
             </label>
             <TFInput
               id="login-password"
               type="password"
               autoComplete="current-password"
-              placeholder="请输入密码"
+              placeholder={t("auth.passwordPlaceholder")}
               value={password}
               invalid={Boolean(error) && !needsVerification}
               describedBy={error && !needsVerification ? "login-error" : undefined}
@@ -226,8 +245,8 @@ export default function LoginPage() {
             </p>
           ) : null}
 
-          <TFButton type="submit" size="lg" fullWidth loading={loading} loadingLabel="登录中…" className="mt-1">
-            登录
+          <TFButton type="submit" size="lg" fullWidth loading={loading} loadingLabel={t("auth.loggingIn")} className="mt-1">
+            {t("auth.login")}
           </TFButton>
         </form>
 
@@ -235,13 +254,13 @@ export default function LoginPage() {
             forgot their password had no way back into their account at all. */}
         <p className="mt-3 text-center text-ui">
           <Link href="/reset" className="font-medium text-brand-600">
-            忘记密码？
+            {t("auth.forgotPassword")}
           </Link>
         </p>
 
         {needsVerification ? (
           <TFCard tone="brand" className="mt-4">
-            <p className="text-center text-caption leading-5 text-content-muted">完成邮箱验证后即可正常登录。</p>
+            <p className="text-center text-caption leading-5 text-content-muted">{t("auth.verifyToSignIn")}</p>
             <TFButton
               variant="secondary"
               size="sm"
@@ -249,7 +268,7 @@ export default function LoginPage() {
               className="mt-3"
               onClick={() => void resendVerification()}
             >
-              重新发送验证邮件
+              {t("auth.resendVerification")}
             </TFButton>
             <TFButton
               variant="ghost"
@@ -258,7 +277,7 @@ export default function LoginPage() {
               className="mt-1"
               onClick={() => void recheckVerification()}
             >
-              我已完成验证，重新检查
+              {t("auth.recheckVerification")}
             </TFButton>
           </TFCard>
         ) : null}
@@ -271,7 +290,7 @@ export default function LoginPage() {
 
         <div className="my-6 flex items-center gap-3 text-caption text-content-subtle">
           <span className="h-px flex-1 bg-border" />
-          或
+          {t("auth.or")}
           <span className="h-px flex-1 bg-border" />
         </div>
 
@@ -283,12 +302,12 @@ export default function LoginPage() {
           actually offers and renders nothing for the rest, so a live-looking
           control can never lead to a provider that is not configured.
         */}
-        <OAuthButtons redirectTo="/discover" verb="登录" className="flex flex-col gap-2" />
+        <OAuthButtons redirectTo="/discover" verbKey="auth.login" className="flex flex-col gap-2" />
 
         <p className="mt-6 text-center text-ui text-content-muted">
-          还没有账号？{" "}
-          <Link href="/register" className="font-medium text-brand-600">
-            立即注册
+          {t("auth.noAccount")}{" "}
+          <Link href={localePath(locale, "/register")} className="font-medium text-brand-600">
+            {t("auth.toRegister")}
           </Link>
         </p>
       </div>

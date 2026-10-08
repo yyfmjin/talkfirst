@@ -8,6 +8,7 @@ import { PhoneShell } from "@/components/phone-shell";
 import { TFInput, TFButton } from "@/components/tf";
 import { OAuthButtons } from "@/components/oauth-buttons";
 import { ApiRequestError, apiFetch } from "@/lib/api";
+import { localePath, useT, type MsgKey } from "@/lib/i18n";
 import { useSession, type SessionUser } from "@/lib/session";
 
 /**
@@ -32,27 +33,31 @@ import { useSession, type SessionUser } from "@/lib/session";
  * untouched.
  *
  * P0-02 added the optional account-name field. Its two refusals (`USERNAME_TAKEN`,
- * `USERNAME_RESERVED`) are mapped to Chinese below, because the API's own messages
- * are English and this screen renders whatever the server said.
+ * `USERNAME_RESERVED`) are mapped to member copy below, because the API's own
+ * messages are English and this screen renders whatever the server said. Since
+ * 2026-10-08 that copy lives in the dictionary and this page is bilingual — see
+ * `login/page.tsx` for the same pattern and the same caveat about links to pages
+ * that do not have an English route yet.
  */
 
 /**
- * The account-name refusals, in Chinese.
+ * The account-name refusals, as dictionary keys.
  *
  * `EMAIL_TAKEN` is deliberately NOT in this map: it has always reached the screen
  * as the API's English string, and changing that is a separate copy cleanup rather
  * than part of adding an account name. Adding only the new codes keeps this file
  * honest about what it does rather than pretending to be a general mapping.
  */
-const USERNAME_ERROR_LABELS: Record<string, string> = {
-  USERNAME_TAKEN: "这个账户名已经被占用了，换一个试试。",
-  USERNAME_RESERVED: "这个账户名不可用，换一个试试。",
-  USERNAME_INVALID: "账户名需为 8–30 位字母或数字。",
+const USERNAME_ERROR_KEYS: Record<string, MsgKey> = {
+  USERNAME_TAKEN: "auth.errorUsernameTaken",
+  USERNAME_RESERVED: "auth.errorUsernameReserved",
+  USERNAME_INVALID: "auth.errorUsernameFormat",
 };
 
 export default function RegisterPage() {
   const router = useRouter();
   const { setUser } = useSession();
+  const { locale, t } = useT();
   const [email, setEmail] = useState("");
   /**
    * Optional (P0-02). Blank means "generate one for me", which is what every
@@ -68,11 +73,11 @@ export default function RegisterPage() {
     setError("");
     const trimmed = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setError("请输入有效的邮箱地址。");
+      setError(t("auth.errorInvalidEmail"));
       return;
     }
     if (password.length < 8) {
-      setError("密码至少 8 位。");
+      setError(t("auth.errorPasswordMin8"));
       return;
     }
     const trimmedUsername = username.trim();
@@ -84,7 +89,7 @@ export default function RegisterPage() {
      * accepts names it refuses.
      */
     if (trimmedUsername && !/^[A-Za-z0-9]{8,30}$/.test(trimmedUsername)) {
-      setError("账户名需为 8–30 位字母或数字。");
+      setError(t("auth.errorUsernameFormat"));
       return;
     }
     setLoading(true);
@@ -104,11 +109,14 @@ export default function RegisterPage() {
     } catch (requestError) {
       const mapped =
         requestError instanceof ApiRequestError
-          ? USERNAME_ERROR_LABELS[requestError.code ?? ""]
+          ? USERNAME_ERROR_KEYS[requestError.code ?? ""]
           : undefined;
       setError(
-        mapped ??
-          (requestError instanceof ApiRequestError ? requestError.message : "注册失败，请稍后再试"),
+        mapped
+          ? t(mapped)
+          : requestError instanceof ApiRequestError
+            ? requestError.message
+            : t("auth.errorRegisterFailed"),
       );
     } finally {
       setLoading(false);
@@ -121,13 +129,13 @@ export default function RegisterPage() {
         <div className="mb-6 flex justify-center">
           <LogoMark size={56} />
         </div>
-        <h1 className="text-center text-title font-semibold text-content">创建账号</h1>
-        <p className="mt-1.5 text-center text-ui text-content-muted">加入 TalkFirst，认识更多有趣的人</p>
+        <h1 className="text-center text-title font-semibold text-content">{t("auth.createAccount")}</h1>
+        <p className="mt-1.5 text-center text-ui text-content-muted">{t("auth.registerSubtitle")}</p>
 
         <form className="mt-7 space-y-4" onSubmit={(event) => void handleSubmit(event)} noValidate>
           <div>
             <label htmlFor="register-email" className="mb-1.5 block text-caption font-medium text-content-muted">
-              邮箱地址
+              {t("auth.email")}
             </label>
             <TFInput
               id="register-email"
@@ -137,7 +145,7 @@ export default function RegisterPage() {
               // that hint, and two fields advertising the same autofill target is
               // how a password manager ends up filling the wrong one.
               autoComplete="email"
-              placeholder="请输入邮箱地址"
+              placeholder={t("auth.emailPlaceholder")}
               value={email}
               invalid={Boolean(error)}
               describedBy={error ? "register-error" : "register-hint"}
@@ -147,13 +155,13 @@ export default function RegisterPage() {
 
           <div>
             <label htmlFor="register-username" className="mb-1.5 block text-caption font-medium text-content-muted">
-              账户名（可选）
+              {t("auth.usernameLabel")}
             </label>
             <TFInput
               id="register-username"
               type="text"
               autoComplete="username"
-              placeholder="8–30 位字母或数字，留空则自动生成"
+              placeholder={t("auth.usernamePlaceholder")}
               value={username}
               invalid={Boolean(error)}
               describedBy={error ? "register-error" : "register-hint"}
@@ -163,13 +171,13 @@ export default function RegisterPage() {
 
           <div>
             <label htmlFor="register-password" className="mb-1.5 block text-caption font-medium text-content-muted">
-              密码
+              {t("auth.passwordLabel")}
             </label>
             <TFInput
               id="register-password"
               type="password"
               autoComplete="new-password"
-              placeholder="至少 8 位密码"
+              placeholder={t("auth.passwordMin8")}
               value={password}
               invalid={Boolean(error)}
               describedBy={error ? "register-error" : "register-hint"}
@@ -181,11 +189,12 @@ export default function RegisterPage() {
               announced to assistive tech when the field is focused rather than
               only being visible. */}
           <p id="register-hint" className="text-caption leading-4 text-content-subtle">
-            仅限 18 岁以上使用。注册即表示同意
+            {t("auth.termsHint")}
+            {/* 社区规则页还没双语化 —— 英文站暂时也去中文页，不要改成 localePath()。 */}
             <Link href="/legal/rules" className="font-medium text-brand-600">
-              社区规则
+              {t("site.legalRules")}
             </Link>
-            。
+            {t("auth.termsSuffix")}
           </p>
           {error ? (
             <p id="register-error" role="alert" className="break-words text-caption text-danger-600">
@@ -193,14 +202,14 @@ export default function RegisterPage() {
             </p>
           ) : null}
 
-          <TFButton type="submit" size="lg" fullWidth loading={loading} loadingLabel="注册中…" className="mt-1">
-            注册
+          <TFButton type="submit" size="lg" fullWidth loading={loading} loadingLabel={t("auth.registering")} className="mt-1">
+            {t("auth.register")}
           </TFButton>
         </form>
 
         <div className="my-6 flex items-center gap-3 text-caption text-content-subtle">
           <span className="h-px flex-1 bg-border" />
-          或使用以下方式注册
+          {t("auth.orOAuthRegister")}
           <span className="h-px flex-1 bg-border" />
         </div>
 
@@ -213,12 +222,12 @@ export default function RegisterPage() {
           without pretending there are two code paths — and it is why this is one
           shared component instead of two drifting implementations.
         */}
-        <OAuthButtons redirectTo="/discover" verb="注册" className="flex flex-col gap-2" />
+        <OAuthButtons redirectTo="/discover" verbKey="auth.register" className="flex flex-col gap-2" />
 
         <p className="mt-6 text-center text-ui text-content-muted">
-          已有账号？{" "}
-          <Link href="/login" className="font-medium text-brand-600">
-            立即登录
+          {t("auth.haveAccount")}{" "}
+          <Link href={localePath(locale, "/login")} className="font-medium text-brand-600">
+            {t("auth.toLogin")}
           </Link>
         </p>
       </div>

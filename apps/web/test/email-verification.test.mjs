@@ -22,11 +22,21 @@ function read(...segments) {
 
 test("login screen reacts to EMAIL_NOT_VERIFIED with verification next steps", () => {
   const source = read("app", "login", "page.tsx");
+  /**
+   * 这几条中文文案在 2026-10-08 双语化时搬进了词典（`src/lib/i18n/dictionary.ts`）。
+   * 所以断言分两半：**页面**必须引用这几个键（引用了就不会退回硬编码中文、
+   * 也不会在英文页面上出中文），**词典**必须给出中文原句（保住这条用例原本守的
+   * 东西：成员界面是中文）。
+   */
+  const dictionary = read("lib", "i18n", "dictionary.ts");
 
   assert.match(source, /EMAIL_NOT_VERIFIED/, "must branch on the API error code");
-  assert.match(source, /邮箱尚未验证/, "must explain the state in Chinese");
-  assert.match(source, /重新发送验证邮件/, "must offer to resend the code");
-  assert.match(source, /我已完成验证，重新检查/, "must offer to re-check verification");
+  assert.match(source, /t\("auth\.errorEmailNotVerified"\)/, "must explain the state");
+  assert.match(dictionary, /邮箱尚未验证/, "must explain the state in Chinese");
+  assert.match(source, /t\("auth\.resendVerification"\)/, "must offer to resend the code");
+  assert.match(dictionary, /重新发送验证邮件/, "must offer to resend the code in Chinese");
+  assert.match(source, /t\("auth\.recheckVerification"\)/, "must offer to re-check verification");
+  assert.match(dictionary, /我已完成验证，重新检查/, "must offer to re-check in Chinese");
   assert.match(source, /"\/auth\/send-verification-code"/, "resend hits the real endpoint");
   assert.match(source, /"\/users\/me"/, "re-check reads the caller's own profile");
   // The API client call the smoke test also pins must not regress.

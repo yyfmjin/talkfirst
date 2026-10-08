@@ -7,3 +7,4 @@
  */
 export { LOCALES, DEFAULT_LOCALE, localePath, otherLocale, type Locale } from "./locales";
 export { t, zh, en, type MsgKey, type MsgParams } from "./dictionary";
+export { useLocale, useT } from "./use-locale";

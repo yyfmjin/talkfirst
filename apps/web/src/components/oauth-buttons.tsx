@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { API_BASE_URL, apiFetch } from "@/lib/api";
+import { t, useT, type Locale, type MsgKey } from "@/lib/i18n";
 
 /**
  * Google 快捷登录按钮。
@@ -32,8 +33,14 @@ import { API_BASE_URL, apiFetch } from "@/lib/api";
 
 type Provider = {
   id: string;
-  /** `使用 Google` — the action is appended per screen. */
-  name: string;
+  /**
+   * 按钮文案的词典键。**整句**（不是「使用 Google」这种半句）：英文的语序是
+   * 「Log in with Google」，中文是「使用 Google登录」—— 拼字符串等于把中文语序
+   * 焊进代码，所以用 `{verb}` 占位、两种语言各自决定词序。
+   */
+  labelKey: MsgKey;
+  /** 这个提供方需不需要拼上「登录 / 注册」这个动作词。 */
+  usesVerb: boolean;
   /** Shown in the badge; kept in the API's vocabulary, not here. */
   glyph: string;
 };
@@ -47,21 +54,25 @@ type Provider = {
  * mistakes it for Google.
  */
 const PROVIDER_PRESENTATION: Record<string, Provider> = {
-  google: { id: "google", name: "使用 Google", glyph: "G" },
-  local: { id: "local", name: "本地开发登录（假）", glyph: "L" },
+  google: { id: "google", labelKey: "auth.oauthGoogle", usesVerb: true, glyph: "G" },
+  local: { id: "local", labelKey: "auth.oauthLocal", usesVerb: false, glyph: "L" },
 };
 
 export function OAuthButtons({
   /** Where to land after a successful sign-in; passed through to the API. */
   redirectTo,
-  /** `登录` or `注册` — the only difference between the two screens. */
-  verb = "登录",
+  /**
+   * `auth.login` 或 `auth.register` —— 两个页面唯一的差别就是这个动作词。
+   * 传**词典键**而不是中文串：语言切换后按钮要跟着变。
+   */
+  verbKey = "auth.login",
   className,
 }: {
   redirectTo?: string;
-  verb?: string;
+  verbKey?: MsgKey;
   className?: string;
 }) {
+  const { t } = useT();
   const [providers, setProviders] = useState<string[] | null>(null);
 
   useEffect(() => {
@@ -123,8 +134,7 @@ export function OAuthButtons({
             >
               {provider.glyph}
             </span>
-            {provider.name}
-            {verb}
+            {t(provider.labelKey, provider.usesVerb ? { verb: t(verbKey) } : undefined)}
           </a>
         );
       })}
@@ -141,16 +151,15 @@ export function OAuthButtons({
  * redirect rather than in an error envelope — a browser navigation cannot read a
  * JSON body.
  */
-const OAUTH_ERROR_TEXT: Record<string, string> = {
-  OAUTH_PROVIDER_DISABLED: "该登录方式当前不可用，请使用邮箱登录。",
-  OAUTH_TOKEN_INVALID: "Google 返回的登录凭据无法验证，请重新尝试。",
-  OAUTH_STATE_INVALID: "这次登录已超时或不是从这里发起的，请重新点击登录。",
-  OAUTH_EXCHANGE_FAILED: "与 Google 的通信失败，请稍后重试。",
-  OAUTH_NONCE_MISMATCH: "这次登录校验失败，请重新尝试。",
-  OAUTH_EMAIL_UNVERIFIED:
-    "Google 报告该邮箱尚未验证，无法用它登录。请先在 Google 账号中完成邮箱验证，或改用邮箱注册。",
-  OAUTH_EMAIL_REQUIRED: "Google 没有提供邮箱地址，无法用它创建账号。请改用邮箱注册。",
-  OAUTH_FAILED: "快捷登录失败，请稍后重试或改用邮箱登录。",
+const OAUTH_ERROR_KEYS: Record<string, MsgKey> = {
+  OAUTH_PROVIDER_DISABLED: "auth.oauthError.OAUTH_PROVIDER_DISABLED",
+  OAUTH_TOKEN_INVALID: "auth.oauthError.OAUTH_TOKEN_INVALID",
+  OAUTH_STATE_INVALID: "auth.oauthError.OAUTH_STATE_INVALID",
+  OAUTH_EXCHANGE_FAILED: "auth.oauthError.OAUTH_EXCHANGE_FAILED",
+  OAUTH_NONCE_MISMATCH: "auth.oauthError.OAUTH_NONCE_MISMATCH",
+  OAUTH_EMAIL_UNVERIFIED: "auth.oauthError.OAUTH_EMAIL_UNVERIFIED",
+  OAUTH_EMAIL_REQUIRED: "auth.oauthError.OAUTH_EMAIL_REQUIRED",
+  OAUTH_FAILED: "auth.oauthError.OAUTH_FAILED",
 };
 
 /**
@@ -159,7 +168,7 @@ const OAUTH_ERROR_TEXT: Record<string, string> = {
  * has none is the dead end this code exists to avoid, so the message is built
  * from the flags the API sent back.
  */
-export function oauthErrorMessage(searchParams: URLSearchParams): string {
+export function oauthErrorMessage(searchParams: URLSearchParams, locale: Locale): string {
   const code = searchParams.get("oauth_error");
   if (!code) return "";
 
@@ -167,16 +176,12 @@ export function oauthErrorMessage(searchParams: URLSearchParams): string {
     const hasPassword = searchParams.get("oauth_has_password") === "true";
     const providers = (searchParams.get("oauth_providers") ?? "").split(",").filter(Boolean);
 
-    if (hasPassword) {
-      return "该邮箱已经注册过。请用邮箱和密码登录，然后可以在设置里绑定 Google。";
-    }
-    if (providers.includes("GOOGLE")) {
-      return "该邮箱已经用 Google 注册过。请直接用 Google 登录。";
-    }
-    return "该邮箱已经注册过。请用邮箱登录，或先通过「忘记密码」设置一个密码。";
+    if (hasPassword) return t(locale, "auth.oauthError.OAUTH_ACCOUNT_EXISTS_PASSWORD");
+    if (providers.includes("GOOGLE")) return t(locale, "auth.oauthError.OAUTH_ACCOUNT_EXISTS_GOOGLE");
+    return t(locale, "auth.oauthError.OAUTH_ACCOUNT_EXISTS_OTHER");
   }
 
-  return OAUTH_ERROR_TEXT[code] ?? OAUTH_ERROR_TEXT.OAUTH_FAILED;
+  return t(locale, OAUTH_ERROR_KEYS[code] ?? "auth.oauthError.OAUTH_FAILED");
 }
 
 /** True when the URL carries an OAuth refusal, for the page's error slot. */
