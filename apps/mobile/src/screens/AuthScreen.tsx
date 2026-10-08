@@ -18,6 +18,21 @@ import { colors } from "../theme";
 const PASSWORD_MIN_LENGTH = 8;
 const PASSWORD_MAX_LENGTH = 72;
 
+/**
+ * 服务端的错误码 → 本地化文案。
+ *
+ * 来自线上的一条真实反馈（2026-10-08）：密码填错时，屏幕上出现的是接口给的英文原句
+ * `Email, username or password is incorrect` —— 中文界面里冒出一句英文，用户只会得到
+ * 「登录失败」这种模糊印象，不知道该改什么。
+ *
+ * 只映射**已知**的码；未知错误仍然显示服务端原话 —— 宁可让人看到一句不准的英文，
+ * 也不要把他真正的错误盖成一句模糊的“失败”。
+ */
+const AUTH_ERROR_KEYS = {
+  INVALID_CREDENTIALS: "auth.errorInvalidCredentials",
+  EMAIL_TAKEN: "auth.errorEmailTaken",
+} as const;
+
 export function AuthScreen() {
   const { signIn, signUp } = useAuth();
   const { t } = useI18n();
@@ -51,8 +66,16 @@ export function AuthScreen() {
       if (mode === "login") await signIn(trimmed, password);
       else await signUp(trimmed, password);
     } catch (requestError) {
+      const key =
+        requestError instanceof ApiRequestError
+          ? AUTH_ERROR_KEYS[requestError.code as keyof typeof AUTH_ERROR_KEYS]
+          : undefined;
       setError(
-        requestError instanceof ApiRequestError ? requestError.message : t("common.actionFailed"),
+        key
+          ? t(key)
+          : requestError instanceof ApiRequestError
+            ? requestError.message
+            : t("common.actionFailed"),
       );
     } finally {
       setLoading(false);

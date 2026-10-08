@@ -1,24 +1,14 @@
 import { registerRootComponent } from "expo";
-import { DiagnosticsRoot } from "./src/components/boot-diagnostics";
+import App from "./App";
 
 /**
- * 入口（**临时**：诊断版）。
+ * 入口。
  *
- * ## 为什么不再直接 `import App from "./App"`
+ * 2026-10-08 这里临时挂过一个「启动自检」组件（用来定位「装完打开白屏」）：
+ * 它先用 `require()` 惰性加载 App，好在屏幕上显示「App 模块加载失败」这类
+ * 模块加载期异常。白屏定位完之后已经摘掉 —— 正常入口就该是这两行。
  *
- * 如果 `App.tsx` 的 import 链在**模块加载期**抛错（原生模块缺失、初始化失败、
- * 循环依赖都属此类），直接 import 的写法会让整个 App 起不来：屏幕全白，
- * 没有任何文字，也没有任何线索。现在改成先注册自检组件、由它**惰性**加载 App，
- * 那一行错误就会显示在屏幕上。详见 `src/components/boot-diagnostics.tsx`。
- *
- * ## 定位完之后恢复成
- *
- * ```ts
- * import { registerRootComponent } from "expo";
- * import App from "./App";
- *
- * registerRootComponent(App);
- * ```
- * 并删掉 `src/components/boot-diagnostics.tsx`、把 `app.json` 的名字改回 `TalkFirst`。
+ * （那句诊断留在这里不是怀旧：下次再遇到"屏幕全白、没有任何文字"，第一步仍然是
+ * 让 App 的加载失败能在屏上显示出来，而不是继续猜。）
  */
-registerRootComponent(DiagnosticsRoot);
+registerRootComponent(App);
