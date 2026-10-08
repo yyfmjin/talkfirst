@@ -9,9 +9,10 @@
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
     "build": "expo export --platform android --output-dir dist",
-    "test": "npm run typecheck && node -e \"console.log('mobile: no automated behavioural tests exist yet; this only ran tsc --noEmit (static types). Nothing was executed on a device or emulator.')\""
+    "test": "npm run typecheck && jest"
   },
   "dependencies": {
+    "@expo/vector-icons": "~14.0.4",
     "expo": "~52.0.37",
     "expo-asset": "~11.0.5",
     "expo-font": "~13.0.4",
@@ -23,7 +24,11 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@types/jest": "~29.5.14",
     "@types/react": "~18.3.12",
+    "jest": "~29.7.0",
+    "jest-expo": "~52.0.0",
+    "react-test-renderer": "^18.3.1",
     "typescript": "~5.3.3"
   }
 }
