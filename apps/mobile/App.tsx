@@ -166,27 +166,29 @@ function Root() {
 
 export default function App() {
   /*
-   * **先把图标字体加载出来再渲染主界面。**
+   * 图标字体：**只加载，不阻塞渲染**。
    *
-   * 2026-10-08 运营方反馈：动态页右上角的发布按钮「只有一个蓝色圆点，看不到加号」。
-   * 根因就是 `@expo/vector-icons` 的图标靠自带字体渲染，而字体没就位时**不报错、
-   * 只是画不出字形** —— 看起来像功能没做。显式加载是官方推荐、也是最稳的写法：
-   * 字体没准备好就先显示加载态，绝不显示一个空心的图标。
-   */
-  /*
-   * `Ionicons.font` 在运行时存在（字体名 → 资源），但它的类型声明里没带 `font`。
-   * 这里用一次性断言取出来，不写 `@ts-ignore`（仓库禁止）：类型缺失是包的问题，
-   * 不应该让调用方静默失去类型检查。
+   * 2026-10-08 运营方看到发布按钮「只有一个蓝色圆点」—— 根因是 `@expo/vector-icons`
+   * 靠自带字体渲染，而字体没就位时**不报错、只是画不出字形**。
+   *
+   * 于是我先加了“字体就绪前显示加载态”。结果 2026-10-09 更糟：真机上那个字体**根本没
+   * 被打进包里**（检查 APK：一个 .ttf 都没有），`fontsLoaded` 永远是 false，主界面永远
+   * 不渲染 —— 用户看到的是一片空白。
+   *
+   * 教训：**加载失败的可选资源，绝不能挡在应用前面。** 字体是装饰性的（Icon 拿不到就
+   * 不画，见 components/Icon.tsx），让它去后台加载；界面该出来就出来。
    */
   const ioniconFont = (Ionicons as unknown as { font: Record<string, string> }).font;
-  const [fontsLoaded] = useFonts({ ...ioniconFont });
+  useFonts({ ...ioniconFont });
 
   return (
     // I18nProvider 在最外层：未登录时的 AuthScreen 也要能翻译。
     <I18nProvider>
       {/* 边界放在 Provider 之内：语言先就位，崩溃屏才能说人话而不是又一片空白。 */}
       <ErrorBoundary>
-        <AuthProvider>{fontsLoaded ? <Root /> : <Loading />}</AuthProvider>
+        <AuthProvider>
+          <Root />
+        </AuthProvider>
       </ErrorBoundary>
     </I18nProvider>
   );

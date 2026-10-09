@@ -18,19 +18,23 @@
  */
 
 /**
- * ⚠️ 2026-10-09：**临时退回到上一个验证可用、且不含热更（expo-updates）的包**。
+ * ⚠️ 2026-10-09：**临时退回到运营方唯一验证过能打开的那一版**
+ * （构建 `dbaf6bd2` / 提交 `0c44fc7`）。
  *
- * 原因：接 expo-updates 后，我发布的「热更」是 `--no-bytecode` 的纯 JS 包，
- * 而 App 是 Hermes 引擎 —— 手机上第二次启动加载它就会闪退。这个包（构建 dbaf6bd2 /
- * 提交 0c44fc7）是运营方实际用过、确认能打开的那一版。
+ * 为什么退：连着两版都在真机上不可用，两次都是我这边的问题 ——
+ *   1. 接 `expo-updates` 后我发布的「热更」是 `--no-bytecode` 的**纯 JS 包**，
+ *      而 App 是 Hermes 引擎 —— 手机上第二次启动加载它**闪退**；
+ *   2. 随后那版把「等图标字体加载完再渲染主界面」当保险，结果真机上字体**根本没被打进包**
+ *      （检查 APK：一个 `.ttf` 都没有），`fontsLoaded` 永远 false，界面永远停在加载态
+ *      —— 打开就是**一片空白**。
  *
- * 之后：等把「热更只发 Hermes 字节码」这条路真正跑通（本机项目路径含中文，
- * Windows 版 hermesc 处理不了，需要换发布机），再把入口指向带热更的新包。
+ * 所以先回到真人验证过的版本。带修复的新包（字体只加载不阻塞渲染 + 顶部安全区 +
+ * 4 个 tab）构建完成后，`npm run sync:apk` 会自动把这里换成新包。
  *
  * 当前最新 Android 安装包（EAS 产物）。空串 = 还没有可下载的包，页面会显示「生成中」。
  */
 export const ANDROID_APK_URL =
-  "https://expo.dev/artifacts/eas/-nvIcGkwr2vD8PtW3Cx4rWauqmF_U9VC_eYx6mxQYbw.apk";
+  "https://expo.dev/artifacts/eas/QhjgFTAx75JSp6injvOoji7NIIqlO5gU1X_uSNQVUKI.apk";
 
 /** 给用户看的固定入口：永远指向"当前最新版"。 */
 export const ANDROID_APK_PATH = "/download/android";
