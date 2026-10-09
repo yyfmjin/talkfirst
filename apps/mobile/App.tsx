@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { useFonts } from "expo-font";
 import { Ionicons } from "@expo/vector-icons";
 import { Icon } from "./src/components/Icon";
 import { AuthProvider, useAuth } from "./src/lib/auth-context";
@@ -13,7 +14,6 @@ import { DiscoverScreen } from "./src/screens/DiscoverScreen";
 import { MeScreen } from "./src/screens/MeScreen";
 import { MessagesScreen } from "./src/screens/MessagesScreen";
 import { MomentsScreen } from "./src/screens/MomentsScreen";
-import { NotificationsScreen } from "./src/screens/NotificationsScreen";
 import { colors } from "./src/theme";
 
 /**
@@ -46,8 +46,13 @@ import { colors } from "./src/theme";
  *
  * tab 标签存的是**词典键**（`tab.discover` 之类），不是中文串 —— 标签在渲染时
  * 才翻译，所以用户在「我的」里改语言，底部导航会跟着变。
+ * ## 通知去哪了
+ *
+ * 2026-10-08 运营方反馈：「通知界面跟消息界面有点重合，合并到一起」。确实 —— 消息是
+ * 「人跟人的往来」、通知是「系统告诉你的动静」，分开两个 tab 对使用的人没有意义。
+ * 现在它们是**消息页里的两个分段**（会话 / 通知），tab 从 5 个减到 4 个。
  */
-type Tab = "discover" | "moments" | "messages" | "notifications" | "me";
+type Tab = "discover" | "moments" | "messages" | "me";
 
 type TabSpec = {
   id: Tab;
@@ -60,14 +65,18 @@ const TABS: TabSpec[] = [
   { id: "discover", labelKey: "tab.discover", icon: "compass-outline", iconActive: "compass" },
   { id: "moments", labelKey: "tab.moments", icon: "albums-outline", iconActive: "albums" },
   { id: "messages", labelKey: "tab.messages", icon: "chatbubble-outline", iconActive: "chatbubble" },
-  {
-    id: "notifications",
-    labelKey: "tab.notifications",
-    icon: "notifications-outline",
-    iconActive: "notifications",
-  },
   { id: "me", labelKey: "tab.me", icon: "person-outline", iconActive: "person" },
 ];
+
+/** 启动/加载态的占位屏（字体未就绪、恢复会话时用同一屏）。 */
+function Loading() {
+  return (
+    <View style={styles.splash}>
+      <StatusBar style="dark" />
+      <ActivityIndicator color={colors.primary} size="large" />
+    </View>
+  );
+}
 
 function Root() {
   const { user, loading } = useAuth();
@@ -75,12 +84,7 @@ function Root() {
   const [tab, setTab] = useState<Tab>("moments");
 
   if (loading) {
-    return (
-      <View style={styles.splash}>
-        <StatusBar style="dark" />
-        <ActivityIndicator color={colors.primary} size="large" />
-      </View>
-    );
+    return <Loading />;
   }
 
   if (!user) {
@@ -103,7 +107,13 @@ function Root() {
          * 2026-10-08：主界面一崩，顶层边界把整屏换成了错误页，用户连「换个 tab 试试」
          * 都做不到，也看不出是哪一页的问题。
          */}
-        <View style={styles.body}>
+        {/*
+         * 顶部安全区交给 SafeAreaView（而不是各页自己写死 paddingTop: 56）：
+         * 2026-10-08 运营方反馈「顶部把手机自带的时钟挡住了」—— 写死的 56px 在
+         * 刘海/挖孔屏上不够，而每台机器的状态栏高度并不一样。这里统一按真实
+         * 安全区留白，各页自己的那个写死值一并降下来。
+         */}
+        <SafeAreaView style={styles.body} edges={["top"]}>
           {tab === "discover" ? (
             <ErrorBoundary>
               <DiscoverScreen />
@@ -119,17 +129,12 @@ function Root() {
               <MessagesScreen />
             </ErrorBoundary>
           ) : null}
-          {tab === "notifications" ? (
-            <ErrorBoundary>
-              <NotificationsScreen />
-            </ErrorBoundary>
-          ) : null}
           {tab === "me" ? (
             <ErrorBoundary>
               <MeScreen />
             </ErrorBoundary>
           ) : null}
-        </View>
+        </SafeAreaView>
         <View style={styles.tabBar}>
           {TABS.map((item) => {
             const active = tab === item.id;
@@ -160,14 +165,28 @@ function Root() {
 }
 
 export default function App() {
+  /*
+   * **先把图标字体加载出来再渲染主界面。**
+   *
+   * 2026-10-08 运营方反馈：动态页右上角的发布按钮「只有一个蓝色圆点，看不到加号」。
+   * 根因就是 `@expo/vector-icons` 的图标靠自带字体渲染，而字体没就位时**不报错、
+   * 只是画不出字形** —— 看起来像功能没做。显式加载是官方推荐、也是最稳的写法：
+   * 字体没准备好就先显示加载态，绝不显示一个空心的图标。
+   */
+  /*
+   * `Ionicons.font` 在运行时存在（字体名 → 资源），但它的类型声明里没带 `font`。
+   * 这里用一次性断言取出来，不写 `@ts-ignore`（仓库禁止）：类型缺失是包的问题，
+   * 不应该让调用方静默失去类型检查。
+   */
+  const ioniconFont = (Ionicons as unknown as { font: Record<string, string> }).font;
+  const [fontsLoaded] = useFonts({ ...ioniconFont });
+
   return (
     // I18nProvider 在最外层：未登录时的 AuthScreen 也要能翻译。
     <I18nProvider>
       {/* 边界放在 Provider 之内：语言先就位，崩溃屏才能说人话而不是又一片空白。 */}
       <ErrorBoundary>
-        <AuthProvider>
-          <Root />
-        </AuthProvider>
+        <AuthProvider>{fontsLoaded ? <Root /> : <Loading />}</AuthProvider>
       </ErrorBoundary>
     </I18nProvider>
   );

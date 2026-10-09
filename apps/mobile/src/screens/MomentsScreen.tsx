@@ -127,7 +127,13 @@ export function MomentsScreen() {
           accessibilityLabel={t("moments.compose")}
           style={styles.composeButton}
         >
-          <Icon name="create-outline" size={22} color={colors.white} />
+          <Icon name="create-outline" size={18} color={colors.white} />
+          {/*
+           * 文字标签省不得。2026-10-08 运营方看到的正是「一个蓝色图标，看不到字、
+           * 也没有加号」—— 图标字体没就位时，纯图标按钮看起来就像功能没做。
+           * 带上文字，任何情况下这个入口都是可读、可理解的。
+           */}
+          <Text style={styles.composeLabel}>{t("moments.compose")}</Text>
         </Pressable>
       </View>
 
@@ -235,18 +241,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingTop: 56,
+    paddingTop: 12,
     paddingBottom: 12,
   },
   headerTitle: { fontSize: 24, fontWeight: "700", color: colors.ink },
   composeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
     backgroundColor: colors.primary,
   },
+  composeLabel: { fontSize: 14, fontWeight: "600", color: colors.white },
   list: { paddingHorizontal: 16, paddingBottom: 24, gap: 12 },
   card: { backgroundColor: colors.white, borderRadius: 16, borderWidth: 1, borderColor: colors.line, padding: 14, gap: 10 },
   cardHead: { flexDirection: "row", alignItems: "center", gap: 10 },

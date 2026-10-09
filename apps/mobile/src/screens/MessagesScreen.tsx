@@ -14,7 +14,9 @@ import { apiFetch } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { Avatar } from "../components/Avatar";
 import { Icon } from "../components/Icon";
+import { NotificationsScreen } from "./NotificationsScreen";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
+import type { MsgKey } from "../lib/messages";
 import { colors } from "../theme";
 import type { ChatMessage, ConversationItem, MessagePage } from "../lib/types";
 
@@ -45,6 +47,14 @@ export function MessagesScreen() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  /**
+   * 会话 / 通知两个分段。
+   *
+   * 2026-10-08 运营方反馈「通知界面跟消息界面有点重合，合并到一起」—— 分开两个 tab
+   * 对使用的人没有意义（都是「谁来找过我」），所以合并成一页里的两个分段，
+   * 底部 tab 也就从 5 个减到 4 个。
+   */
+  const [segment, setSegment] = useState<"conversations" | "notifications">("conversations");
 
   const loadConversations = useCallback(async () => {
     setError("");
@@ -120,6 +130,18 @@ export function MessagesScreen() {
     return (
       <View style={styles.center}>
         <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (segment === "notifications") {
+    return (
+      <View style={styles.root}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>{t("messages.title")}</Text>
+        </View>
+        <Segments value={segment} onChange={setSegment} />
+        <NotificationsScreen />
       </View>
     );
   }
@@ -209,6 +231,7 @@ export function MessagesScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{t("messages.title")}</Text>
       </View>
+      <Segments value={segment} onChange={setSegment} />
       <FlatList
         data={conversations}
         keyExtractor={(item) => item.id}
@@ -264,10 +287,57 @@ function compactTime(iso: string, t: TranslateFn): string {
   return date.toLocaleDateString();
 }
 
+/** 会话 / 通知的分段控件（两个分段而已，不值得引入组件库）。 */
+function Segments({
+  value,
+  onChange,
+}: {
+  value: "conversations" | "notifications";
+  onChange: (next: "conversations" | "notifications") => void;
+}) {
+  const { t } = useI18n();
+  const options: ["conversations" | "notifications", MsgKey][] = [
+    ["conversations", "messages.title"],
+    ["notifications", "tab.notifications"],
+  ];
+
+  return (
+    <View style={styles.segments}>
+      {options.map(([id, labelKey]) => {
+        const active = value === id;
+        return (
+          <Pressable
+            key={id}
+            onPress={() => onChange(id)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={t(labelKey)}
+            style={[styles.segment, active ? styles.segmentActive : null]}
+          >
+            <Text style={[styles.segmentLabel, active ? styles.segmentLabelActive : null]}>
+              {t(labelKey)}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 10 },
-  header: { paddingHorizontal: 20, paddingTop: 56, paddingBottom: 12 },
+  header: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 },
+  segments: { flexDirection: "row", gap: 8, paddingHorizontal: 20, paddingBottom: 10 },
+  segment: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: colors.bgSoft,
+  },
+  segmentActive: { backgroundColor: colors.primary },
+  segmentLabel: { fontSize: 14, fontWeight: "600", color: colors.muted },
+  segmentLabelActive: { color: colors.white },
   headerTitle: { fontSize: 24, fontWeight: "700", color: colors.ink },
   list: { paddingHorizontal: 12, paddingBottom: 24 },
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 8 },
