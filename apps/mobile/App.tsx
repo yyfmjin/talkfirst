@@ -178,8 +178,24 @@ export default function App() {
    * 教训：**加载失败的可选资源，绝不能挡在应用前面。** 字体是装饰性的（Icon 拿不到就
    * 不画，见 components/Icon.tsx），让它去后台加载；界面该出来就出来。
    */
-  const ioniconFont = (Ionicons as unknown as { font: Record<string, string> }).font;
-  useFonts({ ...ioniconFont });
+  /*
+   * 2026-10-09：**模拟器验证抓到的真凶。**
+   *
+   * `@expo/vector-icons` 在这套依赖布局（npm workspaces + 它自己的 CJS/ESM 混装）下，
+   * 运行时导出的 `Ionicons` 是 **undefined**；直接读 `.font` 就会抛
+   *
+   *     TypeError: Cannot read property 'font' of undefined
+   *
+   * 而且是在 `App` 里抛的 —— 整个应用渲染失败，屏幕上一片空白。
+   * 同一个原因就是 10-08「一进主界面就崩（Element type is invalid … got: undefined）」
+   * 和「发布按钮只有蓝底没有加号」的背后真因。
+   *
+   * 所以：**先判断拿没拿到**。拿不到就不加载字体，界面照常渲染（图标由 Icon 兜底不画）。
+   * 注意 `useFonts` 必须**无条件调用**（不能写成 `if (font) useFonts(...)` —— 那是条件 Hook），
+   * 没字体时传空对象即可。
+   */
+  const ioniconFont = (Ionicons as { font?: Record<string, string> } | undefined)?.font;
+  useFonts(ioniconFont ? { ...ioniconFont } : {});
 
   return (
     // I18nProvider 在最外层：未登录时的 AuthScreen 也要能翻译。
