@@ -27,12 +27,6 @@
     "plugins": [
       "expo-secure-store"
     ],
-    "updates": {
-      "url": "https://u.expo.dev/4db12050-b602-4950-84d1-844712856353",
-      "enabled": true,
-      "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 0
-    },
     "runtimeVersion": {
       "policy": "appVersion"
     },
