@@ -360,7 +360,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    paddingTop: 54,
+    // 同 ComposeScreen：顶部安全区已由 App.tsx 统一留白，这里不再写死 54。
+    paddingTop: 12,
     paddingBottom: 10,
     paddingHorizontal: 12,
     borderBottomWidth: 1,

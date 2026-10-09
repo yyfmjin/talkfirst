@@ -126,7 +126,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 12,
-    paddingTop: 54,
+    // 顶部安全区已由 App.tsx 的 SafeAreaView 统一留白（2026-10-09），
+    // 这里再写 54 就会在状态栏下面空出一大块。
+    paddingTop: 12,
     paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: colors.line,
