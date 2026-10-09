@@ -19,7 +19,7 @@
 
 /** 当前最新 Android 安装包（EAS 产物）。空串 = 还没有可下载的包，页面会显示「生成中」。 */
 export const ANDROID_APK_URL =
-  "https://expo.dev/artifacts/eas/1nGesmGyMfRubBVb0M6HaWH0HD2hPq9mejdhOVE27mQ.apk";
+  "https://expo.dev/artifacts/eas/Zm4bDy0PF5rnzA0pyglaAB0t_1SAeGWnway3A69GZ1s.apk";
 
 /** 给用户看的固定入口：永远指向"当前最新版"。 */
 export const ANDROID_APK_PATH = "/download/android";
