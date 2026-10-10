@@ -18,23 +18,28 @@
  */
 
 /**
- * ⚠️ 2026-10-09：**临时退回到运营方唯一验证过能打开的那一版**
+ * ⚠️ 2026-10-10：**退回运营方验证过能打开的那一版**
  * （构建 `dbaf6bd2` / 提交 `0c44fc7`）。
  *
- * 为什么退：连着两版都在真机上不可用，两次都是我这边的问题 ——
- *   1. 接 `expo-updates` 后我发布的「热更」是 `--no-bytecode` 的**纯 JS 包**，
- *      而 App 是 Hermes 引擎 —— 手机上第二次启动加载它**闪退**；
- *   2. 随后那版把「等图标字体加载完再渲染主界面」当保险，结果真机上字体**根本没被打进包**
- *      （检查 APK：一个 `.ttf` 都没有），`fontsLoaded` 永远 false，界面永远停在加载态
- *      —— 打开就是**一片空白**。
+ * 为什么退：模拟器验证（`D:\Android`，WHPX 加速）连着抓出两层真因 ——
  *
- * 所以先回到真人验证过的版本。带修复的新包（字体只加载不阻塞渲染 + 顶部安全区 +
- * 4 个 tab）构建完成后，`npm run sync:apk` 会自动把这里换成新包。
+ *   1. `@expo/vector-icons` 的 `Ionicons` 运行时是 `undefined` → 我在 App 里读 `.font`
+ *      抛错 → **打开空白**；
+ *   2. 修掉第 1 层后露出第 2 层：`TypeError: Cannot read property 'useState' of null`
+ *      —— bundle 里的 **`react` 解析成了 null**。
+ *
+ * 两层同一个病根：`apps/mobile/metro.config.js` 把两处 node_modules 都列进了解析路径，
+ * 而 Metro 默认"从包自己的位置往上找"，于是 hoist 到仓库根的包抓到了**根目录的 React 19.3.0**，
+ * App 自己用 18.3.1 —— **一个 bundle 里两份 React**。已用
+ * `disableHierarchicalLookup` + `extraNodeModules` 钉死一份，并在本地验证
+ * （bundle 里只剩 18.3.x）。
+ *
+ * 新包出来、且在模拟器里确认能开后，`npm run sync:apk` 会自动把这里换过去。
  *
  * 当前最新 Android 安装包（EAS 产物）。空串 = 还没有可下载的包，页面会显示「生成中」。
  */
 export const ANDROID_APK_URL =
-  "https://expo.dev/artifacts/eas/LSYRsF2QC-07RMwkvlBtvZqZ-tJlQPE6P2JBiAXiFQs.apk";
+  "https://expo.dev/artifacts/eas/QhjgFTAx75JSp6injvOoji7NIIqlO5gU1X_uSNQVUKI.apk";
 
 /** 给用户看的固定入口：永远指向"当前最新版"。 */
 export const ANDROID_APK_PATH = "/download/android";
