@@ -36,10 +36,10 @@
  *
  * 新包出来、且在模拟器里确认能开后，`npm run sync:apk` 会自动把这里换过去。
  *
- * 当前最新 Android 安装包（EAS 产物）。空串 = 还没有可下载的包，页面会显示「生成中」。
+ * 当前最新 Android 安装包（本机出包，自托管）。空串 = 还没有可下载的包，页面会显示「生成中」。
  */
 export const ANDROID_APK_URL =
-  "https://expo.dev/artifacts/eas/QhjgFTAx75JSp6injvOoji7NIIqlO5gU1X_uSNQVUKI.apk";
+  "https://talkfirst.ccwu.cc/apk/talkfirst.apk";
 
 /** 给用户看的固定入口：永远指向"当前最新版"。 */
 export const ANDROID_APK_PATH = "/download/android";

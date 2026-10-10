@@ -58,3 +58,8 @@ talkfirst-*.tar.gz
 # how this was found: on the server, two of these files were sitting untracked
 # and blocked every deploy (2026-10-06).
 .env.production.local
+
+# Self-hosted Android APK (apps/web/public/apk/talkfirst.apk). Uploaded by scp on
+# the server, never committed; leaving it untracked would dirty the working tree
+# and block scripts/deploy-pull.sh (same trap as .env.production.local above).
+apps/web/public/apk/
