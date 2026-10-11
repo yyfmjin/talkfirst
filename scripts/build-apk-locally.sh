@@ -70,9 +70,13 @@ grep -q "gradle.properties.local" "$DEST/apps/mobile/android/gradle.properties" 
   echo "include=gradle.properties.local" >> "$DEST/apps/mobile/android/gradle.properties"
 
 # ── 5. gradle 出包 ───────────────────────────────────────────────────────────
-log "gradle assembleRelease（首次 15-30 分钟，会下载 gradle 与依赖）…"
+# `-PreactNativeArchitectures=arm64-v8a,x86_64`：只编这两种 ABI。
+#   arm64-v8a — 现代安卓真机（运营方的手机就是这一类）；
+#   x86_64    — 本机模拟器；少了它包装不进模拟器，发布前就没法做验证。
+# 排掉的 armeabi-v7a / x86 是老 32 位设备，这个产品不需要 —— 包体 66MB → 约 30MB。
+log "gradle assembleRelease（arm64+x86_64，首次 15-30 分钟）…"
 cd "$DEST/apps/mobile/android" || exit 1
-./gradlew assembleRelease --no-daemon >/tmp/local-gradle.log 2>&1
+./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,x86_64 --no-daemon >/tmp/local-gradle.log 2>&1
 STATUS=$?
 if [ $STATUS -ne 0 ]; then
   log "gradle 失败（exit $STATUS），最后 30 行："
