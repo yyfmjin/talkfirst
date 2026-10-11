@@ -173,6 +173,25 @@ export type CommentPage = {
  */
 export type VideoFeedPage = { items: Moment[]; exhausted: boolean };
 
+/* ─────────────────── 资料完善：语言 / 兴趣 / 交友目的 / 国家 ─────────────────── */
+
+/** `GET /meta/languages` 的一项。 */
+export type LanguageOption = { code: string; name: string; nativeName: string | null };
+/** `GET /meta/interests` 的一项。 */
+export type InterestOption = { id: string; slug: string; name: string; nameZh: string | null; category: string };
+/** `GET /meta/purposes` 的一项。 */
+export type PurposeOption = { slug: string; name: string; nameZh: string | null };
+/** `GET /meta/countries` 的一项。 */
+export type CountryOption = { code: string; name: string; flag: string | null };
+
+/** `GET /users/me` 里「资料完善」相关的字段（与 web 的 FullCard 同形）。 */
+export type ProfileFullCard = {
+  languages: Array<{ code: string; type: string; level: string }>;
+  interests: Array<{ slug: string }>;
+  purposes: Array<{ slug: string }>;
+  preferredCountries: Array<{ code: string }>;
+};
+
 /* ─────────────────── 我的：连接 / 社交账号 / 可见范围 / 安全中心 ─────────────────── */
 
 /** `GET /connections` 的一项（镜像 web 的 /connections 页）。 */
