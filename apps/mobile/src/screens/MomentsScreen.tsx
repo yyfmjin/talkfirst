@@ -4,6 +4,7 @@ import { useVideoPlayer, VideoView } from "expo-video";
 import { apiFetch } from "../lib/api";
 import { ComposeScreen } from "./ComposeScreen";
 import { MomentDetailScreen } from "./MomentDetailScreen";
+import { VideosScreen } from "./VideosScreen";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
@@ -43,6 +44,8 @@ export function MomentsScreen() {
   const [composing, setComposing] = useState(false);
   /** 点开一条动态看详情（全屏接管，同 composing）。 */
   const [detail, setDetail] = useState<Moment | null>(null);
+  /** 全屏视频流（上下滑切换，与 web 的 /videos 同源）。 */
+  const [watching, setWatching] = useState(false);
 
   const load = useCallback(async (mode: "initial" | "refresh" | "more") => {
     if (mode === "more" && !cursor) return;
@@ -122,6 +125,10 @@ export function MomentsScreen() {
     );
   }
 
+  if (watching) {
+    return <VideosScreen onClose={() => setWatching(false)} />;
+  }
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -134,20 +141,26 @@ export function MomentsScreen() {
     <View style={styles.root}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{t("moments.title")}</Text>
-        <Pressable
-          onPress={() => setComposing(true)}
-          accessibilityRole="button"
-          accessibilityLabel={t("moments.compose")}
-          style={styles.composeButton}
-        >
-          <Icon name="create-outline" size={18} color={colors.white} />
-          {/*
-           * 文字标签省不得。2026-10-08 运营方看到的正是「一个蓝色图标，看不到字、
-           * 也没有加号」—— 图标字体没就位时，纯图标按钮看起来就像功能没做。
-           * 带上文字，任何情况下这个入口都是可读、可理解的。
-           */}
-          <Text style={styles.composeLabel}>{t("moments.compose")}</Text>
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable
+            onPress={() => setWatching(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t("moments.watchVideos")}
+            style={styles.watchButton}
+          >
+            <Icon name="videocam-outline" size={18} color={colors.primary} />
+            <Text style={styles.watchLabel}>{t("moments.watchVideos")}</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setComposing(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t("moments.compose")}
+            style={styles.composeButton}
+          >
+            <Icon name="create-outline" size={18} color={colors.white} />
+            <Text style={styles.composeLabel}>{t("moments.compose")}</Text>
+          </Pressable>
+        </View>
       </View>
 
       <FlatList
@@ -272,6 +285,19 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   headerTitle: { fontSize: 24, fontWeight: "700", color: colors.ink },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
+  watchButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.white,
+  },
+  watchLabel: { fontSize: 14, fontWeight: "600", color: colors.primary },
   composeButton: {
     flexDirection: "row",
     alignItems: "center",

@@ -101,6 +101,14 @@ export const zh = {
   "moments.commentSendFailed": "评论发送失败，请稍后再试。",
   "moments.bookmark": "收藏",
   "moments.unbookmark": "取消收藏",
+  "moments.watchVideos": "看视频",
+
+  /* ───────────────────────── 视频流 ───────────────────────── */
+  "videos.back": "返回",
+  "videos.empty": "还没有视频。发布一条带视频的动态，它就会出现在这里。",
+  "videos.errorLoading": "视频加载失败，请稍后再试。",
+  "videos.mute": "静音",
+  "videos.unmute": "打开声音",
 
   /* ───────────────────────── 发动态 ───────────────────────── */
   "compose.title": "发动态",
@@ -409,6 +417,14 @@ export const en: Record<MsgKey, string> = {
   "moments.commentSendFailed": "Couldn't send your comment. Please try again.",
   "moments.bookmark": "Bookmark",
   "moments.unbookmark": "Remove bookmark",
+  "moments.watchVideos": "Watch",
+
+  /* videos */
+  "videos.back": "Back",
+  "videos.empty": "No videos yet. Post one with a video and it'll show up here.",
+  "videos.errorLoading": "Couldn't load videos. Please try again.",
+  "videos.mute": "Mute",
+  "videos.unmute": "Unmute",
 
   /* compose */
   "compose.title": "New post",
