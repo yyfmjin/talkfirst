@@ -59,24 +59,51 @@ if [ ! -f "$KS" ]; then
     -dname "CN=TalkFirst Local, OU=Dev, O=TalkFirst, L=-, S=-, C=CN" >/dev/null 2>&1 || exit 1
 fi
 
-# ── 4. 注入签名配置（gradle 读它）────────────────────────────────────────────
-cat > "$DEST/apps/mobile/android/gradle.properties.local" <<PROPS
-TALKFIRST_UPLOAD_STORE_FILE=talkfirst-local.keystore
-TALKFIRST_UPLOAD_KEY_ALIAS=talkfirst
-TALKFIRST_UPLOAD_STORE_PASSWORD=$KS_PASS
-TALKFIRST_UPLOAD_KEY_PASSWORD=$KS_PASS
-PROPS
-grep -q "gradle.properties.local" "$DEST/apps/mobile/android/gradle.properties" 2>/dev/null || \
-  echo "include=gradle.properties.local" >> "$DEST/apps/mobile/android/gradle.properties"
+# ── 4. 让 release 用我们的密钥签名 ───────────────────────────────────────────
+#
+# 2026-10-11 踩过的坑：expo prebuild 生成的模板里，release 构建类型指向的是
+# `signingConfigs.debug`（Android 通用调试密钥，SHA-1 5e8f1606…cabf625）。
+# 于是"发布包"实际是调试签名的：
+#   • 与之前 EAS 发布的包签名不同 → 覆盖安装被系统拒绝（用户手上报的是
+#     "package info is null"）；
+#   • 调试私钥是公开的，任何人都能签一个同密钥的假包冒充升级 —— 对一个
+#     公开下载的 App 来说这是实打实的安全问题。
+# 这里在 build.gradle **末尾追加** 一个 android{} 块（Groovy DSL 里同名块会合并），
+# 只用我们自己的密钥，并且幂等：已经打过补丁就不再动。
+BG="$DEST/apps/mobile/android/app/build.gradle"
+if ! grep -q "talkfirst-local.keystore" "$BG"; then
+  log "给 release 挂上本机密钥（替代模板的调试签名）…"
+  cat >> "$BG" <<'SIGNING'
+
+// ── build-apk-locally.sh 追加：release 用本机密钥签名，勿手改 ──────────────
+// （模板默认把 release 指向 signingConfigs.debug，是公开的调试密钥。）
+android {
+    signingConfigs {
+        talkfirstRelease {
+            storeFile file("talkfirst-local.keystore")
+            storePassword "talkfirst-local"
+            keyAlias "talkfirst"
+            keyPassword "talkfirst-local"
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.talkfirstRelease
+        }
+    }
+}
+SIGNING
+fi
 
 # ── 5. gradle 出包 ───────────────────────────────────────────────────────────
-# `-PreactNativeArchitectures=arm64-v8a,x86_64`：只编这两种 ABI。
-#   arm64-v8a — 现代安卓真机（运营方的手机就是这一类）；
-#   x86_64    — 本机模拟器；少了它包装不进模拟器，发布前就没法做验证。
-# 排掉的 armeabi-v7a / x86 是老 32 位设备，这个产品不需要 —— 包体 66MB → 约 30MB。
-log "gradle assembleRelease（arm64+x86_64，首次 15-30 分钟）…"
+#
+# **不限制 ABI**：默认四种全打（armeabi-v7a / arm64-v8a / x86 / x86_64）。
+# 2026-10-11 曾为了缩包体只留 arm64+x86_64，结果用户手机上装不上 —— 发布包必须
+# 覆盖所有可能拿到的机器（EAS 之前的包就是全架构的）。包体大一些（约 66MB）换
+# "任何一台安卓都能装"，这笔账是划算的。
+log "gradle assembleRelease（全 ABI，首次 15-30 分钟）…"
 cd "$DEST/apps/mobile/android" || exit 1
-./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,x86_64 --no-daemon >/tmp/local-gradle.log 2>&1
+./gradlew assembleRelease --no-daemon >/tmp/local-gradle.log 2>&1
 STATUS=$?
 if [ $STATUS -ne 0 ]; then
   log "gradle 失败（exit $STATUS），最后 30 行："
