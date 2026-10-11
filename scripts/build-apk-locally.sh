@@ -95,13 +95,17 @@ android {
 SIGNING
 fi
 
-# ── 5. gradle 出包 ───────────────────────────────────────────────────────────
+# ── 5. 只打真机架构 + 出包 ──────────────────────────────────────────────────
 #
-# **不限制 ABI**：默认四种全打（armeabi-v7a / arm64-v8a / x86 / x86_64）。
-# 2026-10-11 曾为了缩包体只留 arm64+x86_64，结果用户手机上装不上 —— 发布包必须
-# 覆盖所有可能拿到的机器（EAS 之前的包就是全架构的）。包体大一些（约 66MB）换
-# "任何一台安卓都能装"，这笔账是划算的。
-log "gradle assembleRelease（全 ABI，首次 15-30 分钟）…"
+# 只保留 arm64-v8a + armeabi-v7a（覆盖所有真机：64 位 + 32 位）。
+# x86/x86_64 只用于模拟器，真机用不上，砍掉后包从 ~67MB 降到 ~39MB，
+# 下载更不容易断（2026-10-11 用户手机下载大包易失败，正是这个原因）。
+GP="$DEST/apps/mobile/android/gradle.properties"
+if grep -q "^reactNativeArchitectures=" "$GP"; then
+  sed -i 's/^reactNativeArchitectures=.*/reactNativeArchitectures=armeabi-v7a,arm64-v8a/' "$GP"
+  log "ABI 已钉为 armeabi-v7a,arm64-v8a"
+fi
+log "gradle assembleRelease（arm64+v7a，首次 15-30 分钟）…"
 cd "$DEST/apps/mobile/android" || exit 1
 ./gradlew assembleRelease --no-daemon >/tmp/local-gradle.log 2>&1
 STATUS=$?
