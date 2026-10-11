@@ -99,7 +99,13 @@ export const zh = {
   "compose.publish": "发布",
   "compose.cancel": "取消",
   "compose.errorPublish": "发布失败，请稍后再试。",
-  "compose.mediaNote": "这一版先支持文字；图片和视频在下一版接上。",
+  "compose.mediaNote": "图片已支持（最多 9 张）；视频在下一版接上。",
+  "compose.addImages": "添加图片",
+  "compose.imageCountHint": "最多 9 张",
+  "compose.imagePickError": "选图失败，请重试。",
+  "compose.imageTooLarge": "图片超过 5MB，请换一张小一点的。",
+  "compose.imageUploadError": "图片上传失败，可删除后重试。",
+  "compose.imageRemoveLabel": "删除第 {n} 张图片",
 
   /* ───────────────────────── 消息 ───────────────────────── */
   "messages.title": "消息",
@@ -385,7 +391,13 @@ export const en: Record<MsgKey, string> = {
   "compose.publish": "Post",
   "compose.cancel": "Cancel",
   "compose.errorPublish": "Couldn't publish. Please try again.",
-  "compose.mediaNote": "Text only for now — photos and video land in the next update.",
+  "compose.mediaNote": "Photos supported (up to 9) — video lands in the next update.",
+  "compose.addImages": "Add photos",
+  "compose.imageCountHint": "Up to 9 photos",
+  "compose.imagePickError": "Couldn't pick the photo. Please try again.",
+  "compose.imageTooLarge": "Photo exceeds 5MB. Pick a smaller one.",
+  "compose.imageUploadError": "Photo upload failed. Remove it and try again.",
+  "compose.imageRemoveLabel": "Remove photo {n}",
 
   /* messages */
   "messages.title": "Messages",

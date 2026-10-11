@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -9,28 +10,42 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { apiFetch } from "../lib/api";
+import * as ImagePicker from "expo-image-picker";
+import { ApiRequestError, apiFetch } from "../lib/api";
 import { useI18n } from "../lib/i18n-context";
 import { colors } from "../theme";
 
 /**
- * 发动态（2026-10-08）—— 对齐 web 的 `/moments/compose`。
+ * 发动态（2026-10-08 起）—— 对齐 web 的 `/moments/compose`。
  *
- * ## 为什么先做文字
+ * ## 阶段②：图片
  *
- * App 之前**只能看、不能发**：动态流、消息都有了，但产品最核心的动作（发一条动态）
- * 完全没有入口 —— 对社交产品来说这不是"少个功能"，是闭环断了。
- *
- * 图片要相册权限、要上传、要处理失败与进度，是一整块独立工作（web 端有自己的上传链路）；
- * 这一版先只做文字，把闭环接上，媒体放到下一批，并在界面上**明说**这一点 ——
- * 让人以为"图片是坏的"比暂时没有图片更糟。
+ * 选图走 expo-image-picker 的系统相册（Android 13+ 是系统 Photo Picker，
+ * 不需要相册权限）；选完立即转 base64 data URL 上传 `POST /uploads/moment-media`
+ * （服务端 body 上限 7MB 字符串、文件上限 5MB，客户端先按 5MB 拦一次），
+ * 拿到 `{ url }` 存进本地列表；发布时 `POST /moments` 带 `images`（≤9 张）。
  *
  * ## 服务端契约（apps/api/src/moments/moments.controller.ts 的 ComposeDto）
  *
- * `POST /moments`，`content` 必填且 `@MaxLength(2000)`；`images` 最多 9 张、`tags` 最多 10 个。
+ * `content` 必填且 `@MaxLength(2000)`；`images` 最多 9 张、`tags` 最多 10 个。
  * 客户端先按 2000 字拦一次，省一趟注定 400 的往返；服务端仍然是权威。
  */
+
 const CONTENT_MAX_LENGTH = 2000;
+const MAX_IMAGES = 9;
+/** 服务端单张上限 5MB（moment-media 的 7_000_000 是 base64 字符串长度）。 */
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+/** 一张已选图片：选完立刻上传，发布时只带服务端返回的 url。 */
+type PendingImage = {
+  id: string;
+  localUri: string;
+  remoteUrl: string | null;
+  uploading: boolean;
+  failed: boolean;
+};
+
+let nextImageId = 1;
 
 export function ComposeScreen({
   onPublished,
@@ -42,18 +57,82 @@ export function ComposeScreen({
 }) {
   const { t } = useI18n();
   const [content, setContent] = useState("");
+  const [images, setImages] = useState<PendingImage[]>([]);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState("");
 
   const trimmed = content.trim();
-  const canPublish = trimmed.length > 0 && !publishing;
+  const allImagesReady = images.every((img) => img.remoteUrl && !img.uploading && !img.failed);
+  const canPublish = trimmed.length > 0 && !publishing && allImagesReady;
+
+  /** 选一张 → 立刻转 data URL 上传。一次选一张：多选 + base64 在旧 Android 上不可靠。 */
+  async function pickImage() {
+    if (images.length >= MAX_IMAGES || publishing) return;
+    setError("");
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        quality: 0.8,
+        base64: true,
+      });
+      if (result.canceled || result.assets.length === 0) return;
+      const asset = result.assets[0];
+      if (asset.fileSize != null && asset.fileSize > MAX_IMAGE_BYTES) {
+        setError(t("compose.imageTooLarge"));
+        return;
+      }
+      if (!asset.base64) {
+        setError(t("compose.imagePickError"));
+        return;
+      }
+      const id = `img-${nextImageId++}`;
+      const dataUrl = `data:${asset.mimeType ?? "image/jpeg"};base64,${asset.base64}`;
+      setImages((previous) => [
+        ...previous,
+        { id, localUri: asset.uri, remoteUrl: null, uploading: true, failed: false },
+      ]);
+      try {
+        const uploaded = await apiFetch<{ url: string }>("/uploads/moment-media", {
+          method: "POST",
+          body: { media: dataUrl },
+        });
+        setImages((previous) =>
+          previous.map((img) =>
+            img.id === id ? { ...img, remoteUrl: uploaded.url, uploading: false } : img,
+          ),
+        );
+      } catch (uploadError) {
+        setImages((previous) =>
+          previous.map((img) => (img.id === id ? { ...img, uploading: false, failed: true } : img)),
+        );
+        setError(
+          uploadError instanceof ApiRequestError && uploadError.code === "MEDIA_TOO_LARGE"
+            ? t("compose.imageTooLarge")
+            : t("compose.imageUploadError"),
+        );
+      }
+    } catch {
+      setError(t("compose.imagePickError"));
+    }
+  }
+
+  function removeImage(id: string) {
+    setImages((previous) => previous.filter((img) => img.id !== id));
+    setError("");
+  }
 
   async function publish() {
     if (!canPublish) return;
     setPublishing(true);
     setError("");
     try {
-      await apiFetch("/moments", { method: "POST", body: { content: trimmed } });
+      await apiFetch("/moments", {
+        method: "POST",
+        body: {
+          content: trimmed,
+          images: images.map((img) => img.remoteUrl as string),
+        },
+      });
       onPublished();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : t("compose.errorPublish"));
@@ -94,21 +173,64 @@ export function ComposeScreen({
         </Pressable>
       </View>
 
-      <TextInput
-        value={content}
-        onChangeText={setContent}
-        placeholder={t("compose.placeholder")}
-        placeholderTextColor={colors.muted}
-        style={styles.input}
-        multiline
-        autoFocus
-        maxLength={CONTENT_MAX_LENGTH}
-        accessibilityLabel={t("compose.placeholder")}
-      />
+      <View style={styles.editor}>
+        <TextInput
+          value={content}
+          onChangeText={setContent}
+          placeholder={t("compose.placeholder")}
+          placeholderTextColor={colors.muted}
+          style={styles.input}
+          multiline
+          autoFocus
+          maxLength={CONTENT_MAX_LENGTH}
+          accessibilityLabel={t("compose.placeholder")}
+        />
+
+        {/* 已选图片：缩略图 + 右上角删除；上传中盖一个转圈，失败标一个叹号。 */}
+        <View style={styles.imageGrid}>
+          {images.map((img, index) => (
+            <View key={img.id} style={styles.imageTile}>
+              <Image source={{ uri: img.localUri }} style={styles.imageThumb} />
+              {img.uploading ? (
+                <View style={styles.imageOverlay}>
+                  <ActivityIndicator color={colors.white} size="small" />
+                </View>
+              ) : null}
+              {img.failed ? (
+                <View style={styles.imageOverlay}>
+                  <Text style={styles.imageFailedMark}>!</Text>
+                </View>
+              ) : null}
+              <Pressable
+                onPress={() => removeImage(img.id)}
+                accessibilityRole="button"
+                accessibilityLabel={t("compose.imageRemoveLabel", { n: index + 1 })}
+                style={styles.imageRemove}
+              >
+                <Text style={styles.imageRemoveMark}>✕</Text>
+              </Pressable>
+            </View>
+          ))}
+          {images.length < MAX_IMAGES ? (
+            <Pressable
+              onPress={() => void pickImage()}
+              accessibilityRole="button"
+              accessibilityLabel={t("compose.addImages")}
+              style={styles.addTile}
+            >
+              <Text style={styles.addTileMark}>＋</Text>
+              <Text style={styles.addTileLabel}>
+                {images.length}/{MAX_IMAGES}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </View>
 
       <View style={styles.footer}>
-        {/* 媒体这一版明确不做，先说清楚，别让人以为图片坏了。 */}
-        <Text style={styles.note}>{t("compose.mediaNote")}</Text>
+        <Text style={styles.note}>
+          {t("compose.mediaNote")} · {t("compose.imageCountHint")}
+        </Text>
         <Text style={styles.counter}>
           {content.length}/{CONTENT_MAX_LENGTH}
         </Text>
@@ -147,6 +269,7 @@ const styles = StyleSheet.create({
   },
   publishDisabled: { opacity: 0.45 },
   publishLabel: { fontSize: 14, fontWeight: "600", color: colors.white },
+  editor: { flex: 1 },
   input: {
     flex: 1,
     paddingHorizontal: 18,
@@ -156,6 +279,57 @@ const styles = StyleSheet.create({
     color: colors.ink,
     textAlignVertical: "top",
   },
+  imageGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingBottom: 12,
+  },
+  imageTile: {
+    width: 96,
+    height: 96,
+    borderRadius: 12,
+    backgroundColor: colors.bgSoft,
+    overflow: "hidden",
+  },
+  imageThumb: { width: "100%", height: "100%" },
+  imageOverlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: "rgba(11,11,20,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imageFailedMark: { color: colors.white, fontSize: 22, fontWeight: "700" },
+  imageRemove: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(11,11,20,0.65)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imageRemoveMark: { color: colors.white, fontSize: 12 },
+  addTile: {
+    width: 96,
+    height: 96,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+  },
+  addTileMark: { fontSize: 22, color: colors.primary, lineHeight: 24 },
+  addTileLabel: { fontSize: 11, color: colors.muted },
   footer: {
     flexDirection: "row",
     alignItems: "center",
