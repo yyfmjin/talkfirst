@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, Image, Pressable, RefreshControl, StyleShe
 import { useVideoPlayer, VideoView } from "expo-video";
 import { apiFetch } from "../lib/api";
 import { ComposeScreen } from "./ComposeScreen";
+import { MomentDetailScreen } from "./MomentDetailScreen";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
@@ -40,6 +41,8 @@ export function MomentsScreen() {
   const [error, setError] = useState("");
   /** 发动态是一个全屏接管的状态，不是第二个 tab：发完就回到时间线（见下方渲染）。 */
   const [composing, setComposing] = useState(false);
+  /** 点开一条动态看详情（全屏接管，同 composing）。 */
+  const [detail, setDetail] = useState<Moment | null>(null);
 
   const load = useCallback(async (mode: "initial" | "refresh" | "more") => {
     if (mode === "more" && !cursor) return;
@@ -109,6 +112,16 @@ export function MomentsScreen() {
     );
   }
 
+  if (detail) {
+    return (
+      <MomentDetailScreen
+        momentId={detail.id}
+        initial={detail}
+        onBack={() => setDetail(null)}
+      />
+    );
+  }
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -156,7 +169,7 @@ export function MomentsScreen() {
           loadingMore ? <ActivityIndicator style={styles.footer} color={colors.primary} /> : null
         }
         renderItem={({ item }) => (
-          <View style={styles.card}>
+          <Pressable style={styles.card} onPress={() => setDetail(item)} accessibilityRole="button">
             <View style={styles.cardHead}>
               <Avatar uri={item.author.avatarUrl} nickname={item.author.nickname} size={40} />
               <View style={styles.cardHeadText}>
@@ -199,7 +212,7 @@ export function MomentsScreen() {
                 <Text style={styles.actionLabel}>{item.commentCount}</Text>
               </View>
             </View>
-          </View>
+          </Pressable>
         )}
       />
 

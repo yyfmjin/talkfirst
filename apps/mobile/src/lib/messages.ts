@@ -92,6 +92,15 @@ export const zh = {
   "moments.like": "点赞",
   "moments.unlike": "取消点赞",
   "moments.compose": "发动态",
+  "moments.detail": "动态详情",
+  "moments.comments": "评论",
+  "moments.commentsEmpty": "还没有评论，来抢沙发。",
+  "moments.commentPlaceholder": "写下你的评论…",
+  "moments.commentSend": "发送",
+  "moments.commentsError": "评论加载失败，请稍后再试。",
+  "moments.commentSendFailed": "评论发送失败，请稍后再试。",
+  "moments.bookmark": "收藏",
+  "moments.unbookmark": "取消收藏",
 
   /* ───────────────────────── 发动态 ───────────────────────── */
   "compose.title": "发动态",
@@ -391,6 +400,15 @@ export const en: Record<MsgKey, string> = {
   "moments.like": "Like",
   "moments.unlike": "Unlike",
   "moments.compose": "New post",
+  "moments.detail": "Post",
+  "moments.comments": "Comments",
+  "moments.commentsEmpty": "No comments yet. Be the first.",
+  "moments.commentPlaceholder": "Write a comment…",
+  "moments.commentSend": "Send",
+  "moments.commentsError": "Couldn't load comments. Please try again.",
+  "moments.commentSendFailed": "Couldn't send your comment. Please try again.",
+  "moments.bookmark": "Bookmark",
+  "moments.unbookmark": "Remove bookmark",
 
   /* compose */
   "compose.title": "New post",

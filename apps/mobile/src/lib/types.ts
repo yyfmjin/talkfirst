@@ -143,6 +143,29 @@ export type Moment = {
 export type MomentPage = { items: Moment[]; nextCursor: string | null };
 
 /**
+ * 一条评论。与 web 端 `MomentComment` 同形：顶层评论带 `replies`（一层嵌套），
+ * 回复里不再有 `replies`。
+ */
+export type MomentComment = {
+  id: string;
+  content: string;
+  createdAt: string;
+  /** 顶层评论为 null；嵌套回复里无此字段。 */
+  parentCommentId?: string | null;
+  user: { id: string; nickname: string | null; avatarUrl: string | null };
+  replies?: MomentComment[];
+};
+
+/** 评论分页（`GET /moments/:id/comments` 的返回）。 */
+export type CommentPage = {
+  items: MomentComment[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+/**
  * 视频流的一页。
  *
  * `exhausted` = 「库里的视频已经翻完了」：客户端应当从头循环，而不是继续拉取
