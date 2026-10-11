@@ -45,10 +45,11 @@ let refreshPromise: Promise<boolean> | null = null;
  */
 async function fetchWithTimeout(
   url: string,
-  init: { method: string; headers: Record<string, string>; body?: string },
+  init: { method: string; headers: Record<string, string>; body?: string | FormData },
+  timeoutMs: number = API_REQUEST_TIMEOUT_MS,
 ): Promise<Response> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), API_REQUEST_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
     return await fetch(url, { ...init, signal: controller.signal });
   } catch (error) {
@@ -167,6 +168,52 @@ async function doFetch<T>(
 
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   return (await doFetch<T>(path, options)) as T;
+}
+
+/**
+ * 视频上传等 multipart 请求的时限。
+ *
+ * 普通接口 15 秒（API_REQUEST_TIMEOUT_MS）就够；视频不一样：请求要等**上传完成 +
+ * 服务端转码完成**才回（服务端单个转码最长 VIDEO_PROCESSING_TIMEOUT_MS = 5 分钟），
+ * 15 秒会把一次慢但正常的传视频活活掐断。
+ */
+const UPLOAD_REQUEST_TIMEOUT_MS = 600_000;
+
+/**
+ * 用 multipart/form-data 上传（目前只有 `/uploads/moment-video` 用）。
+ *
+ * 与 `apiFetch` 的区别：
+ * - body 是 `FormData`，**不手动设 Content-Type** —— RN 会自己带
+ *   `multipart/form-data; boundary=...`，手动设了边界就丢，服务端解析不到文件；
+ * - 超时 10 分钟（见上）；
+ * - 401 时**不自动刷新重试**：FormData 是一次性的，重试等于把 90MB 重新拼一遍，
+ *   性价比太低 —— 直接抛错，用户重选一次即可（代价与手动重试相同）。
+ */
+export async function apiUploadMultipart<T>(path: string, form: FormData): Promise<T> {
+  const accessToken = await getAccessToken();
+  const headers: Record<string, string> = {};
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+
+  const response = await fetchWithTimeout(
+    `${apiBaseUrl()}${path}`,
+    { method: "POST", headers, body: form },
+    UPLOAD_REQUEST_TIMEOUT_MS,
+  );
+
+  let payload: unknown = null;
+  try {
+    payload = await response.json();
+  } catch {
+    payload = null;
+  }
+  const envelope = payload as Envelope<T> | null;
+
+  if (!response.ok || !envelope?.success) {
+    throw new ApiRequestError(
+      envelope?.error ?? { code: "NETWORK_ERROR", message: t("common.networkError") },
+    );
+  }
+  return envelope.data as T;
 }
 
 /**

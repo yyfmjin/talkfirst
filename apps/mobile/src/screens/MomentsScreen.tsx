@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Image, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { apiFetch } from "../lib/api";
 import { ComposeScreen } from "./ComposeScreen";
 import { Avatar } from "../components/Avatar";
@@ -23,12 +24,11 @@ import type { Moment, MomentPage } from "../lib/types";
  * 点赞的端点（`POST /moments/:id/like`，toggle）我能在服务端代码里确认形状；
  * 收藏的写法我没确认，宁可先不写，也不猜一个可能 404 的路径。
  *
- * ## 视频
+ * ## 视频（阶段③）
  *
- * 卡片带视频时**只显示封面图，不在这里播放**。全屏播放器要么用 `expo-av`
- * 要么用 `expo-video`，两者都需要往 `package.json` 里加原生依赖、并且要重新
- * 出一版构建 —— 在 APK 打得出来之前先不引入，先用封面把这条动态显示完整。
- * 播放能力（点封面进全屏、上下滑切换）等构建链路通了再接回来。
+ * 卡片带视频时直接用 expo-video 在卡片内播放（原生控件，可全屏）。
+ * 之前是「只显示封面图」，因为 expo-video 要加原生依赖、重新出包 ——
+ * 阶段③已把依赖接上并重新出过包，这里就把播放器接回来。
  */
 export function MomentsScreen() {
   const { t } = useI18n();
@@ -170,11 +170,7 @@ export function MomentsScreen() {
             {item.content ? <Text style={styles.content}>{item.content}</Text> : null}
 
             {item.videoUrl ? (
-              item.images[0] ? (
-                <Image source={{ uri: item.images[0] }} style={styles.videoPoster} resizeMode="cover" />
-              ) : (
-                <View style={[styles.videoPoster, styles.videoPosterEmpty]} />
-              )
+              <MomentVideo uri={item.videoUrl} />
             ) : item.images.length > 0 ? (
               <View style={styles.imageRow}>
                 {item.images.slice(0, 3).map((uri) => (
@@ -233,6 +229,24 @@ function relativeTime(iso: string, t: TranslateFn): string {
   return new Date(iso).toLocaleDateString();
 }
 
+/**
+ * 视频动态卡片里的播放器（expo-video）。
+ *
+ * 每个卡片一个 player：feed 里可能同时滚出好几条视频动态，共享一个 player
+ * 会让滚动时画面跳来跳去；card 卸载时停掉，不然声音会一直响。
+ */
+function MomentVideo({ uri }: { uri: string }) {
+  const player = useVideoPlayer(uri, (videoPlayer) => {
+    videoPlayer.loop = false;
+  });
+  useEffect(() => {
+    return () => {
+      player.pause();
+    };
+  }, [player]);
+  return <VideoView player={player} style={styles.video} nativeControls contentFit="contain" />;
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 10 },
@@ -262,8 +276,7 @@ const styles = StyleSheet.create({
   nickname: { fontSize: 15, fontWeight: "600", color: colors.ink },
   meta: { fontSize: 12, color: colors.muted, marginTop: 2 },
   content: { fontSize: 15, lineHeight: 22, color: colors.ink },
-  videoPoster: { width: "100%", height: 200, borderRadius: 12, backgroundColor: "#0B0B14" },
-  videoPosterEmpty: { height: 200 },
+  video: { width: "100%", aspectRatio: 16 / 9, borderRadius: 12, backgroundColor: "#0B0B14" },
   imageRow: { flexDirection: "row", gap: 6 },
   image: { flex: 1, height: 120, borderRadius: 10, backgroundColor: colors.bgSoft },
   actions: { flexDirection: "row", alignItems: "center", gap: 20, paddingTop: 2 },

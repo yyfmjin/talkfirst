@@ -46,6 +46,7 @@ jest.mock("../lib/api", () => ({
     return {};
   }),
   apiFetchEnvelope: jest.fn(async () => ({ data: {}, accessToken: "a", refreshToken: "r" })),
+  apiUploadMultipart: jest.fn(async () => ({ url: "https://cdn.example/video.mp4" })),
   ApiRequestError: class ApiRequestError extends Error {},
   tryRefresh: jest.fn(async () => false),
 }));
@@ -61,6 +62,18 @@ jest.mock("../lib/storage", () => ({
   clearTokens: jest.fn(async () => undefined),
   getLocalePreference: jest.fn(async () => null),
   saveLocalePreference: jest.fn(async () => undefined),
+}));
+
+/*
+ * expo-video 在 import 时就访问 `NativeVideoModule.VideoPlayer.prototype`，
+ * jest-expo 的通用原生 mock 顶不住（VideoPlayer 是 undefined）—— 不是 app 的
+ * 代码问题，是 expo-video 没有给 jest 提供安全口。这里给个最小假实现：
+ * 渲染冒烟只验证我们的 JSX 逻辑（每个卡片一个 player、卸载时 pause），
+ * 播放行为属于原生层，本来就不是单测能覆盖的。
+ */
+jest.mock("expo-video", () => ({
+  useVideoPlayer: jest.fn(() => ({ pause: jest.fn() })),
+  VideoView: () => null,
 }));
 
 const SCREENS: [string, ComponentType][] = [

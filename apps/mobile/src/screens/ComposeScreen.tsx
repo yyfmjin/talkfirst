@@ -11,8 +11,9 @@ import {
   View,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { ApiRequestError, apiFetch } from "../lib/api";
+import { ApiRequestError, apiFetch, apiUploadMultipart } from "../lib/api";
 import { useI18n } from "../lib/i18n-context";
+import { Icon } from "../components/Icon";
 import { colors } from "../theme";
 
 /**
@@ -25,6 +26,13 @@ import { colors } from "../theme";
  * （服务端 body 上限 7MB 字符串、文件上限 5MB，客户端先按 5MB 拦一次），
  * 拿到 `{ url }` 存进本地列表；发布时 `POST /moments` 带 `images`（≤9 张）。
  *
+ * ## 阶段③：视频
+ *
+ * 一个动态最多一个视频：选完用 multipart 上传 `POST /uploads/moment-video`
+ * （字段名 `file`，见服务端 `video-upload.interceptor.ts` 的 `MOMENT_VIDEO_FIELD`），
+ * 服务端回 `{ url }`；发布时带 `videoUrl`。播放走 expo-video，见 MomentsScreen。
+ * 上传请求超时 10 分钟：响应要等服务端转码完才回（最长 5 分钟）。
+ *
  * ## 服务端契约（apps/api/src/moments/moments.controller.ts 的 ComposeDto）
  *
  * `content` 必填且 `@MaxLength(2000)`；`images` 最多 9 张、`tags` 最多 10 个。
@@ -35,11 +43,31 @@ const CONTENT_MAX_LENGTH = 2000;
 const MAX_IMAGES = 9;
 /** 服务端单张上限 5MB（moment-media 的 7_000_000 是 base64 字符串长度）。 */
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+/** 服务端 multipart 上限 90MB（apps/api/src/uploads/video-upload.config.ts）。 */
+const MAX_VIDEO_UPLOAD_BYTES = 90 * 1024 * 1024;
+/** 服务端白名单（同 config 的 ALLOWED_VIDEO_MIME）与扩展名。 */
+const ALLOWED_VIDEO_MIME: Record<string, string> = {
+  "video/mp4": "mp4",
+  "video/quicktime": "mov",
+  "video/webm": "webm",
+  "video/x-m4v": "m4v",
+};
 
 /** 一张已选图片：选完立刻上传，发布时只带服务端返回的 url。 */
 type PendingImage = {
   id: string;
   localUri: string;
+  remoteUrl: string | null;
+  uploading: boolean;
+  failed: boolean;
+};
+
+/** 一条动态最多一个视频（web 同样只允许一个）。 */
+type PendingVideo = {
+  id: string;
+  localUri: string;
+  name: string;
+  durationMs: number | null;
   remoteUrl: string | null;
   uploading: boolean;
   failed: boolean;
@@ -58,12 +86,14 @@ export function ComposeScreen({
   const { t } = useI18n();
   const [content, setContent] = useState("");
   const [images, setImages] = useState<PendingImage[]>([]);
+  const [video, setVideo] = useState<PendingVideo | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState("");
 
   const trimmed = content.trim();
   const allImagesReady = images.every((img) => img.remoteUrl && !img.uploading && !img.failed);
-  const canPublish = trimmed.length > 0 && !publishing && allImagesReady;
+  const videoReady = video === null || (video.remoteUrl != null && !video.uploading && !video.failed);
+  const canPublish = trimmed.length > 0 && !publishing && allImagesReady && videoReady;
 
   /** 选一张 → 立刻转 data URL 上传。一次选一张：多选 + base64 在旧 Android 上不可靠。 */
   async function pickImage() {
@@ -121,6 +151,62 @@ export function ComposeScreen({
     setError("");
   }
 
+  /** 选一个视频 → 立刻 multipart 上传（字段名 `file`）。 */
+  async function pickVideo() {
+    if (video !== null || publishing) return;
+    setError("");
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["videos"] });
+      if (result.canceled || result.assets.length === 0) return;
+      const asset = result.assets[0];
+      if (asset.fileSize != null && asset.fileSize > MAX_VIDEO_UPLOAD_BYTES) {
+        setError(t("compose.videoTooLarge"));
+        return;
+      }
+      const mime = asset.mimeType ?? "video/mp4";
+      const extension = ALLOWED_VIDEO_MIME[mime];
+      if (!extension) {
+        setError(t("compose.videoTypeUnsupported"));
+        return;
+      }
+      const name = asset.fileName ?? `video.${extension}`;
+      const id = `video-${nextImageId++}`;
+      setVideo({
+        id,
+        localUri: asset.uri,
+        name,
+        durationMs: asset.duration ?? null,
+        remoteUrl: null,
+        uploading: true,
+        failed: false,
+      });
+      try {
+        const form = new FormData();
+        form.append("file", { uri: asset.uri, name, type: mime } as unknown as Blob);
+        const uploaded = await apiUploadMultipart<{ url: string }>("/uploads/moment-video", form);
+        setVideo((previous) =>
+          previous && previous.id === id ? { ...previous, remoteUrl: uploaded.url, uploading: false } : previous,
+        );
+      } catch (uploadError) {
+        setVideo((previous) =>
+          previous && previous.id === id ? { ...previous, uploading: false, failed: true } : previous,
+        );
+        setError(
+          uploadError instanceof ApiRequestError && uploadError.code === "FILE_TOO_LARGE"
+            ? t("compose.videoTooLarge")
+            : t("compose.videoUploadError"),
+        );
+      }
+    } catch {
+      setError(t("compose.videoPickError"));
+    }
+  }
+
+  function removeVideo() {
+    setVideo(null);
+    setError("");
+  }
+
   async function publish() {
     if (!canPublish) return;
     setPublishing(true);
@@ -131,6 +217,7 @@ export function ComposeScreen({
         body: {
           content: trimmed,
           images: images.map((img) => img.remoteUrl as string),
+          ...(video?.remoteUrl ? { videoUrl: video.remoteUrl } : {}),
         },
       });
       onPublished();
@@ -224,6 +311,50 @@ export function ComposeScreen({
               </Text>
             </Pressable>
           ) : null}
+
+          {video ? (
+            <View key={video.id} style={styles.videoTile}>
+              <View style={styles.videoThumb}>
+                <Icon name="play-circle" size={30} color={colors.primary} />
+                <Text style={styles.videoName} numberOfLines={1}>
+                  {video.name}
+                </Text>
+                {video.durationMs != null ? (
+                  <Text style={styles.videoDuration}>
+                    {t("compose.videoDuration", { s: Math.max(1, Math.round(video.durationMs / 1000)) })}
+                  </Text>
+                ) : null}
+              </View>
+              {video.uploading ? (
+                <View style={styles.imageOverlay}>
+                  <ActivityIndicator color={colors.white} size="small" />
+                </View>
+              ) : null}
+              {video.failed ? (
+                <View style={styles.imageOverlay}>
+                  <Text style={styles.imageFailedMark}>!</Text>
+                </View>
+              ) : null}
+              <Pressable
+                onPress={removeVideo}
+                accessibilityRole="button"
+                accessibilityLabel={t("compose.videoRemoveLabel")}
+                style={styles.imageRemove}
+              >
+                <Text style={styles.imageRemoveMark}>✕</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              onPress={() => void pickVideo()}
+              accessibilityRole="button"
+              accessibilityLabel={t("compose.addVideo")}
+              style={styles.addTile}
+            >
+              <Icon name="play" size={22} color={colors.primary} />
+              <Text style={styles.addTileLabel}>{t("compose.addVideo")}</Text>
+            </Pressable>
+          )}
         </View>
       </View>
 
@@ -330,6 +461,16 @@ const styles = StyleSheet.create({
   },
   addTileMark: { fontSize: 22, color: colors.primary, lineHeight: 24 },
   addTileLabel: { fontSize: 11, color: colors.muted },
+  videoTile: {
+    width: 96,
+    height: 96,
+    borderRadius: 12,
+    backgroundColor: colors.bgSoft,
+    overflow: "hidden",
+  },
+  videoThumb: { flex: 1, alignItems: "center", justifyContent: "center", gap: 3, padding: 6 },
+  videoName: { fontSize: 10, color: colors.muted, textAlign: "center" },
+  videoDuration: { fontSize: 10, color: colors.muted },
   footer: {
     flexDirection: "row",
     alignItems: "center",
