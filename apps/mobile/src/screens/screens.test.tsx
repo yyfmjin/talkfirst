@@ -4,11 +4,15 @@ import { AuthProvider } from "../lib/auth-context";
 import { I18nProvider } from "../lib/i18n-context";
 import { AuthScreen } from "./AuthScreen";
 import { ComposeScreen } from "./ComposeScreen";
+import { ConnectionsScreen } from "./ConnectionsScreen";
 import { DiscoverScreen } from "./DiscoverScreen";
 import { MeScreen } from "./MeScreen";
 import { MessagesScreen } from "./MessagesScreen";
 import { MomentsScreen } from "./MomentsScreen";
 import { NotificationsScreen } from "./NotificationsScreen";
+import { SafetyScreen } from "./SafetyScreen";
+import { SocialScreen } from "./SocialScreen";
+import { VisibilityScreen } from "./VisibilityScreen";
 
 /*
  * 「每个屏幕都渲染得出来」—— 这一组看着很笨，但它盯的正是 2026-10-08 那次事故：
@@ -32,6 +36,13 @@ jest.mock("../lib/api", () => ({
     if (path.startsWith("/moments")) return { items: [], nextCursor: null };
     if (path.startsWith("/notifications")) return { items: [], unread: 0, nextCursor: null };
     if (path.startsWith("/discover")) return { items: [], remaining: 0 };
+    /* 「我的」四个新模块的入口数据（阶段①）。 */
+    if (path.startsWith("/connections")) return [];
+    if (path.startsWith("/social-sync/providers")) return { providers: [] };
+    if (path.startsWith("/social-sync/accounts")) return { accounts: [] };
+    if (path.startsWith("/blocks")) return [];
+    if (path.startsWith("/reports/mine")) return [];
+    if (path.startsWith("/users/me/profile-field-visibility")) return [];
     return {};
   }),
   apiFetchEnvelope: jest.fn(async () => ({ data: {}, accessToken: "a", refreshToken: "r" })),
@@ -92,7 +103,9 @@ describe("屏幕冒烟渲染", () => {
     const api = jest.requireMock("../lib/api") as { apiFetch: jest.Mock };
 
     storage.getAccessToken.mockResolvedValue("token");
-    api.apiFetch.mockResolvedValue({ id: "u1", email: "a@b.c", nickname: "Ann" });
+    /* 只影响这一次调用：`mockResolvedValue` 会永久替换掉上面的路径分支 mock，
+       排在它后面的用例（如四个新子页面）就会拿到错误形状。 */
+    api.apiFetch.mockImplementationOnce(async () => ({ id: "u1", email: "a@b.c", nickname: "Ann" }));
 
     const tree = await renderInProviders(<MeScreen />);
 
@@ -103,6 +116,40 @@ describe("屏幕冒烟渲染", () => {
   it("ComposeScreen（发动态）带 props 也能渲染出来", async () => {
     const tree = await renderInProviders(
       <ComposeScreen onPublished={() => undefined} onCancel={() => undefined} />,
+    );
+
+    expect(tree.toJSON()).toBeTruthy();
+    tree.unmount();
+  });
+
+  /*
+   * 阶段①新增的四个「我的」子页面。它们都是全屏接管状态（带 onBack），
+   * 渲染断言与上面的逐屏冒烟同一目的：任一页面里有 undefined 组件，这里立刻失败。
+   */
+  it("ConnectionsScreen（我的连接）能渲染出来", async () => {
+    const tree = await renderInProviders(<ConnectionsScreen onBack={() => undefined} />);
+
+    expect(tree.toJSON()).toBeTruthy();
+    tree.unmount();
+  });
+
+  it("SocialScreen（社交账号）能渲染出来", async () => {
+    const tree = await renderInProviders(<SocialScreen onBack={() => undefined} />);
+
+    expect(tree.toJSON()).toBeTruthy();
+    tree.unmount();
+  });
+
+  it("VisibilityScreen（资料可见范围）能渲染出来", async () => {
+    const tree = await renderInProviders(<VisibilityScreen onBack={() => undefined} />);
+
+    expect(tree.toJSON()).toBeTruthy();
+    tree.unmount();
+  });
+
+  it("SafetyScreen（安全中心）能渲染出来", async () => {
+    const tree = await renderInProviders(
+      <SafetyScreen onBack={() => undefined} onOpenSocial={() => undefined} />,
     );
 
     expect(tree.toJSON()).toBeTruthy();

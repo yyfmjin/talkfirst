@@ -150,6 +150,106 @@ export type MomentPage = { items: Moment[]; nextCursor: string | null };
  */
 export type VideoFeedPage = { items: Moment[]; exhausted: boolean };
 
+/* ─────────────────── 我的：连接 / 社交账号 / 可见范围 / 安全中心 ─────────────────── */
+
+/** `GET /connections` 的一项（镜像 web 的 /connections 页）。 */
+export type ConnectionItem = {
+  id: string;
+  conversationId: string | null;
+  createdAt: string;
+  exchange: {
+    id: string;
+    status: string;
+    platforms: string[];
+    requesterId: string;
+    receiverId: string;
+    updatedAt: string;
+  } | null;
+  peer: {
+    id: string;
+    nickname: string | null;
+    avatarUrl: string | null;
+    countryCode: string | null;
+    bio: string | null;
+    lastActiveAt: string | null;
+    interests: Array<{ slug: string; name: string; nameZh: string | null }>;
+  };
+};
+
+/** `GET /social-sync/providers` 的一项。 */
+export type SocialSyncProvider = {
+  provider: string;
+  label: string;
+  availability: "AVAILABLE" | "REQUIRES_APPROVAL" | "NOT_CONFIGURED";
+  canReadPosts: boolean;
+};
+
+/** `GET /social-sync/accounts` 的一项。 */
+export type SocialSyncAccount = {
+  id: string;
+  provider: string;
+  handle: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+  syncLimit: number;
+  syncEnabled: boolean;
+  status: "ACTIVE" | "NEEDS_REAUTH" | "REVOKED";
+  lastSyncedAt: string | null;
+  lastSyncError: string | null;
+};
+
+/** 好友可见的社交账号（老功能，只读展示）。 */
+export type SharedBinding = {
+  platform: string;
+  handle: string;
+  displayName: string | null;
+  syncEnabled: boolean;
+};
+
+export type VisibilityTier = "PUBLIC" | "CONNECTIONS" | "PRIVATE";
+
+/**
+ * 资料可见范围的 13 个白名单字段。
+ * 必须与服务端 `PROFILE_VISIBILITY_FIELD_WHITELIST`（apps/api/src/users/
+ * profile-visibility.constants.ts）保持一致 —— 不在名单里的字段服务端回 400。
+ */
+export type ProfileVisibilityField =
+  | "nickname"
+  | "avatarUrl"
+  | "birthDate"
+  | "countryCode"
+  | "city"
+  | "region"
+  | "gender"
+  | "bio"
+  | "languages"
+  | "interests"
+  | "purposes"
+  | "preferredCountries"
+  | "attributes";
+
+/** `GET /users/me/profile-field-visibility` 的一项。 */
+export type FieldVisibilityRow = {
+  fieldKey: ProfileVisibilityField;
+  visibility: VisibilityTier;
+};
+
+/** `GET /blocks` 的一项。 */
+export type BlockItem = {
+  blockedId: string;
+  blocked: { id: string; nickname: string | null; avatarUrl: string | null; countryCode: string | null };
+  createdAt: string;
+};
+
+/** `GET /reports/mine` 的一项。 */
+export type ReportItem = {
+  id: string;
+  reason: string;
+  status: string;
+  createdAt: string;
+  reportedUser: { id: string; nickname: string | null };
+};
+
 /* ──────────────────────────────── 聊天 ──────────────────────────────── */
 
 export type ConversationItem = {

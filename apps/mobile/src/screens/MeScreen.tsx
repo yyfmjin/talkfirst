@@ -11,12 +11,17 @@ import {
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
+import { SubHeader } from "../components/SubHeader";
 import { apiFetch } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { useI18n, type LocalePreference } from "../lib/i18n-context";
 import type { MsgKey } from "../lib/messages";
 import type { SessionUser } from "../lib/types";
 import { colors } from "../theme";
+import { ConnectionsScreen } from "./ConnectionsScreen";
+import { SafetyScreen } from "./SafetyScreen";
+import { SocialScreen } from "./SocialScreen";
+import { VisibilityScreen } from "./VisibilityScreen";
 
 /**
  * 界面语言选项。
@@ -36,17 +41,36 @@ const LANGUAGE_OPTIONS = [
  * web 那边把入口分了组而不是平铺一列按钮 —— 六个一模一样的大按钮等于没有重点。
  * 这里沿用同样的分组与图标语义，让两端看起来是同一个产品。
  *
- * 目前只放**已经能用**的入口：编辑基本资料、意见反馈。其余（语言·兴趣、交友属性、
- * 我的连接、资料可见范围、安全中心）等实现之后再逐个加进来 ——
- * 挂一个点了没反应的入口比暂时不挂更糟。
+ * 入口按 web `/me` 的四组放：内容（编辑基本资料）、关系（我的连接/管理社交账号）、
+ * 隐私与安全（资料可见范围/安全中心）、帮助与反馈（意见反馈）。
+ * 「语言 · 兴趣 · 交友目的」与「交友属性」是 web 已有而移动端还没实现的入口，
+ * 继续按老规矩：挂了但点了没反应，不如暂时不挂。
  */
-type MeEntry = { key: "edit" | "feedback"; labelKey: MsgKey; icon: string };
+type MeEntry = {
+  key: "edit" | "feedback" | "connections" | "social" | "visibility" | "safety";
+  labelKey: MsgKey;
+  icon: string;
+};
 type MeGroup = { titleKey: MsgKey; entries: MeEntry[] };
 
 const ME_GROUPS: MeGroup[] = [
   {
     titleKey: "me.groupContent",
     entries: [{ key: "edit", labelKey: "me.editProfile", icon: "create-outline" }],
+  },
+  {
+    titleKey: "me.groupRelations",
+    entries: [
+      { key: "connections", labelKey: "me.connections", icon: "people-outline" },
+      { key: "social", labelKey: "me.social", icon: "globe-outline" },
+    ],
+  },
+  {
+    titleKey: "me.groupPrivacy",
+    entries: [
+      { key: "visibility", labelKey: "me.visibility", icon: "eye-outline" },
+      { key: "safety", labelKey: "me.safety", icon: "shield-checkmark-outline" },
+    ],
   },
   {
     titleKey: "me.groupHelp",
@@ -66,6 +90,20 @@ export function MeScreen() {
   }
   if (open === "feedback") {
     return <FeedbackScreen onDone={() => setOpen(null)} />;
+  }
+  if (open === "connections") {
+    return <ConnectionsScreen onBack={() => setOpen(null)} />;
+  }
+  if (open === "social") {
+    return <SocialScreen onBack={() => setOpen(null)} />;
+  }
+  if (open === "visibility") {
+    return <VisibilityScreen onBack={() => setOpen(null)} />;
+  }
+  if (open === "safety") {
+    /* 安全中心底部的「管理社交账号可见性」直达社交账号页 —— 与 web 的
+       href="/me/social" 同一个跳转，全屏接管状态下就是换个 open 值。 */
+    return <SafetyScreen onBack={() => setOpen(null)} onOpenSocial={() => setOpen("social")} />;
   }
 
   const place = [user.city, user.region, user.countryName ?? user.countryCode]
@@ -145,25 +183,6 @@ export function MeScreen() {
         <Button label={t("me.signOut")} onPress={() => void signOut()} variant="ghost" />
       </View>
     </ScrollView>
-  );
-}
-
-/** 子页面通用的头部：返回 + 标题。 */
-function SubHeader({ title, onBack }: { title: string; onBack: () => void }) {
-  const { t } = useI18n();
-  return (
-    <View style={styles.subHeader}>
-      <Pressable
-        onPress={onBack}
-        accessibilityRole="button"
-        accessibilityLabel={t("me.back")}
-        style={styles.subBack}
-      >
-        <Icon name="chevron-back" size={22} color={colors.ink} />
-      </Pressable>
-      <Text style={styles.subTitle}>{title}</Text>
-      <View style={styles.subBack} />
-    </View>
   );
 }
 
@@ -368,18 +387,6 @@ const styles = StyleSheet.create({
   languageNote: { fontSize: 12, color: colors.muted, lineHeight: 18, marginTop: 8 },
 
   page: { flex: 1, backgroundColor: colors.bg },
-  subHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingTop: 12,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.line,
-  },
-  subBack: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
-  subTitle: { flex: 1, textAlign: "center", fontSize: 16, fontWeight: "600", color: colors.ink },
   pageBody: { padding: 20, gap: 16 },
   pageActions: { marginTop: 4 },
   field: { gap: 6 },
