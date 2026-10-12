@@ -6,11 +6,13 @@ import { AuthScreen } from "./AuthScreen";
 import { AttributesScreen } from "./AttributesScreen";
 import { ComposeScreen } from "./ComposeScreen";
 import { ConnectionsScreen } from "./ConnectionsScreen";
+import { DeleteAccountScreen } from "./DeleteAccountScreen";
 import { DiscoverScreen } from "./DiscoverScreen";
 import { MeScreen } from "./MeScreen";
 import { MessagesScreen } from "./MessagesScreen";
 import { MomentsScreen } from "./MomentsScreen";
 import { NotificationsScreen } from "./NotificationsScreen";
+import { PasswordScreen } from "./PasswordScreen";
 import { SafetyScreen } from "./SafetyScreen";
 import { SocialScreen } from "./SocialScreen";
 import { VisibilityScreen } from "./VisibilityScreen";
@@ -46,6 +48,7 @@ jest.mock("../lib/api", () => ({
     if (path.startsWith("/users/me/profile-field-visibility")) return [];
     if (path === "/users/me/attributes") return { aboutMe: [], lookingFor: [] };
     if (path === "/meta/attributes") return [];
+    if (path === "/auth/oauth/me/methods") return { hasPassword: false, providers: [] };
     return {};
   }),
   apiFetchEnvelope: jest.fn(async () => ({ data: {}, accessToken: "a", refreshToken: "r" })),
@@ -174,6 +177,20 @@ describe("屏幕冒烟渲染", () => {
 
   it("AttributesScreen（交友属性）能渲染出来", async () => {
     const tree = await renderInProviders(<AttributesScreen onBack={() => undefined} />);
+
+    expect(tree.toJSON()).toBeTruthy();
+    tree.unmount();
+  });
+
+  it("PasswordScreen（修改密码）能渲染出来", async () => {
+    const tree = await renderInProviders(<PasswordScreen onBack={() => undefined} />);
+
+    expect(tree.toJSON()).toBeTruthy();
+    tree.unmount();
+  });
+
+  it("DeleteAccountScreen（注销账号）能渲染出来", async () => {
+    const tree = await renderInProviders(<DeleteAccountScreen onBack={() => undefined} />);
 
     expect(tree.toJSON()).toBeTruthy();
     tree.unmount();

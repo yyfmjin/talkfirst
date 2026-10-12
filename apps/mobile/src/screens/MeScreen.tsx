@@ -24,6 +24,8 @@ import { SocialScreen } from "./SocialScreen";
 import { VisibilityScreen } from "./VisibilityScreen";
 import { InterestsScreen } from "./InterestsScreen";
 import { AttributesScreen } from "./AttributesScreen";
+import { PasswordScreen } from "./PasswordScreen";
+import { DeleteAccountScreen } from "./DeleteAccountScreen";
 
 /**
  * 界面语言选项。
@@ -43,8 +45,9 @@ const LANGUAGE_OPTIONS = [
  * web 那边把入口分了组而不是平铺一列按钮 —— 六个一模一样的大按钮等于没有重点。
  * 这里沿用同样的分组与图标语义，让两端看起来是同一个产品。
  *
- * 入口按 web `/me` 的四组放：内容（编辑基本资料 / 语言·兴趣·交友目的 / 交友属性）、关系
- * （我的连接 / 管理社交账号）、隐私与安全（资料可见范围 / 安全中心）、帮助与反馈（意见反馈）。
+ * 入口按 web `/me` 的五组放：内容（编辑基本资料 / 语言·兴趣·交友目的 / 交友属性）、关系
+ * （我的连接 / 管理社交账号）、隐私与安全（资料可见范围 / 安全中心）、帮助与反馈（意见反馈）、
+ * 账号（修改密码 / 注销账号）。
  */
 type MeEntry = {
   key:
@@ -55,7 +58,9 @@ type MeEntry = {
     | "connections"
     | "social"
     | "visibility"
-    | "safety";
+    | "safety"
+    | "password"
+    | "deleteAccount";
   labelKey: MsgKey;
   icon: string;
 };
@@ -88,6 +93,13 @@ const ME_GROUPS: MeGroup[] = [
     titleKey: "me.groupHelp",
     entries: [{ key: "feedback", labelKey: "me.feedback", icon: "chatbox-ellipses-outline" }],
   },
+  {
+    titleKey: "me.groupAccount",
+    entries: [
+      { key: "password", labelKey: "me.password", icon: "key-outline" },
+      { key: "deleteAccount", labelKey: "me.deleteAccount", icon: "trash-outline" },
+    ],
+  },
 ];
 
 export function MeScreen() {
@@ -105,6 +117,12 @@ export function MeScreen() {
   }
   if (open === "attributes") {
     return <AttributesScreen onBack={() => setOpen(null)} />;
+  }
+  if (open === "password") {
+    return <PasswordScreen onBack={() => setOpen(null)} />;
+  }
+  if (open === "deleteAccount") {
+    return <DeleteAccountScreen onBack={() => setOpen(null)} />;
   }
   if (open === "feedback") {
     return <FeedbackScreen onDone={() => setOpen(null)} />;

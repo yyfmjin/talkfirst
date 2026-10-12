@@ -105,6 +105,12 @@ export type ApiErrorBody = {
   details?: Record<string, string[]>;
 };
 
+/** `GET /auth/oauth/me/methods` 的返回：账号有哪些登录方式。 */
+export type AccountLoginMethods = {
+  hasPassword: boolean;
+  providers: string[];
+};
+
 /* ──────────────────────────── 动态 / 视频流 ──────────────────────────── */
 
 /** 动态作者。与 `PublicProfile` 里同一个人的最小形状。 */
