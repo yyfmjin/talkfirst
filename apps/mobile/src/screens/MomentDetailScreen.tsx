@@ -398,11 +398,6 @@ function MomentVideo({ uri }: { uri: string }) {
   const player = useVideoPlayer(uri, (videoPlayer) => {
     videoPlayer.loop = false;
   });
-  useEffect(() => {
-    return () => {
-      player.pause();
-    };
-  }, [player]);
   return <VideoView player={player} style={styles.video} nativeControls contentFit="contain" />;
 }
 

@@ -190,11 +190,10 @@ function VideoPage({
     player.muted = muted;
   }, [muted, player]);
 
-  useEffect(() => {
-    return () => {
-      player.pause();
-    };
-  }, [player]);
+  // 注意：不要在卸载清理里调 player.pause()。useVideoPlayer 内部会在卸载时先
+  // release() 释放原生播放器，清理函数里再 pause() 会打在一个已释放的共享对象上，
+  // 直接抛 “Cannot use shared Object that was already released”（红屏）。release()
+  // 本身就会停掉播放并释放音频焦点，所以这里不需要再手动暂停。
 
   return (
     <View style={[styles.page, { height }]}>
