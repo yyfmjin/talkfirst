@@ -15,6 +15,7 @@ import { NotificationsScreen } from "./NotificationsScreen";
 import { PasswordScreen } from "./PasswordScreen";
 import { SafetyScreen } from "./SafetyScreen";
 import { SocialScreen } from "./SocialScreen";
+import { OnboardingScreen } from "./OnboardingScreen";
 import { VisibilityScreen } from "./VisibilityScreen";
 
 /*
@@ -49,6 +50,20 @@ jest.mock("../lib/api", () => ({
     if (path === "/users/me/attributes") return { aboutMe: [], lookingFor: [] };
     if (path === "/meta/attributes") return [];
     if (path === "/auth/oauth/me/methods") return { hasPassword: false, providers: [] };
+    /* 引导流程挂载时并发读四个 meta + `GET /users/me`；形状不对会在那一步
+       直接崩（`languages.map` 打在 undefined 上），而不是安静地空着。 */
+    if (path.startsWith("/meta/")) return [];
+    if (path === "/users/me") {
+      return {
+        id: "u1",
+        email: "a@b.c",
+        nickname: "Ann",
+        languages: [],
+        interests: [],
+        purposes: [],
+        preferredCountries: [],
+      };
+    }
     return {};
   }),
   apiFetchEnvelope: jest.fn(async () => ({ data: {}, accessToken: "a", refreshToken: "r" })),
@@ -191,6 +206,15 @@ describe("屏幕冒烟渲染", () => {
 
   it("DeleteAccountScreen（注销账号）能渲染出来", async () => {
     const tree = await renderInProviders(<DeleteAccountScreen onBack={() => undefined} />);
+
+    expect(tree.toJSON()).toBeTruthy();
+    tree.unmount();
+  });
+
+  it("OnboardingScreen（注册后的引导流程）带 props 也能渲染出来", async () => {
+    const tree = await renderInProviders(
+      <OnboardingScreen onExit={() => undefined} onFinish={() => undefined} />,
+    );
 
     expect(tree.toJSON()).toBeTruthy();
     tree.unmount();

@@ -26,6 +26,7 @@ import { InterestsScreen } from "./InterestsScreen";
 import { AttributesScreen } from "./AttributesScreen";
 import { PasswordScreen } from "./PasswordScreen";
 import { DeleteAccountScreen } from "./DeleteAccountScreen";
+import { OnboardingScreen } from "./OnboardingScreen";
 
 /**
  * 界面语言选项。
@@ -106,8 +107,22 @@ export function MeScreen() {
   const { user, signOut, setUser } = useAuth();
   const { t, preference, setPreference } = useI18n();
   const [open, setOpen] = useState<MeEntry["key"] | null>(null);
+  /* 引导不放在 `open` 里：它不是「我的」的一个子页，而是一个会盖住底部导航的
+     独立流程（与「注册后马上走一遍」是同一个组件）。 */
+  const [onboarding, setOnboarding] = useState(false);
 
   if (!user) return null;
+
+  if (onboarding) {
+    return (
+      <OnboardingScreen
+        onExit={() => setOnboarding(false)}
+        /* 从「我的」进来的话，两条出口都回到「我的」：这里没有权限去切底部 tab，
+           用户看到「名片完成」之后抬手就能自己点「发现」。 */
+        onFinish={() => setOnboarding(false)}
+      />
+    );
+  }
 
   if (open === "edit") {
     return <EditProfileScreen user={user} onDone={() => setOpen(null)} onSaved={setUser} />;
@@ -166,6 +181,23 @@ export function MeScreen() {
           </View>
         </View>
       </View>
+
+      {!user.profileCompleted ? (
+        /* 资料不完整的人应该能自己找到补的入口 —— 引导本来只在注册后出现一次，
+           而那次跳过的人当时还什么都不知道。 */
+        <View style={styles.group}>
+          <Pressable
+            onPress={() => setOnboarding(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t("me.completeCard")}
+            style={styles.ctaRow}
+          >
+            <Icon name="sparkles-outline" size={18} color={colors.primary} />
+            <Text style={styles.ctaLabel}>{t("me.completeCard")}</Text>
+            <Icon name="chevron-forward" size={16} color={colors.primary} />
+          </Pressable>
+        </View>
+      ) : null}
 
       {ME_GROUPS.map((group) => (
         <View key={group.titleKey} style={styles.group}>
@@ -405,6 +437,18 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
   rowLabel: { flex: 1, fontSize: 15, color: colors.ink },
   moreSoon: { marginTop: 14, paddingHorizontal: 20, fontSize: 12, color: colors.muted },
+  ctaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.bgTint,
+  },
+  ctaLabel: { flex: 1, fontSize: 15, color: colors.primary, fontWeight: "600" },
 
   actions: { paddingHorizontal: 20, marginTop: 24 },
   sectionTitle: { fontSize: 15, fontWeight: "600", color: colors.ink },

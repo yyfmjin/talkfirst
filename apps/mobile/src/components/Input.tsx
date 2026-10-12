@@ -17,7 +17,7 @@ export function Input({
   placeholder?: string;
   secureTextEntry?: boolean;
   autoCapitalize?: "none" | "sentences" | "words" | "characters";
-  keyboardType?: "default" | "email-address";
+  keyboardType?: "default" | "email-address" | "numbers-and-punctuation";
   maxLength?: number;
 }) {
   // The visible label sits in a sibling <Text>, which a screen reader cannot

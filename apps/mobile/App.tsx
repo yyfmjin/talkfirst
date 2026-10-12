@@ -14,6 +14,7 @@ import { DiscoverScreen } from "./src/screens/DiscoverScreen";
 import { MeScreen } from "./src/screens/MeScreen";
 import { MessagesScreen } from "./src/screens/MessagesScreen";
 import { MomentsScreen } from "./src/screens/MomentsScreen";
+import { OnboardingScreen } from "./src/screens/OnboardingScreen";
 import { colors } from "./src/theme";
 
 /**
@@ -82,6 +83,9 @@ function Root() {
   const { user, loading } = useAuth();
   const { t } = useI18n();
   const [tab, setTab] = useState<Tab>("moments");
+  /* 注册后走一遍引导（对齐 web 的 /register/success → /onboarding/avatar）。
+     登录不会打开它 —— 只有注册成功那一次会。 */
+  const [onboarding, setOnboarding] = useState(false);
 
   if (loading) {
     return <Loading />;
@@ -91,7 +95,30 @@ function Root() {
     return (
       <SafeAreaProvider>
         <StatusBar style="dark" />
-        <AuthScreen />
+        <AuthScreen onRegistered={() => setOnboarding(true)} />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (onboarding) {
+    return (
+      <SafeAreaProvider>
+        <View style={styles.root}>
+          <StatusBar style="dark" />
+          <SafeAreaView style={styles.body} edges={["top"]}>
+            {/* 引导也要有自己的边界：它比 tab 里的任何一页都长，
+                崩掉时不能把整个 App 变成错误页。 */}
+            <ErrorBoundary>
+              <OnboardingScreen
+                onExit={() => setOnboarding(false)}
+                onFinish={(target) => {
+                  setOnboarding(false);
+                  setTab(target === "discover" ? "discover" : "me");
+                }}
+              />
+            </ErrorBoundary>
+          </SafeAreaView>
+        </View>
       </SafeAreaProvider>
     );
   }

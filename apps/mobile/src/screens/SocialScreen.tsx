@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import {
   ActivityIndicator,
   Linking,
@@ -49,7 +50,7 @@ const SYNC_ERROR_KEYS: Record<string, MsgKey> = {
  * web 是整页跳到 OAuth 授权页；移动端用 `Linking.openURL` 打开系统浏览器，
  * 完成后用户回到 App 下拉刷新即可看到账号（授权回调落在 web 域名，App 拿不到）。
  */
-export function SocialScreen({ onBack }: { onBack: () => void }) {
+export function SocialScreen({ onBack, footer }: { onBack: () => void; footer?: ReactNode }) {
   const { t } = useI18n();
   const [providers, setProviders] = useState<SocialSyncProvider[]>([]);
   const [accounts, setAccounts] = useState<SocialSyncAccount[]>([]);
@@ -355,6 +356,12 @@ export function SocialScreen({ onBack }: { onBack: () => void }) {
           </View>
         ) : null}
       </ScrollView>
+      {/*
+        可选脚部。引导流程把这一页当作最后一步用 —— 那一步需要的是「下一步」而不是
+        「返回」，而「我的 → 管理社交账号」这条路径不应该多出这个按钮。
+        所以由调用方把按钮传进来：这一页不需要知道引导的文案键。
+      */}
+      {footer ? <View style={styles.footer}>{footer}</View> : null}
     </View>
   );
 }
@@ -485,4 +492,5 @@ const styles = StyleSheet.create({
   },
   bindingRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
   bindingHandle: { fontSize: 14, color: colors.ink, flexShrink: 1 },
+  footer: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20 },
 });

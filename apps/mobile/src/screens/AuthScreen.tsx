@@ -33,7 +33,7 @@ const AUTH_ERROR_KEYS = {
   EMAIL_TAKEN: "auth.errorEmailTaken",
 } as const;
 
-export function AuthScreen() {
+export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {}) {
   const { signIn, signUp } = useAuth();
   const { t } = useI18n();
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -64,7 +64,12 @@ export function AuthScreen() {
     setLoading(true);
     try {
       if (mode === "login") await signIn(trimmed, password);
-      else await signUp(trimmed, password);
+      else {
+        await signUp(trimmed, password);
+        /* 注册成功 → 走一遍引导（对齐 web 的 /register/success → /onboarding/avatar）。
+           登录不走这里：老用户不该每次登录都被拉进向导。 */
+        onRegistered?.();
+      }
     } catch (requestError) {
       const key =
         requestError instanceof ApiRequestError
