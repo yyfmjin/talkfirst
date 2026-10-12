@@ -4,3 +4,13 @@ dist/
 web-build/
 *.log
 .DS_Store
+
+# `expo prebuild` 的产物：完全由 app.json + 原生依赖生成，而且带本机路径与
+# 本机签名配置。提交它只会让每个人的构建互相冲突。本机出包在临时克隆里做
+# （D:\talkfirst），不落在这个工作区。
+/android/
+/ios/
+
+# 本机工具链的安装包。曾被下载到这一层（OpenJDK17.msi，94MB，未被忽略）。
+# 用通配而不是写死文件名，免得下次换一个版本又要漏一次。
+*.msi
