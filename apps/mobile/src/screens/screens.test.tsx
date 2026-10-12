@@ -3,6 +3,7 @@ import renderer, { act } from "react-test-renderer";
 import { AuthProvider } from "../lib/auth-context";
 import { I18nProvider } from "../lib/i18n-context";
 import { AuthScreen } from "./AuthScreen";
+import { AttributesScreen } from "./AttributesScreen";
 import { ComposeScreen } from "./ComposeScreen";
 import { ConnectionsScreen } from "./ConnectionsScreen";
 import { DiscoverScreen } from "./DiscoverScreen";
@@ -43,6 +44,8 @@ jest.mock("../lib/api", () => ({
     if (path.startsWith("/blocks")) return [];
     if (path.startsWith("/reports/mine")) return [];
     if (path.startsWith("/users/me/profile-field-visibility")) return [];
+    if (path === "/users/me/attributes") return { aboutMe: [], lookingFor: [] };
+    if (path === "/meta/attributes") return [];
     return {};
   }),
   apiFetchEnvelope: jest.fn(async () => ({ data: {}, accessToken: "a", refreshToken: "r" })),
@@ -164,6 +167,13 @@ describe("屏幕冒烟渲染", () => {
     const tree = await renderInProviders(
       <SafetyScreen onBack={() => undefined} onOpenSocial={() => undefined} />,
     );
+
+    expect(tree.toJSON()).toBeTruthy();
+    tree.unmount();
+  });
+
+  it("AttributesScreen（交友属性）能渲染出来", async () => {
+    const tree = await renderInProviders(<AttributesScreen onBack={() => undefined} />);
 
     expect(tree.toJSON()).toBeTruthy();
     tree.unmount();

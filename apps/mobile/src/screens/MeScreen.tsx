@@ -23,6 +23,7 @@ import { SafetyScreen } from "./SafetyScreen";
 import { SocialScreen } from "./SocialScreen";
 import { VisibilityScreen } from "./VisibilityScreen";
 import { InterestsScreen } from "./InterestsScreen";
+import { AttributesScreen } from "./AttributesScreen";
 
 /**
  * 界面语言选项。
@@ -42,12 +43,19 @@ const LANGUAGE_OPTIONS = [
  * web 那边把入口分了组而不是平铺一列按钮 —— 六个一模一样的大按钮等于没有重点。
  * 这里沿用同样的分组与图标语义，让两端看起来是同一个产品。
  *
- * 入口按 web `/me` 的四组放：内容（编辑基本资料 / 语言·兴趣·交友目的）、关系
+ * 入口按 web `/me` 的四组放：内容（编辑基本资料 / 语言·兴趣·交友目的 / 交友属性）、关系
  * （我的连接 / 管理社交账号）、隐私与安全（资料可见范围 / 安全中心）、帮助与反馈（意见反馈）。
- * 「交友属性」是 web 已有而移动端还没实现的入口，继续按老规矩：挂了但点了没反应，不如暂时不挂。
  */
 type MeEntry = {
-  key: "edit" | "interests" | "feedback" | "connections" | "social" | "visibility" | "safety";
+  key:
+    | "edit"
+    | "interests"
+    | "attributes"
+    | "feedback"
+    | "connections"
+    | "social"
+    | "visibility"
+    | "safety";
   labelKey: MsgKey;
   icon: string;
 };
@@ -59,6 +67,7 @@ const ME_GROUPS: MeGroup[] = [
     entries: [
       { key: "edit", labelKey: "me.editProfile", icon: "create-outline" },
       { key: "interests", labelKey: "me.interests", icon: "sparkles-outline" },
+      { key: "attributes", labelKey: "me.attributes", icon: "pricetags-outline" },
     ],
   },
   {
@@ -93,6 +102,9 @@ export function MeScreen() {
   }
   if (open === "interests") {
     return <InterestsScreen onBack={() => setOpen(null)} />;
+  }
+  if (open === "attributes") {
+    return <AttributesScreen onBack={() => setOpen(null)} />;
   }
   if (open === "feedback") {
     return <FeedbackScreen onDone={() => setOpen(null)} />;

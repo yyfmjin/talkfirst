@@ -250,6 +250,52 @@ export type SharedBinding = {
 
 export type VisibilityTier = "PUBLIC" | "CONNECTIONS" | "PRIVATE";
 
+/* ───────────────────────── 交友属性 ───────────────────────── */
+
+export type AttributeKind = "ABOUT_ME" | "LOOKING_FOR";
+export type AttributeSource = "SYSTEM" | "CUSTOM";
+
+/** 一条已选属性。与 web `@/lib/profile` 的 `AttributeView` 同形（API 投影结果）。 */
+export type AttributeView = {
+  id: string;
+  kind: AttributeKind;
+  source: AttributeSource;
+  definitionId: string | null;
+  /** 目录 key，仅 SYSTEM 行有。 */
+  key: string | null;
+  category: string | null;
+  label: string;
+  labelZh: string | null;
+  value: string | null;
+  visibility: VisibilityTier;
+  sortOrder: number;
+  reviewStatus: string;
+  /** null=自定义；false=系统标签已停用（仍要展示，只是不能再选）。 */
+  definitionActive: boolean | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AttributeGroups = {
+  aboutMe: AttributeView[];
+  lookingFor: AttributeView[];
+};
+
+/** `GET /meta/attributes` 的一项（原始 AttributeDefinition 模型）。 */
+export type AttributeDefinition = {
+  id: string;
+  key: string;
+  scope: AttributeSource;
+  kind: AttributeKind;
+  category: string;
+  label: string;
+  labelZh: string | null;
+  valueType: string;
+  sort: number;
+  isActive: boolean;
+  isSearchable: boolean;
+};
+
 /**
  * 资料可见范围的 13 个白名单字段。
  * 必须与服务端 `PROFILE_VISIBILITY_FIELD_WHITELIST`（apps/api/src/users/
