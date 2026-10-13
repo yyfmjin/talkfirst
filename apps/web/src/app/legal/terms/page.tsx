@@ -133,8 +133,10 @@ export default function TermsPage() {
 
         <p className="mt-8 rounded-row bg-surface-sunken px-4 py-3 text-caption leading-5 text-content-muted">
           {t("legal.terms.morePre")}
-          {/* 隐私政策正文还没有英文版（下一批），所以这条链接仍是中文路径。 */}
-          <Link href="/legal/privacy" className="mx-1 font-medium text-brand-600">
+          <Link
+            href={localePath(locale, "/legal/privacy")}
+            className="mx-1 font-medium text-brand-600"
+          >
             {t("legal.privacy.title")}
           </Link>
           {t("legal.terms.moreAnd")}

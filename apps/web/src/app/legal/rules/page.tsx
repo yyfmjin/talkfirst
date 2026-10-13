@@ -111,8 +111,10 @@ export default function CommunityRulesPage() {
             {t("legal.terms.title")}
           </Link>
           {t("legal.rules.footerAnd")}
-          {/* 隐私政策正文还没有英文版（下一批），所以这条链接仍是中文路径。 */}
-          <Link href="/legal/privacy" className="mx-1 font-medium text-brand-600">
+          <Link
+            href={localePath(locale, "/legal/privacy")}
+            className="mx-1 font-medium text-brand-600"
+          >
             {t("legal.privacy.title")}
           </Link>
           {t("legal.rules.footerEnd")}

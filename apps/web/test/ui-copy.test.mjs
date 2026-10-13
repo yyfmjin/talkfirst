@@ -42,12 +42,12 @@ test("member app has no untranslated English UI copy", () => {
 
 test("the English legal routes exist and the documents say which text governs", () => {
   /*
-   * 两份正文是**工程师起草的初稿**（`docs/LEGAL-TEXTS.md`），里面还有管辖与责任两处
-   * 法律判断。所以英文页必须写明「以中文原文为准」—— 少了这句，两边的措辞差异会被
-   * 当成两份各自有效的文本。这条用例就是那个句子的钉子：谁把 `legal.translationNote`
-   * 从页面上拿掉，这里就红。
+   * 四份法律文本是**工程师起草的初稿**（`docs/LEGAL-TEXTS.md`），里面还有管辖与责任
+   * 两处法律判断。所以英文页必须写明「以中文原文为准」—— 少了这句，两边的措辞差异
+   * 会被当成两份各自有效的文本。这条用例就是那个句子的钉子：谁把
+   * `legal.translationNote` 从页面上拿掉，这里就红。
    */
-  for (const document of ["terms", "rules"]) {
+  for (const document of ["terms", "rules", "privacy"]) {
     const chinese = readFileSync(
       join(appRoot, "src", "app", "legal", document, "page.tsx"),
       "utf8",
@@ -59,8 +59,8 @@ test("the English legal routes exist and the documents say which text governs", 
     );
   }
 
-  /* 同意闸门与两份正文的英文路由。`/legal/privacy` 还没译（单独一批）。 */
-  for (const route of ["legal", "legal/terms", "legal/rules"]) {
+  /* 四份法律页的英文路由。`/legal` 本身是同意闸门，不是正文。 */
+  for (const route of ["legal", "legal/terms", "legal/rules", "legal/privacy"]) {
     assert.ok(
       existsSync(join(appRoot, "src", "app", "en", route, "page.tsx")),
       `/en/${route} must exist`,

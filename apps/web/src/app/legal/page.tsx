@@ -48,9 +48,8 @@ import { localePath, useT } from "@/lib/i18n";
  * 英文。这份闸门是最需要看得懂的一屏 —— 用户在这里**做动作**（勾选两项），而不是
  * 翻阅参考文档；英文用户看不懂就无法真正知情同意。
  *
- * 隐私政策正文还没译（`legal.privacy` 那批行内强调多，单独一批做），所以英文站上
- * 「阅读隐私政策全文」暂时指向**中文**正文：宁可让英文用户看到中文原文，也不要一个
- * 打不开的页面。下一批会改成 `localePath()`。
+ * 隐私政策正文也已在随后一批（2026-10-13）译完，所以「阅读隐私政策全文」现在也
+ * 走 `localePath()`。
  */
 export default function LegalPage() {
   const router = useRouter();
@@ -91,7 +90,7 @@ export default function LegalPage() {
           <Link href={localePath(locale, "/legal/terms")} className="font-medium text-brand-600">
             {t("legal.gate.readTerms")}
           </Link>
-          <Link href="/legal/privacy" className="font-medium text-brand-600">
+          <Link href={localePath(locale, "/legal/privacy")} className="font-medium text-brand-600">
             {t("legal.gate.readPrivacy")}
           </Link>
         </p>

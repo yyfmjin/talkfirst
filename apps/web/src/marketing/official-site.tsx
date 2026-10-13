@@ -239,8 +239,10 @@ export function OfficialSite({ locale }: { locale: Locale }) {
             >
               {t(locale, "site.legalTerms")}
             </Link>
-            {/* 隐私政策正文还没译（单独一批），所以这一条仍是中文路径。 */}
-            <Link href="/legal/privacy" className="text-caption text-content-muted hover:text-content">
+            <Link
+              href={localePath(locale, "/legal/privacy")}
+              className="text-caption text-content-muted hover:text-content"
+            >
               {t(locale, "site.legalPrivacy")}
             </Link>
             <Link
