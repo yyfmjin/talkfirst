@@ -15,6 +15,7 @@ import type { MsgKey } from "../lib/messages";
 import type { Recommendation, RecommendationResponse } from "../lib/types";
 import { colors } from "../theme";
 import { ProfilePreview } from "./ProfilePreview";
+import { UserMomentsScreen } from "./UserMomentsScreen";
 
 /** 筛选条存词典键（不是中文串）：语言一变，标签跟着变。 */
 const FILTERS = [
@@ -35,6 +36,8 @@ export function DiscoverScreen() {
   const [switching, setSwitching] = useState(false);
   const [error, setError] = useState("");
   const [previewUserId, setPreviewUserId] = useState<string | null>(null);
+  /* 「查看动态」开在资料卡之上：先把资料卡关掉再开它（不叠两层 Modal）。 */
+  const [momentsUserId, setMomentsUserId] = useState<string | null>(null);
 
   const loadRecommendations = useCallback(async (nextFilter: FilterId, initial = false) => {
     if (initial) setLoading(true);
@@ -154,7 +157,15 @@ export function DiscoverScreen() {
         )}
       />
 
-      <ProfilePreview userId={previewUserId} onClose={() => setPreviewUserId(null)} />
+      <ProfilePreview
+        userId={previewUserId}
+        onClose={() => setPreviewUserId(null)}
+        onOpenMoments={(id) => {
+          setPreviewUserId(null);
+          setMomentsUserId(id);
+        }}
+      />
+      <UserMomentsScreen userId={momentsUserId} onClose={() => setMomentsUserId(null)} />
     </View>
   );
 }

@@ -2,6 +2,8 @@ import type { ComponentType, ReactNode } from "react";
 import renderer, { act } from "react-test-renderer";
 import { AuthProvider } from "../lib/auth-context";
 import { I18nProvider } from "../lib/i18n-context";
+/* 断言用词典里的原文，而不是手抄中文 —— 文案一改，测试跟着改，不会悄悄失真。 */
+import { zh } from "../lib/messages";
 import { AuthScreen } from "./AuthScreen";
 import { AttributesScreen } from "./AttributesScreen";
 import { ComposeScreen } from "./ComposeScreen";
@@ -16,6 +18,7 @@ import { PasswordScreen } from "./PasswordScreen";
 import { SafetyScreen } from "./SafetyScreen";
 import { SocialScreen } from "./SocialScreen";
 import { OnboardingScreen } from "./OnboardingScreen";
+import { UserMomentsScreen } from "./UserMomentsScreen";
 import { VisibilityScreen } from "./VisibilityScreen";
 
 /*
@@ -217,6 +220,136 @@ describe("屏幕冒烟渲染", () => {
     );
 
     expect(tree.toJSON()).toBeTruthy();
+    tree.unmount();
+  });
+});
+
+/** 把渲染树里的可见文本拍平，便于断言「屏幕上说了哪句话」。 */
+function visibleText(tree: renderer.ReactTestRenderer): string[] {
+  const out: string[] = [];
+  function walk(node: unknown): void {
+    if (node === null || node === undefined) return;
+    if (typeof node === "string") {
+      out.push(node);
+      return;
+    }
+    if (Array.isArray(node)) {
+      node.forEach(walk);
+      return;
+    }
+    walk((node as renderer.ReactTestRendererJSON).children);
+  }
+  walk(tree.toJSON());
+  return out;
+}
+
+/** `GET /moments/user/:id` 的响应，默认是「能看、暂时没动态」。 */
+function userMoments(over: Partial<Record<string, unknown>> = {}) {
+  return {
+    author: { id: "u2", nickname: "Bob", avatarUrl: null, countryCode: "US", bio: null },
+    setting: { visibleTo: "PUBLIC" },
+    bindings: [],
+    items: [],
+    nextCursor: null,
+    locked: false,
+    ...over,
+  };
+}
+
+/** 列表里的一条动态。 */
+function userMoment(over: Partial<Record<string, unknown>> = {}) {
+  return {
+    id: "m1",
+    userId: "u2",
+    platform: "talkfirst",
+    platformName: null,
+    content: "hi",
+    images: [],
+    videoUrl: null,
+    durationSec: null,
+    tags: [],
+    likeCount: 0,
+    commentCount: 0,
+    liked: false,
+    bookmarked: false,
+    source: "native",
+    isDemo: false,
+    syncedAt: null,
+    createdAt: new Date().toISOString(),
+    ...over,
+  };
+}
+
+/*
+ * 「某人的动态」（对齐 web `/moments/user/[id]`）。
+ *
+ * 这一屏比逐屏冒烟多盯两件事：
+ *
+ * 1. `locked` 与「真的没有动态」必须说**不同的话**。服务端在对方限可见范围时
+ *    不返回条目 —— 如果按空列表渲染，界面会说「TA 还没有动态」，等于把「你看
+ *    不到」谎报成「没有」。两句话引导用户做的下一件事完全相反。
+ * 2. 取消点赞时计数要跟着降。`POST /moments/:id/like` 只回 `{liked}`，计数由
+ *    客户端自己加减 —— 这个算法在动态 tab 上曾经写错过一次，这里补上同样的
+ *    钉子（参见 docs/MOBILE-CRASHES.md 同类记录）。
+ */
+describe("UserMomentsScreen（TA 的动态）", () => {
+  it("对方限了可见范围时说「限可见范围」，而不是「TA 还没有动态」", async () => {
+    const api = jest.requireMock("../lib/api") as { apiFetch: jest.Mock };
+    api.apiFetch.mockImplementationOnce(async () => userMoments({ locked: true }));
+
+    const tree = await renderInProviders(
+      <UserMomentsScreen userId="u2" onClose={() => undefined} />,
+    );
+    const shown = visibleText(tree);
+
+    expect(shown).toContain(zh["moments.userLockedTitle"]);
+    expect(shown).not.toContain(zh["moments.userEmpty"]);
+    tree.unmount();
+  });
+
+  it("真的没有动态时说「TA 还没有动态」", async () => {
+    const api = jest.requireMock("../lib/api") as { apiFetch: jest.Mock };
+    api.apiFetch.mockImplementationOnce(async () => userMoments({ items: [] }));
+
+    const tree = await renderInProviders(
+      <UserMomentsScreen userId="u2" onClose={() => undefined} />,
+    );
+    const shown = visibleText(tree);
+
+    expect(shown).toContain(zh["moments.userEmpty"]);
+    expect(shown).not.toContain(zh["moments.userLockedTitle"]);
+    tree.unmount();
+  });
+
+  it("取消点赞时计数跟着降（服务端只回 {liked}）", async () => {
+    const api = jest.requireMock("../lib/api") as { apiFetch: jest.Mock };
+    api.apiFetch.mockImplementationOnce(async () =>
+      userMoments({ items: [userMoment({ liked: true, likeCount: 5 })] }),
+    );
+    /* 第二次调用就是点赞端点：服务端点明只回 `{ liked }`。 */
+    api.apiFetch.mockImplementationOnce(async () => ({ liked: false }));
+
+    const tree = await renderInProviders(
+      <UserMomentsScreen userId="u2" onClose={() => undefined} />,
+    );
+    expect(visibleText(tree)).toContain("5");
+
+    /* `findAll` 会同时命中复合组件与它展开出的宿主节点，所以再筛一道
+       「真的带 onPress」，并且只按头一个。 */
+    const heart = tree.root.findAll(
+      (node) =>
+        node.props.accessibilityLabel === zh["moments.unlike"] &&
+        typeof node.props.onPress === "function",
+    );
+    expect(heart.length).toBeGreaterThan(0);
+
+    await act(async () => {
+      heart[0].props.onPress();
+    });
+
+    const after = visibleText(tree);
+    expect(after).toContain("4");
+    expect(after).not.toContain("5");
     tree.unmount();
   });
 });

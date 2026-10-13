@@ -429,6 +429,16 @@ export const zh = {
   "profile.helloDone": "已打招呼",
   "profile.errorSend": "发送失败，请稍后再试。",
 
+  /* 看某个人的动态（对齐 web `/moments/user/[id]`） */
+  "moments.userTitle": "TA 的动态",
+  "moments.userLoadMore": "加载更多",
+  "moments.userEmpty": "TA 还没有动态",
+  "moments.userEmptyBody": "还没有发布或同步过动态。",
+  "moments.userLockedTitle": "对方设置了动态可见范围",
+  "moments.userLockedBody": "成为连接后才能查看完整动态。",
+  "moments.userLockedCta": "去认识更多朋友",
+  "profile.viewMoments": "查看动态",
+
   /* ───────────────────────── 引导流程（注册后） ───────────────────────── */
   "onboarding.progress": "第 {n} 步 / 共 {total} 步",
   "onboarding.next": "下一步",
@@ -907,6 +917,16 @@ export const en: Record<MsgKey, string> = {
   "profile.helloSending": "Sending…",
   "profile.helloDone": "Hello sent",
   "profile.errorSend": "Couldn't send. Please try again.",
+
+  /* Someone's moments (mirrors web /moments/user/[id]) */
+  "moments.userTitle": "Their moments",
+  "moments.userLoadMore": "Load more",
+  "moments.userEmpty": "No moments yet",
+  "moments.userEmptyBody": "They haven't posted or synced a moment yet.",
+  "moments.userLockedTitle": "This member limits who can see their moments",
+  "moments.userLockedBody": "Become a connection to see them.",
+  "moments.userLockedCta": "Meet more people",
+  "profile.viewMoments": "View moments",
 
   /* Onboarding (first run after sign-up) */
   "onboarding.progress": "Step {n} of {total}",

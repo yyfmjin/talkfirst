@@ -23,6 +23,7 @@ import type { MsgKey } from "../lib/messages";
 import { colors } from "../theme";
 import type { CommentPage, Moment, MomentComment } from "../lib/types";
 import { ProfilePreview } from "./ProfilePreview";
+import { UserMomentsScreen } from "./UserMomentsScreen";
 
 /**
  * 动态详情（移动端）。
@@ -78,6 +79,8 @@ export function MomentDetailScreen({
   const [liking, setLiking] = useState(false);
   const [bookmarking, setBookmarking] = useState(false);
   const [previewUserId, setPreviewUserId] = useState<string | null>(null);
+  /* 「查看动态」开在资料卡之上：先把资料卡关掉再开它（不叠两层 Modal）。 */
+  const [momentsUserId, setMomentsUserId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -380,7 +383,15 @@ export function MomentDetailScreen({
         />
       )}
 
-      <ProfilePreview userId={previewUserId} onClose={() => setPreviewUserId(null)} />
+      <ProfilePreview
+        userId={previewUserId}
+        onClose={() => setPreviewUserId(null)}
+        onOpenMoments={(id) => {
+          setPreviewUserId(null);
+          setMomentsUserId(id);
+        }}
+      />
+      <UserMomentsScreen userId={momentsUserId} onClose={() => setMomentsUserId(null)} />
     </View>
   );
 }

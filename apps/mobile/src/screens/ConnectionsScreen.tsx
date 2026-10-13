@@ -9,6 +9,7 @@ import { useI18n } from "../lib/i18n-context";
 import type { ConnectionItem } from "../lib/types";
 import { colors } from "../theme";
 import { ProfilePreview } from "./ProfilePreview";
+import { UserMomentsScreen } from "./UserMomentsScreen";
 
 /**
  * 我的连接 —— 对齐 web 的 `/connections`（apps/web/src/app/connections/page.tsx）。
@@ -28,6 +29,8 @@ export function ConnectionsScreen({ onBack }: { onBack: () => void }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [previewUserId, setPreviewUserId] = useState<string | null>(null);
+  /* 「查看动态」开在资料卡之上：先把资料卡关掉再开它（不叠两层 Modal）。 */
+  const [momentsUserId, setMomentsUserId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -120,7 +123,15 @@ export function ConnectionsScreen({ onBack }: { onBack: () => void }) {
         ) : null}
       </ScrollView>
 
-      <ProfilePreview userId={previewUserId} onClose={() => setPreviewUserId(null)} />
+      <ProfilePreview
+        userId={previewUserId}
+        onClose={() => setPreviewUserId(null)}
+        onOpenMoments={(id) => {
+          setPreviewUserId(null);
+          setMomentsUserId(id);
+        }}
+      />
+      <UserMomentsScreen userId={momentsUserId} onClose={() => setMomentsUserId(null)} />
     </View>
   );
 }

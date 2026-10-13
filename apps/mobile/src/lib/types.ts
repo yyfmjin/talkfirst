@@ -366,3 +366,40 @@ export type ChatMessage = {
 
 /** `GET /conversations/:id/messages`：**最旧在前**，`nextCursor` 指向更早的一页。 */
 export type MessagePage = { items: ChatMessage[]; nextCursor: string | null };
+
+/* ──────────────────────── 某个人的动态（/moments/user/:id） ──────────────────────── */
+
+/**
+ * `GET /moments/user/:id` 里的一条。
+ *
+ * 与 feed 的 `Moment` **只差一个字段**：这里没有嵌套的 `author`，作者在响应的外层
+ * （这一页所有的动态都是同一个人的）。服务端的 `userMoments()` 就是这么投影的 ——
+ * 所以这里用 `Omit` 把差异写在类型上，而不是另抄一份字段清单。
+ */
+export type UserMomentItem = Omit<Moment, "author">;
+
+/**
+ * `GET /moments/user/:id` 的完整响应。
+ *
+ * `locked`：对方把动态设成了「仅连接 / 不公开」，服务端不会给条目 —— 这不是空列表，
+ * 而是「看不到」，两者在界面上必须说不同的话。
+ */
+export type UserMomentsDetail = {
+  author: {
+    id: string;
+    nickname: string | null;
+    avatarUrl: string | null;
+    countryCode: string | null;
+    bio: string | null;
+  };
+  setting: { visibleTo: string };
+  bindings: Array<{
+    platform: string;
+    handle: string;
+    displayName: string | null;
+    syncEnabled: boolean;
+  }>;
+  items: UserMomentItem[];
+  nextCursor: string | null;
+  locked: boolean;
+};

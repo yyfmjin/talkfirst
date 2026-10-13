@@ -19,9 +19,18 @@ import { colors } from "../theme";
 export function ProfilePreview({
   userId,
   onClose,
+  onOpenMoments,
 }: {
   userId: string | null;
   onClose: () => void;
+  /**
+   * 「查看动态」——对齐 web `/profile/[id]` 上那个按钮（它指向 `/moments/user/[id]`）。
+   *
+   * 做成可选：这张资料卡在三个页面里共用（发现 / 我的连接 / 动态详情），而
+   * 「某人的动态」那一屏要由各自的父级决定开在哪一层。不传就不显示这个按钮 ——
+   * 宁可少一个入口，也不要一个点下去没反应的按钮。
+   */
+  onOpenMoments?: (userId: string) => void;
 }) {
   const { t } = useI18n();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
@@ -140,8 +149,19 @@ export function ProfilePreview({
 
               {error ? <Text style={styles.inlineError}>{error}</Text> : null}
 
+              {/*
+                web 上「查看动态」与「打招呼」是并排的两个按钮。移动端竖向叠：
+                屏幕窄，两个并排的中文按钮会各自只剩一半宽度，读起来都不舒服。
+              */}
               {showActions ? (
                 <View style={styles.actions}>
+                  {onOpenMoments ? (
+                    <Button
+                      label={t("profile.viewMoments")}
+                      variant="ghost"
+                      onPress={() => onOpenMoments(profile.id)}
+                    />
+                  ) : null}
                   {profile.relationship.isConnected ? (
                     <Button label={t("profile.connected")} onPress={() => undefined} disabled variant="ghost" />
                   ) : (
@@ -231,5 +251,5 @@ const styles = StyleSheet.create({
   inlineError: { color: colors.danger, fontSize: 12, textAlign: "center", marginTop: 12 },
   errorBox: { alignItems: "center", marginTop: 24 },
   errorText: { color: colors.danger, fontSize: 13, textAlign: "center", marginBottom: 12 },
-  actions: { marginTop: 24 },
+  actions: { marginTop: 24, gap: 8 },
 });
