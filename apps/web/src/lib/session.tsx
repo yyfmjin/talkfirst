@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { UNAUTHORIZED_EVENT, apiFetch } from "@/lib/api";
+import { localePath, useLocale } from "@/lib/i18n";
 
 export type SessionUser = {
   id: string;
@@ -70,12 +71,27 @@ const PUBLIC_PATHS = new Set([
   "/reset",
 ]);
 
+/**
+ * 路径去掉英文前缀（`/en/verify` → `/verify`）。
+ *
+ * `PUBLIC_PATHS` 是按**中文**路径列的，而英文站在 `/en/...` 下（见
+ * `lib/i18n/locales.ts`）。只认中文路径的话，英文站上的公开页会被当成「需要登录
+ * 的页」：一个匿名访客在 `/en/reset` 上遇到 401，会被丢到中文 `/login` —— 而找回
+ * 密码页恰恰是**因为**登不进去才会来的，这个 401 是预期状态，不是过期。
+ * `/en` 本身等价于 `/`。
+ */
+function withoutLocalePrefix(pathname: string): string {
+  if (pathname === "/en") return "/";
+  return pathname.startsWith("/en/") ? pathname.slice("/en".length) : pathname;
+}
+
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const router = useRouter();
   const pathname = usePathname();
+  const locale = useLocale();
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -108,13 +124,15 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     function onUnauthorized() {
       if (loading) return;
-      if (pathname && PUBLIC_PATHS.has(pathname)) return;
+      if (pathname && PUBLIC_PATHS.has(withoutLocalePrefix(pathname))) return;
       setUser(null);
-      router.replace("/login");
+      /* 走 `localePath` 而不是写死 `/login`：英文站上的会话过期也该回英文登录页，
+         否则用户刚在英文界面里操作，下一秒被丢进中文页。中文侧结果不变。 */
+      router.replace(localePath(locale, "/login"));
     }
     window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
-  }, [loading, pathname, router]);
+  }, [loading, pathname, router, locale]);
 
   const value = useMemo(
     () => ({ user, loading, error, refresh, setUser }),

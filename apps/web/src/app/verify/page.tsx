@@ -7,6 +7,7 @@ import { TFButton } from "@/components/tf";
 import { ScreenHeader } from "@/components/screen-header";
 import { cn } from "@/lib/cn";
 import { apiFetch } from "@/lib/api";
+import { localePath, useT } from "@/lib/i18n";
 import { useSession, type SessionUser } from "@/lib/session";
 
 type SendResponse = { sent: boolean; expiresInSeconds: number; devCode?: string };
@@ -14,8 +15,19 @@ type SendResponse = { sent: boolean; expiresInSeconds: number; devCode?: string 
 const CODE_LENGTH = 6;
 const RESEND_SECONDS = 58;
 
+/**
+ * 邮箱验证码（注册之后的那一步）。
+ *
+ * 文案全在词典里（`lib/i18n/dictionary.ts` 的 `verify.*`），语言由**路径**决定：
+ * `/verify` 是中文，`/en/verify` 是英文（后者是只做转出的一个文件）。
+ *
+ * 指向注册页与登录页的链接走 `localePath()`，因为两页都有英文版。验证完成后跳的
+ * `/legal` 故意**不走** —— 那批法律文本还没有英文版，`localePath()` 会直接 404，
+ * 宁可英文用户看到中文条款，也不要一个打不开的页面。
+ */
 export default function VerifyPage() {
   const router = useRouter();
+  const { locale, t } = useT();
   const { user, setUser } = useSession();
   const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(""));
   const [devCode, setDevCode] = useState<string | null>(null);
@@ -33,11 +45,11 @@ export default function VerifyPage() {
 
   const maskedEmail = user?.email
     ? user.email.replace(/^(.{2}).*(@.*)$/, (_match, head: string, tail: string) => `${head}***${tail}`)
-    : "你的邮箱";
+    : t("verify.fallbackEmail");
 
   async function sendCode() {
     if (!user?.email) {
-      setError("会话已失效，请重新注册。");
+      setError(t("verify.errSession"));
       return;
     }
     setError("");
@@ -48,10 +60,10 @@ export default function VerifyPage() {
         body: { email: user.email },
       });
       setDevCode(data.devCode ?? null);
-      setInfo("验证码已发送。");
+      setInfo(t("verify.sent"));
       setSecondsLeft(RESEND_SECONDS);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "发送失败，请稍后再试");
+      setError(requestError instanceof Error ? requestError.message : t("verify.errSend"));
     }
   }
 
@@ -85,12 +97,12 @@ export default function VerifyPage() {
 
   async function handleVerify() {
     if (!user?.email) {
-      setError("会话已失效，请重新注册。");
+      setError(t("verify.errSession"));
       return;
     }
     const value = code.join("");
     if (value.length !== CODE_LENGTH) {
-      setError(`请输入 ${CODE_LENGTH} 位验证码。`);
+      setError(t("verify.errCodeLength", { n: CODE_LENGTH }));
       return;
     }
     setLoading(true);
@@ -102,9 +114,10 @@ export default function VerifyPage() {
       });
       const refreshed = await apiFetch<SessionUser>("/users/me");
       setUser(refreshed);
+      /* 故意不走 `localePath()`：`/legal` 还没有英文版，那样会直接 404。 */
       router.push("/legal");
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "验证失败，请稍后再试");
+      setError(requestError instanceof Error ? requestError.message : t("verify.errVerify"));
       setCode(Array(CODE_LENGTH).fill(""));
       inputsRef.current[0]?.focus();
     } finally {
@@ -114,10 +127,10 @@ export default function VerifyPage() {
 
   return (
     <PhoneShell>
-      <ScreenHeader title="验证码" backHref="/register" />
+      <ScreenHeader title={t("verify.title")} backHref={localePath(locale, "/register")} />
       <div className="tf-scroll flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-6 pt-6">
         <p className="text-center text-ui leading-6 text-content-muted">
-          我们已发送验证码到你的邮箱
+          {t("verify.sentTo")}
           <br />
           <span className="font-medium text-content">{maskedEmail}</span>
         </p>
@@ -144,7 +157,7 @@ export default function VerifyPage() {
               maxLength={1}
               inputMode="numeric"
               autoComplete="one-time-code"
-              aria-label={`验证码第 ${index + 1} 位`}
+              aria-label={t("verify.digitLabel", { n: index + 1 })}
               onChange={(event) => updateDigit(index, event.target.value)}
               onKeyDown={(event) => onKeyDown(index, event)}
               className={cn(
@@ -172,7 +185,7 @@ export default function VerifyPage() {
             onClick={() => updateDigit(0, devCode)}
             className="mt-3 text-center text-caption text-warning-600 underline decoration-dotted"
           >
-            开发模式验证码：{devCode}（点击自动填入）
+            {t("verify.devCode", { code: devCode })}
           </button>
         ) : null}
 
@@ -187,7 +200,7 @@ export default function VerifyPage() {
           disabled={secondsLeft > 0}
           className="mt-6 w-full rounded-control py-2 text-center text-ui text-content-muted transition-colors duration-instant hover:bg-surface-sunken disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
         >
-          {secondsLeft > 0 ? `重新发送 (${secondsLeft}s)` : "重新发送"}
+          {secondsLeft > 0 ? t("verify.resendIn", { n: secondsLeft }) : t("verify.resend")}
         </button>
 
         <div className="mt-auto pb-1 pt-6">
@@ -195,14 +208,14 @@ export default function VerifyPage() {
             onClick={handleVerify}
             disabled={code.join("").length !== CODE_LENGTH}
             loading={loading}
-            loadingLabel="验证中…"
+            loadingLabel={t("verify.submitting")}
             size="lg"
             fullWidth
           >
-            下一步
+            {t("verify.next")}
           </TFButton>
-          <TFButton variant="ghost" size="md" fullWidth className="mt-1" href="/login">
-            返回登录
+          <TFButton variant="ghost" size="md" fullWidth className="mt-1" href={localePath(locale, "/login")}>
+            {t("verify.backToSignIn")}
           </TFButton>
         </div>
       </div>

@@ -107,7 +107,7 @@ export default function RegisterPage() {
         },
       });
       setUser(user);
-      router.push("/verify");
+      router.push(localePath(locale, "/verify"));
     } catch (requestError) {
       const mapped =
         requestError instanceof ApiRequestError

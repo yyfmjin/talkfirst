@@ -50,9 +50,10 @@ import { useSession, type SessionUser } from "@/lib/session";
  * 语言由**路径**决定（`useT()`，见 `lib/i18n/use-locale.ts`）：本页在 `/login` 是中文、
  * 在 `/en/login` 是英文（后者是一个只做转出的两行文件）。
  *
- * 指向**自己兄弟页**（注册）的链接用 `localePath()`，所以英文站会去 `/en/register`；
- * 指向**还没双语化**的页面的链接（找回密码、邮箱验证、登录后的发现页）暂时留着
- * 中文路径 —— 那些页还没有英文版。**不要**把它们改成 `localePath()`，那会变成 404。
+ * 指向**已经双语化**的页面（注册、找回密码、邮箱验证）的链接走 `localePath()`，
+ * 所以英文站会去 `/en/register`、`/en/reset`、`/en/verify`；指向**还没双语化**的
+ * 页面（登录后的发现页等）的链接暂时留着中文路径 —— 那些页还没有英文版。
+ * **不要**给还没英文版的页面用 `localePath()`，那会变成 404。
  */
 export default function LoginPage() {
   const router = useRouter();
@@ -136,7 +137,7 @@ export default function LoginPage() {
       // Fall through: an unverifiable read is treated as "not verified yet".
     }
     setNotice(t("auth.noticeVerificationPending"));
-    router.push("/verify");
+    router.push(localePath(locale, "/verify"));
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -263,7 +264,7 @@ export default function LoginPage() {
         {/* FEATURE (post-audit): password recovery. Until this existed, a user who
             forgot their password had no way back into their account at all. */}
         <p className="mt-3 text-center text-ui">
-          <Link href="/reset" className="font-medium text-brand-600">
+          <Link href={localePath(locale, "/reset")} className="font-medium text-brand-600">
             {t("auth.forgotPassword")}
           </Link>
         </p>

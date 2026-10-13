@@ -7,6 +7,7 @@ import { LogoMark } from "@/components/brand";
 import { PhoneShell } from "@/components/phone-shell";
 import { TFButton, TFInput } from "@/components/tf";
 import { ApiRequestError, apiFetch } from "@/lib/api";
+import { localePath, useT } from "@/lib/i18n";
 
 /**
  * FEATURE (post-audit) — password recovery.
@@ -33,9 +34,17 @@ import { ApiRequestError, apiFetch } from "@/lib/api";
  * sign-in form makes the new credential prove itself exactly like any other
  * login, which is also what keeps the reset auditable as a normal sign-in in the
  * security log.
+ *
+ * ## 双语（2026-10-11）
+ *
+ * 文案全在词典里（`lib/i18n/dictionary.ts` 的 `reset.*`），语言由**路径**决定：
+ * `/reset` 是中文，`/en/reset` 是英文（后者是只做转出的一个文件）。指向登录页的
+ * 两个链接都走 `localePath()` —— 英文站必须回 `/en/login`，否则用户从英文流程里
+ * 被丢回中文页。
  */
 export default function ResetPasswordPage() {
   const router = useRouter();
+  const { locale, t } = useT();
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
@@ -62,7 +71,7 @@ export default function ResetPasswordPage() {
     setError("");
     setNotice("");
     if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      setError("请输入有效的邮箱地址。");
+      setError(t("reset.errEmail"));
       return;
     }
     setSending(true);
@@ -73,11 +82,11 @@ export default function ResetPasswordPage() {
       });
       // The API answers identically for every address on purpose, so this copy
       // must not imply that an account was found.
-      setNotice("如果该邮箱已注册，我们已发送 6 位验证码，请查收（含垃圾邮件箱）。");
+      setNotice(t("reset.noticeSent"));
       setCooldown(60);
       codeInputRef.current?.focus();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "验证码发送失败，请稍后再试。");
+      setError(requestError instanceof Error ? requestError.message : t("reset.errSend"));
     } finally {
       setSending(false);
     }
@@ -88,19 +97,19 @@ export default function ResetPasswordPage() {
     setError("");
     setNotice("");
     if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      setError("请输入有效的邮箱地址。");
+      setError(t("reset.errEmail"));
       return;
     }
     if (!/^\d{6}$/.test(code.trim())) {
-      setError("请输入 6 位数字验证码。");
+      setError(t("reset.errCode"));
       return;
     }
     if (password.length < 8) {
-      setError("新密码至少 8 位。");
+      setError(t("reset.errPasswordMin"));
       return;
     }
     if (password !== confirm) {
-      setError("两次输入的新密码不一致。");
+      setError(t("reset.errPasswordMismatch"));
       return;
     }
     setSubmitting(true);
@@ -114,9 +123,9 @@ export default function ResetPasswordPage() {
       // CODE_LOCKED in particular is worth distinguishing: the user has to ask
       // for a fresh code rather than keep guessing this one.
       if (requestError instanceof ApiRequestError && requestError.code === "CODE_LOCKED") {
-        setError("验证码尝试次数过多，请重新发送验证码。");
+        setError(t("reset.errCodeLocked"));
       } else {
-        setError(requestError instanceof Error ? requestError.message : "重置失败，请稍后再试。");
+        setError(requestError instanceof Error ? requestError.message : t("reset.errSubmit"));
       }
     } finally {
       setSubmitting(false);
@@ -132,19 +141,24 @@ export default function ResetPasswordPage() {
 
         {done ? (
           <>
-            <h1 className="text-center text-title font-semibold text-content">密码已重置</h1>
+            <h1 className="text-center text-title font-semibold text-content">{t("reset.doneTitle")}</h1>
             <p className="mt-2 text-center text-ui leading-6 text-content-muted">
-              为安全起见，其他设备上的登录已全部退出。请用新密码重新登录。
+              {t("reset.doneBody")}
             </p>
-            <TFButton className="mt-8" size="lg" fullWidth onClick={() => router.replace("/login")}>
-              前往登录
+            <TFButton
+              className="mt-8"
+              size="lg"
+              fullWidth
+              onClick={() => router.replace(localePath(locale, "/login"))}
+            >
+              {t("reset.goSignIn")}
             </TFButton>
           </>
         ) : (
           <>
-            <h1 className="text-center text-title font-semibold text-content">重置密码</h1>
+            <h1 className="text-center text-title font-semibold text-content">{t("reset.title")}</h1>
             <p className="mt-2 text-center text-ui leading-6 text-content-muted">
-              用注册邮箱接收验证码，然后设置新密码。
+              {t("reset.subtitle")}
             </p>
 
             <form className="mt-7 space-y-4" onSubmit={(event) => void handleSubmit(event)} noValidate>
@@ -153,14 +167,14 @@ export default function ResetPasswordPage() {
                   htmlFor="reset-email"
                   className="mb-1.5 block text-caption font-medium text-content-muted"
                 >
-                  注册邮箱
+                  {t("reset.email")}
                 </label>
                 <TFInput
                   id="reset-email"
                   type="email"
                   inputMode="email"
                   autoComplete="username"
-                  placeholder="请输入注册时使用的邮箱"
+                  placeholder={t("reset.emailPlaceholder")}
                   value={email}
                   invalid={Boolean(error)}
                   describedBy={error ? "reset-error" : undefined}
@@ -173,7 +187,7 @@ export default function ResetPasswordPage() {
                   htmlFor="reset-code"
                   className="mb-1.5 block text-caption font-medium text-content-muted"
                 >
-                  邮箱验证码
+                  {t("reset.code")}
                 </label>
                 <div className="flex gap-2">
                   {/* `autoComplete="one-time-code"` lets iOS/Android offer the code
@@ -185,7 +199,7 @@ export default function ResetPasswordPage() {
                     value={code}
                     inputMode="numeric"
                     autoComplete="one-time-code"
-                    placeholder="6 位数字"
+                    placeholder={t("reset.codePlaceholder")}
                     className="min-w-0 flex-1 tracking-[0.3em] placeholder:tracking-normal"
                     invalid={Boolean(error)}
                     describedBy={error ? "reset-error" : undefined}
@@ -196,10 +210,10 @@ export default function ResetPasswordPage() {
                     className="shrink-0"
                     disabled={sending || cooldown > 0}
                     loading={sending}
-                    loadingLabel="发送中…"
+                    loadingLabel={t("reset.sending")}
                     onClick={() => void sendCode()}
                   >
-                    {cooldown > 0 ? `${cooldown}s 后可重发` : "发送验证码"}
+                    {cooldown > 0 ? t("reset.resendIn", { n: cooldown }) : t("reset.sendCode")}
                   </TFButton>
                 </div>
               </div>
@@ -209,13 +223,13 @@ export default function ResetPasswordPage() {
                   htmlFor="reset-password"
                   className="mb-1.5 block text-caption font-medium text-content-muted"
                 >
-                  新密码
+                  {t("reset.newPassword")}
                 </label>
                 <TFInput
                   id="reset-password"
                   type="password"
                   autoComplete="new-password"
-                  placeholder="至少 8 位"
+                  placeholder={t("reset.newPasswordPlaceholder")}
                   value={password}
                   invalid={Boolean(error)}
                   describedBy={error ? "reset-error" : undefined}
@@ -228,13 +242,13 @@ export default function ResetPasswordPage() {
                   htmlFor="reset-confirm"
                   className="mb-1.5 block text-caption font-medium text-content-muted"
                 >
-                  确认新密码
+                  {t("reset.confirmPassword")}
                 </label>
                 <TFInput
                   id="reset-confirm"
                   type="password"
                   autoComplete="new-password"
-                  placeholder="再次输入新密码"
+                  placeholder={t("reset.confirmPlaceholder")}
                   value={confirm}
                   invalid={Boolean(error)}
                   describedBy={error ? "reset-error" : undefined}
@@ -259,16 +273,16 @@ export default function ResetPasswordPage() {
                 fullWidth
                 className="mt-1"
                 loading={submitting}
-                loadingLabel="重置中…"
+                loadingLabel={t("reset.submitting")}
               >
-                重置密码
+                {t("reset.submit")}
               </TFButton>
             </form>
 
             <p className="mt-6 text-center text-ui text-content-muted">
-              想起来了？{" "}
-              <Link href="/login" className="font-medium text-brand-600">
-                返回登录
+              {t("reset.remembered")}{" "}
+              <Link href={localePath(locale, "/login")} className="font-medium text-brand-600">
+                {t("reset.backToSignIn")}
               </Link>
             </p>
           </>

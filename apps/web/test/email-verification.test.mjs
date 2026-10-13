@@ -59,9 +59,35 @@ test("onboarding never asserts emailVerified from the client", () => {
 
 test("verify screen keeps the code-entry flow and reads no client-set flag", () => {
   const source = read("app", "verify", "page.tsx");
+  /**
+   * 2026-10-11 双语化：文案搬进了词典，所以「成员界面是中文」这条改到词典上断言，
+   * 页面上则断言它**引用**了那个键 —— 引用着就不会退回硬编码中文，也不会在英文
+   * 页面上出中文。与上面 login 那条同一手法。
+   */
+  const dictionary = read("lib", "i18n", "dictionary.ts");
+
   assert.match(source, /"\/auth\/send-verification-code"/);
   assert.match(source, /"\/auth\/verify-email"/);
   assert.match(source, /"\/users\/me"/, "re-reads the profile after verifying");
-  assert.match(source, /验证码/, "member-facing copy stays Chinese");
+  assert.match(source, /t\("verify\.title"\)/, "title comes from the dictionary");
+  assert.match(dictionary, /验证码/, "member-facing copy stays Chinese");
   assert.doesNotMatch(source, /emailVerified\s*:\s*true/);
+});
+
+test("the English routes for verification and recovery exist", () => {
+  /*
+   * 英文页面是一个只做转出的文件（见 `app/en/login/page.tsx` 里为什么不能
+   * re-export）。这里断言两件事：路由确实存在，且带自己的 canonical/alternates ——
+   * 少了 alternates，搜索引擎会把中英两版当成重复内容。
+   */
+  for (const [route, chinese] of [
+    ["verify", "/verify"],
+    ["reset", "/reset"],
+  ]) {
+    const source = read("app", "en", route, "page.tsx");
+    assert.match(source, /export default function/, "needs its own default export");
+    assert.match(source, /export const metadata: Metadata/, "needs server-side metadata");
+    assert.match(source, new RegExp(`canonical: "/en/${route}"`));
+    assert.match(source, new RegExp(`languages: \\{ zh: "${chinese}", en: "/en/${route}" \\}`));
+  }
 });
