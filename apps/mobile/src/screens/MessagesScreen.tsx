@@ -14,6 +14,7 @@ import { apiFetch } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { Avatar } from "../components/Avatar";
 import { Icon } from "../components/Icon";
+import { ExchangeScreen } from "./ExchangeScreen";
 import { NotificationsScreen } from "./NotificationsScreen";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
 import type { MsgKey } from "../lib/messages";
@@ -41,6 +42,8 @@ export function MessagesScreen() {
   const { t } = useI18n();
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
+  /** 会话里的「交换联系方式」全屏子页（对齐 web 的 `/messages/[id]/connect`）。 */
+  const [exchange, setExchange] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -74,6 +77,7 @@ export function MessagesScreen() {
 
   const openConversation = useCallback(async (id: string) => {
     setOpenId(id);
+    setExchange(false);
     setMessages([]);
     setCursor(null);
     setError("");
@@ -146,6 +150,16 @@ export function MessagesScreen() {
     );
   }
 
+  /*
+   * 交换联系方式：从会话头部进去的全屏子页。
+   *
+   * 放在会话分支**之前**：它比会话本身更靠前，返回时回到会话而不是回到列表。
+   * `openId` 就是它的入参 —— 列表态（没有会话）不会走到这里。
+   */
+  if (openId && exchange) {
+    return <ExchangeScreen conversationId={openId} onBack={() => setExchange(false)} />;
+  }
+
   if (openId) {
     const peer = conversations.find((item) => item.id === openId)?.peer ?? null;
     return (
@@ -158,6 +172,7 @@ export function MessagesScreen() {
           <Pressable
             onPress={() => {
               setOpenId(null);
+              setExchange(false);
               void loadConversations();
             }}
             accessibilityRole="button"
@@ -167,7 +182,21 @@ export function MessagesScreen() {
             <Icon name="chevron-back" size={22} color={colors.ink} />
           </Pressable>
           <Avatar uri={peer?.avatarUrl ?? null} nickname={peer?.nickname ?? null} size={32} />
-          <Text style={styles.threadName}>{peer?.nickname ?? t("messages.conversationFallback")}</Text>
+          <Text style={styles.threadName} numberOfLines={1}>
+            {peer?.nickname ?? t("messages.conversationFallback")}
+          </Text>
+          {/* 交换入口与 web 头部那条 `🔗 交换联系方式` 同位同义。门槛、能不能点
+              都由交换页自己按服务端的 `eligible` 说，这里不预先藏起来 —— 否则
+              用户无从知道「聊够就能换」这条规则。 */}
+          <Pressable
+            onPress={() => setExchange(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t("exchange.entry")}
+            style={styles.exchangeButton}
+          >
+            <Icon name="link-outline" size={14} color={colors.primaryDark} />
+            <Text style={styles.exchangeLabel}>{t("exchange.entry")}</Text>
+          </Pressable>
         </View>
 
         <FlatList
@@ -368,7 +397,17 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.line,
   },
   backButton: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
-  threadName: { fontSize: 16, fontWeight: "600", color: colors.ink },
+  threadName: { flex: 1, fontSize: 16, fontWeight: "600", color: colors.ink },
+  exchangeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderRadius: 14,
+    backgroundColor: colors.bgTint,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  exchangeLabel: { fontSize: 12, fontWeight: "600", color: colors.primaryDark },
   threadList: { padding: 14, gap: 8 },
   loadOlder: { alignItems: "center", paddingVertical: 10 },
   loadOlderText: { fontSize: 13, color: colors.primary },

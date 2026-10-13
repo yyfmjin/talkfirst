@@ -3,13 +3,14 @@ import renderer, { act } from "react-test-renderer";
 import { AuthProvider } from "../lib/auth-context";
 import { I18nProvider } from "../lib/i18n-context";
 /* 断言用词典里的原文，而不是手抄中文 —— 文案一改，测试跟着改，不会悄悄失真。 */
-import { zh } from "../lib/messages";
+import { interpolate, zh } from "../lib/messages";
 import { AuthScreen } from "./AuthScreen";
 import { AttributesScreen } from "./AttributesScreen";
 import { ComposeScreen } from "./ComposeScreen";
 import { ConnectionsScreen } from "./ConnectionsScreen";
 import { DeleteAccountScreen } from "./DeleteAccountScreen";
 import { DiscoverScreen } from "./DiscoverScreen";
+import { ExchangeScreen } from "./ExchangeScreen";
 import { MeScreen } from "./MeScreen";
 import { MessagesScreen } from "./MessagesScreen";
 import { MomentsScreen } from "./MomentsScreen";
@@ -423,6 +424,244 @@ describe("UserMomentsScreen（TA 的动态）", () => {
     const after = visibleText(tree);
     expect(after).toContain("4");
     expect(after).not.toContain("5");
+    tree.unmount();
+  });
+});
+
+/* ─────────────────── 交换联系方式（会话内，对齐 web /messages/[id]/connect） ─────────────────── */
+
+/** `GET /conversations/:id/exchange` 的响应，默认是「聊够了、还什么都没发生」。 */
+function exchangeEligibility(over: Partial<Record<string, unknown>> = {}) {
+  return {
+    conversationId: "c1",
+    connectionId: "conn1",
+    messageCount: 5,
+    requiredMessages: 5,
+    eligible: true,
+    pending: [],
+    exchanged: [],
+    myAccounts: [],
+    ...over,
+  };
+}
+
+/** 一条交换申请。`platforms` 已是服务端换好的 `{ id, label }`，客户端不再自己拼平台名。 */
+function exchangeItem(over: Partial<Record<string, unknown>> = {}) {
+  const now = new Date().toISOString();
+  return {
+    id: "e1",
+    connectionId: "conn1",
+    conversationId: "c1",
+    requesterId: "u1",
+    receiverId: "u2",
+    platforms: [{ id: "TELEGRAM", label: "Telegram" }],
+    message: null,
+    status: "PENDING",
+    createdAt: now,
+    updatedAt: now,
+    ...over,
+  };
+}
+
+/*
+ * 交换联系方式。三个钉子都对着「界面上看不出来、真机上才会错」的地方：
+ *
+ * 1. 未达门槛时，那颗写着「还需 N 条消息」的按钮**必须是禁用的** —— web 那次审计
+ *    漏了 `!eligible`，按钮看着像不能点、其实可点，用户点下去要等一个服务端来回
+ *    才被拒。这里同时钉住「disabled」与「真按了也不发申请」两层。
+ * 2. 方向（谁发起）决定出现哪些控件：收方是接受/拒绝，发起方才是撤回。web 曾把
+ *    「撤回我发起的请求」渲染给**每一条**待处理请求，那个按钮在说谎。
+ * 3. 接受打 `POST /exchange/:id/respond` + `{ action }`，撤回打 `/cancel`。这两条
+ *    路径写反了界面照样不报错（都由服务端收下或一并 404），只有行为不对。
+ */
+describe("ExchangeScreen（会话内交换联系方式）", () => {
+  const api = jest.requireMock("../lib/api") as { apiFetch: jest.Mock };
+  const storage = jest.requireMock("../lib/storage") as { getAccessToken: jest.Mock };
+  /* describe 体在用例之前执行，此时拿到的是工厂里那版实现，用来在收尾时还原。 */
+  const originalFetch = api.apiFetch.getMockImplementation();
+  const originalToken = storage.getAccessToken.getMockImplementation();
+
+  afterAll(() => {
+    if (originalFetch) api.apiFetch.mockImplementation(originalFetch);
+    if (originalToken) storage.getAccessToken.mockImplementation(originalToken);
+  });
+
+  beforeEach(() => {
+    /* 这一屏要判「这条请求是不是我发起的」（`requesterId === user?.id`），所以必须
+       真的有一个登录用户；工厂里的 `/users/me` 分支固定回 `id: "u1"`。 */
+    storage.getAccessToken.mockResolvedValue("token");
+  });
+
+  /**
+   * 按路径分派假响应。
+   *
+   * 不用 `mockImplementationOnce` 排队：这一屏自己会**依次**打平台清单、资格、已交换的
+   * 联系人三个端点，用「第几次调用」来对号入座，加一个请求就全错位了。没安排的路径回
+   * 一个形状安全的空值 —— 忘了安排会表现成空界面，而不是伪装成一次成功的加载。
+   */
+  function mockByPath(map: Record<string, unknown>): void {
+    api.apiFetch.mockImplementation(async (path: string) => {
+      if (Object.prototype.hasOwnProperty.call(map, path)) return map[path];
+      if (path === "/users/me") return { id: "u1", email: "a@b.c", nickname: "Ann" };
+      if (path === "/exchange/platforms") return [];
+      return { items: [], nextCursor: null };
+    });
+  }
+
+  it("未达门槛时按钮是禁用的，按下去也不发申请", async () => {
+    mockByPath({
+      "/exchange/platforms": [{ id: "TELEGRAM", label: "Telegram" }],
+      "/conversations/c1/exchange": exchangeEligibility({
+        messageCount: 2,
+        requiredMessages: 5,
+        eligible: false,
+      }),
+    });
+
+    const tree = await renderInProviders(
+      <ExchangeScreen conversationId="c1" onBack={() => undefined} />,
+    );
+
+    /* 门槛按服务端给的数字说：2/5。 */
+    expect(visibleText(tree)).toContain(
+      interpolate(zh["exchange.progressNotReady"], { count: 2, required: 5 }),
+    );
+
+    /* 先选中一个平台，让「不能点」不是因为什么都没选。 */
+    const chip = tree.root.findAll(
+      (node) =>
+        node.props.accessibilityState?.selected === false &&
+        typeof node.props.onPress === "function",
+    );
+    expect(chip.length).toBeGreaterThan(0);
+    await act(async () => {
+      chip[0].props.onPress();
+    });
+
+    const submit = tree.root.findAll(
+      (node) =>
+        node.props.accessibilityLabel ===
+          interpolate(zh["exchange.submitNeedMore"], { n: 3 }) &&
+        typeof node.props.onPress === "function",
+    );
+    expect(submit.length).toBeGreaterThan(0);
+    expect(submit[0].props.disabled).toBe(true);
+
+    /* 就算绕过 Pressable 的 disabled 直接调 onPress，`submit()` 自己也要守住门槛，
+       并且**不发**这个请求。 */
+    api.apiFetch.mockClear();
+    await act(async () => {
+      submit[0].props.onPress();
+    });
+    expect(api.apiFetch.mock.calls.filter(([, options]) => options?.method === "POST")).toHaveLength(0);
+    tree.unmount();
+  });
+
+  it("对方发起的请求给接受/拒绝，接受打的是 /exchange/:id/respond", async () => {
+    mockByPath({
+      "/exchange/platforms": [{ id: "TELEGRAM", label: "Telegram" }],
+      "/conversations/c1/exchange": exchangeEligibility({
+        eligible: false,
+        pending: [
+          exchangeItem({
+            requesterId: "u2",
+            receiverId: "u1",
+            requester: { id: "u2", nickname: "Bob", avatarUrl: null, countryCode: "US" },
+          }),
+        ],
+      }),
+    });
+
+    const tree = await renderInProviders(
+      <ExchangeScreen conversationId="c1" onBack={() => undefined} />,
+    );
+    const shown = visibleText(tree);
+
+    expect(shown).toContain(
+      interpolate(zh["exchange.pendingTheirs"], { name: "Bob", platforms: "Telegram" }),
+    );
+    expect(shown).toContain(zh["exchange.accept"]);
+    expect(shown).not.toContain(zh["exchange.withdraw"]);
+
+    const accept = tree.root.findAll(
+      (node) =>
+        node.props.accessibilityLabel === zh["exchange.accept"] &&
+        typeof node.props.onPress === "function",
+    );
+    expect(accept.length).toBeGreaterThan(0);
+    await act(async () => {
+      accept[0].props.onPress();
+    });
+
+    expect(api.apiFetch.mock.calls).toContainEqual([
+      "/exchange/e1/respond",
+      { method: "POST", body: { action: "accept" } },
+    ]);
+    tree.unmount();
+  });
+
+  it("我发起的请求给的是撤回，不是接受", async () => {
+    mockByPath({
+      "/exchange/platforms": [],
+      "/conversations/c1/exchange": exchangeEligibility({
+        eligible: false,
+        pending: [exchangeItem()],
+      }),
+    });
+
+    const tree = await renderInProviders(
+      <ExchangeScreen conversationId="c1" onBack={() => undefined} />,
+    );
+    const shown = visibleText(tree);
+
+    expect(shown).toContain(interpolate(zh["exchange.pendingMine"], { platforms: "Telegram" }));
+    expect(shown).toContain(zh["exchange.withdraw"]);
+    expect(shown).not.toContain(zh["exchange.accept"]);
+
+    const withdraw = tree.root.findAll(
+      (node) =>
+        node.props.accessibilityLabel === zh["exchange.withdraw"] &&
+        typeof node.props.onPress === "function",
+    );
+    expect(withdraw.length).toBeGreaterThan(0);
+    await act(async () => {
+      withdraw[0].props.onPress();
+    });
+
+    expect(api.apiFetch.mock.calls).toContainEqual(["/exchange/e1/cancel", { method: "POST" }]);
+    tree.unmount();
+  });
+
+  it("已交换时显示对方的账号，并且不再给出申请区", async () => {
+    mockByPath({
+      "/exchange/platforms": [{ id: "TELEGRAM", label: "Telegram" }],
+      "/conversations/c1/exchange": exchangeEligibility({
+        eligible: false,
+        exchanged: [exchangeItem({ status: "ACCEPTED" })],
+      }),
+      "/conversations/c1/exchange/contacts": {
+        exchanged: true,
+        contacts: [
+          {
+            userId: "u2",
+            nickname: "Bob",
+            platform: "TELEGRAM",
+            label: "Telegram",
+            handle: "@bob",
+          },
+        ],
+      },
+    });
+
+    const tree = await renderInProviders(
+      <ExchangeScreen conversationId="c1" onBack={() => undefined} />,
+    );
+    const shown = visibleText(tree);
+
+    expect(shown).toContain(zh["exchange.sharedSection"]);
+    expect(shown).toContain("@bob");
+    /* 已经交换过就不能再申请（服务端会 403 ALREADY_EXCHANGED）—— 所以申请区不该出现。 */
+    expect(shown).not.toContain(interpolate(zh["exchange.pickSection"], { n: 3 }));
     tree.unmount();
   });
 });

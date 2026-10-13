@@ -436,3 +436,53 @@ export type MomentSettings = {
   showReels: boolean;
   showLives: boolean;
 };
+
+/* ───────────────────── 联系方式交换（/conversations/:id/exchange） ───────────────────── */
+
+/** `GET /exchange/platforms`：可交换的平台清单。 */
+export type ExchangePlatformOption = { id: string; label: string };
+
+/** 交换申请/已交换里的一条。方向靠 `requesterId` 判，不靠文案猜。 */
+export type ExchangeItem = {
+  id: string;
+  connectionId: string;
+  conversationId: string;
+  requesterId: string;
+  receiverId: string;
+  /** 服务端已经把枚举换成 `{ id, label }`，客户端不再自己维护平台中英文名。 */
+  platforms: ExchangePlatformOption[];
+  message: string | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  requester?: { id: string; nickname: string | null; avatarUrl: string | null; countryCode: string | null };
+  receiver?: { id: string; nickname: string | null; avatarUrl: string | null; countryCode: string | null };
+};
+
+/**
+ * `GET /conversations/:id/exchange` —— 这一页的全部依据。
+ *
+ * `eligible` 是服务端算好的（聊够 `requiredMessages` 条且还没有任何交换），客户端
+ * **不要自己用 `messageCount >= requiredMessages` 重新算一遍**：门槛变了、或者服务端
+ * 加了一条不公开的条件，自算的那版就成了一个能点下去、但会被拒的按钮。
+ */
+export type ExchangeEligibility = {
+  conversationId: string;
+  connectionId: string;
+  messageCount: number;
+  requiredMessages: number;
+  eligible: boolean;
+  pending: ExchangeItem[];
+  exchanged: ExchangeItem[];
+  /** 我在「我的」里已经绑过的平台（没绑的平台交换了也给不出账号）。 */
+  myAccounts: Array<{ platform: string; label: string; handle: string }>;
+};
+
+/** 对方已经交换给我的账号。 */
+export type SharedContact = {
+  userId: string;
+  nickname: string | null;
+  platform: string;
+  label: string;
+  handle: string;
+};
