@@ -21,9 +21,8 @@ const RESEND_SECONDS = 58;
  * 文案全在词典里（`lib/i18n/dictionary.ts` 的 `verify.*`），语言由**路径**决定：
  * `/verify` 是中文，`/en/verify` 是英文（后者是只做转出的一个文件）。
  *
- * 指向注册页与登录页的链接走 `localePath()`，因为两页都有英文版。验证完成后跳的
- * `/legal` 故意**不走** —— 那批法律文本还没有英文版，`localePath()` 会直接 404，
- * 宁可英文用户看到中文条款，也不要一个打不开的页面。
+ * 指向注册页、登录页与同意闸门的链接都走 `localePath()`：三页现在都有英文版
+ * （`/legal` 是 2026-10-13 那一批加上的）。
  */
 export default function VerifyPage() {
   const router = useRouter();
@@ -114,8 +113,7 @@ export default function VerifyPage() {
       });
       const refreshed = await apiFetch<SessionUser>("/users/me");
       setUser(refreshed);
-      /* 故意不走 `localePath()`：`/legal` 还没有英文版，那样会直接 404。 */
-      router.push("/legal");
+      router.push(localePath(locale, "/legal"));
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : t("verify.errVerify"));
       setCode(Array(CODE_LENGTH).fill(""));

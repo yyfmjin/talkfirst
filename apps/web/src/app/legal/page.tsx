@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { PhoneShell } from "@/components/phone-shell";
 import { ScreenHeader } from "@/components/screen-header";
 import { TFButton } from "@/components/tf";
+import { localePath, useT } from "@/lib/i18n";
 
 /**
  * Agreement gate before the profile is created.
@@ -40,18 +41,29 @@ import { TFButton } from "@/components/tf";
  *  - **One primary action.** 「同意并继续」 is the only filled control, and it
  *    stays disabled until both boxes are ticked — the gate is enforced by the
  *    control, not by an error message after the fact.
+ *
+ * ## 双语（2026-10-13）
+ *
+ * 文案全在词典里（`legal.gate.*`），语言由**路径**决定：`/legal` 中文、`/en/legal`
+ * 英文。这份闸门是最需要看得懂的一屏 —— 用户在这里**做动作**（勾选两项），而不是
+ * 翻阅参考文档；英文用户看不懂就无法真正知情同意。
+ *
+ * 隐私政策正文还没译（`legal.privacy` 那批行内强调多，单独一批做），所以英文站上
+ * 「阅读隐私政策全文」暂时指向**中文**正文：宁可让英文用户看到中文原文，也不要一个
+ * 打不开的页面。下一批会改成 `localePath()`。
  */
 export default function LegalPage() {
   const router = useRouter();
+  const { locale, t } = useT();
   const [terms, setTerms] = useState(false);
   const [privacy, setPrivacy] = useState(false);
 
   return (
     <PhoneShell>
-      <ScreenHeader title="用户协议与隐私政策" backHref="/verify" />
+      <ScreenHeader title={t("legal.gate.title")} backHref={localePath(locale, "/verify")} />
       <div className="tf-scroll flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-6 pt-4">
         <p className="text-ui leading-6 text-content-muted">
-          为了让你清楚知道我们如何处理你的资料，注册前需要你确认以下两项。两项都会在注册流程中提供完整文本。
+          {t("legal.gate.intro")}
         </p>
 
         <div className="mt-6 space-y-2">
@@ -59,15 +71,15 @@ export default function LegalPage() {
             id="consent-terms"
             checked={terms}
             onChange={() => setTerms((value) => !value)}
-            title="我已阅读并同意用户协议"
-            hint="包括账号规则、内容规范，以及 18 岁以上使用的年龄要求。"
+            title={t("legal.gate.acceptTerms")}
+            hint={t("legal.gate.acceptTermsHint")}
           />
           <ConsentRow
             id="consent-privacy"
             checked={privacy}
             onChange={() => setPrivacy((value) => !value)}
-            title="我已阅读并同意隐私政策"
-            hint="说明我们收集哪些资料、为什么收集，以及你如何查看、更正或删除它们。"
+            title={t("legal.gate.acceptPrivacy")}
+            hint={t("legal.gate.acceptPrivacyHint")}
           />
         </div>
 
@@ -76,16 +88,16 @@ export default function LegalPage() {
             policy URL, and a checkbox list is not one — so the text has its own
             address and this is the way in. */}
         <p className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-caption">
-          <Link href="/legal/terms" className="font-medium text-brand-600">
-            阅读用户协议全文
+          <Link href={localePath(locale, "/legal/terms")} className="font-medium text-brand-600">
+            {t("legal.gate.readTerms")}
           </Link>
           <Link href="/legal/privacy" className="font-medium text-brand-600">
-            阅读隐私政策全文
+            {t("legal.gate.readPrivacy")}
           </Link>
         </p>
 
         <p className="mt-6 rounded-row bg-surface-sunken px-4 py-3 text-caption leading-5 text-content-muted">
-          你可以随时在「我的 → 隐私与安全」里查看和调整资料可见范围，也可以注销账号要求删除全部资料。
+          {t("legal.gate.note")}
         </p>
 
         <div className="mt-auto pt-8">
@@ -93,12 +105,12 @@ export default function LegalPage() {
             size="lg"
             fullWidth
             disabled={!terms || !privacy}
-            onClick={() => router.push("/register/success")}
+            onClick={() => router.push(localePath(locale, "/register/success"))}
           >
-            同意并继续
+            {t("legal.gate.continue")}
           </TFButton>
           {!terms || !privacy ? (
-            <p className="mt-2 text-center text-caption text-content-subtle">请先勾选以上两项</p>
+            <p className="mt-2 text-center text-caption text-content-subtle">{t("legal.gate.needBoth")}</p>
           ) : null}
         </div>
       </div>

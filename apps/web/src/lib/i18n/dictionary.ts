@@ -5,10 +5,17 @@ import { DEFAULT_LOCALE, type Locale } from "./locales";
  *
  * ## 覆盖范围（重要）
  *
- * 这里**不是**整站文案，只装了已经双语化的那几个面：官网（`/site`）与启动屏（`/`）。
- * 成员端其余页面（发现 / 动态 / 消息 / 我的 / 引导 …）仍然是中文写死在页面里 ——
- * 整站约 938 条文案，得一批一批搬。**没搬过来的页面不要假装它有英文版**：
- * 它们的 `en` 路由还不存在，英文站点上的链接也不会指向它们（见 `locales.ts`）。
+ * 这里**不是**整站文案，只装了已经双语化的那几个面 —— 截至 2026-10-13：
+ *
+ *   已双语  启动屏 `/`、官网 `/site`、登录 `/login`、注册 `/register`、
+ *           找回密码 `/reset`、邮箱验证 `/verify`，以及同意闸门与两份正文
+ *           （`/legal`、`/legal/terms`、`/legal/rules`）
+ *   未双语  隐私政策 `/legal/privacy`、成员端内部（发现 / 动态 / 消息 / 我的 /
+ *           引导 / 通知 …）—— 合计约 900 条，得一批一批搬
+ *
+ * **没搬过来的页面不要假装它有英文版**：它们的 `en` 路由还不存在，英文站点上的
+ * 链接也不会指向它们（见 `locales.ts`）。顺序是「先把页面译完，再把指向它的链接
+ * 改成 `localePath()`」—— 反过来做就是 404。
  *
  * ## 为什么 `en` 的类型是 `Record<MsgKey, string>`
  *
@@ -224,6 +231,111 @@ export const zh = {
   "verify.errCodeLength": "请输入 {n} 位验证码。",
   "verify.errSend": "发送失败，请稍后再试",
   "verify.errVerify": "验证失败，请稍后再试",
+
+  /* ── 法律文本：同意闸门 · 用户协议 · 社区规则 ──
+     这三份是**工程师起草的初稿，不是法律意见**（见 docs/LEGAL-TEXTS.md）。
+     英文是忠实翻译，不是另一个版本：每页顶部都挂 `legal.translationNote`，
+     说明以中文原文为准 —— 译文一旦被当成另一份有效文本，管辖与责任两节的
+     差异就成了真问题。 */
+  "legal.translationNote": "本页另有英文译本；两种文本如有出入，以中文原文为准。",
+
+  "legal.gate.title": "用户协议与隐私政策",
+  "legal.gate.intro": "为了让你清楚知道我们如何处理你的资料，注册前需要你确认以下两项。两项都会在注册流程中提供完整文本。",
+  "legal.gate.acceptTerms": "我已阅读并同意用户协议",
+  "legal.gate.acceptTermsHint": "包括账号规则、内容规范，以及 18 岁以上使用的年龄要求。",
+  "legal.gate.acceptPrivacy": "我已阅读并同意隐私政策",
+  "legal.gate.acceptPrivacyHint": "说明我们收集哪些资料、为什么收集，以及你如何查看、更正或删除它们。",
+  "legal.gate.readTerms": "阅读用户协议全文",
+  "legal.gate.readPrivacy": "阅读隐私政策全文",
+  "legal.gate.note": "你可以随时在「我的 → 隐私与安全」里查看和调整资料可见范围，也可以注销账号要求删除全部资料。",
+  "legal.gate.continue": "同意并继续",
+  "legal.gate.needBoth": "请先勾选以上两项",
+
+  /* 只用到标题：隐私政策正文是下一批（`legal.privacy.*`），但协议/规则两份的页脚
+     都要用「隐私政策」这个名字去指它。 */
+  "legal.privacy.title": "隐私政策",
+
+  "legal.terms.title": "用户协议",
+  "legal.terms.updated": "最近更新：2026 年 10 月",
+  "legal.terms.intro": "这份协议说明你与 TalkFirst 之间的规则：你可以用这个产品做什么、我们会对你的内容做什么、出现问题时怎么处理。请连同《隐私政策》与《社区规则》一起阅读。",
+  "legal.terms.s1.title": "1. 关于本协议",
+  "legal.terms.s1.p1": "本协议适用于 TalkFirst 的手机应用与网站。运营方 TalkFirst，联系方式 support@talkfirst.ccwu.cc。",
+  "legal.terms.s1.p2": "如果你不同意本协议，请不要注册或继续使用本产品。",
+  "legal.terms.s2.title": "2. 使用资格",
+  "legal.terms.s2.i1": "本产品仅限 18 岁以上使用。注册即表示你确认自己已满 18 岁。",
+  "legal.terms.s2.i2": "一个邮箱对应一个账号，请勿代人注册或批量注册。",
+  "legal.terms.s2.i3": "请提供真实可用的邮箱地址，它用于登录、找回密码与安全提醒。",
+  "legal.terms.s3.title": "3. 账号与登录",
+  "legal.terms.s3.i1": "注册时你会得到一个用户名，用于登录；昵称是展示给别人看的名字，两者可以不同。",
+  /* 密码这一条原文把「无法读回原文」加了粗，所以只能拆三段。拆点是那个加粗位置：
+     两边的英文接起来仍然是一句通顺的话（“...so **the original can never be read
+     back**; if you forget it..."），不是把半句话拼成一句话。 */
+  "legal.terms.s3.i2a": "密码由你设置并保管。我们以不可逆的哈希形式存储密码，",
+  "legal.terms.s3.i2b": "无法读回原文",
+  "legal.terms.s3.i2c": "；如果忘记，只能通过邮箱重置。",
+  "legal.terms.s3.i3": "你也可以选择用 Google 账号登录或注册。这样创建的账号没有密码，你可以在之后自行设置一个。",
+  "legal.terms.s3.i4": "请勿把账号转借、出租或出售。账号下发生的行为视为你本人的行为。",
+  "legal.terms.s4.title": "4. 你的内容",
+  "legal.terms.s4.i1": "你发布的动态、评论、消息、头像与个人介绍，著作权仍归你所有。",
+  "legal.terms.s4.i2": "为提供服务所必需，你授予我们在产品内存储、展示并按你的可见范围设置向其他用户分发这些内容的许可。你调整可见范围或删除内容后，我们按新设置执行。",
+  "legal.terms.s4.i3": "你需保证自己有权发布这些内容，且内容不违反法律与《社区规则》。",
+  "legal.terms.s4.i4": "私聊内容只有会话参与者可见。请不要在未取得对方同意的情况下，把私聊内容转发或公开。",
+  "legal.terms.s5.title": "5. 服务",
+  "legal.terms.s5.p1": "我们提供个人资料展示、发现与连接、动态、聊天与通知等功能，并可能调整、增加或停止其中部分功能。产品目前免费提供；如将来引入收费功能，会另行征求你的同意。",
+  "legal.terms.s5.p2": "产品按「现状」提供。我们会尽力保持它可用与安全，但无法保证服务永不中断、永不出现错误。",
+  "legal.terms.s6.title": "6. 违规与处理",
+  "legal.terms.s6.p1": "你需要遵守《社区规则》。违反时我们可能：提醒、下架或隐藏内容、限制部分功能、临时暂停账号（到期自动解除）、或永久封禁账号。情节严重的，例如涉及真实威胁或违法内容，会直接封禁。",
+  "legal.terms.s6.p2": "你可以举报动态、评论、消息或用户。我们会把处理结果通知给举报人，并且不会向被举报人透露是谁举报的。",
+  "legal.terms.s7.title": "7. 注销与终止",
+  "legal.terms.s7.i1": "你可以在「我的」里随时注销账号。注销后，我们按《隐私政策》在合理期限内删除你的个人资料及其关联内容。",
+  "legal.terms.s7.i2": "为安全审计所必需的记录会在《隐私政策》写明的期限内保留，不会随注销立即消失。",
+  "legal.terms.s7.i3": "如果你严重违反本协议或法律，我们可能中止或终止向你提供服务。",
+  "legal.terms.s8.title": "8. 责任范围",
+  "legal.terms.s8.i1": "请自行判断与他人的交往。在法律允许的范围内，我们不对你与其他用户之间的纠纷负责。",
+  "legal.terms.s8.i2": "我们不对因不可抗力、第三方服务中断（例如你使用 Google 登录时的 Google 服务）、或你自身设备与网络问题造成的损失负责。",
+  "legal.terms.s8.i3": "以上责任边界以适用法律允许的最大范围为限；法律不允许限制的部分，不因本协议而受限。",
+  "legal.terms.s9.title": "9. 协议变更",
+  "legal.terms.s9.p1": "本协议如有实质性变更，我们会在应用内提示。继续使用即表示你接受更新后的协议；若不同意，你可以停止使用并注销账号。",
+  "legal.terms.s10.title": "10. 适用法律与争议解决",
+  "legal.terms.s10.p1": "如果你与我们之间发生争议，请先用上面的联系方式与我们联系，我们会尽力协商解决。协商不成时，交由运营主体注册地有管辖权的法院处理。",
+  /* 页脚的「夹链接」句：拆分点都在链接两侧（名词短语边界），两种语言都能接得上。 */
+  "legal.terms.morePre": "另外请阅读",
+  "legal.terms.moreAnd": "与",
+  "legal.terms.moreEnd": "。",
+
+  "legal.rules.title": "社区规则",
+  "legal.rules.updated": "最近更新：2026 年 10 月",
+  "legal.rules.intro": "TalkFirst 想让你先聊得来、再决定要不要成为朋友。这需要每个人在这里都能放松地说话，所以下面这些是大家共同遵守的约定。本规则是《用户协议》的一部分。",
+  "legal.rules.s1.title": "1. 我们的底线",
+  "legal.rules.s1.i1": "尊重对方：语言交换与交朋友都建立在愿意沟通之上，不逼迫、不纠缠。",
+  "legal.rules.s1.i2": "不伤害：任何形式的骚扰、威胁、仇恨与歧视都不被接受。",
+  "legal.rules.s1.i3": "不欺骗：不冒充他人，不用虚假身份获取信任。",
+  "legal.rules.s2.title": "2. 禁止发布的内容",
+  "legal.rules.s2.i1": "辱骂、骚扰、威胁、跟踪他人，或持续纠缠；未经同意公开他人的隐私，例如住址、单位、联系方式、聊天记录截图。",
+  "legal.rules.s2.i2": "针对种族、民族、宗教、性别、性取向、身体残障等的仇恨或歧视内容。",
+  "legal.rules.s2.i3": "色情或露骨的性内容；任何与未成年人有关的性内容。",
+  "legal.rules.s2.i4": "宣扬暴力、自伤或自杀，或教唆违法与危险行为。",
+  "legal.rules.s2.i5": "垃圾信息与广告：批量私信、拉群、推广博彩、贷款、代充、刷单、虚拟币等。",
+  "legal.rules.s2.i6": "违法交易，以及恶意链接、诈骗或恶意软件。",
+  "legal.rules.s3.title": "3. 禁止的行为",
+  "legal.rules.s3.i1": "批量注册账号、用脚本或机器人自动操作、爬取他人资料。",
+  "legal.rules.s3.i2": "绕过他人的可见范围设置或拉黑，换号继续骚扰。",
+  "legal.rules.s3.i3": "冒充他人或冒充官方，伪造身份与经历。",
+  "legal.rules.s3.i4": "买卖、出租、借用或共享账号。",
+  "legal.rules.s4.title": "4. 举报与处理",
+  "legal.rules.s4.i1": "动态、评论、消息与用户都可以举报：请选择最贴近的理由，必要时补充说明。理由由服务端校验，不在列表内的理由会被拒绝。",
+  "legal.rules.s4.i2": "举报人的身份不会被透露给被举报人。",
+  "legal.rules.s4.i3": "我们可能采取的处理手段：提醒、下架或隐藏内容、限制部分功能、临时暂停账号（到期自动解除）、永久封禁账号。涉及真实威胁或违法内容的，直接封禁。",
+  "legal.rules.s4.i4": "处理结果会通知举报人，让举报的人知道后续如何。",
+  "legal.rules.s5.title": "5. 如果你被处理了",
+  "legal.rules.s5.p1": "你可以通过 support@talkfirst.ccwu.cc 申诉，并请说明你的账号与当时的情况，我们会复核。临时暂停的账号会在到期后自动恢复。",
+  "legal.rules.s6.title": "6. 安全提示",
+  "legal.rules.s6.i1": "初次见面请选择公共场所，并把去向告诉朋友或家人。",
+  "legal.rules.s6.i2": "不要向刚认识的人转账、代付，也不要提供验证码或证件照片。",
+  "legal.rules.s6.i3": "遇到可疑行为请直接举报或拉黑，不必先与对方周旋。",
+  "legal.rules.footerPre": "本规则是",
+  "legal.rules.footerAnd": "的一部分，也请阅读",
+  "legal.rules.footerEnd": "。",
 } as const;
 
 export type MsgKey = keyof typeof zh;
@@ -438,6 +550,101 @@ export const en: Record<MsgKey, string> = {
   "verify.errCodeLength": "Enter the {n}-digit code.",
   "verify.errSend": "Could not send the code. Please try again.",
   "verify.errVerify": "Could not verify the code. Please try again.",
+
+  /* legal texts: consent gate, terms of use, community rules */
+  "legal.translationNote": "This page is a translation of the Chinese original. If the two ever differ, the Chinese text governs.",
+
+  "legal.gate.title": "Terms and privacy",
+  "legal.gate.intro": "So you know exactly how we handle your information, we need you to confirm both items below before you sign up. The full text of each is provided in the sign-up flow.",
+  "legal.gate.acceptTerms": "I have read and agree to the Terms of Use",
+  "legal.gate.acceptTermsHint": "Account rules, content standards, and the 18-and-over age requirement.",
+  "legal.gate.acceptPrivacy": "I have read and agree to the Privacy Policy",
+  "legal.gate.acceptPrivacyHint": "What we collect, why we collect it, and how you can see, correct or delete it.",
+  "legal.gate.readTerms": "Read the full Terms of Use",
+  "legal.gate.readPrivacy": "Read the full Privacy Policy",
+  "legal.gate.note": "You can review and adjust who sees each part of your profile at any time under Me → Privacy & safety, and you can delete your account to have all of your information removed.",
+  "legal.gate.continue": "Agree and continue",
+  "legal.gate.needBoth": "Please tick both boxes above",
+
+  "legal.privacy.title": "Privacy Policy",
+
+  "legal.terms.title": "Terms of Use",
+  "legal.terms.updated": "Last updated: October 2026",
+  "legal.terms.intro": "These terms set out the rules between you and TalkFirst: what you may do with the product, what we may do with your content, and what happens when something goes wrong. Please read them together with the Privacy Policy and the Community Rules.",
+  "legal.terms.s1.title": "1. About these terms",
+  "legal.terms.s1.p1": "These terms apply to the TalkFirst mobile app and website. The operator is TalkFirst; the contact address is support@talkfirst.ccwu.cc.",
+  "legal.terms.s1.p2": "If you do not agree to these terms, please do not sign up or keep using the product.",
+  "legal.terms.s2.title": "2. Who may use it",
+  "legal.terms.s2.i1": "The product is for people aged 18 and over. By signing up you confirm that you are at least 18.",
+  "legal.terms.s2.i2": "One e-mail address, one account. Please do not sign up on someone else's behalf or create accounts in bulk.",
+  "legal.terms.s2.i3": "Please give a real, working e-mail address: it is how you sign in, recover your password and receive security notices.",
+  "legal.terms.s3.title": "3. Accounts and signing in",
+  "legal.terms.s3.i1": "You are given a username when you sign up, and you use it to sign in. Your nickname is the name other people see. The two can be different.",
+  "legal.terms.s3.i2a": "You set and keep your own password. We store it as an irreversible hash, so ",
+  "legal.terms.s3.i2b": "the original can never be read back",
+  "legal.terms.s3.i2c": "; if you forget it, you can only reset it by e-mail.",
+  "legal.terms.s3.i3": "You can also sign in or sign up with a Google account. Accounts created that way have no password, and you can set one later.",
+  "legal.terms.s3.i4": "Please do not lend, rent out or sell your account. Anything done through your account counts as done by you.",
+  "legal.terms.s4.title": "4. Your content",
+  "legal.terms.s4.i1": "You keep the copyright in the posts, comments, messages, photos and profile text you publish.",
+  "legal.terms.s4.i2": "As far as needed to run the service, you give us permission to store and display that content inside the product, and to share it with other members according to your visibility settings. If you change those settings or delete content, we follow the new state.",
+  "legal.terms.s4.i3": "You need to make sure you have the right to publish it, and that it breaks neither the law nor the Community Rules.",
+  "legal.terms.s4.i4": "Private messages are visible only to the people in the conversation. Please do not forward or publish them without the other person's agreement.",
+  "legal.terms.s5.title": "5. The service",
+  "legal.terms.s5.p1": "We provide profiles, discovery and connecting, posts, chat and notifications, and we may change, add or retire parts of that. The product is free today; if we introduce paid features later, we will ask for your agreement separately.",
+  "legal.terms.s5.p2": "The product is provided “as is”. We work to keep it available and safe, but we cannot promise the service will never go down and never fail.",
+  "legal.terms.s6.title": "6. Breaking the rules",
+  "legal.terms.s6.p1": "You need to follow the Community Rules. If you do not, we may: warn you; take content down or hide it; limit some features; suspend your account temporarily (lifted automatically when it expires); or ban it permanently. In serious cases, such as a credible threat or unlawful content, we ban the account straight away.",
+  "legal.terms.s6.p2": "You can report a post, a comment, a message or a member. We tell the reporter the outcome, and we never tell the reported member who reported them.",
+  "legal.terms.s7.title": "7. Deleting your account and termination",
+  "legal.terms.s7.i1": "You can delete your account at any time from Me. Once you do, we remove your profile and the content tied to it within a reasonable period, as the Privacy Policy describes.",
+  "legal.terms.s7.i2": "Records needed for security auditing are kept for the periods the Privacy Policy sets out; they do not disappear the moment your account is deleted.",
+  "legal.terms.s7.i3": "If you seriously break these terms or the law, we may suspend or end the service we provide to you.",
+  "legal.terms.s8.title": "8. Limits on our responsibility",
+  "legal.terms.s8.i1": "Judge for yourself who you deal with. To the extent the law allows, we are not responsible for disputes between you and another member.",
+  "legal.terms.s8.i2": "We are not responsible for loss caused by events beyond our control, by an outage of a third-party service (for example Google when you sign in with Google), or by your own device or network.",
+  "legal.terms.s8.i3": "These limits apply as far as the applicable law allows; anything the law does not permit us to limit is not limited by these terms.",
+  "legal.terms.s9.title": "9. Changes to these terms",
+  "legal.terms.s9.p1": "If we make a substantive change to these terms, we tell you inside the app. Continuing to use the product means you accept the updated terms; if you do not agree, you can stop using it and delete your account.",
+  "legal.terms.s10.title": "10. Governing law and disputes",
+  "legal.terms.s10.p1": "If a dispute arises between you and us, please contact us first at the address above and we will do our best to settle it by discussion. If we cannot, it goes to the courts with jurisdiction where the operator is registered.",
+  "legal.terms.morePre": "Please also read our ",
+  "legal.terms.moreAnd": " and our ",
+  "legal.terms.moreEnd": ".",
+
+  "legal.rules.title": "Community Rules",
+  "legal.rules.updated": "Last updated: October 2026",
+  "legal.rules.intro": "TalkFirst is meant to let you talk first, and decide only afterwards whether to become friends. That needs everyone here to be able to speak freely, so what follows is what we all agree to. These rules are part of the Terms of Use.",
+  "legal.rules.s1.title": "1. What we hold to",
+  "legal.rules.s1.i1": "Respect the other person: language exchange and friendship both rest on wanting to talk. Do not pressure, do not pester.",
+  "legal.rules.s1.i2": "Do no harm: harassment, threats, hatred and discrimination in any form are not accepted here.",
+  "legal.rules.s1.i3": "Do not deceive: do not impersonate anyone, and do not use a false identity to earn trust.",
+  "legal.rules.s2.title": "2. Content you may not post",
+  "legal.rules.s2.i1": "Abuse, harassment, threats, following someone around or pestering them without let-up; publishing someone's private information without their agreement, such as their address, employer, contact details or screenshots of a chat.",
+  "legal.rules.s2.i2": "Hateful or discriminatory content aimed at race, ethnicity, religion, sex, sexual orientation, disability or anything of the kind.",
+  "legal.rules.s2.i3": "Pornographic or sexually explicit content, and any sexual content involving minors.",
+  "legal.rules.s2.i4": "Content that promotes violence, self-harm or suicide, or that encourages unlawful or dangerous behaviour.",
+  "legal.rules.s2.i5": "Spam and advertising: mass private messages, pulling people into groups, and promotion of gambling, loans, top-up services, review-farming, crypto and the like.",
+  "legal.rules.s2.i6": "Unlawful transactions, and malicious links, scams or malware.",
+  "legal.rules.s3.title": "3. Things you may not do",
+  "legal.rules.s3.i1": "Registering accounts in bulk, automating the product with scripts or bots, or scraping other members' information.",
+  "legal.rules.s3.i2": "Working around someone's visibility settings or their block, for example by switching accounts to keep harassing them.",
+  "legal.rules.s3.i3": "Impersonating another member or TalkFirst itself, or faking an identity or a history.",
+  "legal.rules.s3.i4": "Buying, selling, renting, borrowing or sharing accounts.",
+  "legal.rules.s4.title": "4. Reporting and what we do",
+  "legal.rules.s4.i1": "You can report a post, a comment, a message or a member: pick the reason that fits best and add a note if it helps. Reasons are checked on the server, and one that is not on the list is refused.",
+  "legal.rules.s4.i2": "The reported member is never told who reported them.",
+  "legal.rules.s4.i3": "What we may do: warn you; take content down or hide it; limit some features; suspend your account temporarily (lifted automatically when it expires); or ban it permanently. Where a credible threat or unlawful content is involved, we ban the account straight away.",
+  "legal.rules.s4.i4": "We tell the reporter the outcome, so whoever reported it knows what happened next.",
+  "legal.rules.s5.title": "5. If we have actioned your account",
+  "legal.rules.s5.p1": "You can appeal at support@talkfirst.ccwu.cc — tell us which account and what happened, and we will look again. A temporary suspension lifts by itself when it expires.",
+  "legal.rules.s6.title": "6. Staying safe",
+  "legal.rules.s6.i1": "Meet in a public place the first time, and tell a friend or family member where you are going.",
+  "legal.rules.s6.i2": "Do not send money to someone you have just met, do not pay on their behalf, and do not hand over a verification code or a photo of your ID.",
+  "legal.rules.s6.i3": "If something looks wrong, report or block straight away — you do not have to engage with them first.",
+  "legal.rules.footerPre": "These rules are part of our ",
+  "legal.rules.footerAnd": ", and please also read our ",
+  "legal.rules.footerEnd": ".",
 };
 
 const MESSAGES: Record<Locale, Record<MsgKey, string>> = { zh, en };

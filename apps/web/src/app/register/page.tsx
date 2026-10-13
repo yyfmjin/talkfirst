@@ -192,8 +192,7 @@ export default function RegisterPage() {
               only being visible. */}
           <p id="register-hint" className="text-caption leading-4 text-content-subtle">
             {t("auth.termsHint")}
-            {/* 社区规则页还没双语化 —— 英文站暂时也去中文页，不要改成 localePath()。 */}
-            <Link href="/legal/rules" className="font-medium text-brand-600">
+            <Link href={localePath(locale, "/legal/rules")} className="font-medium text-brand-600">
               {t("site.legalRules")}
             </Link>
             {t("auth.termsSuffix")}

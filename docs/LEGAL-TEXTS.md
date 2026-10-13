@@ -85,3 +85,30 @@
   **2026-10-06 实测：生产环境两项都没有启用** —— `TRANSLATION_API_URL` 与 `TRANSLATION_API_KEY` 均为空，
   `SOCIAL_SYNC_PROVIDERS` 与 Instagram / Threads 凭据均未配置（`OAUTH_PROVIDERS` 只有 Google）。
   **所以现阶段隐私政策是准确的**；一旦启用其中任何一项，必须先补披露再上线。
+
+---
+
+## 5. 英文译本（2026-10-13）
+
+同意闸门、《用户协议》、《社区规则》三页已经双语化（`/legal`、`/legal/terms`、
+`/legal/rules`；英文在 `/en/...` 下）。《隐私政策》尚未译 —— 它的行内强调
+（13 处 `<strong>`、2 处 `<code>`）最多，单独一批做。
+
+**这两份正文是「翻译」，不是「另一份文件」**：页首都挂着 `legal.translationNote`，
+「本页另有英文译本；两种文本如有出入，以中文原文为准。」理由直接来自上面 §2 ——
+管辖地是刻意不点名、责任限制还需法务判断的半成品；一旦英文版被当成独立有效的文本，
+§8（责任范围）与 §10（管辖）两处的措辞差异就会变成真问题。这条也在
+`apps/web/test/ui-copy.test.mjs` 里钉住了：谁把 `legal.translationNote` 从页面上拿掉，
+静态检查就红。
+
+译文里刻意保持不动的东西：
+
+- **运营主体与联系邮箱**照抄（TalkFirst / support@talkfirst.ccwu.cc），不改成英文主体名；
+- **管辖**译成中性表述（"the courts with jurisdiction where the operator is registered"），
+  同样不点名任何国家/地区 —— 与中文侧同一取舍；
+- 「最近更新：2026 年 10 月」照译（Last updated: October 2026），日期不重写。
+
+`apps/web/src/lib/session.tsx` 的 `PUBLIC_PATHS` 原本只列了 `/legal` 与 `/legal/privacy`：
+**同意闸门与注册页都会在未登录状态下链到这两份正文**，没列进去就会被 401 处理器
+丢到 `/login`。这一批把 `/legal/terms`、`/legal/rules` 补上了（`/en/...` 的前缀
+归一化在前一批已做）。

@@ -66,6 +66,11 @@ const PUBLIC_PATHS = new Set([
   // requires a publicly reachable policy URL. It must load for a signed-out
   // visitor — that is the whole point of the requirement.
   "/legal/privacy",
+  // The two documents a member is asked to agree to are public for exactly the
+  // same reason as the policy: the consent gate and the sign-up screen link them
+  // while the visitor is still signed out.
+  "/legal/terms",
+  "/legal/rules",
   // Password recovery is reached *because* the user cannot sign in, so a 401
   // here is the expected state rather than an expiry to react to.
   "/reset",
