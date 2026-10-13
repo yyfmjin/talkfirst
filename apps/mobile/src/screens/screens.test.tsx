@@ -10,6 +10,7 @@ import { ComposeScreen } from "./ComposeScreen";
 import { ConnectionsScreen } from "./ConnectionsScreen";
 import { DeleteAccountScreen } from "./DeleteAccountScreen";
 import { DiscoverScreen } from "./DiscoverScreen";
+import { EditProfileScreen } from "./EditProfileScreen";
 import { ExchangeScreen } from "./ExchangeScreen";
 import { MeScreen } from "./MeScreen";
 import { MessagesScreen } from "./MessagesScreen";
@@ -119,6 +120,11 @@ jest.mock("../lib/storage", () => ({
 jest.mock("expo-video", () => ({
   useVideoPlayer: jest.fn(() => ({ pause: jest.fn() })),
   VideoView: () => null,
+}));
+
+jest.mock("expo-image-picker", () => ({
+  /* 默认「用户取消了选图」：没安排返回值的用例就不会意外把图传上去。 */
+  launchImageLibraryAsync: jest.fn(async () => ({ canceled: true, assets: [] })),
 }));
 
 const SCREENS: [string, ComponentType][] = [
@@ -662,6 +668,288 @@ describe("ExchangeScreen（会话内交换联系方式）", () => {
     expect(shown).toContain("@bob");
     /* 已经交换过就不能再申请（服务端会 403 ALREADY_EXCHANGED）—— 所以申请区不该出现。 */
     expect(shown).not.toContain(interpolate(zh["exchange.pickSection"], { n: 3 }));
+    tree.unmount();
+  });
+});
+
+/* ─────────────── 编辑资料（「我的」→ 编辑基本资料，对齐 web /me/edit） ─────────────── */
+
+/** `GET /users/me` 的响应（`SessionUser` 形状），默认是一张填好的名片。 */
+function profileUser(over: Partial<Record<string, unknown>> = {}) {
+  return {
+    id: "u1",
+    email: "a@b.c",
+    emailVerified: true,
+    nickname: "Ann",
+    avatarUrl: null,
+    birthDate: "1998-05-20T00:00:00.000Z",
+    countryCode: "CN",
+    city: "上海",
+    region: "上海",
+    gender: "FEMALE",
+    bio: "hi",
+    profileCompleted: true,
+    ...over,
+  };
+}
+
+/*
+ * 编辑资料。这一屏容易错的地方都不在画面上：
+ *
+ * 1. **空字段不能照发。** `PATCH /users/me` 对 `birthDate` / `countryCode` 是格式校验
+ *    （`YYYY-MM-DD`、两位字母），空字符串会被判成非法输入而不是「清空」。没填过生日
+ *    的用户点保存就是 400 —— 只有这一类用户能踩到，而且测不出来就真机才现。
+ * 2. **预填以服务端为准。** 会话里的 `user` 是 App 启动时拉的，可能比库里旧（在 web
+ *    上改过）。用会话值预填，用户看到的是旧数据，一保存又把旧值写回去。
+ * 3. **保存后必须回读。** 只信 PATCH 的返回值，界面上显示的就不是「库里存的东西」。
+ * 4. **头像不走 PATCH。** `POST /uploads/avatar` 自己就写库，换完头像不点保存也已经
+ *    生效 —— 所以它不该顺带发一个 PATCH。
+ */
+describe("EditProfileScreen（编辑资料）", () => {
+  const api = jest.requireMock("../lib/api") as { apiFetch: jest.Mock };
+  const picker = jest.requireMock("expo-image-picker") as { launchImageLibraryAsync: jest.Mock };
+  /* describe 体在用例之前执行，此时拿到的是工厂里那版实现，用来在收尾时还原。 */
+  const originalFetch = api.apiFetch.getMockImplementation();
+
+  afterAll(() => {
+    if (originalFetch) api.apiFetch.mockImplementation(originalFetch);
+  });
+
+  /**
+   * 没安排的路径的兜底值。
+   *
+   * 国家清单必须是**数组**（`CountryField` 直接对它 `find`），其余按列表接口给
+   * `{ items, nextCursor }`。之前这里一律回后面那个形状，`/meta/countries` 就拿到一个
+   * 对象、`find is not a function` 当场把整屏炸掉 —— 正是这套测试想抓的那类「形状
+   * 不对」，只是这次错在测试自己。
+   */
+  function fallback(path: string): unknown {
+    if (path === "/meta/countries") return [];
+    return { items: [], nextCursor: null };
+  }
+
+  /** 按路径分派假响应；没安排的路径回一个形状安全的空值。 */
+  function mockByPath(map: Record<string, unknown>): void {
+    api.apiFetch.mockImplementation(async (path: string) => {
+      if (Object.prototype.hasOwnProperty.call(map, path)) return map[path];
+      return fallback(path);
+    });
+  }
+
+  /** 每一次 `PATCH /users/me` 的请求体。 */
+  function patches(): Array<Record<string, unknown>> {
+    return api.apiFetch.mock.calls
+      .filter(([path, options]) => path === "/users/me" && options?.method === "PATCH")
+      .map(([, options]) => options?.body as Record<string, unknown>);
+  }
+
+  /** 某个输入框（`Input` 把可读名绑在 TextInput 上）。 */
+  function field(tree: renderer.ReactTestRenderer, label: string) {
+    const found = tree.root.findAll(
+      (node) =>
+        node.props.accessibilityLabel === label && typeof node.props.onChangeText === "function",
+    );
+    expect(found.length).toBeGreaterThan(0);
+    return found[0];
+  }
+
+  async function type(tree: renderer.ReactTestRenderer, label: string, text: string) {
+    await act(async () => {
+      field(tree, label).props.onChangeText(text);
+    });
+  }
+
+  async function pressSave(tree: renderer.ReactTestRenderer) {
+    const buttons = tree.root.findAll(
+      (node) =>
+        node.props.accessibilityLabel === zh["me.save"] && typeof node.props.onPress === "function",
+    );
+    expect(buttons.length).toBeGreaterThan(0);
+    await act(async () => {
+      buttons[0].props.onPress();
+    });
+  }
+
+  /** 挂载这一屏。`session` 是会话里那份（可能过时的）用户。 */
+  async function mount(session: Record<string, unknown>) {
+    const changes: Array<Record<string, unknown>> = [];
+    const tree = await renderInProviders(
+      <EditProfileScreen
+        user={session as never}
+        onDone={() => undefined}
+        onUserChange={(next) => changes.push(next as never)}
+      />,
+    );
+    return { tree, changes };
+  }
+
+  it("预填用服务端的值，而不是会话里那份可能过时的缓存", async () => {
+    mockByPath({
+      "/users/me": profileUser({ nickname: "新名字", city: "新城市" }),
+    });
+    const { tree, changes } = await mount(profileUser({ nickname: "旧名字", city: "旧城市" }));
+
+    expect(field(tree, zh["me.nickname"]).props.value).toBe("新名字");
+    expect(field(tree, zh["me.city"]).props.value).toBe("新城市");
+    /* 服务端那份顺手写回会话：否则「我的」卡上还是旧名字。 */
+    expect(changes).toHaveLength(1);
+    expect(changes[0].nickname).toBe("新名字");
+    tree.unmount();
+  });
+
+  it("生日与国家留空时不带这两个字段（空串会被服务端判成非法输入）", async () => {
+    mockByPath({ "/users/me": profileUser({ birthDate: null, countryCode: null }) });
+    /* 会话里是有生日的：确保「不发」不是因为一开始就没值。 */
+    const { tree } = await mount(profileUser());
+    api.apiFetch.mockClear();
+
+    await pressSave(tree);
+
+    const body = patches()[0];
+    expect(body).toBeTruthy();
+    expect(Object.prototype.hasOwnProperty.call(body, "birthDate")).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(body, "countryCode")).toBe(false);
+    /* 可以清空的那几个照发。 */
+    expect(body).toMatchObject({
+      nickname: "Ann",
+      city: "上海",
+      region: "上海",
+      gender: "FEMALE",
+      bio: "hi",
+    });
+    tree.unmount();
+  });
+
+  it("填了生日与国家就照发", async () => {
+    mockByPath({ "/users/me": profileUser() });
+    const { tree } = await mount(profileUser({ birthDate: null, countryCode: null }));
+    api.apiFetch.mockClear();
+
+    await type(tree, zh["me.birthDate"], "1998-05-20");
+    await pressSave(tree);
+
+    expect(patches()[0]).toMatchObject({ birthDate: "1998-05-20", countryCode: "CN" });
+    tree.unmount();
+  });
+
+  it("昵称少于 2 个字就拦下，不发请求", async () => {
+    mockByPath({ "/users/me": profileUser({ nickname: null }) });
+    const { tree } = await mount(profileUser({ nickname: null }));
+    api.apiFetch.mockClear();
+
+    await type(tree, zh["me.nickname"], "A");
+    await pressSave(tree);
+
+    expect(patches()).toHaveLength(0);
+    expect(visibleText(tree)).toContain(interpolate(zh["me.errNicknameMin"], { n: 2 }));
+    tree.unmount();
+  });
+
+  it("生日格式不对或不满 18 岁都拦下，不发请求", async () => {
+    mockByPath({ "/users/me": profileUser() });
+    const { tree } = await mount(profileUser());
+    api.apiFetch.mockClear();
+
+    /* `2026-02-30`：格式对、日子不存在。Date 会把它滚到 3 月，必须当无效处理。 */
+    await type(tree, zh["me.birthDate"], "2026-02-30");
+    await pressSave(tree);
+    expect(patches()).toHaveLength(0);
+    expect(visibleText(tree)).toContain(zh["me.errBirthDate"]);
+
+    await type(tree, zh["me.birthDate"], "2015-01-01");
+    await pressSave(tree);
+    expect(patches()).toHaveLength(0);
+    expect(visibleText(tree)).toContain(interpolate(zh["me.errAge"], { n: 18 }));
+    tree.unmount();
+  });
+
+  it("保存后重新读一遍 /users/me，界面显示服务端归一化后的值", async () => {
+    let stored: Record<string, unknown> = profileUser();
+    api.apiFetch.mockImplementation(
+      async (path: string, options?: { method?: string; body?: Record<string, unknown> }) => {
+        if (path === "/users/me" && options?.method === "PATCH") {
+          /* 服务端会归一化（去空白、大小写等），所以回读的值跟请求体并不相等。 */
+          stored = { ...stored, ...(options.body ?? {}), nickname: "Ann（已归一）" };
+          return stored;
+        }
+        if (path === "/users/me") return stored;
+        return fallback(path);
+      },
+    );
+    const { tree, changes } = await mount(profileUser({ nickname: "ann" }));
+    api.apiFetch.mockClear();
+
+    await pressSave(tree);
+
+    expect(patches()).toHaveLength(1);
+    /* 断言真的又读了一遍，而不是拿 PATCH 的返回值描到界面上。 */
+    const reads = api.apiFetch.mock.calls.filter(([path, options]) => path === "/users/me" && !options);
+    expect(reads.length).toBeGreaterThan(0);
+    expect(field(tree, zh["me.nickname"]).props.value).toBe("Ann（已归一）");
+    expect(visibleText(tree)).toContain(zh["me.saved"]);
+    expect(changes[changes.length - 1].nickname).toBe("Ann（已归一）");
+    tree.unmount();
+  });
+
+  it("换头像立刻上传并更新会话，不用再点保存", async () => {
+    mockByPath({ "/users/me": profileUser() });
+    picker.launchImageLibraryAsync.mockResolvedValue({
+      canceled: false,
+      assets: [{ base64: "AAA", mimeType: "image/png" }],
+    });
+    api.apiFetch.mockImplementation(
+      async (path: string, options?: { method?: string }) => {
+        if (path === "/uploads/avatar" && options?.method === "POST") {
+          return { avatarUrl: "https://cdn.example/a.png" };
+        }
+        if (path === "/users/me") return profileUser();
+        return fallback(path);
+      },
+    );
+    const { tree, changes } = await mount(profileUser());
+    api.apiFetch.mockClear();
+
+    const rows = tree.root.findAll(
+      (node) =>
+        node.props.accessibilityLabel === zh["me.avatarChange"] &&
+        typeof node.props.onPress === "function",
+    );
+    expect(rows.length).toBeGreaterThan(0);
+    await act(async () => {
+      await rows[0].props.onPress();
+    });
+
+    const uploads = api.apiFetch.mock.calls.filter(([path]) => path === "/uploads/avatar");
+    expect(uploads).toHaveLength(1);
+    expect((uploads[0][1].body as { image: string }).image).toBe("data:image/png;base64,AAA");
+    /* 头像接口自己写库，不该再叠一个 PATCH。 */
+    expect(patches()).toHaveLength(0);
+    expect(changes[changes.length - 1].avatarUrl).toBe("https://cdn.example/a.png");
+    expect(visibleText(tree)).toContain(zh["me.avatarUpdated"]);
+    tree.unmount();
+  });
+
+  it("图太大就当场说清楚，不发起上传", async () => {
+    mockByPath({ "/users/me": profileUser() });
+    /* 服务端上限是 base64 串 7,000,000 字符，超了就一定被拒。 */
+    picker.launchImageLibraryAsync.mockResolvedValue({
+      canceled: false,
+      assets: [{ base64: "A".repeat(7_000_001), mimeType: "image/jpeg" }],
+    });
+    const { tree } = await mount(profileUser());
+    api.apiFetch.mockClear();
+
+    const rows = tree.root.findAll(
+      (node) =>
+        node.props.accessibilityLabel === zh["me.avatarChange"] &&
+        typeof node.props.onPress === "function",
+    );
+    await act(async () => {
+      await rows[0].props.onPress();
+    });
+
+    expect(api.apiFetch.mock.calls.filter(([path]) => path === "/uploads/avatar")).toHaveLength(0);
+    expect(visibleText(tree)).toContain(zh["me.avatarTooLarge"]);
     tree.unmount();
   });
 });

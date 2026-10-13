@@ -10,6 +10,7 @@ export function Input({
   autoCapitalize = "none",
   keyboardType = "default",
   maxLength,
+  multiline = false,
 }: {
   label: string;
   value: string;
@@ -19,6 +20,8 @@ export function Input({
   autoCapitalize?: "none" | "sentences" | "words" | "characters";
   keyboardType?: "default" | "email-address" | "numbers-and-punctuation";
   maxLength?: number;
+  /** 多行（简介这类长文本）：更高、顶部对齐，而不是把单行框拉高。 */
+  multiline?: boolean;
 }) {
   // The visible label sits in a sibling <Text>, which a screen reader cannot
   // associate with the field on its own: TalkBack/VoiceOver announced it as an
@@ -43,9 +46,10 @@ export function Input({
         autoCorrect={false}
         keyboardType={keyboardType}
         maxLength={maxLength}
+        multiline={multiline}
         accessibilityLabel={label}
         accessibilityLabelledBy={labelId}
-        style={styles.input}
+        style={[styles.input, multiline ? styles.inputMultiline : null]}
       />
     </View>
   );
@@ -64,4 +68,5 @@ const styles = StyleSheet.create({
     color: colors.ink,
     backgroundColor: colors.bg,
   },
+  inputMultiline: { minHeight: 96, paddingTop: 12, textAlignVertical: "top" },
 });

@@ -28,6 +28,7 @@ import { PasswordScreen } from "./PasswordScreen";
 import { DeleteAccountScreen } from "./DeleteAccountScreen";
 import { OnboardingScreen } from "./OnboardingScreen";
 import { MomentsSettingsScreen } from "./MomentsSettingsScreen";
+import { EditProfileScreen } from "./EditProfileScreen";
 
 /**
  * 界面语言选项。
@@ -129,7 +130,7 @@ export function MeScreen() {
   }
 
   if (open === "edit") {
-    return <EditProfileScreen user={user} onDone={() => setOpen(null)} onSaved={setUser} />;
+    return <EditProfileScreen user={user} onDone={() => setOpen(null)} onUserChange={setUser} />;
   }
   if (open === "interests") {
     return <InterestsScreen onBack={() => setOpen(null)} />;
@@ -274,69 +275,6 @@ export function MeScreen() {
   );
 }
 
-/**
- * 编辑基本资料。
- *
- * 走 `PATCH /users/me`（与 web 的 `/me/edit` 同一个接口），只提交改动过的字段：
- * 这个端点是部分更新，少发几个字段比发一堆原值更不容易出错。
- */
-function EditProfileScreen({
-  user,
-  onDone,
-  onSaved,
-}: {
-  user: SessionUser;
-  onDone: () => void;
-  onSaved: (user: SessionUser) => void;
-}) {
-  const { t } = useI18n();
-  const [nickname, setNickname] = useState(user.nickname ?? "");
-  const [bio, setBio] = useState(user.bio ?? "");
-  const [city, setCity] = useState(user.city ?? "");
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-
-  async function save() {
-    if (saving) return;
-    setSaving(true);
-    setError("");
-    setMessage("");
-    try {
-      const updated = await apiFetch<SessionUser>("/users/me", {
-        method: "PATCH",
-        body: { nickname: nickname.trim(), bio: bio.trim(), city: city.trim() },
-      });
-      onSaved({ ...user, ...updated });
-      setMessage(t("me.saved"));
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : t("me.saveFailed"));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <View style={styles.page}>
-      <SubHeader title={t("me.editProfile")} onBack={onDone} />
-      <ScrollView contentContainerStyle={styles.pageBody} keyboardShouldPersistTaps="handled">
-        <Field label={t("me.nickname")} value={nickname} onChange={setNickname} maxLength={30} />
-        <Field label={t("me.city")} value={city} onChange={setCity} maxLength={40} />
-        <Field label={t("me.bio")} value={bio} onChange={setBio} maxLength={200} multiline />
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
-        {message ? <Text style={styles.okText}>{message}</Text> : null}
-        <View style={styles.pageActions}>
-          {saving ? (
-            <ActivityIndicator color={colors.primary} />
-          ) : (
-            <Button label={t("me.save")} onPress={() => void save()} />
-          )}
-        </View>
-      </ScrollView>
-    </View>
-  );
-}
-
 /** 意见反馈：`POST /feedback`（与 web 的 `/me/feedback` 同一个接口）。 */
 function FeedbackScreen({ onDone }: { onDone: () => void }) {
   const { t } = useI18n();
@@ -385,36 +323,6 @@ function FeedbackScreen({ onDone }: { onDone: () => void }) {
           )}
         </View>
       </ScrollView>
-    </View>
-  );
-}
-
-/** 一个带标签的输入行。 */
-function Field({
-  label,
-  value,
-  onChange,
-  maxLength,
-  multiline,
-}: {
-  label: string;
-  value: string;
-  onChange: (next: string) => void;
-  maxLength: number;
-  multiline?: boolean;
-}) {
-  return (
-    <View style={styles.field}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <TextInput
-        value={value}
-        onChangeText={onChange}
-        maxLength={maxLength}
-        multiline={multiline}
-        accessibilityLabel={label}
-        placeholderTextColor={colors.muted}
-        style={[styles.input, multiline ? styles.inputMultiline : null]}
-      />
     </View>
   );
 }
@@ -489,19 +397,6 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: colors.bg },
   pageBody: { padding: 20, gap: 16 },
   pageActions: { marginTop: 4 },
-  field: { gap: 6 },
-  fieldLabel: { fontSize: 13, fontWeight: "600", color: colors.muted },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: colors.ink,
-    backgroundColor: colors.white,
-  },
-  inputMultiline: { minHeight: 96, textAlignVertical: "top" },
   textArea: {
     minHeight: 140,
     borderWidth: 1,
