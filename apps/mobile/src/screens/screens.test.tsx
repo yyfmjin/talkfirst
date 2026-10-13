@@ -18,6 +18,7 @@ import { PasswordScreen } from "./PasswordScreen";
 import { SafetyScreen } from "./SafetyScreen";
 import { SocialScreen } from "./SocialScreen";
 import { OnboardingScreen } from "./OnboardingScreen";
+import { MomentsSettingsScreen } from "./MomentsSettingsScreen";
 import { UserMomentsScreen } from "./UserMomentsScreen";
 import { VisibilityScreen } from "./VisibilityScreen";
 
@@ -39,6 +40,25 @@ jest.mock("../lib/api", () => ({
   apiFetch: jest.fn(async (path: string) => {
     if (path.startsWith("/conversations")) {
       return path.includes("/messages") ? { items: [], nextCursor: null } : [];
+    }
+    if (path === "/moments/platforms") {
+      return [
+        { id: "TALKFIRST", label: "TalkFirst", icon: "TF", color: "#6572D8", connectedLabel: "站内动态" },
+        { id: "INSTAGRAM", label: "Instagram", icon: "IG", color: "#E1306C", connectedLabel: "已连接用户主页" },
+      ];
+    }
+    if (path === "/moments/bindings") return [];
+    if (path === "/moments/settings") {
+      return {
+        syncEnabled: false,
+        visibleTo: "everyone",
+        filterSensitive: true,
+        showPhotos: true,
+        showVideos: true,
+        showTexts: true,
+        showReels: true,
+        showLives: false,
+      };
     }
     if (path.startsWith("/moments")) return { items: [], nextCursor: null };
     if (path.startsWith("/notifications")) return { items: [], unread: 0, nextCursor: null };
@@ -220,6 +240,59 @@ describe("屏幕冒烟渲染", () => {
     );
 
     expect(tree.toJSON()).toBeTruthy();
+    tree.unmount();
+  });
+
+  it("MomentsSettingsScreen（动态设置）能渲染出来", async () => {
+    const tree = await renderInProviders(<MomentsSettingsScreen onBack={() => undefined} />);
+
+    /* 不只看「没崩」：平台清单是数组、设置是对象，形状错一个这里就会失败 ——
+       通用 `/moments` 分支回的是 `{ items, nextCursor }`，正好能拓出这种错误。 */
+    const shown = visibleText(tree);
+    expect(shown).toContain(zh["momentsSettings.title"]);
+    expect(shown).toContain("Instagram");
+    tree.unmount();
+  });
+
+  /*
+   * 设置页真正容易错的地方是**字段名**：控件顺序排错、把「故事」接到 `showReels`
+   * 上，界面看不出一点问题，只有服务端默默存了错误的值。这里按「点哪个开关 →
+   * 发什么 body」钉住，而不是只看渲染。
+   */
+  it("MomentsSettingsScreen：点开关发的是对应字段", async () => {
+    const api = jest.requireMock("../lib/api") as { apiFetch: jest.Mock };
+
+    const tree = await renderInProviders(<MomentsSettingsScreen onBack={() => undefined} />);
+    api.apiFetch.mockClear();
+
+    /* 可见范围：选「仅连接可见」。 */
+    const visibility = tree.root.findAll(
+      (node) =>
+        String(node.props.accessibilityLabel).startsWith(zh["momentsSettings.visibleConnections"]) &&
+        typeof node.props.onPress === "function",
+    );
+    expect(visibility.length).toBeGreaterThan(0);
+    await act(async () => {
+      visibility[0].props.onPress();
+    });
+
+    /* 内容筛选：「故事」默认关，点一下应该打开 `showLives`。 */
+    const stories = tree.root.findAll(
+      (node) =>
+        node.props.accessibilityLabel === zh["momentsSettings.showLives"] &&
+        node.props.accessibilityRole === "switch" &&
+        typeof node.props.onPress === "function",
+    );
+    expect(stories.length).toBeGreaterThan(0);
+    await act(async () => {
+      stories[0].props.onPress();
+    });
+
+    const patched = api.apiFetch.mock.calls
+      .filter(([path]) => path === "/moments/settings")
+      .map(([, options]) => options?.body);
+    expect(patched).toContainEqual({ visibleTo: "connections" });
+    expect(patched).toContainEqual({ showLives: true });
     tree.unmount();
   });
 });

@@ -403,3 +403,36 @@ export type UserMomentsDetail = {
   nextCursor: string | null;
   locked: boolean;
 };
+
+/* ──────────────────────── 动态设置（/moments/settings） ──────────────────────── */
+
+/** `GET /moments/platforms`：可绑定平台清单（服务端写死的常量）。 */
+export type MomentPlatform = {
+  id: string;
+  label: string;
+  /** 平台自带的两个字母缩写（IG / X / TT …），用作色块里的字。 */
+  icon: string;
+  color: string;
+  /** 未绑定时那句占位说明（如「已连接用户主页」）。 */
+  connectedLabel: string;
+};
+
+/** `GET /moments/bindings` 里的一条（服务端直接回数据库行，这里只取用得到的字段）。 */
+export type MomentPlatformBinding = {
+  platform: string;
+  handle: string;
+  displayName: string | null;
+  syncEnabled: boolean;
+};
+
+/** `GET /moments/settings`：服务端不会回 null，首次读取时会建一行默认值。 */
+export type MomentSettings = {
+  syncEnabled: boolean;
+  visibleTo: string;
+  filterSensitive: boolean;
+  showPhotos: boolean;
+  showVideos: boolean;
+  showTexts: boolean;
+  showReels: boolean;
+  showLives: boolean;
+};

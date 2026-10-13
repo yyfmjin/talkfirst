@@ -27,6 +27,7 @@ import { AttributesScreen } from "./AttributesScreen";
 import { PasswordScreen } from "./PasswordScreen";
 import { DeleteAccountScreen } from "./DeleteAccountScreen";
 import { OnboardingScreen } from "./OnboardingScreen";
+import { MomentsSettingsScreen } from "./MomentsSettingsScreen";
 
 /**
  * 界面语言选项。
@@ -61,7 +62,10 @@ type MeEntry = {
     | "visibility"
     | "safety"
     | "password"
-    | "deleteAccount";
+    | "deleteAccount"
+    /* 不在 `ME_GROUPS` 里：它的入口是「管理社交账号」页底部那一个按钮
+       （与 web `/me/social` → `/moments/settings` 同一条路径），不是「我的」下的一行。 */
+    | "momentsSettings";
   labelKey: MsgKey;
   icon: string;
 };
@@ -146,7 +150,23 @@ export function MeScreen() {
     return <ConnectionsScreen onBack={() => setOpen(null)} />;
   }
   if (open === "social") {
-    return <SocialScreen onBack={() => setOpen(null)} />;
+    return (
+      <SocialScreen
+        onBack={() => setOpen(null)}
+        /* 与 web `/me/social` 底部那个按钮同一个去处：这一页管授权，动态设置
+           管「绑了哪些平台、聚合了哪些内容」。两页分开，但联得上。 */
+        footer={
+          <Button
+            label={t("momentsSettings.title")}
+            variant="ghost"
+            onPress={() => setOpen("momentsSettings")}
+          />
+        }
+      />
+    );
+  }
+  if (open === "momentsSettings") {
+    return <MomentsSettingsScreen onBack={() => setOpen(null)} />;
   }
   if (open === "visibility") {
     return <VisibilityScreen onBack={() => setOpen(null)} />;

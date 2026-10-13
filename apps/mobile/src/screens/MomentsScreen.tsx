@@ -4,6 +4,7 @@ import { useVideoPlayer, VideoView } from "expo-video";
 import { apiFetch } from "../lib/api";
 import { ComposeScreen } from "./ComposeScreen";
 import { MomentDetailScreen } from "./MomentDetailScreen";
+import { MomentsSettingsScreen } from "./MomentsSettingsScreen";
 import { VideosScreen } from "./VideosScreen";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
@@ -46,6 +47,8 @@ export function MomentsScreen() {
   const [detail, setDetail] = useState<Moment | null>(null);
   /** 全屏视频流（上下滑切换，与 web 的 /videos 同源）。 */
   const [watching, setWatching] = useState(false);
+  /** 动态设置（全屏接管，与 web `/moments/settings` 同一页）。 */
+  const [settings, setSettings] = useState(false);
 
   const load = useCallback(async (mode: "initial" | "refresh" | "more") => {
     if (mode === "more" && !cursor) return;
@@ -129,6 +132,10 @@ export function MomentsScreen() {
     return <VideosScreen onClose={() => setWatching(false)} />;
   }
 
+  if (settings) {
+    return <MomentsSettingsScreen onBack={() => setSettings(false)} />;
+  }
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -150,6 +157,16 @@ export function MomentsScreen() {
           >
             <Icon name="videocam-outline" size={18} color={colors.primary} />
             <Text style={styles.watchLabel}>{t("moments.watchVideos")}</Text>
+          </Pressable>
+          {/* 与 web `/moments` 头部同一个入口（那里是齿轮图标）：动态的可见范围、
+              平台同步、内容筛选都在那一页里。 */}
+          <Pressable
+            onPress={() => setSettings(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t("momentsSettings.title")}
+            style={styles.iconButton}
+          >
+            <Icon name="options-outline" size={18} color={colors.muted} />
           </Pressable>
           <Pressable
             onPress={() => setComposing(true)}
@@ -293,6 +310,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   watchLabel: { fontSize: 14, fontWeight: "600", color: colors.primary },
+  /* 只放一个图标，可点区域撞到 40×40（与另两个胶囊按钮同高）。 */
+  iconButton: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.white,
+  },
   composeButton: {
     flexDirection: "row",
     alignItems: "center",
