@@ -29,6 +29,7 @@ import { DeleteAccountScreen } from "./DeleteAccountScreen";
 import { OnboardingScreen } from "./OnboardingScreen";
 import { MomentsSettingsScreen } from "./MomentsSettingsScreen";
 import { EditProfileScreen } from "./EditProfileScreen";
+import { LegalScreen } from "./LegalScreen";
 
 /**
  * 界面语言选项。
@@ -50,7 +51,9 @@ const LANGUAGE_OPTIONS = [
  *
  * 入口按 web `/me` 的五组放：内容（编辑基本资料 / 语言·兴趣·交友目的 / 交友属性）、关系
  * （我的连接 / 管理社交账号）、隐私与安全（资料可见范围 / 安全中心）、帮助与反馈（意见反馈）、
- * 账号（修改密码 / 注销账号）。
+ * 账号（修改密码 / 注销账号），再补一组「关于（条款与隐私）」—— web 只在注册页链到
+ * 社区规则，三份正文散在 `/legal/*`；Google Play 要求隐私政策在**应用内**可达，
+ * 所以 App 这边给一个能看全三份文档的入口。
  */
 type MeEntry = {
   key:
@@ -64,6 +67,7 @@ type MeEntry = {
     | "safety"
     | "password"
     | "deleteAccount"
+    | "legal"
     /* 不在 `ME_GROUPS` 里：它的入口是「管理社交账号」页底部那一个按钮
        （与 web `/me/social` → `/moments/settings` 同一条路径），不是「我的」下的一行。 */
     | "momentsSettings";
@@ -106,6 +110,10 @@ const ME_GROUPS: MeGroup[] = [
       { key: "deleteAccount", labelKey: "me.deleteAccount", icon: "trash-outline" },
     ],
   },
+  {
+    titleKey: "me.groupAbout",
+    entries: [{ key: "legal", labelKey: "me.legal", icon: "document-text-outline" }],
+  },
 ];
 
 export function MeScreen() {
@@ -140,6 +148,9 @@ export function MeScreen() {
   }
   if (open === "password") {
     return <PasswordScreen onBack={() => setOpen(null)} />;
+  }
+  if (open === "legal") {
+    return <LegalScreen onBack={() => setOpen(null)} />;
   }
   if (open === "deleteAccount") {
     return <DeleteAccountScreen onBack={() => setOpen(null)} />;

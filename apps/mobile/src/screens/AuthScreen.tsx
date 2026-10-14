@@ -1,11 +1,21 @@
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { Button } from "../components/Button";
+import { Icon } from "../components/Icon";
 import { Input } from "../components/Input";
 import { Logo } from "../components/Logo";
 import { ApiRequestError } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { useI18n } from "../lib/i18n-context";
+import { legalUrl } from "../lib/legal";
 import { colors } from "../theme";
 
 /**
@@ -35,12 +45,19 @@ const AUTH_ERROR_KEYS = {
 
 export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {}) {
   const { signIn, signUp } = useAuth();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  /* 注册专用的同意勾选。登录不参与：老账号注册时的那次同意已经发生过，
+     再拦一次只会让已经同意过的人重新勾一遍。 */
+  const [consent, setConsent] = useState(false);
+
+  function openLegal(path: string) {
+    Linking.openURL(legalUrl(locale, path)).catch(() => setError(t("legal.openFailed")));
+  }
 
   async function handleSubmit() {
     setError("");
@@ -59,6 +76,11 @@ export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {})
     }
     if (password.length > PASSWORD_MAX_LENGTH) {
       setError(t("auth.errorPasswordTooLong", { n: PASSWORD_MAX_LENGTH }));
+      return;
+    }
+    /* 同意闸门放在最后一道：格式都不对时先说格式，别让用户先去勾一个空表单。 */
+    if (mode === "register" && !consent) {
+      setError(t("auth.errorConsentRequired"));
       return;
     }
     setLoading(true);
@@ -137,6 +159,46 @@ export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {})
               {error}
             </Text>
           ) : null}
+          {mode === "register" ? (
+            <View style={styles.consent}>
+              {/* 同意是注册的前置条件（对齐 web `/register` 的说明，但这里必须可点）：
+                  Google Play 对含用户生成内容的应用要求「注册前明确同意条款」，
+                  界面上只写一行字、点不进去，等于没给用户读过条款的机会。 */}
+              <Pressable
+                onPress={() => setConsent(!consent)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: consent }}
+                accessibilityLabel={t("auth.consent")}
+                hitSlop={8}
+                style={styles.consentRow}
+              >
+                <Icon
+                  name={consent ? "checkbox" : "square-outline"}
+                  size={20}
+                  color={consent ? colors.primary : colors.muted}
+                />
+                <Text style={styles.consentText}>{t("auth.consent")}</Text>
+              </Pressable>
+              <View style={styles.consentLinks}>
+                <Pressable
+                  onPress={() => openLegal("/legal/terms")}
+                  accessibilityRole="link"
+                  accessibilityLabel={t("auth.consentTerms")}
+                  hitSlop={8}
+                >
+                  <Text style={styles.consentLink}>{t("auth.consentTerms")}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => openLegal("/legal/privacy")}
+                  accessibilityRole="link"
+                  accessibilityLabel={t("auth.consentPrivacy")}
+                  hitSlop={8}
+                >
+                  <Text style={styles.consentLink}>{t("auth.consentPrivacy")}</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
           <Button
             label={mode === "login" ? t("auth.login") : t("auth.register")}
             onPress={() => void handleSubmit()}
@@ -178,4 +240,9 @@ const styles = StyleSheet.create({
   footer: { flexDirection: "row", justifyContent: "center", marginTop: 28 },
   footerText: { color: colors.muted, fontSize: 13 },
   footerLink: { color: colors.primary, fontSize: 13, fontWeight: "600" },
+  consent: { marginBottom: 14 },
+  consentRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  consentText: { flex: 1, fontSize: 12, color: colors.muted, lineHeight: 17 },
+  consentLinks: { flexDirection: "row", gap: 14, marginTop: 6, marginLeft: 28 },
+  consentLink: { color: colors.primary, fontSize: 12, fontWeight: "600" },
 });

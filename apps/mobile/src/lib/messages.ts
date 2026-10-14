@@ -64,6 +64,10 @@ export const zh = {
   "auth.haveAccount": "已经有账号？",
   "auth.toRegister": "立即注册",
   "auth.toLogin": "去登录",
+  "auth.consent": "仅限 18 岁以上使用。注册即表示同意《用户协议》与《隐私政策》。",
+  "auth.consentTerms": "《用户协议》",
+  "auth.consentPrivacy": "《隐私政策》",
+  "auth.errorConsentRequired": "请先阅读并同意《用户协议》与《隐私政策》。",
   "auth.errorMissingFields": "请填写邮箱和密码。",
   "auth.errorInvalidEmail": "请输入有效的邮箱地址。",
   "auth.errorPasswordTooShort": "密码至少需要 {n} 位字符。",
@@ -302,6 +306,17 @@ export const zh = {
   "me.attributesAdded": "已添加「{label}」。",
   "me.attributesDeleted": "已删除「{label}」。",
   "me.attributesOrderUpdated": "顺序已更新。",
+
+  /* ───────────────────── 关于（条款与隐私） ───────────────────── */
+  "me.groupAbout": "关于",
+  "me.legal": "条款与隐私",
+  "legal.title": "条款与隐私",
+  "legal.intro": "以下文档在浏览器中打开，与官网上的内容是同一份。",
+  "legal.terms": "用户协议",
+  "legal.privacy": "隐私政策",
+  "legal.rules": "社区规则",
+  "legal.contact": "联系我们",
+  "legal.openFailed": "打不开浏览器，请稍后重试。",
 
   /* ───────────────────────── 账号（密码 / 注销） ───────────────────────── */
   "me.groupAccount": "账号",
@@ -653,6 +668,10 @@ export const en: Record<MsgKey, string> = {
   "auth.haveAccount": "Already have an account?",
   "auth.toRegister": "Create one",
   "auth.toLogin": "Log in",
+  "auth.consent": "For adults 18 and over. By signing up you agree to the Terms and the Privacy Policy.",
+  "auth.consentTerms": "Terms",
+  "auth.consentPrivacy": "Privacy Policy",
+  "auth.errorConsentRequired": "Please read and accept the Terms and the Privacy Policy first.",
   "auth.errorMissingFields": "Enter your email and password.",
   "auth.errorInvalidEmail": "Enter a valid email address.",
   "auth.errorPasswordTooShort": "Password must be at least {n} characters.",
@@ -891,6 +910,17 @@ export const en: Record<MsgKey, string> = {
   "me.attributesAdded": "Added \"{label}\".",
   "me.attributesDeleted": "Deleted \"{label}\".",
   "me.attributesOrderUpdated": "Order updated.",
+
+  /* about (terms & privacy) */
+  "me.groupAbout": "About",
+  "me.legal": "Terms & privacy",
+  "legal.title": "Terms & privacy",
+  "legal.intro": "These documents open in your browser — the same pages as on our website.",
+  "legal.terms": "Terms",
+  "legal.privacy": "Privacy Policy",
+  "legal.rules": "Community rules",
+  "legal.contact": "Contact us",
+  "legal.openFailed": "Could not open the browser. Please try again.",
 
   /* account (password / delete) */
   "me.groupAccount": "Account",

@@ -1,8 +1,10 @@
 import type { ComponentType, ReactNode } from "react";
+import { Linking } from "react-native";
 import renderer, { act } from "react-test-renderer";
 import { AuthProvider } from "../lib/auth-context";
 import { I18nProvider } from "../lib/i18n-context";
 /* 断言用词典里的原文，而不是手抄中文 —— 文案一改，测试跟着改，不会悄悄失真。 */
+import { SUPPORT_EMAIL } from "../lib/legal";
 import { interpolate, zh } from "../lib/messages";
 import { AuthScreen } from "./AuthScreen";
 import { AttributesScreen } from "./AttributesScreen";
@@ -12,6 +14,7 @@ import { DeleteAccountScreen } from "./DeleteAccountScreen";
 import { DiscoverScreen } from "./DiscoverScreen";
 import { EditProfileScreen } from "./EditProfileScreen";
 import { ExchangeScreen } from "./ExchangeScreen";
+import { LegalScreen } from "./LegalScreen";
 import { MeScreen } from "./MeScreen";
 import { MessagesScreen } from "./MessagesScreen";
 import { MomentsScreen } from "./MomentsScreen";
@@ -186,6 +189,13 @@ describe("屏幕冒烟渲染", () => {
     tree.unmount();
   });
 
+  it("LegalScreen（条款与隐私）带 props 也能渲染出来", async () => {
+    const tree = await renderInProviders(<LegalScreen onBack={() => undefined} />);
+
+    expect(tree.toJSON()).toBeTruthy();
+    tree.unmount();
+  });
+
   /*
    * 阶段①新增的四个「我的」子页面。它们都是全屏接管状态（带 onBack），
    * 渲染断言与上面的逐屏冒烟同一目的：任一页面里有 undefined 组件，这里立刻失败。
@@ -321,6 +331,28 @@ function visibleText(tree: renderer.ReactTestRenderer): string[] {
   }
   walk(tree.toJSON());
   return out;
+}
+
+/** 找一个带无障碍标签的可点节点并点它（Button / Pressable / 复选框共用）。 */
+async function press(tree: renderer.ReactTestRenderer, label: string): Promise<void> {
+  const found = tree.root.findAll(
+    (node) => node.props.accessibilityLabel === label && typeof node.props.onPress === "function",
+  );
+  expect(found.length).toBeGreaterThan(0);
+  await act(async () => {
+    await found[0].props.onPress();
+  });
+}
+
+/** 找一个输入框（同样靠无障碍标签定位）并输入。 */
+async function typeInto(tree: renderer.ReactTestRenderer, label: string, text: string): Promise<void> {
+  const found = tree.root.findAll(
+    (node) => node.props.accessibilityLabel === label && typeof node.props.onChangeText === "function",
+  );
+  expect(found.length).toBeGreaterThan(0);
+  await act(async () => {
+    found[0].props.onChangeText(text);
+  });
 }
 
 /** `GET /moments/user/:id` 的响应，默认是「能看、暂时没动态」。 */
@@ -950,6 +982,74 @@ describe("EditProfileScreen（编辑资料）", () => {
 
     expect(api.apiFetch.mock.calls.filter(([path]) => path === "/uploads/avatar")).toHaveLength(0);
     expect(visibleText(tree)).toContain(zh["me.avatarTooLarge"]);
+    tree.unmount();
+  });
+});
+
+/*
+ * 条款与隐私 —— 这两条盯的是 Google Play 的上架硬要求，不是普通 UI 偏好：
+ *
+ *   1. 隐私政策必须**在应用内可达**（只在商店页放个链接不够）；
+ *   2. 含用户生成内容的应用必须让用户在注册**之前**明确同意条款 ——
+ *      界面上写一行字、点不进去，等于没给用户读过条款的机会。
+ *
+ * 所以这里不靠「看着像对的」：前者断言真的调了 `Linking.openURL` 且地址就是官网上
+ * 那三个页面（换域名、改路径都会在这里被拦住），后者断言没勾同意时**一个请求都不发**。
+ */
+describe("条款与隐私（Play 上架要求）", () => {
+  it("LegalScreen 列出三份文档，点开的是官网上对应语言的页面", async () => {
+    const open = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+    const tree = await renderInProviders(<LegalScreen onBack={() => undefined} />);
+
+    const text = visibleText(tree);
+    expect(text).toContain(zh["legal.terms"]);
+    expect(text).toContain(zh["legal.privacy"]);
+    expect(text).toContain(zh["legal.rules"]);
+
+    const links = tree.root.findAll(
+      (node) => node.props.accessibilityRole === "link" && typeof node.props.onPress === "function",
+    );
+    /* 三份文档 + 联系我们，共四个入口。这里不断言精确条数：React Native 的
+       Pressable 在测试树里会同时出现合成节点与宿主节点，数出来是 8 —— 真正
+       要盯的是下面那四个地址。 */
+    expect(links.length).toBeGreaterThanOrEqual(4);
+    for (const link of links) {
+      await act(async () => {
+        await link.props.onPress();
+      });
+    }
+
+    const urls = open.mock.calls.map(([url]) => String(url));
+    expect(urls).toContain("https://talkfirst.ccwu.cc/legal/terms");
+    expect(urls).toContain("https://talkfirst.ccwu.cc/legal/privacy");
+    expect(urls).toContain("https://talkfirst.ccwu.cc/legal/rules");
+    expect(urls).toContain(`mailto:${SUPPORT_EMAIL}`);
+
+    open.mockRestore();
+    tree.unmount();
+  });
+
+  it("注册页没勾同意就不发注册请求，并明说要先同意", async () => {
+    const api = jest.requireMock("../lib/api") as { apiFetchEnvelope: jest.Mock };
+    const tree = await renderInProviders(<AuthScreen />);
+
+    /* 登录页 → 注册页。toggle 用的是无障碍标签，不是文案片段。 */
+    await press(tree, zh["auth.toRegister"]);
+    api.apiFetchEnvelope.mockClear();
+
+    await typeInto(tree, zh["auth.email"], "new@example.com");
+    await typeInto(tree, zh["auth.password"], "password123");
+    await press(tree, zh["auth.register"]);
+
+    expect(api.apiFetchEnvelope).not.toHaveBeenCalled();
+    expect(visibleText(tree)).toContain(zh["auth.errorConsentRequired"]);
+
+    /* 勾上同意 → 同一套输入就该照发。 */
+    await press(tree, zh["auth.consent"]);
+    await press(tree, zh["auth.register"]);
+
+    const paths = api.apiFetchEnvelope.mock.calls.map(([path]) => String(path));
+    expect(paths).toContain("/auth/register");
     tree.unmount();
   });
 });
