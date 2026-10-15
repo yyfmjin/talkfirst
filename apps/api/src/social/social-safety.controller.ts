@@ -126,6 +126,7 @@ export class SocialSafetyController {
             },
             messages: { where: { deletedAt: null }, orderBy: { createdAt: "desc" }, take: 5 },
             connection: { select: { id: true, status: true } },
+            aiCompanion: { select: { id: true, name: true } },
           },
         },
       },
@@ -147,7 +148,9 @@ export class SocialSafetyController {
         const unreadCount = await this.unreadCountFor(user.id, membership);
         return {
           id: membership.conversation.id,
+          type: membership.conversation.type,
           connectionId: membership.conversation.connection?.id ?? null,
+          aiCompanionName: membership.conversation.aiCompanion?.name ?? null,
           peer: peer?.user ?? null,
           unreadCount,
           lastMessage: lastMessage
@@ -156,6 +159,7 @@ export class SocialSafetyController {
                 content: lastMessage.content,
                 type: lastMessage.type,
                 senderId: lastMessage.senderId,
+                senderKind: lastMessage.senderKind,
                 createdAt: lastMessage.createdAt,
               }
             : null,
@@ -191,7 +195,9 @@ export class SocialSafetyController {
       where: {
         conversationId: membership.conversationId,
         deletedAt: null,
-        senderId: { not: userId },
+        // 我的消息不提醒；AI 朋友的消息（senderId 为空）要提醒 —— 两者合起来才是
+        // 「不是我说的话」。
+        OR: [{ senderId: { not: userId } }, { senderId: null }],
         type: { not: "SYSTEM" },
         // `null` = 从未读过，所以不设下界（等于「全算未读」）。
         ...(membership.lastReadAt ? { createdAt: { gt: membership.lastReadAt } } : {}),

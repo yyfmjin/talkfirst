@@ -652,6 +652,7 @@ model User {
   connectionsB     Connection[]         @relation("ConnectionsB")
   memberships      ConversationMember[]
   messages         Message[]            @relation("SentMessages")
+  aiCompanion      AiCompanion?
   reportsMade      Report[]             @relation("ReportsMade")
   reportsReceived  Report[]             @relation("ReportsReceived")
   blocksMade       Block[]              @relation("BlocksMade")
@@ -1141,12 +1142,21 @@ model Connection {
 
 model Conversation {
   id         String               @id @default(uuid()) @db.Uuid
+  /**
+   * 会话种类：`DIRECT` = 双人私聊，`AI` = 与 AI 朋友的一对一会话。
+   * 默认 DIRECT —— 既有行全部落在这个值上，不加字段它们语义不变。
+   */
+  type          String             @default("DIRECT") @db.VarChar(16)
+  aiCompanionId String?            @db.Uuid @unique
+  aiCompanion   AiCompanion?       @relation(fields: [aiCompanionId], references: [id], onDelete: Cascade)
   createdAt  DateTime             @default(now())
   updatedAt  DateTime             @updatedAt
   members    ConversationMember[]
   messages   Message[]
   connection Connection?          @relation("ConnectionConversation")
   exchanges  ExchangeRequest[]
+
+  @@index([type, aiCompanionId])
 }
 
 model ConversationMember {
@@ -1174,8 +1184,13 @@ model Message {
   id             String               @id @default(uuid()) @db.Uuid
   conversationId String               @db.Uuid
   conversation   Conversation         @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  senderId       String               @db.Uuid
-  sender         User                 @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  /**
+   * AI 朋友的消息没有人类发送者：`senderId` 为空、`senderKind` 为 `AI`。
+   * 人类消息仍是 `senderId` + `senderKind = USER`（默认值，既有行不变）。
+   */
+  senderId       String?              @db.Uuid
+  sender         User?                @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  senderKind     String               @default("USER") @db.VarChar(8)
   content        String               @db.VarChar(2000)
   type           MessageType          @default(TEXT)
   createdAt      DateTime             @default(now())
@@ -1183,6 +1198,28 @@ model Message {
   translations   MessageTranslation[]
 
   @@index([conversationId, createdAt])
+}
+
+model AiCompanion {
+  id           String       @id @default(uuid()) @db.Uuid
+  userId       String       @db.Uuid
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /** AI 朋友的名字（用户自定义，如「小星」）。 */
+  name         String       @db.VarChar(30)
+  /** AI 对用户的称呼（如「阿杰」）。 */
+  userNickname String       @db.VarChar(30)
+  /** 预设风格（gentle / witty / calm / energetic …），空 = 纯自定义 personality。 */
+  stylePreset  String?      @db.VarChar(32)
+  /** 性格/人设的自由文本（如「温柔、有耐心、喜欢分享日常」）。 */
+  personality  String?      @db.VarChar(500)
+  /** 开场白（可选，创建会话时的第一条 AI 消息）。 */
+  greeting     String?      @db.VarChar(200)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  conversation Conversation?
+
+  @@unique([userId])
 }
 
 model MessageTranslation {

@@ -210,6 +210,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
+    // AI 会话不走实时网关：发消息用 REST（ai-companion/messages），
+    // 那里才生成 AI 回复。误连进来只拒绝，不写任何数据。
+    if (membership.conversation.type === "AI") {
+      client.emit("error", { code: "AI_CONVERSATION_UNSUPPORTED", message: "AI conversations use the REST endpoint" });
+      return;
+    }
+
     const peerId = membership.conversation.members.find((member) => member.userId !== user.id)?.userId;
     if (!(await this.assertSendAllowed(client, user, payload.conversationId, peerId, "TEXT"))) return;
 

@@ -345,7 +345,9 @@ function ModerationDetailScreen() {
                   <p className="mt-2 whitespace-pre-wrap text-[13px]">{data.message.content}</p>
                   <p className="mt-2 text-[12px] text-muted">
                     {data.message.type} ·{" "}
-                    {data.message.sender.nickname ?? data.message.sender.email} ·{" "}
+                    {data.message.sender
+                      ? data.message.sender.nickname ?? data.message.sender.email
+                      : "AI"} ·{" "}
                     {formatTime(data.message.createdAt)}
                   </p>
                 </>

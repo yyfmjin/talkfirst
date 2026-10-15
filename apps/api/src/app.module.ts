@@ -23,6 +23,7 @@ import { MomentsModule } from "./moments/moments.module";
 import { FeedbackModule } from "./feedback/feedback.module";
 import { SocialSyncModule } from "./social-sync/social-sync.module";
 import { NotificationsModule } from "./notifications/notification.module";
+import { AiCompanionModule } from "./ai-companion/ai-companion.module";
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { NotificationsModule } from "./notifications/notification.module";
     MomentsModule,
     FeedbackModule,
     SocialSyncModule,
+    AiCompanionModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: HttpThrottlerGuard }],

@@ -215,7 +215,7 @@ export type AdminBlockListQuery = {
  * nothing.
  */
 export type ReportMessageSummary =
-  | { available: true; id: string; content: string; type: string; createdAt: Date; sender: PartySummary }
+  | { available: true; id: string; content: string; type: string; createdAt: Date; sender: PartySummary | null }
   | { available: false; reason: "NO_MESSAGE" | "DELETED" };
 
 /**

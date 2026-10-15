@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Bell } from "lucide-react";
+import { Bell, Sparkles } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
 import { TabBar } from "@/components/tab-bar";
 import {
@@ -28,6 +28,8 @@ type IncomingRequest = {
 
 type ConversationItem = {
   id: string;
+  type: string;
+  aiCompanionName: string | null;
   connectionId: string | null;
   updatedAt: string;
   unreadCount?: number;
@@ -84,6 +86,9 @@ export default function MessagesPage() {
     }
   }
 
+  const aiChat = conversations.find((conversation) => conversation.type === "AI");
+  const humanChats = conversations.filter((conversation) => conversation.type !== "AI");
+
   return (
     <PhoneShell>
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-6">
@@ -108,6 +113,34 @@ export default function MessagesPage() {
           </Link>
         </div>
         {!loading && !error ? <NotificationsPanel onRead={() => setUnreadTotal(0)} /> : null}
+
+        {!loading && !error ? (
+          <section className="mt-5">
+            <Link
+              href={localePath(locale, "/ai")}
+              data-testid="ai-companion-entry"
+              className="flex items-center gap-3 rounded-card border border-border bg-surface px-4 py-3.5 transition-colors duration-instant hover:bg-surface-sunken active:bg-surface-sunken"
+            >
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-100 text-brand-600">
+                <Sparkles size={20} aria-hidden="true" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-ui font-semibold text-content">
+                  {aiChat?.aiCompanionName ?? t("messages.aiFriend")}
+                  {aiChat?.unreadCount ? (
+                    <span className="ml-1.5 font-normal text-brand-600">
+                      （{t("messages.unreadCount", { n: aiChat.unreadCount })}）
+                    </span>
+                  ) : null}
+                </p>
+                <p className="truncate text-caption text-content-muted">
+                  {aiChat ? aiChat.lastMessage?.content ?? t("messages.aiFriendHint") : t("messages.aiFriendHint")}
+                </p>
+              </div>
+              <span className="shrink-0 text-overline text-content-subtle">{t("ai.title")}</span>
+            </Link>
+          </section>
+        ) : null}
 
         {loading ? (
           <TFLoadingRegion label={t("messages.loading")}>
@@ -176,8 +209,8 @@ export default function MessagesPage() {
             <SentRequestsPanel />
 
             <section className="mt-7">
-              <h2 className="text-ui font-semibold text-content">{t("messages.chats", { n: conversations.length })}</h2>
-              {conversations.length === 0 ? (
+              <h2 className="text-ui font-semibold text-content">{t("messages.chats", { n: humanChats.length })}</h2>
+              {humanChats.length === 0 ? (
                 <p className="mt-3 rounded-card bg-surface-sunken p-4 text-caption leading-5 text-content-muted">
                   {t("messages.noChats")}
                 </p>
@@ -186,7 +219,7 @@ export default function MessagesPage() {
                    card each: a list of chats is a list, and the unread count is the
                    only thing that needs to stand out. */
                 <div className="mt-3 divide-y divide-border overflow-hidden rounded-card border border-border">
-                  {conversations.map((conversation) => (
+                  {humanChats.map((conversation) => (
                     <Link
                       key={conversation.id}
                       href={`/messages/${conversation.id}`}
