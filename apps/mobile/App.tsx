@@ -87,10 +87,52 @@ function Loading() {
   );
 }
 
+/**
+ * 底部导航。
+ *
+ * 单独抽成一个组件的原因：`useSafeAreaInsets()` **必须在 `<SafeAreaProvider>` 内部**调用。
+ * 2026-10-16 把它写在 `Root` 里直接就崩了 ——
+ *
+ *     No safe area value available. Make sure you are rendering `<SafeAreaProvider>`
+ *     at the top of your app.
+ *
+ * 因为 `Root` 本身渲染了三个分支各自的 `SafeAreaProvider`，它自己处于 Provider **外面**。
+ * 这类错误在模拟器上一眼就能看到（真机也一样是错误屏），但 typecheck 与单测都拦不住。
+ */
+function TabBar({ tab, onSelect }: { tab: Tab; onSelect: (next: Tab) => void }) {
+  const insets = useSafeAreaInsets();
+  const { t } = useI18n();
+
+  return (
+    <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+      {TABS.map((item) => {
+        const active = tab === item.id;
+        const tint = active ? colors.primary : colors.muted;
+        return (
+          <Pressable
+            key={item.id}
+            onPress={() => onSelect(item.id)}
+            style={styles.tabItem}
+            accessibilityRole="button"
+            /* 读屏用：`selected` 让「当前在哪一页」可被朗读，
+               而不是只靠颜色（颜色不应当独自承载状态）。 */
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={t(item.labelKey)}
+          >
+            <Icon name={active ? item.iconActive : item.icon} size={22} color={tint} />
+            <Text style={[styles.tabLabel, active ? styles.tabLabelActive : null]}>
+              {t(item.labelKey)}
+            </Text>
+            {active ? <View style={styles.tabIndicator} /> : null}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 function Root() {
   const { user, loading } = useAuth();
-  const { t } = useI18n();
-  const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<Tab>("moments");
   /* 注册后走一遍引导（对齐 web 的 /register/success → /onboarding/avatar）。
      登录不会打开它 —— 只有注册成功那一次会。 */
@@ -186,30 +228,7 @@ function Root() {
             </ErrorBoundary>
           ) : null}
         </SafeAreaView>
-        <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
-          {TABS.map((item) => {
-            const active = tab === item.id;
-            const tint = active ? colors.primary : colors.muted;
-            return (
-              <Pressable
-                key={item.id}
-                onPress={() => setTab(item.id)}
-                style={styles.tabItem}
-                accessibilityRole="button"
-                /* 读屏用：`selected` 让「当前在哪一页」可被朗读，
-                   而不是只靠颜色（颜色不应当独自承载状态）。 */
-                accessibilityState={{ selected: active }}
-                accessibilityLabel={t(item.labelKey)}
-              >
-                <Icon name={active ? item.iconActive : item.icon} size={22} color={tint} />
-                <Text style={[styles.tabLabel, active ? styles.tabLabelActive : null]}>
-                  {t(item.labelKey)}
-                </Text>
-                {active ? <View style={styles.tabIndicator} /> : null}
-              </Pressable>
-            );
-          })}
-        </View>
+        <TabBar tab={tab} onSelect={setTab} />
       </View>
     </SafeAreaProvider>
   );

@@ -8,6 +8,7 @@ import { SUPPORT_EMAIL } from "../lib/legal";
 import { interpolate, zh } from "../lib/messages";
 import { AuthScreen } from "./AuthScreen";
 import { AiScreen } from "./AiScreen";
+import App from "../../App";
 import { AttributesScreen } from "./AttributesScreen";
 import { ComposeScreen } from "./ComposeScreen";
 import { ConnectionsScreen } from "./ConnectionsScreen";
@@ -201,6 +202,22 @@ describe("屏幕冒烟渲染", () => {
      */
     expect(tree).toBeTruthy();
     tree.unmount();
+  });
+
+  it("整个 App 能挂载（含底部导航的安全区）", async () => {
+    /*
+     * 2026-10-16 加这条的原因：`useSafeAreaInsets()` 被写在了 `<SafeAreaProvider>` 外面，
+     * 真机/模拟器上直接是错误屏，而 typecheck 与其它屏幕单测都是绿的。
+     * 把 App 整个渲染一遍才能拦住这类「Provider 层级写错」的问题。
+     */
+    let tree: renderer.ReactTestRenderer | null = null;
+    await act(async () => {
+      tree = renderer.create(<App />);
+    });
+    expect(tree).toBeTruthy();
+    await act(async () => {
+      tree?.unmount();
+    });
   });
 
   it("AiScreen（AI 朋友）能渲染出人设称呼与已有消息", async () => {
