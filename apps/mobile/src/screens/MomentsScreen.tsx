@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Image, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { apiFetch } from "../lib/api";
+import { useBackHandler } from "../lib/back-stack";
 import { ComposeScreen } from "./ComposeScreen";
 import { MomentDetailScreen } from "./MomentDetailScreen";
 import { MomentsSettingsScreen } from "./MomentsSettingsScreen";
@@ -49,6 +50,12 @@ export function MomentsScreen() {
   const [watching, setWatching] = useState(false);
   /** 动态设置（全屏接管，与 web `/moments/settings` 同一页）。 */
   const [settings, setSettings] = useState(false);
+
+  /* 系统返回键：每一层全屏子页都有自己的一层（激活后激活的优先）。 */
+  useBackHandler(composing, () => setComposing(false));
+  useBackHandler(detail !== null, () => setDetail(null));
+  useBackHandler(watching, () => setWatching(false));
+  useBackHandler(settings, () => setSettings(false));
 
   const load = useCallback(async (mode: "initial" | "refresh" | "more") => {
     if (mode === "more" && !cursor) return;

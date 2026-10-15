@@ -1,12 +1,20 @@
-import { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  BackHandler,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFonts } from "expo-font";
 import { Ionicons } from "@expo/vector-icons";
 import { Icon } from "./src/components/Icon";
 import { AuthProvider, useAuth } from "./src/lib/auth-context";
 import { ErrorBoundary } from "./src/components/error-boundary";
+import { handleHardwareBack } from "./src/lib/back-stack";
 import { I18nProvider, useI18n } from "./src/lib/i18n-context";
 import type { MsgKey } from "./src/lib/messages";
 import { AuthScreen } from "./src/screens/AuthScreen";
@@ -82,10 +90,26 @@ function Loading() {
 function Root() {
   const { user, loading } = useAuth();
   const { t } = useI18n();
+  const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<Tab>("moments");
   /* 注册后走一遍引导（对齐 web 的 /register/success → /onboarding/avatar）。
      登录不会打开它 —— 只有注册成功那一次会。 */
   const [onboarding, setOnboarding] = useState(false);
+
+  /*
+   * 系统返回键（Android）。
+   *
+   * 2026-10-15 运营方反馈「有些界面点开后返回不了上一页，返回会直接退出 app」。
+   * 因为子页面是全屏接管状态、没有路由栈，系统返回键没人接管，
+   * 系统就按「回到桌面」处理了。
+   *
+   * 这里只装监听：**谁来处理**由 back-stack 里最后注册的子页决定；
+   * 没有任何子页接管时返回 false，退回系统默认行为（在主界面退出 app）。
+   */
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener("hardwareBackPress", handleHardwareBack);
+    return () => subscription.remove();
+  }, []);
 
   if (loading) {
     return <Loading />;
@@ -162,7 +186,7 @@ function Root() {
             </ErrorBoundary>
           ) : null}
         </SafeAreaView>
-        <View style={styles.tabBar}>
+        <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
           {TABS.map((item) => {
             const active = tab === item.id;
             const tint = active ? colors.primary : colors.muted;
@@ -246,7 +270,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.line,
     backgroundColor: colors.white,
-    paddingBottom: 8,
+    /* paddingBottom 在渲染时按真实安全区取（全面屏手势条会压住 tab 文字）。 */
   },
   tabItem: { flex: 1, alignItems: "center", justifyContent: "center", minHeight: 56, paddingTop: 8 },
   tabLabel: { fontSize: 11, color: colors.muted, marginTop: 2 },

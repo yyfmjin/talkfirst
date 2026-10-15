@@ -12,6 +12,7 @@ import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { SubHeader } from "../components/SubHeader";
+import { useBackHandler } from "../lib/back-stack";
 import { apiFetch } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { useI18n, type LocalePreference } from "../lib/i18n-context";
@@ -123,6 +124,10 @@ export function MeScreen() {
   /* 引导不放在 `open` 里：它不是「我的」的一个子页，而是一个会盖住底部导航的
      独立流程（与「注册后马上走一遍」是同一个组件）。 */
   const [onboarding, setOnboarding] = useState(false);
+
+  /* 系统返回键：引导 → 子页 → （没有任何子页时退出 app，交由系统默认）。 */
+  useBackHandler(open !== null, () => setOpen(null));
+  useBackHandler(onboarding, () => setOnboarding(false));
 
   if (!user) return null;
 

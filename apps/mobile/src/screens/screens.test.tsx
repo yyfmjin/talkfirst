@@ -7,6 +7,7 @@ import { I18nProvider } from "../lib/i18n-context";
 import { SUPPORT_EMAIL } from "../lib/legal";
 import { interpolate, zh } from "../lib/messages";
 import { AuthScreen } from "./AuthScreen";
+import { AiScreen } from "./AiScreen";
 import { AttributesScreen } from "./AttributesScreen";
 import { ComposeScreen } from "./ComposeScreen";
 import { ConnectionsScreen } from "./ConnectionsScreen";
@@ -45,6 +46,29 @@ jest.mock("../lib/api", () => ({
   apiFetch: jest.fn(async (path: string) => {
     if (path.startsWith("/conversations")) {
       return path.includes("/messages") ? { items: [], nextCursor: null } : [];
+    }
+    /* AI 朋友（对齐 web `/ai`）：拉到的是一份已建好的人设与会话。 */
+    if (path === "/ai-companion") {
+      return {
+        companion: {
+          id: "companion-1",
+          name: "小夏",
+          userNickname: "阿杰",
+          stylePreset: "gentle",
+          personality: null,
+          greeting: null,
+        },
+        conversationId: "conversation-ai",
+        messages: [
+          {
+            id: "ai-message-1",
+            senderId: null,
+            senderKind: "AI",
+            content: "嘿，今天过得怎么样？",
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      };
     }
     if (path === "/moments/platforms") {
       return [
@@ -139,6 +163,20 @@ const SCREENS: [string, ComponentType][] = [
   ["MeScreen", MeScreen],
 ];
 
+/**
+ * 把渲染树里的可见文字拼起来。
+ *
+ * 不用 `JSON.stringify(tree.toJSON())`：元素的 props 里有 Provider 这类循环引用，
+ * stringify 会直接抛 "Converting circular structure to JSON"。
+ */
+function renderedText(node: unknown): string {
+  if (node === null || node === undefined) return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(renderedText).join("");
+  const children = (node as { children?: unknown }).children;
+  return children === undefined ? "" : renderedText(children);
+}
+
 async function renderInProviders(node: ReactNode) {
   let tree: renderer.ReactTestRenderer | null = null;
   await act(async () => {
@@ -162,6 +200,22 @@ describe("屏幕冒烟渲染", () => {
      * 已登录的那条路径由下一个用例覆盖。
      */
     expect(tree).toBeTruthy();
+    tree.unmount();
+  });
+
+  it("AiScreen（AI 朋友）能渲染出人设称呼与已有消息", async () => {
+    const tree = await renderInProviders(<AiScreen onBack={() => undefined} />);
+    const text = renderedText(tree.toJSON());
+
+    expect(text).toContain("小夏");
+    expect(text).toContain("嘿，今天过得怎么样？");
+
+    tree.unmount();
+  });
+
+  it("消息页顶部有 AI 朋友入口（与 web /messages 同位）", async () => {
+    const tree = await renderInProviders(<MessagesScreen />);
+    expect(renderedText(tree.toJSON())).toContain(zh["ai.title"]);
     tree.unmount();
   });
 

@@ -26,6 +26,11 @@ type RequestOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   retry?: boolean;
+  /**
+   * 覆盖默认 15 秒时限。AI 朋友的回复要等服务端调完模型
+   * （实测 1-5 秒，上游拥塞重试时更久），15 秒会把一次慢但正常的回复掐断。
+   */
+  timeoutMs?: number;
 };
 
 let refreshPromise: Promise<boolean> | null = null;
@@ -130,11 +135,15 @@ async function doFetch<T>(
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
-  const response = await fetchWithTimeout(`${apiBaseUrl()}${path}`, {
-    method: options.method ?? "GET",
-    headers,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-  });
+  const response = await fetchWithTimeout(
+    `${apiBaseUrl()}${path}`,
+    {
+      method: options.method ?? "GET",
+      headers,
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    },
+    options.timeoutMs,
+  );
 
   let payload: unknown = null;
   try {

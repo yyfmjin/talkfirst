@@ -17,6 +17,7 @@ import { Input } from "../components/Input";
 import { SubHeader } from "../components/SubHeader";
 import { apiFetch } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
+import { useBackHandler } from "../lib/back-stack";
 import { useI18n } from "../lib/i18n-context";
 import type { MsgKey } from "../lib/messages";
 import {
@@ -118,6 +119,20 @@ export function OnboardingScreen({
 
   const [stepIndex, setStepIndex] = useState(0);
   const step = STEPS[stepIndex];
+
+  /**
+   * 返回：先退回上一步；已经在第一步就退出引导。
+   * 头部返回按钮与系统返回键走同一个口径 —— 否则两个「返回」会做不同的事。
+   */
+  const goBack = useCallback(() => {
+    if (stepIndex === 0) {
+      onExit();
+      return;
+    }
+    setStepIndex((current) => Math.max(current - 1, 0));
+  }, [stepIndex, onExit]);
+
+  useBackHandler(true, goBack);
 
   const [languages, setLanguages] = useState<LanguageOption[]>([]);
   const [interests, setInterests] = useState<InterestOption[]>([]);
@@ -355,7 +370,7 @@ export function OnboardingScreen({
   if (loading) {
     return (
       <View style={styles.root}>
-        <SubHeader title={t(STEP_TITLE_KEYS[step])} onBack={onExit} />
+        <SubHeader title={t(STEP_TITLE_KEYS[step])} onBack={goBack} />
         <View style={styles.center}>
           <ActivityIndicator color={colors.primary} />
         </View>

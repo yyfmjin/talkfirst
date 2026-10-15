@@ -12,8 +12,10 @@ import {
 } from "react-native";
 import { apiFetch } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
+import { useBackHandler } from "../lib/back-stack";
 import { Avatar } from "../components/Avatar";
 import { Icon } from "../components/Icon";
+import { AiScreen } from "./AiScreen";
 import { ExchangeScreen } from "./ExchangeScreen";
 import { NotificationsScreen } from "./NotificationsScreen";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
@@ -44,6 +46,8 @@ export function MessagesScreen() {
   const [openId, setOpenId] = useState<string | null>(null);
   /** 会话里的「交换联系方式」全屏子页（对齐 web 的 `/messages/[id]/connect`）。 */
   const [exchange, setExchange] = useState(false);
+  /** AI 朋友全屏子页（对齐 web 的 `/ai`，入口在列表顶部）。 */
+  const [ai, setAi] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -74,6 +78,17 @@ export function MessagesScreen() {
   useEffect(() => {
     void loadConversations();
   }, [loadConversations]);
+
+  /*
+   * 系统返回键：先关更靠前的子页，再关会话本身（注册晚的优先级高）。
+   * AI 朋友屏自己管返回（设定页 → 聊天页 → 关掉），所以这里不管它。
+   */
+  useBackHandler(openId !== null, () => {
+    setOpenId(null);
+    setExchange(false);
+    void loadConversations();
+  });
+  useBackHandler(openId !== null && exchange, () => setExchange(false));
 
   const openConversation = useCallback(async (id: string) => {
     setOpenId(id);
@@ -136,6 +151,10 @@ export function MessagesScreen() {
         <ActivityIndicator color={colors.primary} />
       </View>
     );
+  }
+
+  if (ai) {
+    return <AiScreen onBack={() => setAi(false)} />;
   }
 
   if (segment === "notifications") {
@@ -265,6 +284,32 @@ export function MessagesScreen() {
         data={conversations}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
+        /*
+         * AI 朋友入口固定在列表顶部（与 web 的 /messages 顶部那条入口同位置）。
+         * 放在 ListHeaderComponent 而不是列表数据里：它不是一个会话，
+         * 混进数据会让「没有会话」时的空状态失效。
+         */
+        ListHeaderComponent={
+          <Pressable
+            onPress={() => setAi(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t("ai.title")}
+            style={styles.aiEntry}
+          >
+            <View style={styles.aiIcon}>
+              <Icon name="sparkles-outline" size={20} color={colors.primaryDark} />
+            </View>
+            <View style={styles.rowText}>
+              <Text style={styles.peerName} numberOfLines={1}>
+                {t("ai.title")}
+              </Text>
+              <Text style={styles.preview} numberOfLines={1}>
+                {t("ai.entryHint")}
+              </Text>
+            </View>
+            <Icon name="chevron-forward" size={18} color={colors.muted} />
+          </Pressable>
+        }
         ListEmptyComponent={
           <View style={styles.center}>
             <Icon name="chatbubbles-outline" size={32} color={colors.muted} />
@@ -449,4 +494,21 @@ const styles = StyleSheet.create({
   sendDisabled: { opacity: 0.45 },
   emptyText: { fontSize: 14, color: colors.muted, textAlign: "center", lineHeight: 21 },
   error: { position: "absolute", left: 16, right: 16, bottom: 96, fontSize: 13, color: colors.danger, textAlign: "center" },
+  aiEntry: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 12,
+    marginBottom: 8,
+    borderRadius: 14,
+    backgroundColor: colors.bgTint,
+  },
+  aiIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.white,
+  },
 });

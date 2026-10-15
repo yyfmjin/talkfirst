@@ -19,6 +19,9 @@ export function SubHeader({ title, onBack }: { title: string; onBack: () => void
         accessibilityRole="button"
         accessibilityLabel={t("me.back")}
         style={styles.subBack}
+        /* 视觉上是 32×32（居中好看），手指可点范围抩到 44（与 tab 同量级，
+           单手握持时不用瞄）。 */
+        hitSlop={6}
       >
         <Icon name="chevron-back" size={22} color={colors.ink} />
       </Pressable>
