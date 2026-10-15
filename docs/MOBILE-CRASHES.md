@@ -67,3 +67,90 @@ pause()  （后，打在一个已释放的共享对象上 → 抛错）
 2. 判断口诀：报错里出现 **`Cannot use shared Object that was already released`** 或
    **`received class java.lang.Integer`**，就是在已释放的原生对象上又调了方法——去查
    是不是清理函数里多了 `pause()/stop()/close()` 这类调用。
+
+---
+
+## 2. 一打开就是错误屏：`useSafeAreaInsets()` 写在了 `SafeAreaProvider` 外面
+
+- **日期**：2026-10-16
+- **提交**：`92e419b`（修）/ `90b57e7`（引入）
+- **怎么发现的**：**模拟器实测**。typecheck 全绿、逐屏单测 81 条全绿，装到模拟器上
+  打开就是这个错误屏。
+- **现场报错**（App 自己的错误边界显示在屏幕上）：
+
+  ```
+  No safe area value available. Make sure you are rendering `<SafeAreaProvider>` at the top of your app.
+  in Root
+      in AuthProvider
+      in ErrorBoundary
+      in I18nProvider
+  ```
+
+### 根因
+
+`SafeAreaProvider` 在这个 app 里是**在 `Root` 内部**、按分支渲染的（未登录 / 引导 /
+主界面各一层）。而我在 `Root` 里调了 `useSafeAreaInsets()` 去算底部 tab 的留白 ——
+`Root` 本身在那个 Provider **外面**，context 为空，直接抛错。
+
+### 修法
+
+把「取安全区」的那一步下移到**渲染在 Provider 内部**的组件里：新增 `TabBar` 组件，
+它在 `SafeAreaProvider` 里面调 `useSafeAreaInsets()`，`Root` 只负责 `tab` 状态。
+
+### 防住
+
+1. **凡是 hook 读 context（safe-area、i18n、auth…），先确认它的调用点在提供者内部**。
+   Provider 写在某个组件自己 return 里的写法（本 app 就是这样）最容易踩。
+2. 补了一条回归测试：`整个 App 能挂载（含底部导航的安全区）`—— 把 `<App />` 整个
+   渲染一遍。**typecheck 与逐屏单测都拦不住 Provider 层级错**，只有真渲染才拦得住。
+3. 改动 App 根部结构（Provider、导航、安全区、tabs）后，**必须装到模拟器/真机看一眼**，
+   别只看测试绿。
+
+---
+
+## 3. 系统返回键直接退出 app（子页面回不去）
+
+- **日期**：2026-10-15 ~ 10-16
+- **提交**：`90b57e7`
+- **运营方反馈**：「有些界面点开后没法返回上一页，返回会直接退出 app」
+
+### 根因
+
+这个 app 没有路由库：子页面是**全屏接管状态**（`MeScreen` 的 `open`、`MessagesScreen`
+的 `openId`、`MomentsScreen` 的 `detail`…），返回靠页面自己画的「返回」按钮。
+而**整个 App 一处都没有接管系统返回键** —— 于是 Android 把返回键当成「退出到桌面」。
+
+（`ProfilePreview` / `UserMomentsScreen` 那两个 `Modal` 例外：它们本来就有 `onRequestClose`。）
+
+### 修法
+
+新增 `apps/mobile/src/lib/back-stack.ts`：
+
+- 每个打开的层用 `useBackHandler(active, onBack)` 注册，`active` 就是「这一层开没开」；
+- 按**「最近变得可见」**排序（不是挂载顺序）—— 嵌套时最上面那层才是最后打开的那个；
+- `App.tsx` 装一个 `BackHandler` 监听交给 `handleHardwareBack()`；**没人接管就返回
+  `false`**，退回系统默认行为（在主界面退出 app）；
+- 回调用 `ref` 包一层：注册/注销只在 `active` 变化时发生，否则每次渲染都重注册、
+  顺序会被打乱。
+
+接入的层：我的（子页 / 引导）、动态（发布 / 详情 / 视频流 / 设置）、消息（会话 /
+交换）、AI 朋友（设定 → 聊天 → 关掉）、引导流程（返回上一步，第一步才退出）。
+
+### 验证（模拟器实测，逐条按下返回键看结果）
+
+| 场景 | 期望 | 实测 |
+|---|---|---|
+| 我的 → 编辑资料 → 返回 | 回「我的」 | ✅ 回「我的」 |
+| 动态 → 视频流 → 返回 | 回时间线 | ✅ 回时间线 |
+| 消息 → AI 朋友 → 返回 | 回消息列表 | ✅ 回消息列表 |
+| 主界面（时间线）→ 返回 | 退出 app | ✅ 退出到桌面 |
+
+工具：`scripts/emulator-ui-helper.sh`（按界面文字定位、读输入框、按返回键）。
+
+两个实测中的坑记一下：
+
+1. **`uiautomator dump` 会返回过期内容**，而且脚本里的重试逻辑会因为本地旧文件直接返回
+   上一轮的界面 —— 每次 dump 前先删本地文件。
+2. **有 `SurfaceView`（视频）的界面，a11y 树会滞后**：视频流那屏按返回已经生效，但树里
+   还留着上一屏。判定要看**截图 md5 是否变化**，别只看 a11y 树。
+
