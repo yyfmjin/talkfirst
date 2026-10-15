@@ -90,7 +90,8 @@ export class AiService {
 
   /**
    * OpenAI 兼容的 chat/completions 调用（无流式）。
-   * 适用于 DeepSeek、Gemini（`/v1beta/openai`）等兼容端点；超时 60 秒；
+   * 适用于 DeepSeek、Gemini（`/v1beta/openai`）等兼容端点；`AI_MODEL` 可用逗号
+   * 分隔成降级链（如 `gemini-3.5-flash-lite,gemini-3.1-flash-lite`）；超时 60 秒；
    * 没有配置 key 时直接抛 `AI_NOT_CONFIGURED`。
    */
   async chat(
@@ -103,49 +104,54 @@ export class AiService {
       throw new AiUnavailableError("AI_NOT_CONFIGURED", "AI_API_KEY is not configured");
     }
     const base = (process.env.AI_API_URL ?? "https://api.deepseek.com/v1").replace(/\/+$/, "");
-    const model = (process.env.AI_MODEL ?? "deepseek-chat").trim();
+    // 支持逗号分隔的模型链：上一个不可用（上游 5xx/429，Gemini 常见 503）时按顺序降级。
+    const configuredModels = (process.env.AI_MODEL ?? "deepseek-chat")
+      .split(",")
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0);
+    const models = configuredModels.length > 0 ? configuredModels : ["deepseek-chat"];
+    // 只配了一个模型时，把同一个模型重试一次（覆盖瞬时抖动）。
+    const attempts = models.length > 1 ? models : [models[0], models[0]];
 
-    const payload = JSON.stringify({
-      model,
-      messages: [
-        { role: "system", content: system },
-        ...history,
-        { role: "user", content: userText },
-      ],
-      // Gemini 3.x 等带思考的模型会把思考 token 计入 max_tokens，
-      // 上限太小会导致回复被截断，这里留足空间（可见回复仍截到 2000 字）。
-      max_tokens: 2000,
-      temperature: 0.9,
-      stream: false,
-    });
+    const payloadFor = (model: string) =>
+      JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: system },
+          ...history,
+          { role: "user", content: userText },
+        ],
+        // Gemini 3.x 等带思考的模型会把思考 token 计入 max_tokens，
+        // 上限太小会导致回复被截断，这里留足空间（可见回复仍截到 2000 字）。
+        max_tokens: 2000,
+        temperature: 0.9,
+        stream: false,
+      });
 
-    let response = await fetch(`${base}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: payload,
-      signal: AbortSignal.timeout(60_000),
-    });
-
-    // 上游偶发拥塞（Gemini 常见 503「high demand」）重试一次，其余错误直接失败。
-    if (!response.ok && RETRYABLE_UPSTREAM_STATUS.has(response.status)) {
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+    let response: Response | null = null;
+    for (const [index, model] of attempts.entries()) {
       response = await fetch(`${base}/chat/completions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
         },
-        body: payload,
+        body: payloadFor(model),
         signal: AbortSignal.timeout(60_000),
       });
+      if (response.ok) break;
+
+      this.logger.warn(`ai upstream error: ${response.status} (model ${model})`);
+      const hasNext = index < attempts.length - 1;
+      if (!hasNext || !RETRYABLE_UPSTREAM_STATUS.has(response.status)) break;
+      await new Promise((resolve) => setTimeout(resolve, 800));
     }
 
-    if (!response.ok) {
-      this.logger.warn(`ai upstream error: ${response.status}`);
-      throw new AiUnavailableError("AI_UPSTREAM_ERROR", `upstream responded ${response.status}`);
+    if (!response || !response.ok) {
+      throw new AiUnavailableError(
+        "AI_UPSTREAM_ERROR",
+        `upstream responded ${response ? response.status : "nothing"}`,
+      );
     }
 
     const data = (await response.json()) as {
