@@ -26,6 +26,9 @@ export const STYLE_PRESETS: Record<string, string> = {
 
 export const STYLE_PRESET_KEYS = Object.keys(STYLE_PRESETS);
 
+/** 上游偶发错误：值得原样重试一次的状态码。 */
+const RETRYABLE_UPSTREAM_STATUS = new Set([429, 500, 502, 503, 504]);
+
 export type CompanionPersona = {
   name: string;
   userNickname: string;
@@ -86,8 +89,9 @@ export class AiService {
   }
 
   /**
-   * DeepSeek 兼容的 chat/completions 调用（无流式）。
-   * 超时 60 秒；没有配置 key 时直接抛 `AI_NOT_CONFIGURED`。
+   * OpenAI 兼容的 chat/completions 调用（无流式）。
+   * 适用于 DeepSeek、Gemini（`/v1beta/openai`）等兼容端点；超时 60 秒；
+   * 没有配置 key 时直接抛 `AI_NOT_CONFIGURED`。
    */
   async chat(
     system: string,
@@ -101,25 +105,43 @@ export class AiService {
     const base = (process.env.AI_API_URL ?? "https://api.deepseek.com/v1").replace(/\/+$/, "");
     const model = (process.env.AI_MODEL ?? "deepseek-chat").trim();
 
-    const response = await fetch(`${base}/chat/completions`, {
+    const payload = JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: system },
+        ...history,
+        { role: "user", content: userText },
+      ],
+      // Gemini 3.x 等带思考的模型会把思考 token 计入 max_tokens，
+      // 上限太小会导致回复被截断，这里留足空间（可见回复仍截到 2000 字）。
+      max_tokens: 2000,
+      temperature: 0.9,
+      stream: false,
+    });
+
+    let response = await fetch(`${base}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: system },
-          ...history,
-          { role: "user", content: userText },
-        ],
-        max_tokens: 600,
-        temperature: 0.9,
-        stream: false,
-      }),
+      body: payload,
       signal: AbortSignal.timeout(60_000),
     });
+
+    // 上游偶发拥塞（Gemini 常见 503「high demand」）重试一次，其余错误直接失败。
+    if (!response.ok && RETRYABLE_UPSTREAM_STATUS.has(response.status)) {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      response = await fetch(`${base}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: payload,
+        signal: AbortSignal.timeout(60_000),
+      });
+    }
 
     if (!response.ok) {
       this.logger.warn(`ai upstream error: ${response.status}`);
