@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { Compass, Images, MessageCircle, Plus, UserRound } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { apiFetch } from "@/lib/api";
+import { localePath, type MsgKey } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/use-locale";
 
 /**
  * TabBar — the bottom navigation.
@@ -43,29 +45,28 @@ import { apiFetch } from "@/lib/api";
 
 type Tab = {
   href: string;
-  label: string;
+  labelKey: MsgKey;
   icon: typeof Compass;
   /** Path prefixes that keep this tab active. */
   match: string[];
 };
 
 const TABS: Tab[] = [
-  { href: "/moments", label: "首页", icon: Images, match: ["/moments"] },
-  { href: "/discover", label: "发现", icon: Compass, match: ["/discover", "/profile"] },
-  /* 连接 lives under this tab now (see the docblock). The accessible name says so
-     explicitly — a screen-reader user cannot see that the four relationship screens
-     are behind 「消息」, and the visible label stays short for the nav. */
+  { href: "/moments", labelKey: "nav.home", icon: Images, match: ["/moments"] },
+  { href: "/discover", labelKey: "nav.discover", icon: Compass, match: ["/discover", "/profile"] },
+  /* 连接 lives under this tab now (see the docblock). */
   {
     href: "/messages",
-    label: "消息",
+    labelKey: "nav.messages",
     icon: MessageCircle,
     match: ["/messages", "/notifications", "/connections"],
   },
-  { href: "/me", label: "我的", icon: UserRound, match: ["/me", "/admin", "/onboarding"] },
+  { href: "/me", labelKey: "nav.me", icon: UserRound, match: ["/me", "/admin", "/onboarding"] },
 ];
 
 export function TabBar({ active }: { active?: string }) {
   const pathname = usePathname();
+  const { locale, t } = useT();
   const current = pathname ?? active ?? "";
   const [unread, setUnread] = useState(0);
 
@@ -101,21 +102,21 @@ export function TabBar({ active }: { active?: string }) {
 
   return (
     <nav
-      aria-label="主导航"
+      aria-label={t("nav.primaryNav")}
       data-testid="tab-bar"
       className="z-10 shrink-0 border-t border-border bg-surface/95 backdrop-blur"
     >
       <div className="grid grid-cols-5 items-end px-1 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-1.5">
         {/* Slots 1–2 */}
         {TABS.slice(0, 2).map((tab) => (
-          <TabLink key={tab.href} tab={tab} active={isActive(tab)} />
+          <TabLink key={tab.href} tab={tab} active={isActive(tab)} t={t} locale={locale} />
         ))}
 
         {/* Slot 3 — the primary action, deliberately not a destination. */}
         <div className="flex justify-center">
           <Link
             href="/moments/compose"
-            aria-label="发布动态"
+            aria-label={t("nav.compose")}
             aria-current={composeActive ? "page" : undefined}
             className={cn(
               "-mt-4 grid h-12 w-12 place-items-center rounded-full",
@@ -135,6 +136,8 @@ export function TabBar({ active }: { active?: string }) {
             tab={tab}
             active={isActive(tab)}
             badge={tab.href === "/messages" && unread > 0 ? unread : undefined}
+            t={t}
+            locale={locale}
           />
         ))}
       </div>
@@ -146,17 +149,22 @@ function TabLink({
   tab,
   active,
   badge,
+  t,
+  locale,
 }: {
   tab: Tab;
   active: boolean;
   badge?: number;
+  t: ReturnType<typeof useT>["t"];
+  locale: ReturnType<typeof useT>["locale"];
 }) {
   const Icon = tab.icon;
+  const label = t(tab.labelKey);
   return (
     <Link
-      href={tab.href}
+      href={localePath(locale, tab.href)}
       aria-current={active ? "page" : undefined}
-      aria-label={badge ? `${tab.label}，${badge} 条未读` : tab.label}
+      aria-label={badge ? t("nav.unreadBadge", { label, count: badge }) : label}
       className={cn(
         "relative flex min-h-[52px] flex-col items-center justify-center gap-1 rounded-row px-1",
         "transition-colors duration-instant ease-out",
@@ -175,7 +183,7 @@ function TabLink({
           </span>
         ) : null}
       </span>
-      <span className={cn("text-overline", active ? "font-semibold" : "font-medium")}>{tab.label}</span>
+      <span className={cn("text-overline", active ? "font-semibold" : "font-medium")}>{label}</span>
     </Link>
   );
 }

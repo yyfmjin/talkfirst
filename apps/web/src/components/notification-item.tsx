@@ -7,6 +7,8 @@ import { cn } from "@/lib/cn";
 import { friendlyErrorMessage } from "@/lib/errors";
 import { relativeTime } from "@/lib/moments";
 import { notificationTargetHref, notificationTypeMeta, type NotificationRecord } from "@/lib/notifications";
+import { type MsgKey } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/use-locale";
 
 /**
  * PC-3.1e — one notification row, and the interaction every surface shares.
@@ -28,6 +30,27 @@ import { notificationTargetHref, notificationTypeMeta, type NotificationRecord }
  * deleted target readable instead of sending the reader somewhere wrong.
  */
 
+/** The type → label dictionary key, mirroring `META` in `lib/notifications.ts`. */
+const TYPE_LABEL_KEYS: Record<string, MsgKey> = {
+  NEW_MESSAGE: "notices.type.NEW_MESSAGE",
+  SAY_HELLO: "notices.type.SAY_HELLO",
+  REQUEST_ACCEPTED: "notices.type.REQUEST_ACCEPTED",
+  EXCHANGE_REQUEST: "notices.type.EXCHANGE_REQUEST",
+  EXCHANGE_ACCEPTED: "notices.type.EXCHANGE_ACCEPTED",
+  MOMENT_LIKE: "notices.type.MOMENT_LIKE",
+  MOMENT_COMMENT: "notices.type.MOMENT_COMMENT",
+  MOMENT_REPLY: "notices.type.MOMENT_REPLY",
+  REPORT_REVIEW: "notices.type.REPORT_REVIEW",
+  USER_STATUS: "notices.type.USER_STATUS",
+  FLOWER_RECEIVED: "notices.type.FLOWER_RECEIVED",
+};
+
+const UNKNOWN_TYPE_KEY: MsgKey = "notices.unknown";
+
+export function notificationTypeLabelKey(type: string): MsgKey {
+  return TYPE_LABEL_KEYS[type] ?? UNKNOWN_TYPE_KEY;
+}
+
 export function NotificationItem({
   notification,
   onActivate,
@@ -42,10 +65,12 @@ export function NotificationItem({
   /** Messages hub styling: a smaller icon and a clamped body. */
   compact?: boolean;
 }) {
+  const { t } = useT();
   const meta = notificationTypeMeta(notification.type);
   const Icon = meta.icon;
+  const label = t(notificationTypeLabelKey(notification.type));
   const unread = !notification.readAt;
-  const title = notification.title?.trim() || meta.label;
+  const title = notification.title?.trim() || label;
 
   return (
     <button
@@ -53,7 +78,7 @@ export function NotificationItem({
       data-testid="notification-item"
       data-notification-type={notification.type}
       data-unread={unread ? "true" : "false"}
-      aria-label={`${meta.label}：${title}`}
+      aria-label={`${label}：${title}`}
       aria-busy={pending || undefined}
       onClick={onActivate ? () => onActivate(notification) : undefined}
       className={cn(
@@ -101,7 +126,7 @@ export function NotificationItem({
           {/* 合并过的行（聊天消息）：把「几条」直接说清楚，比一串同样的行好读。 */}
           {notification.count > 1 ? (
             <span className="rounded-full bg-surface-sunken px-1.5 py-0.5 font-medium text-content-muted">
-              {notification.count} 条
+              {t("notices.count", { count: notification.count })}
             </span>
           ) : null}
         </span>
@@ -127,6 +152,7 @@ export function NotificationItem({
  */
 export function useNotificationReader(onMarked: (notification: NotificationRecord) => void) {
   const router = useRouter();
+  const { t } = useT();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
@@ -143,7 +169,7 @@ export function useNotificationReader(onMarked: (notification: NotificationRecor
           onMarked(notification);
         } catch (requestError) {
           // The row stays unread: a failed write is never shown as a success.
-          setError(friendlyErrorMessage(requestError, "标记已读失败，请稍后重试。"));
+          setError(friendlyErrorMessage(requestError, t("notices.markReadFailed")));
         } finally {
           setPendingId(null);
         }

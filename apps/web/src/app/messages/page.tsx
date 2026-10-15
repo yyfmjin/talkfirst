@@ -14,6 +14,8 @@ import {
   TFRowSkeleton,
 } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
+import { localePath } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/use-locale";
 import { NotificationsPanel, SentRequestsPanel } from "./panels";
 
 type IncomingRequest = {
@@ -36,6 +38,7 @@ type ConversationItem = {
 type NoticeSummary = { items: Array<{ id: string }>; unread: number };
 
 export default function MessagesPage() {
+  const { locale, t } = useT();
   const [incoming, setIncoming] = useState<IncomingRequest[]>([]);
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,7 +59,7 @@ export default function MessagesPage() {
       setConversations(chats);
       setUnreadTotal(notices.unread ?? 0);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "消息加载失败");
+      setError(requestError instanceof Error ? requestError.message : t("messages.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -75,7 +78,7 @@ export default function MessagesPage() {
       });
       await load();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "操作失败");
+      setError(requestError instanceof Error ? requestError.message : t("messages.actionFailed"));
     } finally {
       setActingId(null);
     }
@@ -87,27 +90,27 @@ export default function MessagesPage() {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-title font-semibold text-content">
-              消息{unreadTotal > 0 ? `（${unreadTotal} 未读通知）` : ""}
+              {unreadTotal > 0 ? t("messages.titleUnread", { n: unreadTotal }) : t("messages.title")}
             </h1>
-            <p className="mt-1 text-caption text-content-muted">先处理认识请求，再开始实时聊天。</p>
+            <p className="mt-1 text-caption text-content-muted">{t("messages.subtitle")}</p>
           </div>
           {/* PC-3.1e — the one way into the Notification Center. The tab bar
               badge still counts notifications *and* chats, so this is a link
               and deliberately not a second badge. `notification-center-entry` is
               asserted by `notification.spec.ts`. */}
           <Link
-            href="/notifications"
+            href={localePath(locale, "/notifications")}
             data-testid="notification-center-entry"
             className="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-2 text-caption text-brand-600 transition-colors duration-instant hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
           >
             <Bell size={15} aria-hidden="true" />
-            通知中心
+            {t("messages.notificationCenter")}
           </Link>
         </div>
         {!loading && !error ? <NotificationsPanel onRead={() => setUnreadTotal(0)} /> : null}
 
         {loading ? (
-          <TFLoadingRegion label="正在加载消息">
+          <TFLoadingRegion label={t("messages.loading")}>
             <div className="mt-6 divide-y divide-border">
               <TFRowSkeleton />
               <TFRowSkeleton />
@@ -125,10 +128,10 @@ export default function MessagesPage() {
         {!loading && !error ? (
           <>
             <section className="mt-6">
-              <h2 className="text-ui font-semibold text-content">认识请求（{incoming.length}）</h2>
+              <h2 className="text-ui font-semibold text-content">{t("messages.requests", { n: incoming.length })}</h2>
               {incoming.length === 0 ? (
                 <p className="mt-3 rounded-card bg-surface-sunken p-4 text-caption leading-5 text-content-muted">
-                  暂时没有新的打招呼请求。去「发现」看看吧。
+                  {t("messages.noRequests")}
                 </p>
               ) : (
                 <div className="mt-3 space-y-3">
@@ -138,10 +141,10 @@ export default function MessagesPage() {
                         <TFAvatar name={request.sender?.nickname} size="md" />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-ui font-semibold text-content">
-                            {request.sender?.nickname ?? "TalkFirst 用户"}
+                            {request.sender?.nickname ?? t("common.talkFirstUser")}
                           </p>
                           <p className="truncate text-caption text-content-muted">
-                            {request.sender?.countryCode ?? "全球"} · {request.message ?? "打了个招呼"}
+                            {request.sender?.countryCode ?? t("common.global")} · {request.message ?? t("messages.saidHello")}
                           </p>
                         </div>
                       </div>
@@ -151,17 +154,17 @@ export default function MessagesPage() {
                           className="flex-1"
                           onClick={() => void respond(request.id, "reject")}
                           loading={actingId === request.id}
-                          loadingLabel="处理中…"
-                          aria-label={`拒绝 ${request.sender?.nickname ?? "对方"}`}
+                          loadingLabel={t("common.processing")}
+                          aria-label={t("messages.rejectAria", { name: request.sender?.nickname ?? t("common.otherParty") })}
                         >
-                          拒绝
+                          {t("messages.reject")}
                         </TFButton>
                         <TFButton
                           className="flex-1"
                           onClick={() => void respond(request.id, "accept")}
                           disabled={actingId === request.id}
                         >
-                          接受并聊天
+                          {t("messages.acceptAndChat")}
                         </TFButton>
                       </div>
                     </TFCard>
@@ -173,10 +176,10 @@ export default function MessagesPage() {
             <SentRequestsPanel />
 
             <section className="mt-7">
-              <h2 className="text-ui font-semibold text-content">聊天（{conversations.length}）</h2>
+              <h2 className="text-ui font-semibold text-content">{t("messages.chats", { n: conversations.length })}</h2>
               {conversations.length === 0 ? (
                 <p className="mt-3 rounded-card bg-surface-sunken p-4 text-caption leading-5 text-content-muted">
-                  接受认识请求后，这里会出现实时聊天。
+                  {t("messages.noChats")}
                 </p>
               ) : (
                 /* Conversations as hairline-divided rows rather than one bordered
@@ -192,15 +195,15 @@ export default function MessagesPage() {
                       <TFAvatar name={conversation.peer?.nickname} size="md" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-ui font-semibold text-content">
-                          {conversation.peer?.nickname ?? "TalkFirst 用户"}
+                          {conversation.peer?.nickname ?? t("common.talkFirstUser")}
                           {conversation.unreadCount ? (
                             <span className="ml-1.5 font-normal text-brand-600">
-                              （{conversation.unreadCount} 未读）
+                              （{t("messages.unreadCount", { n: conversation.unreadCount })}）
                             </span>
                           ) : null}
                         </p>
                         <p className="truncate text-caption text-content-muted">
-                          {conversation.lastMessage?.content ?? "开始聊天吧"}
+                          {conversation.lastMessage?.content ?? t("messages.startChat")}
                         </p>
                       </div>
                       <span className="shrink-0 text-overline text-content-subtle">

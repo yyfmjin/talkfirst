@@ -15,6 +15,8 @@ import {
 } from "@/components/tf";
 import { ProfilePreviewCard } from "@/components/profile-preview-card";
 import { apiFetch } from "@/lib/api";
+import { localePath } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/use-locale";
 
 type ConnectionItem = {
   id: string;
@@ -40,6 +42,7 @@ type ConnectionItem = {
 };
 
 export default function ConnectionsPage() {
+  const { locale, t } = useT();
   const [items, setItems] = useState<ConnectionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -52,7 +55,7 @@ export default function ConnectionsPage() {
       const data = await apiFetch<ConnectionItem[]>("/connections");
       setItems(data);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "连接加载失败");
+      setError(requestError instanceof Error ? requestError.message : t("connections.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -65,13 +68,13 @@ export default function ConnectionsPage() {
   return (
     <PhoneShell>
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-6">
-        <h1 className="text-title font-semibold text-content">我的连接</h1>
+        <h1 className="text-title font-semibold text-content">{t("connections.title")}</h1>
         <p className="mt-1 text-caption leading-5 text-content-muted">
-          连接不是好友，而是双方愿意继续保持联系的人。双方同意后才会交换社交账号。
+          {t("connections.subtitle")}
         </p>
 
         {loading ? (
-          <TFLoadingRegion label="正在加载连接">
+          <TFLoadingRegion label={t("connections.loading")}>
             <div className="mt-6 divide-y divide-border">
               <TFRowSkeleton />
               <TFRowSkeleton />
@@ -89,11 +92,11 @@ export default function ConnectionsPage() {
         {!loading && !error && items.length === 0 ? (
           <TFEmptyState
             icon={<Users size={26} />}
-            title="还没有连接"
-            description="去「发现」和聊得来的人打个招呼，对方接受后，这里会出现你们的连接。"
+            title={t("connections.emptyTitle")}
+            description={t("connections.emptyBody")}
             action={
-              <TFButton href="/discover" size="md" fullWidth>
-                去发现
+              <TFButton href={localePath(locale, "/discover")} size="md" fullWidth>
+                {t("connections.goDiscover")}
               </TFButton>
             }
           />
@@ -108,7 +111,7 @@ export default function ConnectionsPage() {
                   <button
                     type="button"
                     onClick={() => setPreviewUserId(item.peer.id)}
-                    aria-label={`查看 ${item.peer.nickname ?? "用户"} 的资料`}
+                    aria-label={t("connections.viewProfile", { name: item.peer.nickname ?? t("common.user") })}
                     className="shrink-0"
                   >
                     <TFAvatar name={item.peer.nickname} src={item.peer.avatarUrl} size="lg" />
@@ -119,10 +122,10 @@ export default function ConnectionsPage() {
                     className="min-w-0 flex-1 text-left"
                   >
                     <p className="truncate text-body font-semibold text-content">
-                      {item.peer.nickname ?? "TalkFirst 用户"}
+                      {item.peer.nickname ?? t("common.talkFirstUser")}
                     </p>
                     <p className="mt-0.5 text-caption text-content-muted">
-                      {item.peer.countryCode ?? "全球"} · 连接于{" "}
+                      {item.peer.countryCode ?? t("common.global")} · {t("connections.connectedOn")}{" "}
                       {new Date(item.createdAt).toLocaleDateString()}
                     </p>
                   </button>
@@ -145,17 +148,17 @@ export default function ConnectionsPage() {
                 <div className="mt-3 flex items-center justify-between gap-2 rounded-row bg-surface-sunken px-3 py-2 text-caption text-content-muted">
                   <span className="min-w-0">
                     {item.exchange?.status === "ACCEPTED"
-                      ? `✅ 已交换 ${item.exchange.platforms.join("、")}`
+                      ? t("connections.exchanged", { platforms: item.exchange.platforms.join("、") })
                       : item.exchange?.status === "PENDING"
-                        ? "🔗 交换申请待处理"
-                        : "🔒 社交账号隐藏"}
+                        ? t("connections.exchangePending")
+                        : t("connections.hidden")}
                   </span>
                   {item.conversationId ? (
                     <a
                       href={`/messages/${item.conversationId}/connect`}
                       className="shrink-0 font-medium text-brand-600 underline decoration-dotted"
                     >
-                      查看交换
+                      {t("connections.viewExchange")}
                     </a>
                   ) : null}
                 </div>

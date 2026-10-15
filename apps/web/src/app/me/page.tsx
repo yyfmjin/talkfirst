@@ -32,6 +32,9 @@ import { friendlyErrorMessage } from "@/lib/errors";
 import { type AttributeGroups } from "@/lib/profile";
 import { useSession } from "@/lib/session";
 import { AvatarActionSheet, ClickableAvatar } from "@/components/avatar-actions";
+import { LocaleSwitcher } from "@/components/locale-switcher";
+import { localePath, type MsgKey } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/use-locale";
 
 type FullProfile = {
   /**
@@ -72,29 +75,29 @@ const EMPTY_ATTRIBUTES: AttributeGroups = { aboutMe: [], lookingFor: [] };
  *     was unreachable. It lives here now.
  */
 const ENTRY_GROUPS: Array<{
-  title: string;
-  entries: Array<{ href: string; label: string; hint?: string; icon: typeof UserRound }>;
+  titleKey: MsgKey;
+  entries: Array<{ href: string; labelKey: MsgKey; hintKey?: MsgKey; icon: typeof UserRound; localized?: boolean }>;
 }> = [
   {
-    title: "内容",
+    titleKey: "me.groupContent",
     entries: [
-      { href: "/me/edit", label: "编辑基本资料", icon: UserRound },
-      { href: "/me/interests", label: "语言 · 兴趣 · 交友目的", icon: Languages },
-      { href: "/me/attributes", label: "交友属性", hint: "我的介绍 / 交友需求", icon: Sparkles },
+      { href: "/me/edit", labelKey: "me.editBasic", icon: UserRound },
+      { href: "/me/interests", labelKey: "me.interestLanguages", icon: Languages },
+      { href: "/me/attributes", labelKey: "me.attributes", hintKey: "me.attributesHint", icon: Sparkles },
     ],
   },
   {
-    title: "关系",
+    titleKey: "me.groupRelations",
     entries: [
-      { href: "/connections", label: "我的连接", hint: "双方同意后才会交换社交账号", icon: Users },
-      { href: "/me/social", label: "管理社交账号", icon: Globe2 },
+      { href: "/connections", labelKey: "me.connections", hintKey: "me.connectionsHint", icon: Users, localized: true },
+      { href: "/me/social", labelKey: "me.social", icon: Globe2 },
     ],
   },
   {
-    title: "隐私与安全",
+    titleKey: "me.groupPrivacy",
     entries: [
-      { href: "/me/visibility", label: "资料可见范围", icon: Eye },
-      { href: "/me/safety", label: "安全中心", hint: "拉黑与举报", icon: ShieldCheck },
+      { href: "/me/visibility", labelKey: "me.visibility", icon: Eye },
+      { href: "/me/safety", labelKey: "me.safety", hintKey: "me.safetyHint", icon: ShieldCheck },
     ],
   },
   {
@@ -106,19 +109,18 @@ const ENTRY_GROUPS: Array<{
      * when something is wrong, so it sits apart and is not competing for attention with
      * routine privacy settings.
      */
-    title: "帮助与反馈",
+    titleKey: "me.groupHelp",
     entries: [
-      { href: "/me/feedback", label: "意见反馈", hint: "问题、建议都可以提", icon: MessageSquare },
+      { href: "/me/feedback", labelKey: "me.feedback", hintKey: "me.feedbackHint", icon: MessageSquare },
     ],
   },
 ];
 
-/** The literal the user has to type before an irreversible delete goes out. */
-const DELETE_CONFIRM_PHRASE = "注销";
-
 export default function MePage() {
   const router = useRouter();
   const { setUser } = useSession();
+  const { locale, t } = useT();
+  const deletePhrase = t("me.deletePhrase");
   const [profile, setProfile] = useState<FullProfile | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -140,7 +142,7 @@ export default function MePage() {
         router.replace("/login");
         return;
       }
-      setError(friendlyErrorMessage(requestError, "加载失败，请稍后再试。"));
+      setError(friendlyErrorMessage(requestError, t("me.loadFailed")));
     } finally {
       setLoading(false);
     }
@@ -184,7 +186,7 @@ export default function MePage() {
    * confirmation there would only train people to type it without reading.
    */
   async function deleteAccount() {
-    if (confirmText.trim() !== DELETE_CONFIRM_PHRASE) return;
+    if (confirmText.trim() !== deletePhrase) return;
     setDeleting(true);
     setAccountError("");
     try {
@@ -197,7 +199,7 @@ export default function MePage() {
     } catch (requestError) {
       // The dialog stays open with its text intact so the user can retry
       // without retyping the phrase.
-      setAccountError(friendlyErrorMessage(requestError, "注销失败，请稍后再试。"));
+      setAccountError(friendlyErrorMessage(requestError, t("me.deleteFailed")));
     } finally {
       setDeleting(false);
     }
@@ -220,12 +222,12 @@ export default function MePage() {
             onClick={() => setAvatarSheetOpen(true)}
           />
           <h1 className="mt-4 text-title font-semibold text-content">
-            {profile?.nickname ?? (loading ? "加载中…" : "我的名片")}
+            {profile?.nickname ?? (loading ? t("common.loading") : t("me.myCard"))}
           </h1>
           {place ? <p className="mt-1 text-caption text-content-muted">{place}</p> : null}
           {profile?.isAdmin ? (
             <TFBadge tone="warning" className="mt-2">
-              管理员
+              {t("me.admin")}
             </TFBadge>
           ) : null}
           {profile?.bio ? (
@@ -244,7 +246,7 @@ export default function MePage() {
 
           {profile ? (
             <p className="mt-4 text-center text-caption text-content-muted">
-              语言：{profile.languages.map((item) => item.nativeName ?? item.name).join("、") || "—"}
+              {t("me.languagesLabel", { languages: profile.languages.map((item) => item.nativeName ?? item.name).join("、") || "—" })}
             </p>
           ) : null}
         </div>
@@ -257,13 +259,13 @@ export default function MePage() {
             <TFCard tone="quiet">
               {attributes.aboutMe.length > 0 ? (
                 <div>
-                  <p className="mb-2 text-caption font-medium text-content-muted">我的介绍</p>
+                  <p className="mb-2 text-caption font-medium text-content-muted">{t("me.aboutMe")}</p>
                   <AttributeTagList attributes={attributes.aboutMe} tone="about" limit={6} showRetired />
                 </div>
               ) : null}
               {attributes.lookingFor.length > 0 ? (
                 <div className={attributes.aboutMe.length > 0 ? "mt-4" : undefined}>
-                  <p className="mb-2 text-caption font-medium text-content-muted">交友需求</p>
+                  <p className="mb-2 text-caption font-medium text-content-muted">{t("me.lookingFor")}</p>
                   <AttributeTagList attributes={attributes.lookingFor} tone="looking" limit={6} showRetired />
                 </div>
               ) : null}
@@ -279,9 +281,12 @@ export default function MePage() {
 
         {/* Navigation, grouped. See ENTRY_GROUPS for why this is not a flat list
             of six identical buttons any more. */}
+        <div className="mt-5 px-5">
+          <LocaleSwitcher locale={locale} path="/me" tone="muted" />
+        </div>
         {ENTRY_GROUPS.map((group) => (
-          <section key={group.title} className="mt-5">
-            <TFSectionHeader title={group.title} />
+          <section key={group.titleKey} className="mt-5">
+            <TFSectionHeader title={t(group.titleKey)} />
             <div className="mx-4 overflow-hidden rounded-card border border-border bg-surface">
               {group.entries.map((entry, index) => {
                 const Icon = entry.icon;
@@ -289,9 +294,9 @@ export default function MePage() {
                   <div key={entry.href} className={index > 0 ? "border-t border-border" : undefined}>
                     <TFListRow
                       icon={<Icon size={17} />}
-                      title={entry.label}
-                      subtitle={entry.hint}
-                      href={entry.href}
+                      title={t(entry.labelKey)}
+                      subtitle={entry.hintKey ? t(entry.hintKey) : undefined}
+                      href={entry.localized ? localePath(locale, entry.href) : entry.href}
                     />
                   </div>
                 );
@@ -302,7 +307,7 @@ export default function MePage() {
 
         {/* Account-level settings that are not content, not relationships. */}
         <section className="mt-5">
-          <TFSectionHeader title="账号" />
+          <TFSectionHeader title={t("me.account")} />
           <div className="mx-4 overflow-hidden rounded-card border border-border bg-surface">
             {/*
               P0-02 — the account name, and it is shown rather than edited.
@@ -319,22 +324,22 @@ export default function MePage() {
             */}
             <TFListRow
               icon={<UserRound size={17} />}
-              title="账户名"
-              subtitle={profile ? `@${profile.username}` : "读取中…"}
+              title={t("me.accountName")}
+              subtitle={profile ? `@${profile.username}` : t("me.reading")}
             />
             <div className="border-t border-border">
-              <TFListRow icon={<KeyRound size={17} />} title="修改密码" href="/me/password" />
+              <TFListRow icon={<KeyRound size={17} />} title={t("me.changePassword")} href="/me/password" />
             </div>
             {profile?.isAdmin ? (
               <div className="border-t border-border">
-                <TFListRow icon={<ShieldCheck size={17} />} title="管理后台" href="/admin" />
+                <TFListRow icon={<ShieldCheck size={17} />} title={t("me.adminConsole")} href="/admin" />
               </div>
             ) : (
               <div className="border-t border-border">
                 <TFListRow
                   icon={<Lock size={17} />}
-                  title="管理后台"
-                  subtitle="普通账号不可见；如需要请联系管理员开通"
+                  title={t("me.adminConsole")}
+                  subtitle={t("me.adminConsoleHint")}
                 />
               </div>
             )}
@@ -359,10 +364,10 @@ export default function MePage() {
             fullWidth
             onClick={() => void logout()}
             loading={loggingOut}
-            loadingLabel="正在退出…"
+            loadingLabel={t("me.loggingOut")}
             data-testid="logout"
           >
-            退出登录
+            {t("me.logout")}
           </TFButton>
           <TFButton
             variant="ghost"
@@ -375,10 +380,10 @@ export default function MePage() {
               setConfirmOpen(true);
             }}
           >
-            注销账号
+            {t("me.deleteAccount")}
           </TFButton>
           <p className="mt-2 text-center text-caption leading-4 text-content-subtle">
-            注销会永久删除你的资料、动态和聊天记录，且无法恢复。
+            {t("me.deleteAccountWarning")}
           </p>
         </section>
       </div>
@@ -395,8 +400,8 @@ export default function MePage() {
           setConfirmOpen(false);
           setAccountError("");
         }}
-        title="注销账号？"
-        description={`此操作不可恢复。请输入「${DELETE_CONFIRM_PHRASE}」以确认。`}
+        title={t("me.deleteConfirmTitle")}
+        description={t("me.deleteConfirmDescription", { phrase: deletePhrase })}
         footer={
           <>
             <TFButton
@@ -407,18 +412,18 @@ export default function MePage() {
                 setAccountError("");
               }}
             >
-              取消
+              {t("common.cancel")}
             </TFButton>
             <TFButton
               variant="danger"
               className="flex-1"
               onClick={() => void deleteAccount()}
-              disabled={confirmText.trim() !== DELETE_CONFIRM_PHRASE}
+              disabled={confirmText.trim() !== deletePhrase}
               loading={deleting}
-              loadingLabel="注销中…"
+              loadingLabel={t("me.deleting")}
               data-testid="delete-account-confirm"
             >
-              确认注销
+              {t("me.confirmDelete")}
             </TFButton>
           </>
         }
@@ -426,8 +431,8 @@ export default function MePage() {
         <TFInput
           value={confirmText}
           onChange={(event) => setConfirmText(event.target.value)}
-          placeholder={DELETE_CONFIRM_PHRASE}
-          aria-label={`输入 ${DELETE_CONFIRM_PHRASE} 以确认注销`}
+          placeholder={deletePhrase}
+          aria-label={t("me.deleteConfirmAria", { phrase: deletePhrase })}
           data-testid="delete-account-confirm-input"
           className="text-center"
           autoComplete="off"

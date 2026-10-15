@@ -1,13 +1,12 @@
 "use client";
 
 import {
-  VISIBILITY_HINTS,
-  VISIBILITY_LABELS,
-  VISIBILITY_SHORT_LABELS,
   VISIBILITY_TIERS,
   type VisibilityTier,
 } from "@/lib/profile";
 import { cn } from "@/lib/cn";
+import { type MsgKey } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/use-locale";
 
 /**
  * PC-1.4: the single 3-way visibility control (公开 / 仅连接 / 仅自己).
@@ -44,6 +43,22 @@ export function VisibilitySelect({
   disabled?: boolean;
   label: string;
 }) {
+  const { t } = useT();
+  const SHORT: Record<VisibilityTier, MsgKey> = {
+    PUBLIC: "visibility.public",
+    CONNECTIONS: "visibility.connections",
+    PRIVATE: "visibility.private",
+  };
+  const LABEL: Record<VisibilityTier, MsgKey> = {
+    PUBLIC: "visibility.publicLabel",
+    CONNECTIONS: "visibility.connectionsLabel",
+    PRIVATE: "visibility.privateLabel",
+  };
+  const HINT: Record<VisibilityTier, MsgKey> = {
+    PUBLIC: "visibility.publicHint",
+    CONNECTIONS: "visibility.connectionsHint",
+    PRIVATE: "visibility.privateHint",
+  };
   return (
     <div>
       <div role="radiogroup" aria-label={label} className="grid grid-cols-3 gap-1.5">
@@ -66,13 +81,13 @@ export function VisibilitySelect({
                   : "border-border bg-surface text-content-muted hover:bg-surface-sunken",
               )}
             >
-              {VISIBILITY_SHORT_LABELS[tier]}
+              {t(SHORT[tier])}
             </button>
           );
         })}
       </div>
       <p className="mt-1.5 text-caption leading-4 text-content-muted">
-        {VISIBILITY_LABELS[value]}：{VISIBILITY_HINTS[value]}
+        {t(LABEL[value])}：{t(HINT[value])}
       </p>
     </div>
   );

@@ -1,17 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { NotificationItem, useNotificationReader } from "@/components/notification-item";
+import { NotificationItem, useNotificationReader, notificationTypeLabelKey } from "@/components/notification-item";
 import { ScreenHeader } from "@/components/screen-header";
 import { TFButton, TFLoadingRegion, TFSkeleton } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { friendlyErrorMessage } from "@/lib/errors";
 import {
-  NOTIFICATION_TYPE_LABELS,
   NOTIFICATION_TYPES,
   type NotificationPage,
   type NotificationRecord,
 } from "@/lib/notifications";
+import { useT } from "@/lib/i18n/use-locale";
+import { localePath } from "@/lib/i18n";
 
 /**
  * PC-3.1e — the Notification Center.
@@ -41,6 +42,7 @@ const PAGE_SIZE = 20;
 type TypeFilter = "ALL" | (typeof NOTIFICATION_TYPES)[number];
 
 export function NotificationCenter() {
+  const { locale, t } = useT();
   const [filter, setFilter] = useState<TypeFilter>("ALL");
   const [reloadKey, setReloadKey] = useState(0);
   const [items, setItems] = useState<NotificationRecord[]>([]);
@@ -87,7 +89,7 @@ export function NotificationCenter() {
       })
       .catch((requestError) => {
         if (cancelled) return;
-        setPageError(friendlyErrorMessage(requestError, "通知加载失败，请稍后重试。"));
+        setPageError(friendlyErrorMessage(requestError, t("notices.loadFailed")));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -107,7 +109,7 @@ export function NotificationCenter() {
       setUnread(page.unread);
       setNextCursor(page.nextCursor);
     } catch (requestError) {
-      setMoreError(friendlyErrorMessage(requestError, "加载更多失败，请稍后重试。"));
+      setMoreError(friendlyErrorMessage(requestError, t("notices.loadMoreFailed")));
     } finally {
       setLoadingMore(false);
     }
@@ -123,7 +125,7 @@ export function NotificationCenter() {
       setItems((current) => current.map((item) => (item.readAt ? item : { ...item, readAt })));
       setUnread(0);
     } catch (requestError) {
-      setMarkAllError(friendlyErrorMessage(requestError, "全部已读失败，请稍后重试。"));
+      setMarkAllError(friendlyErrorMessage(requestError, t("notices.markAllFailed")));
     } finally {
       setMarkingAll(false);
     }
@@ -132,8 +134,8 @@ export function NotificationCenter() {
   return (
     <>
       <ScreenHeader
-        title="通知"
-        backHref="/messages"
+        title={t("notices.title")}
+        backHref={localePath(locale, "/messages")}
         action={
           <button
             type="button"
@@ -142,7 +144,7 @@ export function NotificationCenter() {
             disabled={markingAll || unread === 0}
             className="shrink-0 whitespace-nowrap rounded-control px-2 py-1 text-caption font-medium text-brand-600 underline decoration-dotted transition-colors duration-instant hover:bg-surface-sunken disabled:opacity-40 disabled:no-underline disabled:hover:bg-transparent"
           >
-            {markingAll ? "处理中…" : "全部已读"}
+            {markingAll ? t("common.processing") : t("notices.markAllRead")}
           </button>
         }
       />
@@ -156,21 +158,21 @@ export function NotificationCenter() {
             platform picker for free. Only the palette is tokenised.
           */}
           <select
-            aria-label="通知类型"
+            aria-label={t("notices.typeLabel")}
             data-testid="notification-filter"
             value={filter}
             onChange={(event) => setFilter(event.target.value as TypeFilter)}
             className="h-9 min-w-0 max-w-[62%] rounded-control border border-border bg-surface px-3 text-caption text-content transition-colors duration-instant focus:border-brand-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-200"
           >
-            <option value="ALL">全部</option>
+            <option value="ALL">{t("notices.filterAll")}</option>
             {NOTIFICATION_TYPES.map((type) => (
               <option key={type} value={type}>
-                {NOTIFICATION_TYPE_LABELS[type]}
+                {t(notificationTypeLabelKey(type))}
               </option>
             ))}
           </select>
           <span data-testid="notification-unread-count" className="shrink-0 text-caption text-content-muted">
-            未读 {unread}
+            {t("notices.unread", { n: unread })}
           </span>
         </div>
 
@@ -178,7 +180,7 @@ export function NotificationCenter() {
             flight — the suite asserts it reaches 0. `TFLoadingRegion` renders its
             own wrapper, so the testid goes on the inner list. */}
         {loading ? (
-          <TFLoadingRegion label="正在加载通知">
+          <TFLoadingRegion label={t("notices.loading")}>
             <div data-testid="notification-loading" className="mt-4 space-y-2">
               <TFSkeleton shape="block" className="h-[68px] w-full" />
               <TFSkeleton shape="block" className="h-[68px] w-full" />
@@ -198,7 +200,7 @@ export function NotificationCenter() {
               className="mt-3"
               onClick={() => setReloadKey((key) => key + 1)}
             >
-              重试
+              {t("common.retry")}
             </TFButton>
           </div>
         ) : null}
@@ -208,7 +210,7 @@ export function NotificationCenter() {
             data-testid="notification-empty"
             className="mt-6 rounded-card bg-surface-sunken p-5 text-center text-ui leading-5 text-content-muted"
           >
-            暂无通知
+            {t("notices.empty")}
           </p>
         ) : null}
 
@@ -265,9 +267,9 @@ export function NotificationCenter() {
                   data-testid="notification-load-more"
                   onClick={() => void loadMore()}
                   loading={loadingMore}
-                  loadingLabel="加载中…"
+                  loadingLabel={t("common.loading")}
                 >
-                  加载更多
+                  {t("common.loadMore")}
                 </TFButton>
               </div>
             ) : null}

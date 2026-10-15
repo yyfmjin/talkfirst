@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { ApiRequestError } from "@/lib/api";
 import { relativeTime } from "@/lib/moments";
+import { type MsgKey } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/use-locale";
 
 /**
  * PC-2.2 — the comment block, shared by the Moments feed card and Post Detail.
@@ -54,21 +56,21 @@ const AVATAR_CLASS = {
  * Rejections already carry a stable code, so this is a translation and not a
  * second rule set. Anything unmapped falls through to the API message.
  */
-const REPLY_ERROR_TEXT: Record<string, string> = {
-  COMMENT_PARENT_INVALID: "无法回复这条评论，请刷新后重试",
-  COMMENT_BLOCKED: "回复包含不适当内容，已被拦截",
-  EMPTY_COMMENT: "回复不能为空",
-  MOMENT_LOCKED: "你没有权限回复这条动态",
+const REPLY_ERROR_TEXT: Record<string, MsgKey> = {
+  COMMENT_PARENT_INVALID: "comments.replyBlocked",
+  COMMENT_BLOCKED: "comments.replyContentBlocked",
+  EMPTY_COMMENT: "comments.replyEmpty",
+  MOMENT_LOCKED: "comments.replyLocked",
 };
 
 /**
  * The delete path answers the same way as the write path: a stable code plus a
  * message, translated here and nowhere else.
  */
-const DELETE_ERROR_TEXT: Record<string, string> = {
-  COMMENT_FORBIDDEN: "只能删除自己的评论",
-  COMMENT_NOT_FOUND: "这条评论已经不存在了",
-  MOMENT_LOCKED: "你没有权限删除这条动态下的评论",
+const DELETE_ERROR_TEXT: Record<string, MsgKey> = {
+  COMMENT_FORBIDDEN: "comments.deleteForbidden",
+  COMMENT_NOT_FOUND: "comments.deleteNotFound",
+  MOMENT_LOCKED: "comments.deleteLocked",
 };
 
 /**
@@ -76,27 +78,38 @@ const DELETE_ERROR_TEXT: Record<string, string> = {
  * the one a member can actually hit, because the menu is the only thing that
  * knows whose comment this is and a hidden control is not a boundary.
  */
-const EDIT_ERROR_TEXT: Record<string, string> = {
-  COMMENT_FORBIDDEN: "只能修改自己的评论",
-  COMMENT_NOT_FOUND: "这条评论已经不存在了",
-  MOMENT_LOCKED: "你没有权限修改这条动态下的评论",
-  EMPTY_COMMENT: "评论不能为空",
-  CONTENT_BLOCKED: "评论包含不适当内容，已被拦截",
+const EDIT_ERROR_TEXT: Record<string, MsgKey> = {
+  COMMENT_FORBIDDEN: "comments.editForbidden",
+  COMMENT_NOT_FOUND: "comments.editNotFound",
+  MOMENT_LOCKED: "comments.editLocked",
+  EMPTY_COMMENT: "comments.editEmpty",
+  CONTENT_BLOCKED: "comments.editContentBlocked",
 };
 
-function deleteErrorMessage(error: unknown): string {
-  if (error instanceof ApiRequestError) return DELETE_ERROR_TEXT[error.code] ?? error.message;
-  return error instanceof Error ? error.message : "删除失败，请稍后重试";
+type Translate = (key: MsgKey) => string;
+
+function deleteErrorMessage(error: unknown, t: Translate): string {
+  if (error instanceof ApiRequestError) {
+    const key = DELETE_ERROR_TEXT[error.code];
+    return key ? t(key) : error.message;
+  }
+  return error instanceof Error ? error.message : t("comments.deleteFailed");
 }
 
-function editErrorMessage(error: unknown): string {
-  if (error instanceof ApiRequestError) return EDIT_ERROR_TEXT[error.code] ?? error.message;
-  return error instanceof Error ? error.message : "修改失败，请稍后重试";
+function editErrorMessage(error: unknown, t: Translate): string {
+  if (error instanceof ApiRequestError) {
+    const key = EDIT_ERROR_TEXT[error.code];
+    return key ? t(key) : error.message;
+  }
+  return error instanceof Error ? error.message : t("comments.editFailed");
 }
 
-function replyErrorMessage(error: unknown): string {
-  if (error instanceof ApiRequestError) return REPLY_ERROR_TEXT[error.code] ?? error.message;
-  return error instanceof Error ? error.message : "回复发送失败";
+function replyErrorMessage(error: unknown, t: Translate): string {
+  if (error instanceof ApiRequestError) {
+    const key = REPLY_ERROR_TEXT[error.code];
+    return key ? t(key) : error.message;
+  }
+  return error instanceof Error ? error.message : t("comments.replyFailed");
 }
 
 type Author = MomentComment["user"];
@@ -110,11 +123,12 @@ function CommentAvatar({
   size: keyof typeof AVATAR_CLASS;
   onProfile: (userId: string) => void;
 }) {
+  const { t } = useT();
   return (
     <button
       type="button"
       onClick={() => onProfile(user.id)}
-      aria-label={`查看 ${user.nickname ?? "用户"} 的资料卡`}
+      aria-label={t("comments.viewProfile", { name: user.nickname ?? t("common.user") })}
       className={AVATAR_CLASS[size]}
     >
       {user.avatarUrl ? (
@@ -128,9 +142,10 @@ function CommentAvatar({
 }
 
 function CommentAuthor({ user, onProfile }: { user: Author; onProfile: (userId: string) => void }) {
+  const { t } = useT();
   return (
     <button type="button" onClick={() => onProfile(user.id)} className="font-semibold">
-      {user.nickname ?? "用户"}
+      {user.nickname ?? t("common.user")}
     </button>
   );
 }
@@ -159,6 +174,7 @@ function CommentEditor({
   saving: boolean;
   error: string;
 }) {
+  const { t } = useT();
   return (
     <div data-testid="comment-edit-form" className="mt-1 flex flex-col gap-1.5 rounded-control border border-border bg-surface p-2 shadow-card">
       <input
@@ -170,7 +186,7 @@ function CommentEditor({
           if (event.key === "Enter") onSave();
           if (event.key === "Escape") onCancel();
         }}
-        aria-label="修改评论"
+        aria-label={t("comments.editLabel")}
         className="w-full rounded-control border border-border px-2.5 py-1 text-caption text-content focus:border-brand-500 focus:outline-none"
         maxLength={500}
         autoFocus
@@ -188,7 +204,7 @@ function CommentEditor({
           disabled={saving}
           className="rounded-control px-2 py-0.5 text-overline text-content-muted hover:bg-surface-sunken disabled:opacity-50"
         >
-          取消
+          {t("common.cancel")}
         </button>
         <button
           type="button"
@@ -197,7 +213,7 @@ function CommentEditor({
           disabled={saving || !value.trim()}
           className="rounded-control bg-brand-500 px-2.5 py-0.5 text-overline font-medium text-white disabled:opacity-50"
         >
-          {saving ? "保存中…" : "保存"}
+          {saving ? t("common.saving") : t("common.save")}
         </button>
       </div>
     </div>
@@ -263,6 +279,7 @@ export function MomentComments({
   testId?: string;
   avatarSize?: keyof typeof AVATAR_CLASS;
 }) {
+  const { t } = useT();
   const visible = typeof max === "number" ? comments.slice(-max) : comments;
   const canSend = draft.trim().length > 0 && !sending;
 
@@ -311,7 +328,7 @@ export function MomentComments({
       await onEdit(comment, trimmed, parentId);
       setEditingCommentId(null);
     } catch (requestError) {
-      setEditError(editErrorMessage(requestError));
+      setEditError(editErrorMessage(requestError, t));
     } finally {
       setEditSaving(false);
     }
@@ -340,7 +357,7 @@ export function MomentComments({
       cancelReply();
     } catch (requestError) {
       // The draft is kept on failure so the text is not lost to a retry.
-      setReplyError(replyErrorMessage(requestError));
+      setReplyError(replyErrorMessage(requestError, t));
     } finally {
       setReplySending(false);
     }
@@ -379,7 +396,7 @@ export function MomentComments({
       // from the thread before the API answered.
       setConfirmingId(null);
     } catch (requestError) {
-      setDeleteError(deleteErrorMessage(requestError));
+      setDeleteError(deleteErrorMessage(requestError, t));
     } finally {
       setDeletingId(null);
     }
@@ -406,7 +423,7 @@ export function MomentComments({
         <button
           type="button"
           data-testid={`${level}-menu`}
-          aria-label="评论菜单"
+          aria-label={t("comments.menuLabel")}
           onClick={() => setMenuOpenId(open ? null : comment.id)}
           className="ml-1.5 whitespace-nowrap rounded-control px-1 align-middle text-caption leading-none text-content-muted transition-colors duration-instant hover:bg-surface-sunken"
         >
@@ -426,7 +443,7 @@ export function MomentComments({
                 }}
                 className="whitespace-nowrap px-3 py-1.5 text-left text-caption text-content hover:bg-surface-sunken"
               >
-                举报
+                {t("comments.report")}
               </button>
             ) : null}
             {canManage && onEdit ? (
@@ -436,7 +453,7 @@ export function MomentComments({
                 onClick={() => startEdit(comment)}
                 className="whitespace-nowrap px-3 py-1.5 text-left text-caption text-content hover:bg-surface-sunken"
               >
-                编辑
+                {t("comments.edit")}
               </button>
             ) : null}
             {canManage && onDelete ? (
@@ -446,7 +463,7 @@ export function MomentComments({
                 onClick={() => askDelete(comment.id)}
                 className="whitespace-nowrap px-3 py-1.5 text-left text-caption text-danger-600 hover:bg-surface-sunken"
               >
-                删除
+                {t("common.delete")}
               </button>
             ) : null}
           </span>
@@ -499,7 +516,7 @@ export function MomentComments({
                             onClick={() => (replying ? cancelReply() : openReply(comment))}
                             className="whitespace-nowrap text-overline font-medium text-brand-600"
                           >
-                            回复
+                            {t("comments.reply")}
                           </button>
                         </>
                       ) : null}
@@ -558,7 +575,7 @@ export function MomentComments({
                     {replying ? (
                       <div data-testid="reply-composer" className="mt-2">
                         <p className="mb-1 break-words text-overline text-content-muted">
-                          回复 {comment.user.nickname ?? "用户"}
+                          {t("comments.replyTo", { name: comment.user.nickname ?? t("common.user") })}
                         </p>
                         <div className="flex items-center gap-2">
                           {/* Geometry deliberately unchanged: `chat-composer.spec`-style
@@ -571,9 +588,9 @@ export function MomentComments({
                               if (event.key === "Enter") void sendReply(comment);
                               if (event.key === "Escape") cancelReply();
                             }}
-                            placeholder={`回复 ${comment.user.nickname ?? "用户"}…`}
+                            placeholder={t("comments.replyPlaceholder", { name: comment.user.nickname ?? t("common.user") })}
                             maxLength={500}
-                            aria-label={`回复 ${comment.user.nickname ?? "用户"}`}
+                            aria-label={t("comments.replyTo", { name: comment.user.nickname ?? t("common.user") })}
                             className="h-9 min-w-0 flex-1 rounded-control border border-border bg-surface px-3 text-caption text-content outline-none transition-colors duration-instant focus:border-brand-500 focus-visible:ring-2 focus-visible:ring-brand-200"
                           />
                           <button
@@ -582,7 +599,7 @@ export function MomentComments({
                             data-testid="reply-cancel"
                             className="h-9 shrink-0 rounded-control border border-border px-3 text-caption text-content-muted transition-colors duration-instant hover:bg-surface-sunken"
                           >
-                            取消
+                            {t("common.cancel")}
                           </button>
                           <button
                             type="button"
@@ -591,7 +608,7 @@ export function MomentComments({
                             data-testid="reply-send"
                             className="h-9 shrink-0 rounded-control bg-brand-500 px-4 text-caption font-medium text-white transition-colors duration-instant hover:bg-brand-600 disabled:opacity-50"
                           >
-                            {replySending ? "发送中…" : "发送"}
+                            {replySending ? t("common.sending") : t("common.send")}
                           </button>
                         </div>
                         {replyError ? (
@@ -621,11 +638,11 @@ export function MomentComments({
               disabled={loadingMore}
               className="mx-auto block rounded-control border border-border bg-surface px-4 py-1.5 text-overline text-content-muted transition-colors duration-instant hover:bg-surface-sunken disabled:opacity-60"
             >
-              {loadingMore ? "正在加载…" : "加载更多"}
+              {loadingMore ? t("comments.loadingMore") : t("common.loadMore")}
             </button>
           ) : (
             <p data-testid="comment-no-more" className="text-center text-overline text-content-subtle">
-              不再有更多评论
+              {t("comments.noMore")}
             </p>
           )}
         </div>
@@ -633,7 +650,7 @@ export function MomentComments({
 
       {!loading && visible.length === 0 ? (
         <p data-testid="comment-empty" className="mb-2 text-overline text-content-muted">
-          还没有评论，成为第一个留言的人吧。
+          {t("comments.empty")}
         </p>
       ) : null}
 
@@ -652,9 +669,9 @@ export function MomentComments({
           onKeyDown={(event) => {
             if (event.key === "Enter") onSend();
           }}
-          placeholder="说点什么…"
+          placeholder={t("comments.placeholder")}
           maxLength={500}
-          aria-label="写评论"
+          aria-label={t("comments.write")}
           className="h-9 min-w-0 flex-1 rounded-control border border-border bg-surface px-3 text-caption text-content outline-none transition-colors duration-instant focus:border-brand-500 focus-visible:ring-2 focus-visible:ring-brand-200"
         />
         <button
@@ -664,7 +681,7 @@ export function MomentComments({
           data-testid="comment-send"
           className="h-9 shrink-0 rounded-control bg-brand-500 px-4 text-caption font-medium text-white transition-colors duration-instant hover:bg-brand-600 disabled:opacity-50"
         >
-          {sending ? "发送中…" : "发送"}
+          {sending ? t("common.sending") : t("common.send")}
         </button>
       </div>
 
@@ -681,8 +698,8 @@ export function MomentComments({
       {confirmingId ? (
         <div className="absolute inset-0 z-50 grid place-items-center bg-surface-scrim p-5">
           <div className="w-full max-w-[320px] rounded-sheet bg-surface p-5 text-center shadow-overlay">
-            <p className="text-heading font-semibold text-content">删除这条评论？</p>
-            <p className="mt-1 text-caption text-content-muted">如果这是一级评论，其回复也会一并删除。</p>
+            <p className="text-heading font-semibold text-content">{t("comments.deleteDialogTitle")}</p>
+            <p className="mt-1 text-caption text-content-muted">{t("comments.deleteDialogBody")}</p>
             {deleteError ? (
               <p data-testid="comment-delete-error" role="alert" className="mt-2 break-words text-caption text-danger-600">
                 {deleteError}
@@ -695,7 +712,7 @@ export function MomentComments({
                 onClick={cancelDelete}
                 className="h-9 min-w-0 flex-1 rounded-control border border-border text-caption text-content-muted transition-colors duration-instant hover:bg-surface-sunken"
               >
-                取消
+                {t("common.cancel")}
               </button>
               <button
                 type="button"
@@ -707,7 +724,7 @@ export function MomentComments({
                 }}
                 className="h-9 min-w-0 flex-1 rounded-full bg-red-600 text-[12px] text-white disabled:opacity-60"
               >
-                {deletingId ? "删除中…" : "删除"}
+                {deletingId ? t("common.deleting") : t("common.delete")}
               </button>
             </div>
           </div>

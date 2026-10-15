@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
+import { useT } from "@/lib/i18n/use-locale";
 
 /**
  * ScreenHeader — the top bar of every sub-screen.
@@ -38,17 +39,18 @@ export function ScreenHeader({
   action?: React.ReactNode;
   onBack?: () => void;
 }) {
+  const { t } = useT();
   const backClasses =
     "grid h-11 w-11 shrink-0 place-items-center rounded-full text-content transition-colors duration-instant ease-out hover:bg-surface-sunken active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300";
 
   return (
     <header className="z-10 grid shrink-0 grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-border bg-surface/95 px-2 py-1 backdrop-blur">
       {onBack ? (
-        <button type="button" onClick={onBack} className={backClasses} aria-label="返回">
+        <button type="button" onClick={onBack} className={backClasses} aria-label={t("common.back")}>
           <ChevronLeft size={24} />
         </button>
       ) : (
-        <Link href={backHref ?? "/"} className={backClasses} aria-label="返回">
+        <Link href={backHref ?? "/"} className={backClasses} aria-label={t("common.back")}>
           <ChevronLeft size={24} />
         </Link>
       )}

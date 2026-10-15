@@ -4,7 +4,9 @@ import { useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { friendlyErrorMessage } from "@/lib/errors";
-import { REPORT_REASONS, reportReasonLabel } from "@/lib/report-reasons";
+import { REPORT_REASONS } from "@/lib/report-reasons";
+import { type MsgKey } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/use-locale";
 
 /**
  * PC-2.5.4 — 举报一个对象：一条动态，或（C2 起）一条评论。
@@ -27,6 +29,17 @@ import { REPORT_REASONS, reportReasonLabel } from "@/lib/report-reasons";
  * 被渲染成成功。
  */
 
+// 每个理由对应词典中的中文/英文标签。
+const REASON_KEYS: Record<string, MsgKey> = {
+  Harassment: "report.reason.Harassment",
+  Spam: "report.reason.Spam",
+  Scam: "report.reason.Scam",
+  "Sexual content": "report.reason.Sexual content",
+  "Hate speech": "report.reason.Hate speech",
+  "Fake profile": "report.reason.Fake profile",
+  Other: "report.reason.Other",
+};
+
 /** `ReportDto.description` is `@MaxLength(1000)`; the field cannot exceed it. */
 const DESCRIPTION_MAX = 1000;
 
@@ -45,8 +58,10 @@ export function MomentReportDialog({
 }) {
   // 只改文案与根 testid；内部那几个 `moment-report-*` 是弹窗自己的部件
   // （理由列表、说明框、按钮），两个目标共用同一套，不因目标不同而改名。
+  const { t } = useT();
   const isComment = Boolean(commentId);
-  const what = isComment ? "这条评论" : "这条动态";
+  const whatKey: MsgKey = isComment ? "report.whatComment" : "report.whatMoment";
+  const what = t(whatKey);
   // No reason is preselected: the submit control stays disabled until one is
   // chosen, rather than silently reporting the first option on the list.
   const [reason, setReason] = useState("");
@@ -75,7 +90,7 @@ export function MomentReportDialog({
     } catch (requestError) {
       // The draft is deliberately kept: a rejected report must be retryable
       // without the reader retyping what they wrote.
-      setError(friendlyErrorMessage(requestError, "举报提交失败，请稍后再试。"));
+      setError(friendlyErrorMessage(requestError, t("report.submitFailed")));
       setBusy(false);
     }
   }
@@ -85,14 +100,14 @@ export function MomentReportDialog({
       data-testid={isComment ? "comment-report-dialog" : "moment-report-dialog"}
       role="dialog"
       aria-modal="true"
-      aria-label={`举报${what}`}
+      aria-label={t("report.dialogLabel", { what })}
       /* Phase B: `absolute`, not `fixed` — see `moment-comments.tsx` for why. */
       className="absolute inset-0 z-50 grid place-items-center overflow-y-auto bg-surface-scrim p-5"
     >
       <div className="w-full max-w-[340px] rounded-sheet bg-surface p-5 text-left shadow-overlay">
-        <p className="text-heading font-semibold text-content">举报{what}</p>
+        <p className="text-heading font-semibold text-content">{t("report.title", { what })}</p>
         <p className="mt-1 text-caption leading-4 text-content-muted">
-          举报会提交人工审核。请选择最接近的原因。
+          {t("report.intro")}
         </p>
 
         <div data-testid="moment-report-reasons" className="mt-3 space-y-1.5">
@@ -111,7 +126,7 @@ export function MomentReportDialog({
                   : "border-border text-content hover:bg-surface-sunken",
               )}
             >
-              {reportReasonLabel(item)}
+              {t(REASON_KEYS[item] ?? "report.reason.Other")}
             </button>
           ))}
         </div>
@@ -122,8 +137,8 @@ export function MomentReportDialog({
           onChange={(event) => setDescription(event.target.value)}
           maxLength={DESCRIPTION_MAX}
           rows={3}
-          aria-label="补充说明（可选）"
-          placeholder="补充说明（可选）"
+          aria-label={t("report.descriptionLabel")}
+          placeholder={t("report.descriptionLabel")}
           className="mt-3 w-full rounded-control border border-border bg-surface-sunken p-3 text-caption text-content outline-none transition-colors duration-instant placeholder:text-content-subtle focus:border-brand-500 focus-visible:ring-2 focus-visible:ring-brand-200"
         />
 
@@ -143,7 +158,7 @@ export function MomentReportDialog({
             disabled={busy}
             className="h-9 min-w-0 flex-1 rounded-control border border-border text-caption text-content-muted transition-colors duration-instant hover:bg-surface-sunken disabled:opacity-50"
           >
-            取消
+            {t("common.cancel")}
           </button>
           <button
             type="button"
@@ -152,7 +167,7 @@ export function MomentReportDialog({
             disabled={busy || reason.length === 0}
             className="h-9 min-w-0 flex-1 rounded-control bg-brand-500 text-caption font-medium text-white transition-colors duration-instant hover:bg-brand-600 disabled:opacity-50"
           >
-            {busy ? "提交中…" : "提交举报"}
+            {busy ? t("common.submitting") : t("report.submit")}
           </button>
         </div>
       </div>

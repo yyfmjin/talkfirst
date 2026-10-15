@@ -6,6 +6,7 @@ import { TFButton, TFDialog, TFTextarea } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { friendlyErrorMessage } from "@/lib/errors";
+import { useT } from "@/lib/i18n/use-locale";
 
 /**
  * 修改已发布的动态。
@@ -120,6 +121,7 @@ function usableMedia(items: MediaItem[]) {
 }
 
 export function MomentEditDialog({ open, onClose, moment, onSaved }: MomentEditDialogProps) {
+  const { t } = useT();
   const [content, setContent] = useState(moment.content);
   const [tagsInput, setTagsInput] = useState((moment.tags ?? []).join(" "));
   const [items, setItems] = useState<MediaItem[]>(() => seedItems(moment));
@@ -201,7 +203,7 @@ export function MomentEditDialog({ open, onClose, moment, onSaved }: MomentEditD
       } catch (uploadFailure) {
         patchItem(item.id, {
           status: "error",
-          error: friendlyErrorMessage(uploadFailure, "上传失败，请重试。"),
+          error: friendlyErrorMessage(uploadFailure, t("momentEdit.uploadFailed")),
         });
       }
     })();
@@ -215,28 +217,28 @@ export function MomentEditDialog({ open, onClose, moment, onSaved }: MomentEditD
       const photos = next.filter((item) => item.kind === "image");
       if (kind === "image") {
         if (photos.length >= MAX_IMAGES) {
-          setUploadError(`最多保留 ${MAX_IMAGES} 张照片`);
+          setUploadError(t("momentEdit.maxPhotos", { n: MAX_IMAGES }));
           break;
         }
         if (!IMAGE_MIME.includes(file.type)) {
-          setUploadError("照片仅支持 jpg / png / webp");
+          setUploadError(t("momentEdit.photoType"));
           continue;
         }
         if (file.size > MAX_IMAGE_BYTES) {
-          setUploadError(`照片不能超过 ${formatBytes(MAX_IMAGE_BYTES)}`);
+          setUploadError(t("momentEdit.photoTooLarge", { size: formatBytes(MAX_IMAGE_BYTES) }));
           continue;
         }
       } else {
         if (next.some((item) => item.kind === "video")) {
-          setUploadError("一条动态只能有一个视频");
+          setUploadError(t("momentEdit.oneVideoOnly"));
           break;
         }
         if (!VIDEO_MIME.includes(file.type)) {
-          setUploadError("视频仅支持 mp4 / webm / mov");
+          setUploadError(t("momentEdit.videoType"));
           continue;
         }
         if (file.size > MAX_VIDEO_BYTES) {
-          setUploadError(`视频不能超过 ${formatBytes(MAX_VIDEO_BYTES)}`);
+          setUploadError(t("momentEdit.videoTooLarge", { size: formatBytes(MAX_VIDEO_BYTES) }));
           continue;
         }
       }
@@ -294,7 +296,7 @@ export function MomentEditDialog({ open, onClose, moment, onSaved }: MomentEditD
     const trimmed = content.trim();
     const media = usableMedia(itemsRef.current);
     if (!trimmed && media.length === 0) {
-      setError("动态内容不能为空，至少保留一张照片或一个视频。");
+      setError(t("momentEdit.emptyContent"));
       return;
     }
 
@@ -334,7 +336,7 @@ export function MomentEditDialog({ open, onClose, moment, onSaved }: MomentEditD
       });
       onClose();
     } catch (saveFailure) {
-      setError(friendlyErrorMessage(saveFailure, "保存修改失败，请稍后重试。"));
+      setError(friendlyErrorMessage(saveFailure, t("momentEdit.saveFailed")));
     } finally {
       setSaving(false);
     }
@@ -349,24 +351,24 @@ export function MomentEditDialog({ open, onClose, moment, onSaved }: MomentEditD
       onClose={() => {
         if (!saving) onClose();
       }}
-      title="修改动态"
-      description="正文、话题和照片 / 视频都可以改。"
+      title={t("momentEdit.title")}
+      description={t("momentEdit.description")}
       wide
       footer={
         <>
           <TFButton variant="secondary" className="flex-1" disabled={saving} onClick={onClose}>
-            取消
+            {t("common.cancel")}
           </TFButton>
           <TFButton
             variant="primary"
             className="flex-1"
             loading={saving}
-            loadingLabel="保存中…"
+            loadingLabel={t("common.saving")}
             disabled={!canSave}
             onClick={() => void handleSave()}
             data-testid="moment-edit-save"
           >
-            保存修改
+            {t("momentEdit.saveChanges")}
           </TFButton>
         </>
       }
@@ -384,7 +386,7 @@ export function MomentEditDialog({ open, onClose, moment, onSaved }: MomentEditD
 
         <div>
           <label className="mb-1.5 block text-caption font-medium text-content-muted" htmlFor="moment-edit-content">
-            动态正文
+            {t("momentEdit.contentLabel")}
           </label>
           <TFTextarea
             id="moment-edit-content"
@@ -392,7 +394,7 @@ export function MomentEditDialog({ open, onClose, moment, onSaved }: MomentEditD
             rows={4}
             value={content}
             onChange={(event) => setContent(event.target.value)}
-            placeholder="分享你当下的想法..."
+            placeholder={t("momentEdit.contentPlaceholder")}
             maxLength={MAX_CONTENT}
           />
           <div className="mt-1 text-right text-caption text-content-subtle">
@@ -401,12 +403,15 @@ export function MomentEditDialog({ open, onClose, moment, onSaved }: MomentEditD
         </div>
 
         <div>
-          <p className="mb-1.5 text-caption font-medium text-content-muted">照片与视频</p>
+          <p className="mb-1.5 text-caption font-medium text-content-muted">{t("momentEdit.mediaLabel")}</p>
           {/* The video rule is stated here as well as in the composer: the two
               screens accept the same file, so they must not read differently. */}
           <p className="mb-2 text-overline leading-4 text-content-subtle">
-            照片最大 {formatBytes(MAX_IMAGE_BYTES)}；视频最大 {formatBytes(MAX_VIDEO_BYTES)}
-            ，上传后自动压缩到约 {VIDEO_TARGET_LABEL}
+            {t("momentEdit.mediaHint", {
+              imageSize: formatBytes(MAX_IMAGE_BYTES),
+              videoSize: formatBytes(MAX_VIDEO_BYTES),
+              target: VIDEO_TARGET_LABEL,
+            })}
           </p>
           {items.length > 0 ? (
             <div data-testid="moment-edit-media" className="grid grid-cols-3 gap-2">
@@ -437,7 +442,7 @@ export function MomentEditDialog({ open, onClose, moment, onSaved }: MomentEditD
             </div>
           ) : (
             <p data-testid="moment-edit-media-empty" className="text-caption text-content-subtle">
-              这条动态还没有照片或视频。
+              {t("momentEdit.emptyMedia")}
             </p>
           )}
 
@@ -450,7 +455,7 @@ export function MomentEditDialog({ open, onClose, moment, onSaved }: MomentEditD
               className="inline-flex min-h-9 items-center gap-1.5 rounded-control border border-border px-3 text-caption text-content-muted transition-colors duration-instant hover:bg-surface-sunken disabled:opacity-50"
             >
               <ImagePlus size={15} aria-hidden="true" />
-              添加照片
+              {t("momentEdit.addPhoto")}
             </button>
             <button
               type="button"
@@ -460,7 +465,7 @@ export function MomentEditDialog({ open, onClose, moment, onSaved }: MomentEditD
               className="inline-flex min-h-9 items-center gap-1.5 rounded-control border border-border px-3 text-caption text-content-muted transition-colors duration-instant hover:bg-surface-sunken disabled:opacity-50"
             >
               <Plus size={15} aria-hidden="true" />
-              添加视频
+              {t("momentEdit.addVideo")}
             </button>
           </div>
 
@@ -471,7 +476,7 @@ export function MomentEditDialog({ open, onClose, moment, onSaved }: MomentEditD
             accept={IMAGE_MIME.join(",")}
             multiple
             className="sr-only"
-            aria-label="选择照片"
+            aria-label={t("momentEdit.choosePhoto")}
             onChange={(event) => {
               addFiles(event.target.files, "image");
               event.target.value = "";
@@ -483,7 +488,7 @@ export function MomentEditDialog({ open, onClose, moment, onSaved }: MomentEditD
             type="file"
             accept={VIDEO_MIME.join(",")}
             className="sr-only"
-            aria-label="选择视频"
+            aria-label={t("momentEdit.chooseVideo")}
             onChange={(event) => {
               addFiles(event.target.files, "video");
               event.target.value = "";
@@ -492,7 +497,7 @@ export function MomentEditDialog({ open, onClose, moment, onSaved }: MomentEditD
 
           {uploading ? (
             <p data-testid="moment-edit-uploading" className="mt-1.5 text-caption text-content-muted">
-              正在上传…上传完成后才能保存。
+              {t("momentEdit.uploading")}
             </p>
           ) : null}
           {failed || uploadError ? (
@@ -501,21 +506,21 @@ export function MomentEditDialog({ open, onClose, moment, onSaved }: MomentEditD
               role="alert"
               className="mt-1.5 break-words text-caption text-danger-600"
             >
-              {uploadError || "有媒体上传失败，请重试或删除后再保存。"}
+              {uploadError || t("momentEdit.uploadError")}
             </p>
           ) : null}
         </div>
 
         <div>
           <label className="mb-1.5 block text-caption font-medium text-content-muted" htmlFor="moment-edit-tags">
-            话题标签（空格或逗号分隔，最多 10 个）
+            {t("momentEdit.tagsLabel")}
           </label>
           <input
             id="moment-edit-tags"
             data-testid="moment-edit-tags"
             value={tagsInput}
             onChange={(event) => setTagsInput(event.target.value)}
-            placeholder="例如：生活 摄影 旅行"
+            placeholder={t("momentEdit.tagsPlaceholder")}
             className="h-10 w-full rounded-control border border-border bg-surface px-3 text-ui text-content outline-none transition-colors duration-instant focus:border-brand-500 focus-visible:ring-2 focus-visible:ring-brand-200"
           />
         </div>
@@ -541,6 +546,7 @@ function MediaTile({
   onMove: (direction: -1 | 1) => void;
   onRetry: () => void;
 }) {
+  const { t } = useT();
   return (
     <div
       data-testid={video ? "moment-edit-media-video" : "moment-edit-media-image"}
@@ -560,7 +566,7 @@ function MediaTile({
         <span className="absolute inset-0 grid place-items-center gap-1 bg-black/40 text-white">
           <Loader2 size={18} className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
           <span className="text-[11px]">
-            {item.status === "processing" ? "正在处理视频…" : "正在上传…"}
+            {item.status === "processing" ? t("momentEdit.processingVideo") : t("momentEdit.uploadingShort")}
           </span>
         </span>
       ) : null}
@@ -573,25 +579,25 @@ function MediaTile({
         >
           <span className="inline-flex items-center gap-1">
             <RefreshCw size={13} aria-hidden="true" />
-            重试
+            {t("common.retry")}
           </span>
         </button>
       ) : null}
 
       <span className="absolute left-1 top-1 flex gap-1">
         {!video && index > 0 ? (
-          <TileButton label="前移" onClick={() => onMove(-1)}>
+          <TileButton label={t("momentEdit.moveForward")} onClick={() => onMove(-1)}>
             <ArrowLeft size={12} aria-hidden="true" />
           </TileButton>
         ) : null}
         {!video && index < total - 1 ? (
-          <TileButton label="后移" onClick={() => onMove(1)}>
+          <TileButton label={t("momentEdit.moveBackward")} onClick={() => onMove(1)}>
             <ArrowRight size={12} aria-hidden="true" />
           </TileButton>
         ) : null}
       </span>
       <span className="absolute right-1 top-1">
-        <TileButton label="删除媒体" onClick={onRemove}>
+        <TileButton label={t("momentEdit.removeMedia")} onClick={onRemove}>
           <Trash2 size={12} aria-hidden="true" />
         </TileButton>
       </span>

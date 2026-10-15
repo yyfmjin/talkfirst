@@ -14,6 +14,8 @@ import {
 } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { friendlyErrorMessage } from "@/lib/errors";
+import { localePath } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/use-locale";
 import { type PublicProfile } from "@/lib/profile";
 
 /**
@@ -37,6 +39,7 @@ export function ProfilePreviewCard({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const { locale, t } = useT();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -53,7 +56,7 @@ export function ProfilePreviewCard({
       setProfile(data);
     } catch (requestError) {
       setProfile(null);
-      setError(friendlyErrorMessage(requestError, "资料加载失败，请稍后再试。"));
+      setError(friendlyErrorMessage(requestError, t("profileCard.loadFailed")));
     } finally {
       setLoading(false);
     }
@@ -88,7 +91,7 @@ export function ProfilePreviewCard({
       });
       setHelloDone(true);
     } catch (requestError) {
-      setError(friendlyErrorMessage(requestError, "发送失败，请稍后再试。"));
+      setError(friendlyErrorMessage(requestError, t("profileCard.sendFailed")));
     } finally {
       setHelloSending(false);
     }
@@ -105,7 +108,7 @@ export function ProfilePreviewCard({
       className="absolute inset-0 z-30 flex items-end justify-center bg-surface-scrim sm:items-center"
       role="dialog"
       aria-modal="true"
-      aria-label="个人资料卡"
+      aria-label={t("profileCard.dialogLabel")}
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -115,11 +118,11 @@ export function ProfilePreviewCard({
         className="tf-scroll max-h-[88%] w-full overflow-y-auto rounded-t-sheet bg-surface p-6 pb-[calc(2rem+env(safe-area-inset-bottom))] sm:max-w-[390px] sm:rounded-sheet"
       >
         <div className="flex items-start justify-between">
-          <h2 className="text-heading font-semibold text-content">个人资料</h2>
+          <h2 className="text-heading font-semibold text-content">{t("profileCard.title")}</h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="关闭"
+            aria-label={t("common.close")}
             className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface-sunken text-content-muted transition-colors duration-instant hover:bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
           >
             <X size={17} aria-hidden="true" />
@@ -127,7 +130,7 @@ export function ProfilePreviewCard({
         </div>
 
         {loading ? (
-          <TFLoadingRegion label="正在加载资料">
+          <TFLoadingRegion label={t("profileCard.loading")}>
             <div className="mt-5 space-y-3">
               <div className="flex justify-center">
                 <TFSkeleton shape="circle" className="h-20 w-20" />
@@ -144,9 +147,11 @@ export function ProfilePreviewCard({
             <div className="mt-4 flex flex-col items-center text-center">
               <TFAvatar name={profile.nickname} src={profile.avatarUrl} size="xl" ring />
               <p className="mt-3 text-heading font-semibold text-content">
-                {profile.nickname ?? "TalkFirst 用户"}
+                {profile.nickname ?? t("common.talkFirstUser")}
                 {profile.age !== null ? (
-                  <span className="ml-1 text-caption font-normal text-content-muted">{profile.age} 岁</span>
+                  <span className="ml-1 text-caption font-normal text-content-muted">
+                    {t("common.ageYears", { age: profile.age })}
+                  </span>
                 ) : null}
               </p>
               {place ? (
@@ -164,21 +169,21 @@ export function ProfilePreviewCard({
 
             {profile.attributes.aboutMe.length > 0 ? (
               <div className="mt-4">
-                <p className="mb-2 text-caption font-medium text-content-muted">我的介绍</p>
+                <p className="mb-2 text-caption font-medium text-content-muted">{t("profileCard.aboutMe")}</p>
                 <AttributeTagList attributes={profile.attributes.aboutMe} tone="about" limit={6} />
               </div>
             ) : null}
 
             {profile.attributes.lookingFor.length > 0 ? (
               <div className="mt-4">
-                <p className="mb-2 text-caption font-medium text-content-muted">交友需求</p>
+                <p className="mb-2 text-caption font-medium text-content-muted">{t("profileCard.lookingFor")}</p>
                 <AttributeTagList attributes={profile.attributes.lookingFor} tone="looking" limit={6} />
               </div>
             ) : null}
 
             {profile.languages.length > 0 ? (
               <div className="mt-4">
-                <p className="mb-2 text-caption font-medium text-content-muted">语言</p>
+                <p className="mb-2 text-caption font-medium text-content-muted">{t("profileCard.languages")}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {profile.languages.map((language) => (
                     <TFBadge key={`${language.code}-${language.type}`} tone="brand">
@@ -199,12 +204,15 @@ export function ProfilePreviewCard({
                           shared module rather than be copied.
                         */}
                         {language.type === "NATIVE"
-                          ? "母语"
-                          : `学习中 · ${
-                              { BEGINNER: "入门", INTERMEDIATE: "中级", ADVANCED: "高级" }[
-                                language.level
-                              ] ?? language.level
-                            }`}
+                          ? t("profileCard.native")
+                          : t("profileCard.learningLevel", {
+                              level:
+                                {
+                                  BEGINNER: t("profileCard.levelBeginner"),
+                                  INTERMEDIATE: t("profileCard.levelIntermediate"),
+                                  ADVANCED: t("profileCard.levelAdvanced"),
+                                }[language.level] ?? language.level,
+                            })}
                       </span>
                     </TFBadge>
                   ))}
@@ -214,7 +222,7 @@ export function ProfilePreviewCard({
 
             {profile.interests.length > 0 ? (
               <div className="mt-4">
-                <p className="mb-2 text-caption font-medium text-content-muted">兴趣</p>
+                <p className="mb-2 text-caption font-medium text-content-muted">{t("profileCard.interests")}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {profile.interests.slice(0, 8).map((interest) => (
                     <TFBadge key={interest.slug} tone="brand">
@@ -227,7 +235,7 @@ export function ProfilePreviewCard({
 
             {profile.purposes.length > 0 ? (
               <div className="mt-4">
-                <p className="mb-2 text-caption font-medium text-content-muted">交友目的</p>
+                <p className="mb-2 text-caption font-medium text-content-muted">{t("profileCard.purposes")}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {profile.purposes.map((purpose) => (
                     <TFBadge key={purpose.slug} tone="warning">
@@ -254,14 +262,14 @@ export function ProfilePreviewCard({
                     router.push(`/profile/${profile.id}`);
                   }}
                 >
-                  查看完整资料
+                  {t("profileCard.viewFullProfile")}
                 </TFButton>
                 {profile.relationship.isConnected ? (
                   /* A disabled 「已连接」 is the *correct* disabled control here —
                      there is no action left to take. It keeps `disabled` (and so
                      stays in the accessibility tree) rather than being hidden. */
                   <TFButton variant="secondary" className="flex-[2]" disabled>
-                    已连接
+                    {t("profileCard.connected")}
                   </TFButton>
                 ) : helloDone ? (
                   /**
@@ -276,22 +284,22 @@ export function ProfilePreviewCard({
                     className="flex-[2]"
                     onClick={() => {
                       onClose();
-                      router.push("/messages");
+                      router.push(localePath(locale, "/messages"));
                     }}
                   >
-                    已打招呼 · 去消息查看
+                    {t("profileCard.helloAndView")}
                   </TFButton>
                 ) : (
                   <TFButton
                     className="flex-[2]"
                     onClick={() => void sayHello()}
                     loading={helloSending}
-                    loadingLabel="发送中…"
+                    loadingLabel={t("common.sending")}
                     /* `label` is what the E2E suite matches on:
                        `getByRole("button", { name: "打招呼" })`. */
-                    aria-label="打招呼"
+                    aria-label={t("profileCard.sayHello")}
                   >
-                    打招呼
+                    {t("profileCard.sayHello")}
                   </TFButton>
                 )}
               </div>
@@ -307,7 +315,7 @@ export function ProfilePreviewCard({
                     router.push("/me/edit");
                   }}
                 >
-                  编辑我的资料
+                  {t("profileCard.editProfile")}
                 </TFButton>
                 <TFButton
                   variant="secondary"
@@ -317,7 +325,7 @@ export function ProfilePreviewCard({
                     router.push("/me/attributes");
                   }}
                 >
-                  管理标签
+                  {t("profileCard.manageTags")}
                 </TFButton>
               </div>
             ) : null}

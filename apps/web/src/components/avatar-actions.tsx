@@ -5,6 +5,7 @@ import { Camera, Eye, Loader2, Upload } from "lucide-react";
 import { TFButton, TFDialog, TFSheet, TFAvatar } from "@/components/tf";
 import { apiFetch, ApiRequestError } from "@/lib/api";
 import { useSession } from "@/lib/session";
+import { useT } from "@/lib/i18n/use-locale";
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_BYTES = 5 * 1024 * 1024; // 5MB
@@ -34,6 +35,7 @@ export function AvatarActionSheet({
   onAvatarUpdated,
 }: AvatarActionSheetProps) {
   const { user, setUser } = useSession();
+  const { t } = useT();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -51,12 +53,12 @@ export function AvatarActionSheet({
     if (!file) return;
 
     if (!ACCEPTED_TYPES.includes(file.type)) {
-      setError("仅支持 JPG、PNG、WebP 格式图片。");
+      setError(t("me.avatar.wrongType"));
       return;
     }
 
     if (file.size > MAX_BYTES) {
-      setError("图片大小不能超过 5MB。");
+      setError(t("me.avatar.tooLarge"));
       return;
     }
 
@@ -81,7 +83,7 @@ export function AvatarActionSheet({
       onClose();
     } catch (err) {
       setError(
-        err instanceof ApiRequestError ? err.message : "头像上传失败，请稍后重试。"
+        err instanceof ApiRequestError ? err.message : t("me.avatar.uploadFailed")
       );
     } finally {
       setUploading(false);
@@ -101,7 +103,7 @@ export function AvatarActionSheet({
         type="file"
         accept={ACCEPTED_TYPES.join(",")}
         className="hidden"
-        aria-label="选择本地头像文件"
+        aria-label={t("me.avatar.chooseFile")}
         onChange={handleFileChange}
       />
 
@@ -114,8 +116,8 @@ export function AvatarActionSheet({
             onClose();
           }
         }}
-        title="头像操作"
-        description="查看大图或从本地上传新头像"
+        title={t("me.avatar.sheetTitle")}
+        description={t("me.avatar.sheetDescription")}
       >
         <div className="space-y-3 pt-2">
           {error ? (
@@ -134,9 +136,9 @@ export function AvatarActionSheet({
               <span className="grid h-9 w-9 place-items-center rounded-full bg-brand-50 text-brand-600">
                 <Eye size={18} aria-hidden="true" />
               </span>
-              <span>查看头像</span>
+              <span>{t("me.avatar.view")}</span>
             </div>
-            <span className="text-caption text-content-muted">查看大图</span>
+            <span className="text-caption text-content-muted">{t("me.avatar.viewLarge")}</span>
           </button>
 
           {/* Action: Upload Local Avatar */}
@@ -154,15 +156,15 @@ export function AvatarActionSheet({
                   <Upload size={18} aria-hidden="true" />
                 )}
               </span>
-              <span>{uploading ? "正在上传..." : "修改头像"}</span>
+              <span>{uploading ? t("me.avatar.uploading") : t("me.avatar.change")}</span>
             </div>
             <span className="text-caption text-content-muted">
-              {uploading ? "请稍候" : "从本地相册选择"}
+              {uploading ? t("me.avatar.pleaseWait") : t("me.avatar.chooseFromLibrary")}
             </span>
           </button>
 
           <p className="px-1 text-center text-caption text-content-subtle">
-            支持 jpg / png / webp，最大 5MB
+            {t("me.avatar.supported")}
           </p>
 
           <div className="pt-2">
@@ -175,7 +177,7 @@ export function AvatarActionSheet({
                 onClose();
               }}
             >
-              取消
+              {t("common.cancel")}
             </TFButton>
           </div>
         </div>
@@ -185,8 +187,8 @@ export function AvatarActionSheet({
       <TFDialog
         open={viewDialogOpen}
         onClose={() => setViewDialogOpen(false)}
-        title="头像预览"
-        description={name ? `${name} 的个人头像` : "个人头像"}
+        title={t("me.avatar.previewTitle")}
+        description={name ? t("me.avatar.yourAvatar", { name }) : t("me.avatar.genericAvatar")}
         footer={
           <>
             <TFButton
@@ -194,7 +196,7 @@ export function AvatarActionSheet({
               className="flex-1"
               onClick={() => setViewDialogOpen(false)}
             >
-              关闭
+              {t("common.close")}
             </TFButton>
             <TFButton
               variant="primary"
@@ -204,7 +206,7 @@ export function AvatarActionSheet({
                 handlePickFile();
               }}
             >
-              更换头像
+              {t("me.avatar.changeAgain")}
             </TFButton>
           </>
         }
@@ -215,7 +217,7 @@ export function AvatarActionSheet({
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={avatarUrl}
-                alt={name ? `${name} 的头像` : "个人头像"}
+                alt={name ? t("me.avatar.yourAvatar", { name }) : t("me.avatar.genericAvatar")}
                 className="h-48 w-48 object-cover sm:h-56 sm:w-56"
               />
             ) : (
@@ -226,7 +228,7 @@ export function AvatarActionSheet({
           </div>
           {!avatarUrl ? (
             <p className="mt-4 text-caption text-content-muted">
-              尚未设置个性化头像，可点击下方按钮选择图片上传。
+              {t("me.avatar.noAvatar")}
             </p>
           ) : null}
         </div>
@@ -250,12 +252,13 @@ export function ClickableAvatar({
   className,
   onClick,
 }: ClickableAvatarProps) {
+  const { t } = useT();
   return (
     <button
       type="button"
       onClick={onClick}
       className={`group relative inline-block cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${className || ""}`}
-      aria-label="点击查看或修改头像"
+      aria-label={t("me.avatar.clickToEdit")}
     >
       <TFAvatar name={name} src={avatarUrl} size={size} ring />
       <span className="absolute bottom-0 right-0 grid h-7 w-7 place-items-center rounded-full bg-brand-500 text-white shadow-brand ring-2 ring-surface transition-transform group-hover:scale-110 group-active:scale-95">

@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from "react";
 import { avatarInitial } from "@/lib/profile";
+import { useT } from "@/lib/i18n/use-locale";
 
 /**
  * The only identity a Discover bubble is allowed to show.
@@ -67,8 +68,9 @@ export function DiscoverAvatarBubble({
   const delaySeconds = -((stableHash(`${user.id}:delay`) % 80) / 10);
   const rise = -(3 + (stableHash(`${user.id}:rise`) % 4));
 
-  const name = user.nickname ?? "TalkFirst 用户";
-  const meta = [user.age ? `${user.age} 岁` : null, user.countryName ?? user.countryCode]
+  const { t } = useT();
+  const name = user.nickname ?? t("common.talkFirstUser");
+  const meta = [user.age ? t("common.ageYears", { age: user.age }) : null, user.countryName ?? user.countryCode]
     .filter(Boolean)
     .join(" · ");
 
@@ -90,7 +92,7 @@ export function DiscoverAvatarBubble({
       <button
         type="button"
         onClick={() => onOpenProfile(user.id)}
-        aria-label={`查看 ${name} 的资料卡`}
+        aria-label={t("discover.bubbleProfileLabel", { name })}
         className="tf-bubble grid place-items-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
         style={{ width: orbSize + ORB_SLACK * 2, height: orbSize + ORB_SLACK * 2 }}
       >
@@ -99,7 +101,7 @@ export function DiscoverAvatarBubble({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={user.avatarUrl}
-              alt={`${name} 的头像`}
+              alt={t("discover.bubbleAvatarAlt", { name })}
               className="h-full w-full rounded-full object-cover ring-2 ring-white"
             />
           </span>

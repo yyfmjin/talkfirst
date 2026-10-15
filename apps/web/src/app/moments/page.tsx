@@ -24,6 +24,8 @@ import {
 import { apiFetch } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { formatCount, formatDuration, relativeTime } from "@/lib/moments";
+import { localePath } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/use-locale";
 
 type Platform = { id: string; label: string; icon: string; color: string; connectedLabel: string };
 type Moment = {
@@ -53,15 +55,15 @@ type Feed = { items: Moment[]; nextCursor: string | null };
 type Comment = MomentComment;
 
 const tabItems = [
-  ["recommend", "推荐"],
-  ["following", "关注"],
-  ["mine", "我的"],
+  ["recommend", "moments.tabRecommended"],
+  ["following", "moments.tabFollowing"],
+  ["mine", "moments.tabMine"],
   // C4 — 收藏是这个页面的第四个标签，而不是另一个页面。
   //
   // 卡片 `MomentCard` 是这一页里的局部组件，而 P0-05 明确要求「只有一套卡片」。
   // 为一个收藏列表复制第二套卡片（或先做一次大抽取）都不如复用同一个列表 ——
   // 服务端两个端点的 item 本来就是同一份投影。
-  ["bookmarks", "收藏"],
+  ["bookmarks", "moments.tabBookmarks"],
 ] as const;
 
 type TabId = (typeof tabItems)[number][0];
@@ -70,6 +72,7 @@ type TabId = (typeof tabItems)[number][0];
 type Topic = { tag: string; count: number };
 
 export default function MomentsPage() {
+  const { t } = useT();
   const [tab, setTab] = useState<TabId>("recommend");
   const [platform, setPlatform] = useState("");
   const [platforms, setPlatforms] = useState<Platform[]>([]);
@@ -175,7 +178,7 @@ export default function MomentsPage() {
         setCursor(result.nextCursor);
         setHasMore(Boolean(result.nextCursor));
       } catch (requestError) {
-        setLoadError(requestError instanceof Error ? requestError.message : "动态加载失败");
+        setLoadError(requestError instanceof Error ? requestError.message : t("moments.loadFailed"));
       } finally {
         setLoading(false);
         setLoadingMore(false);
@@ -231,7 +234,7 @@ export default function MomentsPage() {
     } catch (requestError) {
       setFeed(previous);
       // Inline banner: the optimistic like is rolled back, the feed stays.
-      setActionError(requestError instanceof Error ? requestError.message : "点赞失败");
+      setActionError(requestError instanceof Error ? requestError.message : t("moments.likeFailed"));
     } finally {
       setLiking(null);
     }
@@ -264,7 +267,7 @@ export default function MomentsPage() {
       );
     } catch (requestError) {
       setFeed(previous);
-      setActionError(requestError instanceof Error ? requestError.message : "收藏失败");
+      setActionError(requestError instanceof Error ? requestError.message : t("moments.bookmarkFailed"));
     } finally {
       setBookmarking(null);
     }
@@ -292,7 +295,7 @@ export default function MomentsPage() {
         // empty thread, and the component would claim "还没有评论".
         setCommentErrors((current) => ({
           ...current,
-          [momentId]: requestError instanceof Error ? requestError.message : "评论加载失败",
+          [momentId]: requestError instanceof Error ? requestError.message : t("moments.commentLoadFailed"),
         }));
       }
     }
@@ -313,7 +316,7 @@ export default function MomentsPage() {
       );
       setDraftComment("");
     } catch (requestError) {
-      setActionError(requestError instanceof Error ? requestError.message : "评论失败");
+      setActionError(requestError instanceof Error ? requestError.message : t("moments.commentFailed"));
     }
   }
 
@@ -340,10 +343,10 @@ export default function MomentsPage() {
        * frame the delete lands, so without this the member gets no confirmation
        * that anything happened — the provider is mounted in `layout.tsx` and had
        * no callers at all before this. */
-      toast({ message: "动态已删除" });
+      toast({ message: t("moments.deleted") });
     } catch (requestError) {
       // The dialog stays open so the message is readable and a retry is one tap.
-      setActionError(requestError instanceof Error ? requestError.message : "删除失败");
+      setActionError(requestError instanceof Error ? requestError.message : t("moments.deleteFailed"));
     } finally {
       setDeleting(null);
     }
@@ -353,7 +356,7 @@ export default function MomentsPage() {
     const url = `${window.location.origin}/moments/user/${moment.userId}`;
     try {
       if (navigator.share) {
-        await navigator.share({ title: "TalkFirst 动态", text: moment.content.slice(0, 80), url });
+        await navigator.share({ title: t("moments.shareTitle"), text: moment.content.slice(0, 80), url });
         return;
       }
       await navigator.clipboard.writeText(url);
@@ -379,20 +382,20 @@ export default function MomentsPage() {
           <div>
             {/* Phase B: the tab is 「首页」 now, so the page title matches the tab
                 that opens it. The E2E suite pins this heading by name. */}
-            <h1 className="text-title font-semibold text-content">首页</h1>
-            <p className="mt-1 text-caption text-content-muted">看看朋友最近在世界各地的生活。</p>
+            <h1 className="text-title font-semibold text-content">{t("moments.title")}</h1>
+            <p className="mt-1 text-caption text-content-muted">{t("moments.subtitle")}</p>
           </div>
           <div className="flex gap-1.5">
             <Link
               href="/moments/settings"
-              aria-label="动态设置"
+              aria-label={t("moments.settings")}
               className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-surface text-content-muted transition-colors duration-instant hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
             >
               <SlidersHorizontal size={17} />
             </Link>
             <Link
               href="/moments/compose"
-              aria-label="发布动态"
+              aria-label={t("moments.compose")}
               className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-500 text-white shadow-brand transition-transform duration-instant active:scale-95 motion-reduce:transition-none"
             >
               <Plus size={18} />
@@ -405,11 +408,11 @@ export default function MomentsPage() {
             of 推荐/关注/我的 was active. */}
         <div className="mt-3 px-5">
           <TFTabs
-            label="动态分类"
+            label={t("moments.tabsLabel")}
             variant="underline"
             value={tab}
             onChange={(next) => setTab(next)}
-            items={tabItems.map(([id, label]) => ({ id, label }))}
+            items={tabItems.map(([id, labelKey]) => ({ id, label: t(labelKey) }))}
           />
         </div>
 
@@ -420,7 +423,7 @@ export default function MomentsPage() {
                 key={userId}
                 type="button"
                 onClick={() => setPreviewUserId(userId)}
-                aria-label={`查看 ${author.nickname ?? "用户"} 的资料卡`}
+                aria-label={t("moments.viewProfile", { name: author.nickname ?? t("common.user") })}
                 className="flex w-14 shrink-0 flex-col items-center gap-1"
               >
                 {/* One brand-coloured ring instead of a three-stop pink/purple
@@ -437,7 +440,7 @@ export default function MomentsPage() {
                   </span>
                 </span>
                 <span className="w-full truncate text-center text-overline text-content-muted">
-                  {author.nickname ?? "用户"}
+                  {author.nickname ?? t("common.user")}
                 </span>
               </button>
             ))}
@@ -453,7 +456,7 @@ export default function MomentsPage() {
         {tab === "bookmarks" ? null : (
         <div className="tf-scroll-x mt-3 flex gap-2 overflow-x-auto px-5 pb-1">
           <TFChip selected={!platform} onClick={() => setPlatform("")}>
-            全部
+            {t("moments.filterAll")}
           </TFChip>
           {platforms.map((item) => (
             <TFChip
@@ -480,7 +483,7 @@ export default function MomentsPage() {
         {topics.length > 0 && tab !== "bookmarks" ? (
           <div className="tf-scroll-x mt-2 flex gap-2 overflow-x-auto px-5 pb-1">
             <TFChip selected={!topic} onClick={() => setTopic("")}>
-              全部话题
+              {t("moments.filterAllTopics")}
             </TFChip>
             {topics.map((item) => (
               <TFChip
@@ -512,10 +515,10 @@ export default function MomentsPage() {
             <button
               type="button"
               onClick={() => setActionError("")}
-              aria-label="关闭错误提示"
+              aria-label={t("moments.closeError")}
               className="shrink-0 font-medium underline"
             >
-              关闭
+              {t("common.close")}
             </button>
           </div>
         ) : null}
@@ -567,9 +570,9 @@ export default function MomentsPage() {
               className="mt-4"
               onClick={() => void load(false)}
               loading={loadingMore}
-              loadingLabel="加载中…"
+              loadingLabel={t("common.loading")}
             >
-              加载更多
+              {t("common.loadMore")}
             </TFButton>
           </div>
         ) : null}
@@ -589,8 +592,8 @@ export default function MomentsPage() {
           setPendingDelete(null);
           setActionError("");
         }}
-        title="删除这条动态？"
-        description="删除后无法恢复，评论也会一并消失。"
+        title={t("moments.deleteDialogTitle")}
+        description={t("moments.deleteDialogBody")}
         footer={
           <>
             <TFButton
@@ -601,24 +604,24 @@ export default function MomentsPage() {
                 setActionError("");
               }}
             >
-              取消
+              {t("common.cancel")}
             </TFButton>
             <TFButton
               variant="danger"
               className="flex-1"
               onClick={() => void confirmDelete()}
               loading={deleting !== null}
-              loadingLabel="删除中…"
+              loadingLabel={t("common.deleting")}
               data-testid="moment-delete-confirm"
             >
-              确认删除
+              {t("moments.confirmDelete")}
             </TFButton>
           </>
         }
       >
         {pendingDelete ? (
           <p className="line-clamp-3 break-words rounded-row bg-surface-sunken px-3.5 py-2.5 text-caption leading-5 text-content-muted">
-            {pendingDelete.content.trim() || "（这条动态只有图片）"}
+            {pendingDelete.content.trim() || t("moments.imageOnly")}
           </p>
         ) : null}
         {actionError ? (
@@ -677,6 +680,7 @@ function MomentCard({
   platformColor: string;
   platformLabel: string;
 }) {
+  const { t } = useT();
   return (
     /*
      * A post is a ROW, not a card.
@@ -692,7 +696,7 @@ function MomentCard({
         <button
           type="button"
           onClick={() => onProfile(moment.userId)}
-          aria-label={`查看 ${moment.author.nickname ?? "用户"} 的资料卡`}
+          aria-label={t("moments.viewProfile", { name: moment.author.nickname ?? t("common.user") })}
           className="shrink-0"
         >
           {/* `TFAvatar` replaced a ten-line inline implementation. The gradient
@@ -701,9 +705,9 @@ function MomentCard({
           <TFAvatar name={moment.author.nickname} src={moment.author.avatarUrl} size="md" />
         </button>
         <button type="button" onClick={() => onProfile(moment.userId)} className="min-w-0 flex-1 text-left">
-          <p className="truncate text-ui font-semibold text-content">{moment.author.nickname ?? "TalkFirst 用户"}</p>
+          <p className="truncate text-ui font-semibold text-content">{moment.author.nickname ?? t("common.talkFirstUser")}</p>
           <p className="text-caption text-content-muted">
-            {moment.author.countryCode ?? "全球"} · {relativeTime(moment.createdAt)}
+            {moment.author.countryCode ?? t("common.global")} · {relativeTime(moment.createdAt)}
           </p>
         </button>
         <TFBadge tone="brand" className="shrink-0">
@@ -717,15 +721,15 @@ function MomentCard({
           {moment.platformName ?? platformLabel}
         </TFBadge>
         {moment.isDemo ? (
-          <TFBadge tone="warning" className="shrink-0" title="示例内容，并非来自该平台的真实同步">
-            示例
+          <TFBadge tone="warning" className="shrink-0" title={t("moments.demoTitle")}>
+            {t("moments.demo")}
           </TFBadge>
         ) : null}
       </div>
 
       <Link
         href={`/moments/${moment.id}`}
-        aria-label={`查看动态详情：${moment.author.nickname ?? "用户"}`}
+        aria-label={t("moments.viewDetail", { name: moment.author.nickname ?? t("common.user") })}
         className="block"
       >
         <div className="px-5 pb-3 pt-3">
@@ -756,7 +760,7 @@ function MomentCard({
             */}
             <Link
               href={`/videos?start=${moment.id}`}
-              aria-label="全屏播放视频"
+              aria-label={t("moments.playVideo")}
               className="group relative block w-full"
             >
               <video
@@ -786,14 +790,14 @@ function MomentCard({
              posts stay inset so the swipe affordance is visible. */
           <div className="relative aspect-[4/3] overflow-hidden bg-surface-sunken">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={moment.images[0]} alt="动态图片" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+            <img src={moment.images[0]} alt={t("moments.imageAlt")} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
           </div>
         ) : moment.images.length > 1 ? (
           <div className="tf-scroll-x flex snap-x snap-mandatory gap-2 overflow-x-auto px-5 pb-1">
             {moment.images.map((src, index) => (
               <div key={`${src}-${index}`} className="relative aspect-[4/3] w-[78%] shrink-0 snap-center overflow-hidden rounded-card bg-surface-sunken">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={src} alt={`动态图片${index + 1}`} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+                <img src={src} alt={t("moments.imageAltIndexed", { n: index + 1 })} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
                 <span className="absolute right-2 top-2 rounded-full bg-black/50 px-2 py-0.5 text-overline text-white">
                   {index + 1}/{moment.images.length}
                 </span>
@@ -810,7 +814,7 @@ function MomentCard({
           type="button"
           onClick={onLike}
           disabled={liking}
-          aria-label="点赞"
+          aria-label={t("moments.like")}
           aria-pressed={moment.liked}
           className={`flex min-h-9 items-center gap-1.5 rounded-full px-2.5 transition-colors duration-instant hover:bg-surface-sunken disabled:opacity-60 ${
             moment.liked ? "text-danger-500" : ""
@@ -822,7 +826,7 @@ function MomentCard({
         <button
           type="button"
           onClick={onComments}
-          aria-label="评论"
+          aria-label={t("moments.comment")}
           aria-expanded={commentsOpen}
           className="flex min-h-9 items-center gap-1.5 rounded-full px-2.5 transition-colors duration-instant hover:bg-surface-sunken"
         >
@@ -833,7 +837,7 @@ function MomentCard({
           type="button"
           onClick={onBookmark}
           disabled={bookmarking}
-          aria-label="收藏"
+          aria-label={t("moments.bookmark")}
           aria-pressed={moment.bookmarked}
           className={`ml-auto flex min-h-9 items-center gap-1.5 rounded-full px-2.5 transition-colors duration-instant hover:bg-surface-sunken disabled:opacity-60 ${
             moment.bookmarked ? "text-brand-600" : ""
@@ -848,22 +852,22 @@ function MomentCard({
         <button
           type="button"
           onClick={onShare}
-          aria-label="分享"
+          aria-label={t("moments.share")}
           className="flex min-h-9 items-center gap-1.5 rounded-full px-2.5 transition-colors duration-instant hover:bg-surface-sunken"
         >
           <Share2 size={17} aria-hidden="true" />
-          {shared ? <span className="text-caption text-success-600">已复制</span> : null}
+          {shared ? <span className="text-caption text-success-600">{t("moments.copied")}</span> : null}
         </button>
         {isMine ? (
           <button
             type="button"
             onClick={onDelete}
-            aria-label="删除动态"
+            aria-label={t("moments.deleteMoment")}
             disabled={deleting}
             className="flex min-h-9 items-center gap-1.5 rounded-full px-2.5 transition-colors duration-instant hover:bg-surface-sunken disabled:opacity-60"
           >
             <Trash2 size={16} aria-hidden="true" />
-            {deleting ? <span className="text-caption">删除中…</span> : null}
+            {deleting ? <span className="text-caption">{t("common.deleting")}</span> : null}
           </button>
         ) : null}
       </div>
@@ -895,8 +899,9 @@ function MomentCard({
  * a slower spinner.
  */
 function FeedSkeleton() {
+  const { t } = useT();
   return (
-    <TFLoadingRegion label="正在加载动态">
+    <TFLoadingRegion label={t("moments.loading")}>
       <div className="mt-2 divide-y divide-border">
         {[0, 1, 2].map((index) => (
           <div key={index} className="px-5 py-4">
@@ -919,17 +924,18 @@ function FeedSkeleton() {
  * member cannot fix an empty followed-feed by posting.
  */
 function EmptyFeed({ tab }: { tab: string }) {
+  const { locale, t } = useT();
   const mine = tab === "mine";
   /** C4 — 收藏为空时，可做的事不是「去发布」，而是先去收几条。 */
   if (tab === "bookmarks") {
     return (
       <TFEmptyState
         icon={<Compass size={26} />}
-        title="还没有收藏过动态"
-        description="在动态卡片上点「收藏」，想再看的就会收在这里。"
+        title={t("moments.emptyBookmarkTitle")}
+        description={t("moments.emptyBookmarkBody")}
         action={
-          <TFButton href="/moments" size="md">
-            去看动态
+          <TFButton href={localePath(locale, "/moments")} size="md">
+            {t("moments.viewMoments")}
           </TFButton>
         }
       />
@@ -938,15 +944,11 @@ function EmptyFeed({ tab }: { tab: string }) {
   return (
     <TFEmptyState
       icon={<Compass size={26} />}
-      title={mine ? "还没有发布过动态" : tab === "following" ? "还没有关注动态" : "这里还没有动态"}
-      description={
-        mine
-          ? "发布第一条动态，让聊得来的人先认识真实的你。"
-          : "去「发现」找几个聊得来的人，连接之后他们的动态会出现在这里。"
-      }
+      title={mine ? t("moments.emptyMineTitle") : tab === "following" ? t("moments.emptyFollowingTitle") : t("moments.emptyDefaultTitle")}
+      description={mine ? t("moments.emptyMineBody") : t("moments.emptyFeedBody")}
       action={
-        <TFButton href={mine ? "/moments/compose" : "/discover"} size="md">
-          {mine ? "去发布" : "去发现"}
+        <TFButton href={mine ? "/moments/compose" : localePath(locale, "/discover")} size="md">
+          {mine ? t("moments.goCompose") : t("moments.goDiscover")}
         </TFButton>
       }
     />

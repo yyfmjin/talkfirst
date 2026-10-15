@@ -1,5 +1,8 @@
+"use client";
+
 import { attributeLabel, type AttributeView } from "@/lib/profile";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/i18n/use-locale";
 
 /**
  * PC-1.4: the single renderer for `ABOUT_ME` / `LOOKING_FOR` tags.
@@ -21,6 +24,7 @@ export function AttributeTagList({
   limit?: number;
   showRetired?: boolean;
 }) {
+  const { t } = useT();
   if (attributes.length === 0) return null;
   const visible = limit ? attributes.slice(0, limit) : attributes;
   const overflow = attributes.length - visible.length;
@@ -40,7 +44,7 @@ export function AttributeTagList({
           <span className="min-w-0 truncate">{attributeLabel(attribute)}</span>
           {attribute.value ? <span className="min-w-0 truncate opacity-70">· {attribute.value}</span> : null}
           {showRetired && attribute.definitionActive === false ? (
-            <span className="shrink-0 rounded-full bg-surface/80 px-1.5 text-overline text-warning-800">已停用</span>
+            <span className="shrink-0 rounded-full bg-surface/80 px-1.5 text-overline text-warning-800">{t("me.tagRetired")}</span>
           ) : null}
         </span>
       ))}

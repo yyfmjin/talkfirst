@@ -6,6 +6,7 @@ import { PhoneShell } from "@/components/phone-shell";
 import { TabBar } from "@/components/tab-bar";
 import { TFBadge, TFButton, TFEmptyState, TFErrorState } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
+import { useT } from "@/lib/i18n/use-locale";
 import { AdminEntry } from "@/components/admin-entry";
 import { ProfilePreviewCard } from "@/components/profile-preview-card";
 import { DiscoverBubbleField, DiscoverBubbleFieldSkeleton } from "@/components/discover-bubble-field";
@@ -52,10 +53,10 @@ type RecommendationResponse = {
  * exists so the row is never empty on a slow or failed fetch, and it matches the server's
  * own fallback for a database with no category rows.
  */
-const FALLBACK_FILTERS = [
-  { id: "all", label: "🌎 全部" },
-  { id: "language", label: "语言交换" },
-  { id: "gaming", label: "游戏搭子" },
+const FALLBACK_FILTER_KEYS = [
+  { id: "all", labelKey: "discover.filterAll" },
+  { id: "language", labelKey: "discover.filterLanguage" },
+  { id: "gaming", labelKey: "discover.filterGaming" },
 ] as const;
 
 type FilterId = string;
@@ -74,8 +75,11 @@ const DAILY_LIMIT = 20;
  * lives.
  */
 export default function DiscoverPage() {
+  const { t } = useT();
   const [filter, setFilter] = useState<FilterId>("all");
-  const [filters, setFilters] = useState<Array<{ id: string; label: string }>>([...FALLBACK_FILTERS]);
+  const [filters, setFilters] = useState<Array<{ id: string; label: string }>>(
+    FALLBACK_FILTER_KEYS.map((entry) => ({ id: entry.id, label: t(entry.labelKey) })),
+  );
   const [items, setItems] = useState<DiscoverBubbleUser[]>([]);
   const [remaining, setRemaining] = useState(DAILY_LIMIT);
   const [loading, setLoading] = useState(true);
@@ -94,7 +98,7 @@ export default function DiscoverPage() {
       setItems(data.items);
       setRemaining(data.remaining);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "推荐加载失败，请稍后再试");
+      setError(err instanceof Error ? err.message : t("discover.loadFailed"));
     } finally {
       setLoading(false);
       setSwitching(false);
@@ -174,11 +178,11 @@ export default function DiscoverPage() {
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-4">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-title font-semibold text-content">发现</h1>
-            <p className="mt-1 text-caption text-content-muted">先聊聊，再成为朋友。</p>
+            <h1 className="text-title font-semibold text-content">{t("discover.title")}</h1>
+            <p className="mt-1 text-caption text-content-muted">{t("discover.subtitle")}</p>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <TFBadge tone="brand">今日剩余 {remaining}</TFBadge>
+            <TFBadge tone="brand">{t("discover.remainingToday", { remaining })}</TFBadge>
             <AdminEntry />
           </div>
         </div>
@@ -193,7 +197,7 @@ export default function DiscoverPage() {
             aria-valuemin={0}
             aria-valuemax={DAILY_LIMIT}
             aria-valuenow={viewed}
-            aria-label="今日已查看的推荐数"
+            aria-label={t("discover.progressLabel")}
           >
             <div
               className="h-full rounded-full bg-brand-500 transition-[width] duration-base ease-out"
@@ -201,7 +205,7 @@ export default function DiscoverPage() {
             />
           </div>
           <p className="mt-1.5 text-center text-caption text-content-muted">
-            今日已看 {viewed}/{DAILY_LIMIT}
+            {t("discover.viewedToday", { viewed, total: DAILY_LIMIT })}
           </p>
         </div>
 
@@ -214,7 +218,7 @@ export default function DiscoverPage() {
           brand border and tint, not a gradient fill (a filter is a state, not a
           call to action).
         */}
-        <div className="tf-scroll-x mt-4 flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="推荐筛选">
+        <div className="tf-scroll-x mt-4 flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label={t("discover.filterLabel")}>
           {filters.map((option) => (
             <button
               key={option.id}
@@ -241,9 +245,7 @@ export default function DiscoverPage() {
           administrator adding a third tab — the copy would describe the wrong thing.
         */}
         <p className="mt-2 text-caption leading-5 text-content-muted">
-          {filter === "all"
-            ? "按语言互补、共同兴趣和活跃度综合排序，点头像看完整资料。"
-            : "只看符合这个类别的人，点头像看完整资料。"}
+          {filter === "all" ? t("discover.sortedHint") : t("discover.categoryHint")}
         </p>
 
         {loading ? <DiscoverBubbleFieldSkeleton /> : null}
@@ -251,7 +253,7 @@ export default function DiscoverPage() {
         {!loading && error ? (
           <TFErrorState
             className="mt-4"
-            title="推荐暂时不可用"
+            title={t("discover.unavailable")}
             description={error}
             onRetry={() => void loadRecommendations(filter)}
           />
@@ -290,17 +292,24 @@ function DiscoverEmpty({
   onRetry: () => void;
   onReset: () => void;
 }) {
+  const { t } = useT();
   return (
     <div className="mt-4">
       <TFEmptyState
         icon={<Compass size={26} />}
-        title={remaining === 0 ? "今天的推荐看完啦" : filter === "all" ? "暂时没有合适的人" : "这个筛选下暂时没有合适的人"}
+        title={
+          remaining === 0
+            ? t("discover.emptyDoneTitle")
+            : filter === "all"
+              ? t("discover.emptyNoneTitle")
+              : t("discover.emptyFilteredTitle")
+        }
         description={
           remaining === 0
-            ? "明天再来看看，认真认识一个人。"
+            ? t("discover.emptyDoneBody")
             : filter === "all"
-              ? "完善语言、兴趣和目的后，会得到更好的推荐。"
-              : "换个筛选看看，或完善语言和兴趣后会有更多匹配。"
+              ? t("discover.emptyNoneBody")
+              : t("discover.emptyFilteredBody")
         }
         action={
           /*
@@ -316,17 +325,17 @@ function DiscoverEmpty({
             if (filterAll) {
               return (
                 <TFButton className="w-full" onClick={onRetry}>
-                  重新加载
+                  {t("discover.reload")}
                 </TFButton>
               );
             }
             return (
               <div className="flex w-full gap-2">
                 <TFButton className="flex-1" onClick={onReset}>
-                  看全部
+                  {t("discover.viewAll")}
                 </TFButton>
                 <TFButton variant="secondary" className="flex-1" onClick={onRetry}>
-                  重新加载
+                  {t("discover.reload")}
                 </TFButton>
               </div>
             );
