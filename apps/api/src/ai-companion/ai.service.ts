@@ -29,6 +29,19 @@ export const STYLE_PRESET_KEYS = Object.keys(STYLE_PRESETS);
 /** 上游偶发错误：值得原样重试一次的状态码。 */
 const RETRYABLE_UPSTREAM_STATUS = new Set([429, 500, 502, 503, 504]);
 
+/**
+ * 单次尝试的上限。
+ *
+ * 这个数字是**预算**，不是随手写的：总耗时（尝试数 × 本值 + 退避）必须留在
+ * 客户端超时之内，否则服务端还在等、用户已经看到超时了。
+ * 客户端（App）的 AI 请求上限见 `apps/mobile/src/screens/AiScreen.tsx` 的
+ * `AI_REQUEST_TIMEOUT_MS`，两边要一起改。
+ */
+const ATTEMPT_TIMEOUT_MS = 30_000;
+
+/** 失败尝试之间的退避。 */
+const ATTEMPT_BACKOFF_MS = 800;
+
 export type CompanionPersona = {
   name: string;
   userNickname: string;
@@ -91,8 +104,11 @@ export class AiService {
   /**
    * OpenAI 兼容的 chat/completions 调用（无流式）。
    * 适用于 DeepSeek、Gemini（`/v1beta/openai`）等兼容端点；`AI_MODEL` 可用逗号
-   * 分隔成降级链（如 `gemini-3.5-flash-lite,gemini-3.1-flash-lite`）；超时 60 秒；
-   * 没有配置 key 时直接抛 `AI_NOT_CONFIGURED`。
+   * 分隔成降级链（如 `gemini-3.5-flash-lite,gemini-3.1-flash-lite`）；
+   * **单次尝试**上限 30 秒；没有配置 key 时直接抛 `AI_NOT_CONFIGURED`。
+   *
+   * 降级不只发生在「上游返回可重试状态码」时，也发生在「这次尝试超时/抛错」时 ——
+   * 后者以前会直接冒出去，见循环里的注释。
    */
   async chat(
     system: string,
@@ -130,21 +146,47 @@ export class AiService {
 
     let response: Response | null = null;
     for (const [index, model] of attempts.entries()) {
-      response = await fetch(`${base}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: payloadFor(model),
-        signal: AbortSignal.timeout(60_000),
-      });
+      const hasNext = index < attempts.length - 1;
+      const startedAt = Date.now();
+      try {
+        response = await fetch(`${base}/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: payloadFor(model),
+          signal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS),
+        });
+      } catch (error) {
+        /*
+         * 超时（`TimeoutError`）与网络错误以前是**直接抛出去的** —— 降级链因此形同虚设：
+         * 第一个模型一慢，整次请求就失败，后面的模型根本没被尝试。2026-10-16 线上
+         * 就是这样：日志里全是 `TimeoutError`，而第二个模型（轻量、快）一次都没被调用。
+         * 现在把“这次尝试失败”当成一次可降级的失败。
+         */
+        this.logger.warn(
+          `ai attempt failed (model ${model}, ${Date.now() - startedAt}ms): ` +
+            `${error instanceof Error ? error.message : String(error)}`,
+        );
+        response = null;
+        if (!hasNext) {
+          throw new AiUnavailableError(
+            "AI_UPSTREAM_TIMEOUT",
+            error instanceof Error ? error.message : "upstream attempt failed",
+          );
+        }
+        await new Promise((resolve) => setTimeout(resolve, ATTEMPT_BACKOFF_MS));
+        continue;
+      }
+
       if (response.ok) break;
 
-      this.logger.warn(`ai upstream error: ${response.status} (model ${model})`);
-      const hasNext = index < attempts.length - 1;
+      this.logger.warn(
+        `ai upstream error: ${response.status} (model ${model}, ${Date.now() - startedAt}ms)`,
+      );
       if (!hasNext || !RETRYABLE_UPSTREAM_STATUS.has(response.status)) break;
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      await new Promise((resolve) => setTimeout(resolve, ATTEMPT_BACKOFF_MS));
     }
 
     if (!response || !response.ok) {

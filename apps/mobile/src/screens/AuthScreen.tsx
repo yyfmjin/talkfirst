@@ -1,8 +1,6 @@
 import { useState } from "react";
 import {
-  KeyboardAvoidingView,
   Linking,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -11,6 +9,7 @@ import {
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { Input } from "../components/Input";
+import { KeyboardAware } from "../components/KeyboardAware";
 import { Logo } from "../components/Logo";
 import { ApiRequestError } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
@@ -115,10 +114,7 @@ export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {})
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
+    <KeyboardAware style={styles.root}>
       <View style={styles.inner}>
         <View style={styles.header}>
           <Logo size={60} />
@@ -225,7 +221,7 @@ export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {})
           </Pressable>
         </View>
       </View>
-    </KeyboardAvoidingView>
+    </KeyboardAware>
   );
 }
 

@@ -2,8 +2,6 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   Image,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -14,6 +12,7 @@ import * as ImagePicker from "expo-image-picker";
 import { ApiRequestError, apiFetch, apiUploadMultipart } from "../lib/api";
 import { useI18n } from "../lib/i18n-context";
 import { Icon } from "../components/Icon";
+import { KeyboardAware } from "../components/KeyboardAware";
 import { colors } from "../theme";
 
 /**
@@ -229,11 +228,7 @@ export function ComposeScreen({
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
-    >
+    <KeyboardAware style={styles.root} iosOffset={8}>
       <View style={styles.head}>
         <Pressable
           onPress={onCancel}
@@ -368,7 +363,7 @@ export function ComposeScreen({
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
-    </KeyboardAvoidingView>
+    </KeyboardAware>
   );
 }
 

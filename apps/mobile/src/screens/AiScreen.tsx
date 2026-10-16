@@ -3,8 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,6 +14,7 @@ import { apiFetch } from "../lib/api";
 import { useBackHandler } from "../lib/back-stack";
 import { Chip } from "../components/Chip";
 import { Icon } from "../components/Icon";
+import { KeyboardAware } from "../components/KeyboardAware";
 import { useI18n } from "../lib/i18n-context";
 import type { MsgKey } from "../lib/messages";
 import { colors } from "../theme";
@@ -60,6 +59,16 @@ type AiState = {
 };
 
 type StyleOption = { key: string; labelKey: MsgKey };
+
+/**
+ * AI 回复的请求上限。
+ *
+ * 服务端会依次尝试降级链里的模型（**单次**上限 30 秒，见
+ * `apps/api/src/ai-companion/ai.service.ts` 的 `ATTEMPT_TIMEOUT_MS`），最坏耗时
+ * 约 61 秒。这里必须**大于**那个数：否则服务端还在等模型，用户已经先看到超时——
+ * 一次本来会成功的回复被当成失败。两个数字要一起改。
+ */
+const AI_REQUEST_TIMEOUT_MS = 75_000;
 
 const STYLE_OPTIONS: StyleOption[] = [
   { key: "gentle", labelKey: "ai.styleGentle" },
@@ -159,7 +168,7 @@ export function AiScreen({ onBack }: { onBack: () => void }) {
     try {
       const result = await apiFetch<{ message: AiMessage; reply: AiMessage | null }>(
         "/ai-companion/messages",
-        { method: "POST", body: { content }, timeoutMs: 45_000 },
+        { method: "POST", body: { content }, timeoutMs: AI_REQUEST_TIMEOUT_MS },
       );
       setState((previous) => {
         if (!previous) return previous;
@@ -194,7 +203,7 @@ export function AiScreen({ onBack }: { onBack: () => void }) {
     try {
       const result = await apiFetch<{ message: AiMessage; reply: AiMessage | null }>(
         "/ai-companion/reply",
-        { method: "POST", timeoutMs: 45_000 },
+        { method: "POST", timeoutMs: AI_REQUEST_TIMEOUT_MS },
       );
       setState((previous) =>
         previous && result.reply
@@ -301,11 +310,7 @@ export function AiScreen({ onBack }: { onBack: () => void }) {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
-    >
+    <KeyboardAware style={styles.root} iosOffset={8}>
       <View style={styles.header}>
         <Pressable
           onPress={onBack}
@@ -408,7 +413,7 @@ export function AiScreen({ onBack }: { onBack: () => void }) {
           )}
         </Pressable>
       </View>
-    </KeyboardAvoidingView>
+    </KeyboardAware>
   );
 }
 
@@ -433,10 +438,7 @@ function SetupForm(props: {
 }) {
   const { t } = useI18n();
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
+    <KeyboardAware style={styles.root}>
       <View style={styles.header}>
         <Pressable
           onPress={props.onBack}
@@ -537,7 +539,7 @@ function SetupForm(props: {
           </Pressable>
         ) : null}
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAware>
   );
 }
 

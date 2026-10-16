@@ -2,8 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -16,6 +14,7 @@ import { appendMessageOnce, mergeMessages, useChatSocket } from "../lib/chat-soc
 import { useBackHandler } from "../lib/back-stack";
 import { Avatar } from "../components/Avatar";
 import { Icon } from "../components/Icon";
+import { KeyboardAware } from "../components/KeyboardAware";
 import { AiScreen } from "./AiScreen";
 import { ExchangeScreen } from "./ExchangeScreen";
 import { NotificationsScreen } from "./NotificationsScreen";
@@ -283,11 +282,7 @@ export function MessagesScreen() {
   if (openId) {
     const peer = conversations.find((item) => item.id === openId)?.peer ?? null;
     return (
-      <KeyboardAvoidingView
-        style={styles.root}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
-      >
+      <KeyboardAware style={styles.root} iosOffset={8}>
         <View style={styles.threadHead}>
           <Pressable
             onPress={() => {
@@ -380,7 +375,7 @@ export function MessagesScreen() {
             )}
           </Pressable>
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardAware>
     );
   }
 
