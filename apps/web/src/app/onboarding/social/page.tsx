@@ -7,6 +7,8 @@ import { PhoneShell } from "@/components/phone-shell";
 import { ScreenHeader } from "@/components/screen-header";
 import { TFCard, TFButton } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
+import { localePath } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/use-locale";
 
 /**
  * Onboarding — social accounts (optional step).
@@ -41,6 +43,7 @@ import { apiFetch } from "@/lib/api";
  */
 export default function SocialPage() {
   const router = useRouter();
+  const { locale, t } = useT();
 
   /**
    * Verification state is server-owned. The client must never assert
@@ -53,30 +56,28 @@ export default function SocialPage() {
 
   return (
     <PhoneShell>
-      <ScreenHeader title="社交账号" backHref="/onboarding/countries" />
+      <ScreenHeader title={t("onboarding.social.title")} backHref={localePath(locale, "/onboarding/countries")} />
       <div className="tf-scroll flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-6 pt-4">
-        <p className="text-ui leading-6 text-content-muted">
-          绑定社交账号可以让你的动态自动同步过来。这一步可以跳过，之后随时在「我的」里设置。
-        </p>
+        <p className="text-ui leading-6 text-content-muted">{t("onboarding.social.intro")}</p>
 
         <TFCard tone="brand" className="mt-4">
           <div className="flex gap-2.5">
             <Lock size={17} className="mt-0.5 shrink-0 text-brand-600" aria-hidden="true" />
             <div className="min-w-0">
-              <p className="text-ui font-medium text-content">默认对陌生人隐藏</p>
+              <p className="text-ui font-medium text-content">{t("onboarding.social.privacyTitle")}</p>
               <p className="mt-1 text-caption leading-5 text-content-muted">
-                绑定的账号和主页链接只有在你和对方都同意交换之后才会互相可见。在此之前，任何人都看不到。
+                {t("onboarding.social.privacyBody")}
               </p>
             </div>
           </div>
         </TFCard>
 
         <div className="mt-4 rounded-card border border-border bg-surface px-4 py-3.5">
-          <p className="text-caption font-medium text-content-muted">可以绑定的平台</p>
+          <p className="text-caption font-medium text-content-muted">{t("onboarding.social.platformsTitle")}</p>
           <p className="mt-1.5 text-ui leading-6 text-content">
             Instagram · Telegram · WhatsApp · Discord · X (Twitter) · TikTok
           </p>
-          <p className="mt-1.5 text-caption text-content-subtle">未绑定的平台不会出现在你的名片上。</p>
+          <p className="mt-1.5 text-caption text-content-subtle">{t("onboarding.social.platformsNote")}</p>
         </div>
 
         <div className="mt-auto pt-8">
@@ -92,12 +93,12 @@ export default function SocialPage() {
           <TFButton
             size="lg"
             fullWidth
-            onClick={() => router.push("/onboarding/complete")}
+            onClick={() => router.push(localePath(locale, "/onboarding/complete"))}
           >
-            完成
+            {t("onboarding.social.done")}
           </TFButton>
           <p className="mt-2 text-center text-caption text-content-subtle">
-            之后可以在「我的 → 管理社交账号」里绑定
+            {t("onboarding.social.bindHint")}
           </p>
         </div>
       </div>

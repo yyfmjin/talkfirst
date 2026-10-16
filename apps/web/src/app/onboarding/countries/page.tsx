@@ -7,12 +7,15 @@ import { ScreenHeader } from "@/components/screen-header";
 import { TFRowSkeleton, TFButton, TFLoadingRegion, TFSearch } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/cn";
+import { localePath } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/use-locale";
 
 type Country = { code: string; name: string; flag: string | null };
 type MeResponse = { preferredCountries?: Array<{ code: string }> };
 
 export default function CountriesPage() {
   const router = useRouter();
+  const { locale, t } = useT();
   const [countries, setCountries] = useState<Country[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [search, setSearch] = useState("");
@@ -32,7 +35,7 @@ export default function CountriesPage() {
           setSelected(me.preferredCountries.map((item) => item.code));
         }
       } catch (requestError) {
-        setError(requestError instanceof Error ? requestError.message : "加载失败");
+        setError(requestError instanceof Error ? requestError.message : t("onboarding.common.loadFailed"));
       } finally {
         setFetching(false);
       }
@@ -61,9 +64,9 @@ export default function CountriesPage() {
         method: "PUT",
         body: { codes: selected },
       });
-      router.push("/onboarding/social");
+      router.push(localePath(locale, "/onboarding/social"));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "保存失败，请稍后再试");
+      setError(requestError instanceof Error ? requestError.message : t("onboarding.common.saveFailed"));
     } finally {
       setLoading(false);
     }
@@ -71,10 +74,15 @@ export default function CountriesPage() {
 
   return (
     <PhoneShell>
-      <ScreenHeader title="想认识谁？" backHref="/onboarding/purposes" />
+      <ScreenHeader title={t("onboarding.countries.title")} backHref={localePath(locale, "/onboarding/purposes")} />
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-2">
         <p className="text-ui text-content-muted">
-          选择你想认识的国家 / 地区（可多选，不选表示全球{selected.length > 0 ? `，已选 ${selected.length}` : ""}）。
+          {t("onboarding.countries.subtitle", {
+            extra:
+              selected.length > 0
+                ? t("onboarding.countries.subtitleExtra", { count: selected.length })
+                : "",
+          })}
         </p>
         <div className="mt-3 flex items-start gap-2">
           {/* `TFSearch` is what the two sibling onboarding pickers
@@ -83,20 +91,20 @@ export default function CountriesPage() {
               The accessible name 「搜索国家」 is preserved. */}
           <TFSearch
             className="min-w-0 flex-1"
-            label="搜索国家"
-            placeholder="搜索国家或地区，如 日本、JP"
+            label={t("onboarding.countries.searchLabel")}
+            placeholder={t("onboarding.countries.searchPlaceholder")}
             value={search}
             onValueChange={setSearch}
             onClear={() => setSearch("")}
           />
           {selected.length > 0 ? (
             <TFButton variant="secondary" size="sm" className="mt-0.5 shrink-0" onClick={() => setSelected([])}>
-              全球
+              {t("onboarding.countries.worldwide")}
             </TFButton>
           ) : null}
         </div>
         {fetching ? (
-          <TFLoadingRegion label="正在加载国家列表">
+          <TFLoadingRegion label={t("onboarding.countries.loading")}>
             <div className="mt-5 space-y-2.5">
               <TFRowSkeleton />
               <TFRowSkeleton />
@@ -139,7 +147,7 @@ export default function CountriesPage() {
               );
             })}
             {filtered.length === 0 ? (
-              <p className="text-caption text-content-muted">没有匹配的国家，换个关键词试试。</p>
+              <p className="text-caption text-content-muted">{t("onboarding.countries.empty")}</p>
             ) : null}
           </div>
         )}
@@ -155,9 +163,11 @@ export default function CountriesPage() {
             onClick={() => void handleNext()}
             disabled={fetching}
             loading={loading}
-            loadingLabel="保存中…"
+            loadingLabel={t("onboarding.common.saving")}
           >
-            {selected.length > 0 ? `下一步（${selected.length}）` : "全球，下一步"}
+            {selected.length > 0
+              ? t("onboarding.common.nextCount", { count: selected.length })
+              : t("onboarding.countries.nextWorldwide")}
           </TFButton>
         </div>
       </div>

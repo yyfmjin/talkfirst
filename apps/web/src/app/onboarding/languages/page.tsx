@@ -6,6 +6,8 @@ import { PhoneShell } from "@/components/phone-shell";
 import { ScreenHeader } from "@/components/screen-header";
 import { TFChip, TFRowSkeleton, TFSearch, TFButton, TFLoadingRegion } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
+import { localePath } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/use-locale";
 
 type Language = { code: string; name: string; nativeName: string | null };
 type MeResponse = {
@@ -14,6 +16,7 @@ type MeResponse = {
 
 export default function LanguagesPage() {
   const router = useRouter();
+  const { locale, t } = useT();
   const [languages, setLanguages] = useState<Language[]>([]);
   const [native, setNative] = useState("");
   const [learning, setLearning] = useState<string[]>([]);
@@ -38,7 +41,7 @@ export default function LanguagesPage() {
         else if (meta.length > 0) setNative(meta[0].code);
         if (existingLearning.length > 0) setLearning(existingLearning);
       } catch (requestError) {
-        setError(requestError instanceof Error ? requestError.message : "加载失败");
+        setError(requestError instanceof Error ? requestError.message : t("onboarding.common.loadFailed"));
       } finally {
         setFetching(false);
       }
@@ -68,12 +71,12 @@ export default function LanguagesPage() {
 
   async function handleNext() {
     if (!native) {
-      setError("请选择母语。");
+      setError(t("onboarding.languages.nativeRequired"));
       return;
     }
     const cleanLearning = learning.filter((code) => code !== native);
     if (cleanLearning.length === 0) {
-      setError("请至少选择 1 门正在学习的语言。");
+      setError(t("onboarding.languages.learningRequired"));
       return;
     }
     setLoading(true);
@@ -88,9 +91,9 @@ export default function LanguagesPage() {
           ],
         },
       });
-      router.push("/onboarding/purposes");
+      router.push(localePath(locale, "/onboarding/purposes"));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "保存失败，请稍后再试");
+      setError(requestError instanceof Error ? requestError.message : t("onboarding.common.saveFailed"));
     } finally {
       setLoading(false);
     }
@@ -98,19 +101,19 @@ export default function LanguagesPage() {
 
   return (
     <PhoneShell>
-      <ScreenHeader title="语言设置" backHref="/onboarding/interests" />
+      <ScreenHeader title={t("onboarding.languages.title")} backHref={localePath(locale, "/onboarding/interests")} />
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-2">
-        <p className="text-ui leading-6 text-content-muted">语言互补是推荐的核心，先告诉我们你的语言。</p>
+        <p className="text-ui leading-6 text-content-muted">{t("onboarding.languages.intro")}</p>
         <TFSearch
           className="mt-4"
-          label="搜索语言"
-          placeholder="搜索语言或代码，如 中文、en"
+          label={t("onboarding.languages.searchLabel")}
+          placeholder={t("onboarding.languages.searchPlaceholder")}
           value={search}
           onValueChange={setSearch}
           onClear={() => setSearch("")}
         />
         {fetching ? (
-          <TFLoadingRegion label="正在加载语言列表">
+          <TFLoadingRegion label={t("onboarding.languages.loading")}>
             <div className="mt-5 space-y-3">
               <TFRowSkeleton />
               <TFRowSkeleton />
@@ -119,7 +122,9 @@ export default function LanguagesPage() {
         ) : (
           <>
             <fieldset className="mt-5">
-              <legend className="mb-2 text-caption font-medium text-content-muted">母语（单选）</legend>
+              <legend className="mb-2 text-caption font-medium text-content-muted">
+                {t("onboarding.languages.nativeLegend")}
+              </legend>
               <div className="flex flex-wrap gap-2">
                 {filtered.slice(0, 20).map((item) => (
                   <TFChip
@@ -135,13 +140,15 @@ export default function LanguagesPage() {
                 ))}
               </div>
               {filtered.length === 0 ? (
-                <p className="mt-2 text-caption text-content-muted">没有匹配的语言，换个关键词试试。</p>
+                <p className="mt-2 text-caption text-content-muted">{t("onboarding.languages.empty")}</p>
               ) : null}
             </fieldset>
 
             <fieldset className="mt-6">
               <legend className="mb-2 text-caption font-medium text-content-muted">
-                正在学习（可多选，已选 {learning.filter((code) => code !== native).length}）
+                {t("onboarding.languages.learningLegend", {
+                  count: learning.filter((code) => code !== native).length,
+                })}
               </legend>
               <div className="flex flex-wrap gap-2">
                 {filtered.map((item) => {
@@ -159,8 +166,13 @@ export default function LanguagesPage() {
                 })}
               </div>
               <p className="mt-3 text-caption leading-5 text-content-muted">
-                母语：{native ? nameOf(native) : "未选"}；学习中：
-                {learning.length > 0 ? learning.map(nameOf).join("、") : "暂无"}
+                {t("onboarding.languages.summaryNative", {
+                  name: native ? nameOf(native) : t("onboarding.languages.summaryNativeNone"),
+                  list:
+                    learning.length > 0
+                      ? learning.map(nameOf).join("、")
+                      : t("onboarding.languages.summaryLearningNone"),
+                })}
               </p>
             </fieldset>
           </>
@@ -177,9 +189,9 @@ export default function LanguagesPage() {
             onClick={() => void handleNext()}
             disabled={fetching}
             loading={loading}
-            loadingLabel="保存中…"
+            loadingLabel={t("onboarding.common.saving")}
           >
-            下一步
+            {t("onboarding.common.next")}
           </TFButton>
         </div>
       </div>

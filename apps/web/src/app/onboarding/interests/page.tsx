@@ -6,6 +6,8 @@ import { PhoneShell } from "@/components/phone-shell";
 import { ScreenHeader } from "@/components/screen-header";
 import { TFChip, TFRowSkeleton, TFSearch, TFButton, TFLoadingRegion } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
+import { displayName, localePath } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/use-locale";
 
 type Interest = { id: string; slug: string; name: string; nameZh: string | null; category: string };
 type MeResponse = { interests?: Array<{ slug: string }> };
@@ -33,6 +35,7 @@ const INTEREST_EMOJI: Record<string, string> = {
 
 export default function InterestsPage() {
   const router = useRouter();
+  const { locale, t } = useT();
   const [interests, setInterests] = useState<Interest[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [search, setSearch] = useState("");
@@ -52,7 +55,7 @@ export default function InterestsPage() {
           setSelected(me.interests.map((item) => item.slug));
         }
       } catch (requestError) {
-        setError(requestError instanceof Error ? requestError.message : "加载失败");
+        setError(requestError instanceof Error ? requestError.message : t("onboarding.common.loadFailed"));
       } finally {
         setFetching(false);
       }
@@ -81,7 +84,7 @@ export default function InterestsPage() {
 
   async function handleNext() {
     if (selected.length < 3) {
-      setError(`请至少选择 3 个兴趣（已选 ${selected.length}）。`);
+      setError(t("onboarding.interests.minRequired", { count: selected.length }));
       return;
     }
     setLoading(true);
@@ -91,9 +94,9 @@ export default function InterestsPage() {
         method: "PUT",
         body: { slugs: selected },
       });
-      router.push("/onboarding/languages");
+      router.push(localePath(locale, "/onboarding/languages"));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "保存失败，请稍后再试");
+      setError(requestError instanceof Error ? requestError.message : t("onboarding.common.saveFailed"));
     } finally {
       setLoading(false);
     }
@@ -101,10 +104,10 @@ export default function InterestsPage() {
 
   return (
     <PhoneShell>
-      <ScreenHeader title="兴趣标签" backHref="/onboarding/profile" />
+      <ScreenHeader title={t("onboarding.interests.title")} backHref={localePath(locale, "/onboarding/profile")} />
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-6 pb-6">
         <p className="text-ui text-content-muted">
-          选择你最感兴趣的内容（至少 3 个，已选 {selected.length}）
+          {t("onboarding.interests.subtitle", { count: selected.length })}
         </p>
         <div className="mt-3">
           {/* `TFSearch` brings its own clear button, which replaces the separate
@@ -112,15 +115,15 @@ export default function InterestsPage() {
               search field's ✕ should do. Clearing the *selection* is a different
               action and is offered explicitly below the selection summary. */}
           <TFSearch
-            label="搜索兴趣"
-            placeholder="搜索兴趣，如 游戏、音乐、旅行"
+            label={t("onboarding.interests.searchLabel")}
+            placeholder={t("onboarding.interests.searchPlaceholder")}
             value={search}
             onValueChange={setSearch}
             onClear={() => setSearch("")}
           />
         </div>
         {fetching ? (
-          <TFLoadingRegion label="正在加载兴趣列表">
+          <TFLoadingRegion label={t("onboarding.interests.loading")}>
             <div className="mt-5 space-y-3">
               <TFRowSkeleton />
               <TFRowSkeleton />
@@ -131,13 +134,15 @@ export default function InterestsPage() {
             {selected.length > 0 ? (
               <div className="mt-4 rounded-row bg-surface-sunken p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-caption font-medium text-content-muted">已选 {selected.length} 个</p>
+                  <p className="text-caption font-medium text-content-muted">
+                    {t("onboarding.common.selectedCount", { count: selected.length })}
+                  </p>
                   <button
                     type="button"
                     onClick={() => setSelected([])}
                     className="rounded-control px-2 py-1 text-caption text-content-muted underline decoration-dotted"
                   >
-                    清空选择
+                    {t("onboarding.interests.clearSelection")}
                   </button>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1.5">
@@ -148,12 +153,14 @@ export default function InterestsPage() {
                         key={slug}
                         type="button"
                         onClick={() => toggle(slug)}
-                        aria-label={`移除 ${found?.nameZh ?? found?.name ?? slug}`}
+                        aria-label={t("onboarding.common.removeSelection", {
+                          name: found ? displayName(locale, found) : slug,
+                        })}
                         className="inline-flex max-w-full items-center gap-1 rounded-full bg-surface px-2.5 py-1 text-caption text-brand-600 transition-colors duration-instant hover:bg-brand-50"
                       >
                         <span className="min-w-0 truncate">
                           {INTEREST_EMOJI[slug] ? `${INTEREST_EMOJI[slug]} ` : ""}
-                          {found?.nameZh ?? found?.name ?? slug}
+                          {found ? displayName(locale, found) : slug}
                         </span>
                         <span aria-hidden="true">✕</span>
                       </button>
@@ -163,7 +170,7 @@ export default function InterestsPage() {
               </div>
             ) : null}
             {categories.length === 0 ? (
-              <p className="mt-4 text-caption text-content-muted">没有匹配的兴趣，换个关键词试试。</p>
+              <p className="mt-4 text-caption text-content-muted">{t("onboarding.interests.empty")}</p>
             ) : null}
             {categories.map((category) => (
               <section key={category} className="mt-5">
@@ -178,7 +185,7 @@ export default function InterestsPage() {
                         onClick={() => toggle(item.slug)}
                       >
                         {INTEREST_EMOJI[item.slug] ? `${INTEREST_EMOJI[item.slug]} ` : ""}
-                        {item.nameZh ?? item.name}
+                        {displayName(locale, item)}
                       </TFChip>
                     ))}
                 </div>
@@ -198,9 +205,11 @@ export default function InterestsPage() {
             onClick={() => void handleNext()}
             disabled={fetching}
             loading={loading}
-            loadingLabel="保存中…"
+            loadingLabel={t("onboarding.common.saving")}
           >
-            {selected.length >= 3 ? `下一步（${selected.length}）` : "下一步"}
+            {selected.length >= 3
+              ? t("onboarding.common.nextCount", { count: selected.length })
+              : t("onboarding.common.next")}
           </TFButton>
         </div>
       </div>

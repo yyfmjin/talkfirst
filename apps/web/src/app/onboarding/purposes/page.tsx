@@ -7,6 +7,8 @@ import { ScreenHeader } from "@/components/screen-header";
 import { TFRowSkeleton, TFButton, TFLoadingRegion } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/cn";
+import { displayName, localePath } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/use-locale";
 
 type Purpose = { id: string; slug: string; name: string; nameZh: string | null };
 type MeResponse = { purposes?: Array<{ slug: string }> };
@@ -23,6 +25,7 @@ const PURPOSE_EMOJI: Record<string, string> = {
 
 export default function PurposesPage() {
   const router = useRouter();
+  const { locale, t } = useT();
   const [purposes, setPurposes] = useState<Purpose[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState("");
@@ -41,7 +44,7 @@ export default function PurposesPage() {
           setSelected(me.purposes.map((item) => item.slug));
         }
       } catch (requestError) {
-        setError(requestError instanceof Error ? requestError.message : "加载失败");
+        setError(requestError instanceof Error ? requestError.message : t("onboarding.common.loadFailed"));
       } finally {
         setFetching(false);
       }
@@ -57,16 +60,16 @@ export default function PurposesPage() {
 
   async function handleNext() {
     if (selected.length === 0) {
-      setError("请至少选择一个目的。");
+      setError(t("onboarding.purposes.required"));
       return;
     }
     setLoading(true);
     setError("");
     try {
       await apiFetch("/users/me/purposes", { method: "PUT", body: { slugs: selected } });
-      router.push("/onboarding/countries");
+      router.push(localePath(locale, "/onboarding/countries"));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "保存失败，请稍后再试");
+      setError(requestError instanceof Error ? requestError.message : t("onboarding.common.saveFailed"));
     } finally {
       setLoading(false);
     }
@@ -74,11 +77,11 @@ export default function PurposesPage() {
 
   return (
     <PhoneShell>
-      <ScreenHeader title="交友目的" backHref="/onboarding/languages" />
+      <ScreenHeader title={t("onboarding.purposes.title")} backHref={localePath(locale, "/onboarding/languages")} />
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-2">
-        <p className="text-[15px] font-medium">你想认识别人是为了？（可多选）</p>
+        <p className="text-[15px] font-medium">{t("onboarding.purposes.question")}</p>
         {fetching ? (
-          <TFLoadingRegion label="正在加载交友目的">
+          <TFLoadingRegion label={t("onboarding.purposes.loading")}>
             <div className="mt-5 space-y-3">
               <TFRowSkeleton />
               <TFRowSkeleton />
@@ -115,7 +118,7 @@ export default function PurposesPage() {
                 >
                   <span className="min-w-0">
                     {PURPOSE_EMOJI[item.slug] ? `${PURPOSE_EMOJI[item.slug]} ` : ""}
-                    {item.nameZh ?? item.name}
+                    {displayName(locale, item)}
                   </span>
                   <span
                     aria-hidden="true"
@@ -132,7 +135,9 @@ export default function PurposesPage() {
           </div>
         )}
         {selected.length > 0 ? (
-          <p className="mt-3 text-caption text-content-muted">已选 {selected.length} 个</p>
+          <p className="mt-3 text-caption text-content-muted">
+            {t("onboarding.common.selectedCount", { count: selected.length })}
+          </p>
         ) : null}
         {error ? (
           <p role="alert" className="mt-4 break-words text-caption text-danger-600">
@@ -146,9 +151,9 @@ export default function PurposesPage() {
             onClick={() => void handleNext()}
             disabled={fetching}
             loading={loading}
-            loadingLabel="保存中…"
+            loadingLabel={t("onboarding.common.saving")}
           >
-            下一步
+            {t("onboarding.common.next")}
           </TFButton>
         </div>
       </div>

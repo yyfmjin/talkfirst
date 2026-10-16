@@ -7,6 +7,8 @@ import { PhoneShell } from "@/components/phone-shell";
 import { ScreenHeader } from "@/components/screen-header";
 import { TFButton } from "@/components/tf";
 import { ApiRequestError, apiFetch } from "@/lib/api";
+import { localePath } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/use-locale";
 
 /**
  * Onboarding step 1 — the avatar.
@@ -51,6 +53,7 @@ function fileToDataUrl(file: File): Promise<string> {
 
 export default function AvatarPage() {
   const router = useRouter();
+  const { locale, t } = useT();
   const [preview, setPreview] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -59,17 +62,17 @@ export default function AvatarPage() {
     if (!file) return;
     setError("");
     if (!ACCEPTED.includes(file.type)) {
-      setError("只支持 jpg / png / webp 格式的图片。");
+      setError(t("onboarding.avatar.badFormat"));
       return;
     }
     if (file.size > MAX_BYTES) {
-      setError("图片不能超过 5MB。");
+      setError(t("onboarding.avatar.tooLarge"));
       return;
     }
     try {
       setPreview(await fileToDataUrl(file));
     } catch {
-      setError("图片读取失败，请换一张试试。");
+      setError(t("onboarding.avatar.readFailed"));
     }
   }
 
@@ -77,7 +80,7 @@ export default function AvatarPage() {
     setError("");
     // Skipping is a legitimate choice, not an error state.
     if (!preview) {
-      router.push("/onboarding/profile");
+      router.push(localePath(locale, "/onboarding/profile"));
       return;
     }
     setLoading(true);
@@ -86,18 +89,23 @@ export default function AvatarPage() {
         method: "POST",
         body: { image: preview },
       });
-      router.push("/onboarding/profile");
+      router.push(localePath(locale, "/onboarding/profile"));
     } catch (requestError) {
       // The preview is deliberately kept so a retry does not mean re-picking the
       // file — the same rule the composer follows for a failed publish.
-      setError(requestError instanceof ApiRequestError ? requestError.message : "头像上传失败，请稍后再试。");
+      setError(
+        requestError instanceof ApiRequestError
+          ? requestError.message
+          : t("onboarding.avatar.uploadFailed"),
+      );
       setLoading(false);
     }
   }
 
   return (
     <PhoneShell>
-      <ScreenHeader title="设置头像" backHref="/register/success" />
+      {/* backHref 不挂 /en 前缀：`/register/success` 还没有英文版，挂上去就是 404（见 locales.ts 的约定：先把页面译完，再改指向它的链接）。 */}
+      <ScreenHeader title={t("onboarding.avatar.title")} backHref="/register/success" />
       <div className="tf-scroll flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-5 pb-6 pt-8">
         {/* The preview doubles as the picker: the camera badge is inside the
             circle, so the whole avatar is one tap target instead of a separate
@@ -106,7 +114,7 @@ export default function AvatarPage() {
           <span className="grid h-32 w-32 place-items-center overflow-hidden rounded-full bg-brand-100 text-display font-semibold text-brand-600 ring-1 ring-black/5">
             {preview ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={preview} alt="头像预览" className="h-full w-full object-cover" />
+              <img src={preview} alt={t("onboarding.avatar.previewAlt")} className="h-full w-full object-cover" />
             ) : (
               "A"
             )}
@@ -118,15 +126,17 @@ export default function AvatarPage() {
             type="file"
             accept={ACCEPTED.join(",")}
             className="hidden"
-            aria-label="选择头像图片"
+            aria-label={t("onboarding.avatar.pickLabel")}
             onChange={(event) => void onPickFile(event.target.files?.[0])}
           />
         </label>
 
         <p className="mt-6 max-w-[260px] text-center text-ui leading-6 text-content-muted">
-          点击头像选择一张图片。清楚的正面照片会让别人更愿意和你打招呼。
+          {t("onboarding.avatar.hint")}
         </p>
-        <p className="mt-2 text-center text-caption text-content-subtle">支持 jpg / png / webp，最大 5MB</p>
+        <p className="mt-2 text-center text-caption text-content-subtle">
+          {t("onboarding.avatar.support")}
+        </p>
 
         {preview ? (
           <button
@@ -134,7 +144,7 @@ export default function AvatarPage() {
             onClick={() => setPreview("")}
             className="mt-4 rounded-control px-3 py-2 text-ui text-content-muted underline decoration-dotted"
           >
-            移除这张图片
+            {t("onboarding.avatar.remove")}
           </button>
         ) : null}
 
@@ -145,11 +155,23 @@ export default function AvatarPage() {
         ) : null}
 
         <div className="mt-auto w-full pt-8">
-          <TFButton onClick={() => void handleNext()} loading={loading} loadingLabel="保存中…" size="lg" fullWidth>
-            下一步
+          <TFButton
+            onClick={() => void handleNext()}
+            loading={loading}
+            loadingLabel={t("onboarding.common.saving")}
+            size="lg"
+            fullWidth
+          >
+            {t("onboarding.common.next")}
           </TFButton>
-          <TFButton variant="ghost" size="md" fullWidth className="mt-1" href="/onboarding/profile">
-            稍后再说
+          <TFButton
+            variant="ghost"
+            size="md"
+            fullWidth
+            className="mt-1"
+            href={localePath(locale, "/onboarding/profile")}
+          >
+            {t("onboarding.common.later")}
           </TFButton>
         </div>
       </div>

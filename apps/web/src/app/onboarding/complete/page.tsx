@@ -1,5 +1,10 @@
+"use client";
+
 import { PhoneShell } from "@/components/phone-shell";
 import { TFButton, TFCard } from "@/components/tf";
+import type { MsgKey } from "@/lib/i18n";
+import { localePath } from "@/lib/i18n";
+import { useT } from "@/lib/i18n/use-locale";
 
 /**
  * Onboarding finished — the hand-off into the product.
@@ -14,9 +19,12 @@ import { TFButton, TFCard } from "@/components/tf";
  * both sides agree. Setting that expectation here is cheaper than explaining it
  * later in a conversation.
  *
- * Server Component — only the link is interactive.
+ * Client Component — the copy depends on the path's language, and only the links
+ * are interactive.
  */
 export default function CompletePage() {
+  const { locale, t } = useT();
+
   return (
     <PhoneShell>
       <div className="tf-scroll flex min-h-0 flex-1 flex-col overflow-y-auto px-6 py-10">
@@ -36,24 +44,28 @@ export default function CompletePage() {
               <circle cx="28" cy="18" r="2" fill="#3B82F6" />
             </svg>
           </span>
-          <h1 className="mt-6 text-title font-semibold text-content">名片创建完成</h1>
+          <h1 className="mt-6 text-title font-semibold text-content">{t("onboarding.complete.title")}</h1>
           <p className="mt-2 max-w-[290px] text-ui leading-6 text-content-muted">
-            你可以开始认识新朋友了。
+            {t("onboarding.complete.subtitle")}
           </p>
         </div>
 
         <TFCard tone="quiet" className="mt-7">
           <ul className="space-y-3">
-            {[
-              { title: "会被推荐给聊得来的人", body: "推荐依据是你们的母语、正在学的语言和共同兴趣。" },
-              { title: "由你先开口", body: "在「发现」里挑一个头像，说第一句话。打招呼不消耗次数。" },
-              { title: "联系方式由双方决定", body: "只有你们都同意交换，社交账号才会互相可见。" },
-            ].map((item) => (
-              <li key={item.title} className="flex gap-3">
+            {(
+              [
+                { key: "onboarding.complete.item1Title", bodyKey: "onboarding.complete.item1Body" },
+                { key: "onboarding.complete.item2Title", bodyKey: "onboarding.complete.item2Body" },
+                { key: "onboarding.complete.item3Title", bodyKey: "onboarding.complete.item3Body" },
+              ] satisfies Array<{ key: MsgKey; bodyKey: MsgKey }>
+            ).map((item) => (
+              <li key={item.key} className="flex gap-3">
                 <span aria-hidden="true" className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" />
                 <span className="min-w-0">
-                  <span className="block text-ui font-medium text-content">{item.title}</span>
-                  <span className="mt-0.5 block text-caption leading-5 text-content-muted">{item.body}</span>
+                  <span className="block text-ui font-medium text-content">{t(item.key)}</span>
+                  <span className="mt-0.5 block text-caption leading-5 text-content-muted">
+                    {t(item.bodyKey)}
+                  </span>
                 </span>
               </li>
             ))}
@@ -61,11 +73,18 @@ export default function CompletePage() {
         </TFCard>
 
         <div className="mt-auto pt-9">
-          <TFButton href="/discover" size="lg" fullWidth>
-            去发现新朋友
+          <TFButton href={localePath(locale, "/discover")} size="lg" fullWidth>
+            {t("onboarding.complete.goDiscover")}
           </TFButton>
-          <TFButton href="/me/edit" variant="ghost" size="md" fullWidth className="mt-1">
-            先回去改改名片
+          <TFButton
+            /* 不挂 /en 前缀：`/me/edit` 还没双语化，挂上去就是 404（同 locales.ts 的约定）。 */
+            href="/me/edit"
+            variant="ghost"
+            size="md"
+            fullWidth
+            className="mt-1"
+          >
+            {t("onboarding.complete.editCard")}
           </TFButton>
         </div>
       </div>
