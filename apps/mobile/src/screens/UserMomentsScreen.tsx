@@ -12,6 +12,8 @@ import {
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
+import { MomentOwnerActions } from "../components/MomentOwnerActions";
+import { useAuth } from "../lib/auth-context";
 import { SubHeader } from "../components/SubHeader";
 import { apiFetch } from "../lib/api";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
@@ -50,6 +52,7 @@ export function UserMomentsScreen({
   onClose: () => void;
 }) {
   const { t } = useI18n();
+  const { user: me } = useAuth();
   const [detail, setDetail] = useState<UserMomentsDetail | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -149,7 +152,11 @@ export function UserMomentsScreen({
                 ? { ...opened, author: detail?.author ?? { id: userId, nickname: null, avatarUrl: null, countryCode: null } }
                 : null
             }
-            onBack={() => setOpenMomentId(null)}
+            onBack={() => {
+              setOpenMomentId(null);
+              // 详情里可能刚编辑/删除过：回来时重拉这一页，不拿旧列表糊弄。
+              void load("initial");
+            }}
           />
         </View>
       </Modal>
@@ -275,6 +282,15 @@ export function UserMomentsScreen({
                       <Icon name="chatbubble-outline" size={19} color={colors.muted} />
                       <Text style={styles.actionLabel}>{item.commentCount}</Text>
                     </View>
+                    {/* 在自己的主页看自己的动态：同一套管理入口（编辑 / 删除）。
+                        改动后重拉这一页，不在这里自己拼列表状态。 */}
+                    {userId && userId === me?.id ? (
+                      <MomentOwnerActions
+                        moment={item}
+                        onEdited={() => void load("initial")}
+                        onDeleted={() => void load("initial")}
+                      />
+                    ) : null}
                   </View>
                 </Pressable>
               );

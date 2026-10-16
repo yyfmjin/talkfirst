@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import type { ManageableMoment } from "../components/MomentOwnerActions";
 import { ApiRequestError, apiFetch, apiUploadMultipart } from "../lib/api";
 import { useI18n } from "../lib/i18n-context";
 import { Icon } from "../components/Icon";
@@ -77,15 +78,43 @@ let nextImageId = 1;
 export function ComposeScreen({
   onPublished,
   onCancel,
+  editMoment,
 }: {
-  /** 发布成功：调用方负责回到列表并刷新（新动态以服务端返回为准，不在本地猜）。 */
+  /** 发布 / 保存成功：调用方负责回到列表并刷新（以服务端返回为准，不在本地猜）。 */
   onPublished: () => void;
   onCancel: () => void;
+  /** 传了就是**编辑态**（`PATCH /moments/:id` 而不是新建），初始值来自这条动态。 */
+  editMoment?: ManageableMoment | null;
 }) {
   const { t } = useI18n();
-  const [content, setContent] = useState("");
-  const [images, setImages] = useState<PendingImage[]>([]);
-  const [video, setVideo] = useState<PendingVideo | null>(null);
+  const editing = Boolean(editMoment);
+  const [content, setContent] = useState(editMoment?.content ?? "");
+  /*
+   * 已有媒体直接进「已上传」状态：`remoteUrl` 就是服务端地址，uploading/failed 为假，
+   * 于是 `canPublish` 那套门禁不需要为编辑态开洞。
+   */
+  const [images, setImages] = useState<PendingImage[]>(() =>
+    (editMoment?.images ?? []).map((url, index) => ({
+      id: `existing-${index}`,
+      localUri: url,
+      remoteUrl: url,
+      uploading: false,
+      failed: false,
+    })),
+  );
+  const [video, setVideo] = useState<PendingVideo | null>(() =>
+    editMoment?.videoUrl
+      ? {
+          id: "existing-video",
+          localUri: editMoment.videoUrl,
+          name: "",
+          durationMs: editMoment.durationSec != null ? editMoment.durationSec * 1000 : null,
+          remoteUrl: editMoment.videoUrl,
+          uploading: false,
+          failed: false,
+        }
+      : null,
+  );
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState("");
 
@@ -211,17 +240,32 @@ export function ComposeScreen({
     setPublishing(true);
     setError("");
     try {
-      await apiFetch("/moments", {
-        method: "POST",
+      await apiFetch(editing && editMoment ? `/moments/${editMoment.id}` : "/moments", {
+        method: editing ? "PATCH" : "POST",
         body: {
           content: trimmed,
           images: images.map((img) => img.remoteUrl as string),
-          ...(video?.remoteUrl ? { videoUrl: video.remoteUrl } : {}),
+          /*
+           * 编辑时**显式**带 `videoUrl`（没视频就是空串）：服务端把 `""` 认作
+           * 「删掉视频」，不传则是「保持不变」—— 与 web 的 `moment-edit-dialog` 同一约定。
+           * 新建时不传空字段，与原来的行为一致。
+           */
+          ...(editing
+            ? { videoUrl: video?.remoteUrl ?? "" }
+            : video?.remoteUrl
+              ? { videoUrl: video.remoteUrl }
+              : {}),
         },
       });
       onPublished();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : t("compose.errorPublish"));
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : editing
+            ? t("compose.errorSave")
+            : t("compose.errorPublish"),
+      );
     } finally {
       setPublishing(false);
     }
@@ -238,19 +282,21 @@ export function ComposeScreen({
         >
           <Text style={styles.cancel}>{t("compose.cancel")}</Text>
         </Pressable>
-        <Text style={styles.title}>{t("compose.title")}</Text>
+        <Text style={styles.title}>{editing ? t("compose.editTitle") : t("compose.title")}</Text>
         <Pressable
           onPress={() => void publish()}
           disabled={!canPublish}
           accessibilityRole="button"
-          accessibilityLabel={t("compose.publish")}
+          accessibilityLabel={editing ? t("common.save") : t("compose.publish")}
           accessibilityState={{ disabled: !canPublish }}
           style={[styles.publish, canPublish ? null : styles.publishDisabled]}
         >
           {publishing ? (
             <ActivityIndicator color={colors.white} size="small" />
           ) : (
-            <Text style={styles.publishLabel}>{t("compose.publish")}</Text>
+            <Text style={styles.publishLabel}>
+              {editing ? t("common.save") : t("compose.publish")}
+            </Text>
           )}
         </Pressable>
       </View>

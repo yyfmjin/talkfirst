@@ -10,6 +10,8 @@ import { VideosScreen } from "./VideosScreen";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
+import { MomentOwnerActions } from "../components/MomentOwnerActions";
+import { useAuth } from "../lib/auth-context";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
 import { colors } from "../theme";
 import type { Moment, MomentPage } from "../lib/types";
@@ -36,6 +38,7 @@ import type { Moment, MomentPage } from "../lib/types";
  */
 export function MomentsScreen() {
   const { t } = useI18n();
+  const { user } = useAuth();
   const [items, setItems] = useState<Moment[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -130,7 +133,14 @@ export function MomentsScreen() {
       <MomentDetailScreen
         momentId={detail.id}
         initial={detail}
-        onBack={() => setDetail(null)}
+        /*
+         * 关掉详情时顺手重拉一页：用户可能在详情里**编辑或删除**了这条
+         * （因此列表里的内容/存在性都可能变了）。只关不拉会删完之后还看得到它。
+         */
+        onBack={() => {
+          setDetail(null);
+          void load("refresh");
+        }}
       />
     );
   }
@@ -248,6 +258,20 @@ export function MomentsScreen() {
                 <Icon name="chatbubble-outline" size={19} color={colors.muted} />
                 <Text style={styles.actionLabel}>{item.commentCount}</Text>
               </View>
+              {/* 自己发的动态：管理入口（编辑 / 删除）。与点赞、评论同一行，不额外占位置。 */}
+              {item.author.id === user?.id ? (
+                <MomentOwnerActions
+                  moment={item}
+                  onEdited={(updated) =>
+                    setItems((previous) =>
+                      previous.map((row) => (row.id === updated.id ? { ...row, ...updated } : row)),
+                    )
+                  }
+                  onDeleted={() =>
+                    setItems((previous) => previous.filter((row) => row.id !== item.id))
+                  }
+                />
+              ) : null}
             </View>
           </Pressable>
         )}

@@ -16,6 +16,7 @@ import { apiFetch } from "../lib/api";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
+import { MomentOwnerActions } from "../components/MomentOwnerActions";
 import { SubHeader } from "../components/SubHeader";
 import { useAuth } from "../lib/auth-context";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
@@ -302,6 +303,16 @@ export function MomentDetailScreen({
                 onToggleBookmark={() => void toggleBookmark()}
                 onAuthorPress={() => setPreviewUserId(moment.userId)}
               />
+
+              {/* 自己的动态：编辑 / 删除。web 的详情页也有这两个动作。 */}
+              {moment.userId === currentUserId ? (
+                <MomentOwnerActions
+                  variant="row"
+                  moment={moment}
+                  onEdited={(updated) => setMoment({ ...moment, ...updated })}
+                  onDeleted={onBack}
+                />
+              ) : null}
 
               <View style={styles.commentsHeader}>
                 <Text style={styles.commentsTitle}>
