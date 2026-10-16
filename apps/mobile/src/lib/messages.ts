@@ -172,6 +172,11 @@ export const zh = {
   "messages.errorList": "会话加载失败，请稍后再试。",
   "messages.errorThread": "消息加载失败。",
   "messages.errorSend": "发送失败，请稍后再试。",
+  "messages.liveConnecting": "正在建立实时连接…",
+  "messages.liveReconnecting": "实时连接断开，正在重连…",
+  "messages.liveOffline": "实时连接不可用，下拉可手动刷新。",
+  "messages.imagePreview": "[图片]",
+  "messages.typing": "正在输入…",
 
   /* ───────────────────────── 通知 ───────────────────────── */
   "notifications.title": "通知",
@@ -820,6 +825,11 @@ export const en: Record<MsgKey, string> = {
   "messages.errorList": "Couldn't load conversations. Please try again.",
   "messages.errorThread": "Couldn't load messages.",
   "messages.errorSend": "Couldn't send. Please try again.",
+  "messages.liveConnecting": "Connecting…",
+  "messages.liveReconnecting": "Connection lost — reconnecting…",
+  "messages.liveOffline": "Live updates unavailable. Pull down to refresh.",
+  "messages.imagePreview": "[Image]",
+  "messages.typing": "typing…",
 
   /* notifications */
   "notifications.title": "Alerts",

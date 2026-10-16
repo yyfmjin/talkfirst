@@ -352,7 +352,12 @@ export type ConversationItem = {
   updatedAt: string;
   unreadCount?: number;
   peer: MomentAuthor | null;
-  lastMessage: { content: string; senderId: string; createdAt: string } | null;
+  /**
+   * `type` 可选：图片消息的 `content` 是图片 URL（不能当预览显示），
+   * 列表要按 `type` 决定预览文案（见 `MessagesScreen.previewText`）。
+   * 可选是为了兼容历史上没有这个字段的服务端响应，缺失时按文本处理。
+   */
+  lastMessage: { content: string; senderId: string; createdAt: string; type?: string } | null;
 };
 
 export type ChatMessage = {

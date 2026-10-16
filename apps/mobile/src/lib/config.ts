@@ -79,6 +79,22 @@ export function apiBaseUrl(): string {
 }
 
 /**
+ * socket.io 的地址（命名空间 `/chat` 的前缀）。
+ *
+ * 与 `apiBaseUrl()` **同源**，只是少一层 `/api/v1`：socket.io 的握手走
+ * `<origin>/socket.io/`，命名空间是 `/chat`（见 `apps/api/src/chat/chat.gateway.ts`）。
+ *
+ * 为什么不单独配一个环境变量：两个地址各配一次，早晚会有人只改一半，而症状是
+ * 「接口通、实时不通」这种很难一眼看出来的故障。这里复用 `apiBaseUrl()` 的全部
+ * 兜底规则（环境变量 → 模拟器别名 → 生产域名），两个地址永远指同一个后端。
+ */
+export function socketBaseUrl(): string {
+  return apiBaseUrl()
+    .replace(/\/api\/v1\/?$/, "")
+    .replace(/\/+$/, "");
+}
+
+/**
  * 环境变量到底有没有提供地址。有些界面想据此给出"你还没配地址"的提示
  * （而不是笼统的"连不上服务器"），所以留这个只读布尔值 —— 读它不会抛错。
  */

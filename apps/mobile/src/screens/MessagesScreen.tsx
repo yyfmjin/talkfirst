@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { apiFetch } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
+import { appendMessageOnce, mergeMessages, useChatSocket } from "../lib/chat-socket";
 import { useBackHandler } from "../lib/back-stack";
 import { Avatar } from "../components/Avatar";
 import { Icon } from "../components/Icon";
@@ -24,14 +25,21 @@ import { colors } from "../theme";
 import type { ChatMessage, ConversationItem, MessagePage } from "../lib/types";
 
 /**
- * 消息（2026-10-07）—— 会话列表 + 会话内对话。
+ * 消息（2026-10-07；实时 2026-10-16）—— 会话列表 + 会话内对话。
  *
- * ## 为什么不实时
+ * ## 实时
  *
- * web 端的实时消息走 socket.io（`chat.gateway.ts`）。这里**先不做长连接**：
- * 加一个 socket 客户端等于给移动端引入新的原生依赖与生命周期管理，
- * 而这一步我没法在真机上验证。现在的行为是「进入会话时拉一页 + 手动下拉刷新 +
- * 发送后重拉」，先保证功能闭环，实时留作下一步（已在交接里记明）。
+ * 一个 socket 连接同时服务两个位置（实现在 `lib/chat-socket.ts`）：
+ *
+ *   - **打开的会话**：`message.new` 直接把新消息接进 `messages`（按 id 去重 ——
+ *     自己发的那条同时从 REST 返回、又是广播的回声）；
+ *   - **列表**：`conversation.activity` 只发给收件人自己的房间（列表页不可能把所有
+ *     会话都 join 一遍），用它更新预览/未读/排序。
+ *
+ * 发送仍走 REST（`POST /conversations/:id/messages`）：它能明确报错、区分
+ * AI 会话，而 socket 只用来**接收**。
+ *
+ * 断线期间的消息不会补发广播，所以重新连上时补拉一次最新页（合并，不替换）。
  *
  * ## 打开会话时顺手清掉它的消息通知
  *
@@ -62,6 +70,8 @@ export function MessagesScreen() {
    * 底部 tab 也就从 5 个减到 4 个。
    */
   const [segment, setSegment] = useState<"conversations" | "notifications">("conversations");
+  /** 对方正在输入（服务端 `typing` 事件；只关心当前会话与别人）。 */
+  const [peerTyping, setPeerTyping] = useState(false);
 
   const loadConversations = useCallback(async () => {
     setError("");
@@ -79,6 +89,77 @@ export function MessagesScreen() {
     void loadConversations();
   }, [loadConversations]);
 
+  /** 重新拉一次正在看的那个会话的最新页（断线重连后用）。 */
+  const refreshOpenConversation = useCallback(async (id: string) => {
+    try {
+      const data = await apiFetch<MessagePage>(`/conversations/${id}/messages?limit=30`);
+      setMessages((previous) => mergeMessages(previous, data.items));
+    } catch {
+      // 补拉失败不惊动用户：下次打开会话或重连会再试。
+    }
+  }, []);
+
+  const { state: liveState, setTyping } = useChatSocket({
+    conversationId: openId,
+    onMessage: (message) => {
+      setMessages((previous) => appendMessageOnce(previous, message));
+      // 正看着这个会话：列表上的未读不该留着。
+      setConversations((previous) =>
+        previous.map((item) =>
+          item.id === message.conversationId ? { ...item, unreadCount: 0 } : item,
+        ),
+      );
+      setPeerTyping(false);
+    },
+    onActivity: (activity) => {
+      setConversations((previous) => {
+        const index = previous.findIndex((item) => item.id === activity.conversationId);
+        // 列表里还没有这个会话（对方第一次发来消息）：重拉列表拿头像/昵称。
+        if (index < 0) {
+          void loadConversations();
+          return previous;
+        }
+        const target = previous[index];
+        const updated: ConversationItem = {
+          ...target,
+          // 打开着这个会话就不涨未读 —— 用户已经在看了。
+          unreadCount: openId === activity.conversationId ? 0 : (target.unreadCount ?? 0) + 1,
+          updatedAt: activity.createdAt,
+          lastMessage: {
+            content: activity.preview ?? "",
+            senderId: activity.senderId,
+            createdAt: activity.createdAt,
+            type: activity.type,
+          },
+        };
+        // 有新消息的会话浮到最上面，与刷新后的服务端顺序一致。
+        return [updated, ...previous.filter((_, position) => position !== index)];
+      });
+    },
+    onTyping: (payload) => {
+      if (payload.userId !== user?.id) setPeerTyping(payload.typing);
+    },
+  });
+
+  /*
+   * 从「非 live」回到 live 时补一次数据：断线期间的消息不会有广播，
+   * 只能重新拉一次（列表 + 正在看的会话）。
+   *
+   * 初值是 `true`：首次连接不需要补拉 —— 挂载时本来就会拉列表，
+   * 而会话内容是打开时才拉的。
+   */
+  const wasLive = useRef(true);
+  useEffect(() => {
+    if (liveState !== "live") {
+      wasLive.current = false;
+      return;
+    }
+    if (wasLive.current) return;
+    wasLive.current = true;
+    void loadConversations();
+    if (openId) void refreshOpenConversation(openId);
+  }, [liveState, openId, loadConversations, refreshOpenConversation]);
+
   /*
    * 系统返回键：先关更靠前的子页，再关会话本身（注册晚的优先级高）。
    * AI 朋友屏自己管返回（设定页 → 聊天页 → 关掉），所以这里不管它。
@@ -93,6 +174,7 @@ export function MessagesScreen() {
   const openConversation = useCallback(async (id: string) => {
     setOpenId(id);
     setExchange(false);
+    setPeerTyping(false);
     setMessages([]);
     setCursor(null);
     setError("");
@@ -135,8 +217,10 @@ export function MessagesScreen() {
         body: { content },
       });
       // 直接把服务端返回的那一条接在末尾：不重拉整页，也不做本地猜测（id/时间戳都以服务端为准）。
-      setMessages((previous) => [...previous, created]);
+      // 同一条还会随 `message.new` 广播回来，由 `appendMessageOnce` 去重。
+      setMessages((previous) => appendMessageOnce(previous, created));
       setDraft("");
+      setTyping(false);
       void loadConversations();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : t("messages.errorSend"));
@@ -144,6 +228,23 @@ export function MessagesScreen() {
       setSending(false);
     }
   }
+
+  /*
+   * 实时状态只在**不健康**时显示一行：正常连着不该占地方。
+   * 文案只描述连接状态，不说「发不出去」—— 发送走 REST，与这条长连接无关。
+   */
+  const liveBanner =
+    liveState === "live" ? null : (
+      <Text style={styles.liveState}>
+        {t(
+          liveState === "connecting"
+            ? "messages.liveConnecting"
+            : liveState === "reconnecting"
+              ? "messages.liveReconnecting"
+              : "messages.liveOffline",
+        )}
+      </Text>
+    );
 
   if (loading) {
     return (
@@ -218,6 +319,8 @@ export function MessagesScreen() {
           </Pressable>
         </View>
 
+        {liveBanner}
+
         <FlatList
           data={messages}
           keyExtractor={(item) => item.id}
@@ -245,10 +348,17 @@ export function MessagesScreen() {
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
+        {/* 对方正在输入：贴着输入框上沿，不挤压消息列表。 */}
+        {peerTyping ? <Text style={styles.typingLine}>{t("messages.typing")}</Text> : null}
+
         <View style={styles.composer}>
           <TextInput
             value={draft}
-            onChangeText={setDraft}
+            onChangeText={(value) => {
+              setDraft(value);
+              // 空输入框不算「正在输入」。对方那边 4 秒没动静会自动清掉（见 chat-socket.ts）。
+              setTyping(value.trim().length > 0);
+            }}
             placeholder={t("messages.composerPlaceholder")}
             placeholderTextColor={colors.muted}
             style={styles.input}
@@ -280,6 +390,7 @@ export function MessagesScreen() {
         <Text style={styles.headerTitle}>{t("messages.title")}</Text>
       </View>
       <Segments value={segment} onChange={setSegment} />
+      {liveBanner}
       <FlatList
         data={conversations}
         keyExtractor={(item) => item.id}
@@ -331,7 +442,7 @@ export function MessagesScreen() {
                 <Text style={styles.time}>{compactTime(item.lastMessage?.createdAt ?? item.updatedAt, t)}</Text>
               </View>
               <Text style={styles.preview} numberOfLines={1}>
-                {item.lastMessage?.content ?? t("messages.startChat")}
+                {previewText(item, t)}
               </Text>
             </View>
             {item.unreadCount && item.unreadCount > 0 ? (
@@ -345,6 +456,15 @@ export function MessagesScreen() {
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
   );
+}
+
+/**
+ * 列表预览：图片消息的 `content` 是图片 URL，不能当预览摆到列表里，
+ * 显示本地化的「[图片]」。其余情况就是消息正文。
+ */
+function previewText(item: ConversationItem, t: TranslateFn): string {
+  if (!item.lastMessage) return t("messages.startChat");
+  return item.lastMessage.type === "IMAGE" ? t("messages.imagePreview") : item.lastMessage.content;
 }
 
 /** 会话列表右侧那个时间：与 `MomentsScreen.relativeTime` 同形状，`t` 由调用方传入。 */
@@ -494,6 +614,14 @@ const styles = StyleSheet.create({
   sendDisabled: { opacity: 0.45 },
   emptyText: { fontSize: 14, color: colors.muted, textAlign: "center", lineHeight: 21 },
   error: { position: "absolute", left: 16, right: 16, bottom: 96, fontSize: 13, color: colors.danger, textAlign: "center" },
+  typingLine: { position: "absolute", left: 16, right: 16, bottom: 62, fontSize: 12, color: colors.muted },
+  liveState: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    fontSize: 12,
+    color: colors.muted,
+    textAlign: "center",
+  },
   aiEntry: {
     flexDirection: "row",
     alignItems: "center",

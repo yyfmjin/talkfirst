@@ -271,6 +271,15 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(this.conversationRoom(payload.conversationId)).emit("message.new", event);
 
     if (peerId) {
+      this.emitConversationActivity({
+        recipientId: peerId,
+        conversationId: payload.conversationId,
+        messageId: message.id,
+        senderId: user.id,
+        type: "TEXT",
+        preview: content.slice(0, 120),
+        createdAt: message.createdAt,
+      });
       await this.notifications.notifyNewMessage({
         userId: peerId,
         actorId: user.id,
@@ -431,6 +440,19 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       createdAt: message.createdAt.toISOString(),
       clientMessageId: payload.clientMessageId ?? null,
     });
+    if (peerId) {
+      this.emitConversationActivity({
+        recipientId: peerId,
+        conversationId: payload.conversationId,
+        messageId: message.id,
+        senderId: user.id,
+        type: "IMAGE",
+        // 图片没有文字可预览：客户端按 `type` 显示自己的「图片」文案，
+        // 服务端不把 URL 当预览发过去。
+        preview: null,
+        createdAt: message.createdAt,
+      });
+    }
   }
 
   private normalizeUploadUrl(raw: string) {
@@ -456,6 +478,38 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return null;
     }
     return user;
+  }
+
+  /**
+   * 会话列表的实时更新（`conversation.activity`）。
+   *
+   * 为什么不能只靠 `message.new`：那条事件只发给**会话房间**，而房间是靠
+   * `conversation.join` 进来的 —— 列表页不可能把所有会话都 join 一遍。所以这里
+   * 再往收件人**自己的房间**（`userRoom`，连接时已自动加入）发一条轻量事件，
+   * 只带列表要用的字段。
+   *
+   * 只发给对方：发送方自己的列表由本地直接更新（他也收到了 `message.new`）。
+   *
+   * `preview` 对图片为空 —— 客户端按 `type` 显示自己的「图片」文案，
+   * 不把 `https://…` 当预览摆到列表里。
+   */
+  private emitConversationActivity(input: {
+    recipientId: string;
+    conversationId: string;
+    messageId: string;
+    senderId: string;
+    type: string;
+    preview: string | null;
+    createdAt: Date;
+  }) {
+    this.server.to(this.userRoom(input.recipientId)).emit("conversation.activity", {
+      conversationId: input.conversationId,
+      messageId: input.messageId,
+      senderId: input.senderId,
+      type: input.type,
+      preview: input.preview === null ? null : input.preview.slice(0, 120),
+      createdAt: input.createdAt.toISOString(),
+    });
   }
 
   private userRoom(userId: string) {
