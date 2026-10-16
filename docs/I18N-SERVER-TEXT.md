@@ -72,14 +72,38 @@
 
 ## 6. 验证
 
+### 6.1 端到端（真实 HTTP + 真实 PostgreSQL，推荐）
+
 ```bash
-# 单元测试：词典、语言判定、通知渲染
+# 本地库 + 本地 API
+cat > /tmp/run-i18n-e2e.sh <<'SH'
+cd "D:/文件/网站/TalkFirst"
+npm run build -w @talkfirst/api
+API_PORT=4100 node --env-file=.env apps/api/dist/main.js
+SH
+bash .local-data/pc12/withpg.sh /tmp/run-i18n-e2e.sh &
+
+# 用三个临时账号把三条规则各跑一遍
+node --env-file=.env scripts/verify-server-i18n.mjs http://127.0.0.1:4100
+```
+
+脚本自己建账号、跑完自己删（邮箱域名 `@i18n-check.invalid`）；**只对本地 / 测试库跑**。
+它钉住的是 HTTP → JWT → 服务层 → 写库这一整条链：母语兜底、显式语言优先于母语、
+用户内容不翻译，以及 `PATCH /users/me { locale }` 的 200 / 400 两种结局。
+（注意 API 的端口环境变量是 `API_PORT`，不是 `PORT`。）
+
+### 6.2 单元测试
+
+```bash
 npx jest src/common/i18n.spec.ts src/common/locale.spec.ts -w @talkfirst/api
 npx jest src/connections src/notifications src/auth/verification-lifecycle.spec.ts
+```
 
-# 线上实测（英文收件人应收到英文通知）
+### 6.3 线上抽查
+
+```bash
+# 英文请求头 → 验证码邮件主题为英文（账号不存在时的路径）
 curl -s -X POST https://api.talkfirst.ccwu.cc/api/v1/auth/send-verification-code \
   -H "Content-Type: application/json" -H "Accept-Language: en-US,en;q=0.9" \
   -d '{"email":"new-user@example.com"}'
-# 邮件主题应为 "Your TalkFirst verification code"
 ```
