@@ -5,17 +5,22 @@ import { DEFAULT_LOCALE, type Locale } from "./locales";
  *
  * ## 覆盖范围（重要）
  *
- * 这里**不是**整站文案，只装了已经双语化的那几个面 —— 截至 2026-10-13：
+ * 这里**不是**整站文案，只装了已经双语化的那几个面 —— 截至 2026-10-16：
  *
  *   已双语  启动屏 `/`、官网 `/site`、登录 `/login`、注册 `/register`、
- *           找回密码 `/reset`、邮箱验证 `/verify`，以及四份法律文本
- *           （`/legal`、`/legal/terms`、`/legal/rules`、`/legal/privacy`）
- *   未双语  成员端内部（发现 / 动态 / 消息 / 我的 / 引导 / 通知 …）——
- *           合计约 850 条，得一批一批搬
+ *           找回密码 `/reset`、邮箱验证 `/verify`，四份法律文本
+ *           （`/legal`、`/legal/terms`、`/legal/rules`、`/legal/privacy`），
+ *           成员端第一批（发现 / 动态 / 消息 / 我的 / 通知 / AI 朋友），
+ *           以及整个**引导流程**（`/onboarding/*` 八页）
+ *   未双语  成员端详情页（动态详情 / 用户资料 / 会话详情 / 我的各子页）、
+ *           `videos`、`connections`，以及两处共享的 chrome：
+ *           `lib/errors.ts` 的错误文案与 `components/tf` 的默认文案
+ *           （加载中 / 加载失败 / 搜索 / 关闭 …）
  *
  * **没搬过来的页面不要假装它有英文版**：它们的 `en` 路由还不存在，英文站点上的
  * 链接也不会指向它们（见 `locales.ts`）。顺序是「先把页面译完，再把指向它的链接
- * 改成 `localePath()`」—— 反过来做就是 404。
+ * 改成 `localePath()`」—— 反过来做就是 404（引导流程里的 `/register/success`、
+ * `/me/edit` 两处就是这么处理的）。
  *
  * ## 为什么 `en` 的类型是 `Record<MsgKey, string>`
  *
