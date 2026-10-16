@@ -429,6 +429,10 @@ export const zh = {
   "common.ageYears": "{age} 岁",
   "common.global": "全球",
   "common.otherParty": "对方",
+  "common.loadFailed": "加载失败",
+  "common.search": "搜索",
+  "common.clearSearch": "清除搜索",
+  "common.moreActions": "更多操作",
 
   /* ───────────────────────── 主导航 █ 底部 Tab ───────────────────────── */
   "nav.home": "首页",
@@ -1289,6 +1293,10 @@ export const en: Record<MsgKey, string> = {
   "common.ageYears": "{age}",
   "common.global": "Worldwide",
   "common.otherParty": "the other person",
+  "common.loadFailed": "Couldn't load",
+  "common.search": "Search",
+  "common.clearSearch": "Clear search",
+  "common.moreActions": "More actions",
 
   /* ───────────────────────── bottom nav ───────────────────────── */
   "nav.home": "Home",

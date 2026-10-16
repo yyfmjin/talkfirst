@@ -5,7 +5,7 @@
  * `dictionary.ts` 装文案。以后要换实现（例如整站搬进 `app/[locale]/`），
  * 改的是这两个文件，不是每个调用点。
  */
-export { LOCALES, DEFAULT_LOCALE, localePath, otherLocale, type Locale } from "./locales";
+export { LOCALES, DEFAULT_LOCALE, localePath, otherLocale, localeFromPath, currentLocale, type Locale } from "./locales";
 export { displayName } from "./display-name";
 export { t, zh, en, type MsgKey, type MsgParams } from "./dictionary";
 export { useLocale, useT } from "./use-locale";

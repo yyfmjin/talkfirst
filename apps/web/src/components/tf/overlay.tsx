@@ -3,6 +3,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/i18n/use-locale";
 import { TFIconButton } from "./button";
 
 /**
@@ -109,11 +110,12 @@ function useScrollLock(open: boolean) {
   }, [open]);
 }
 
-function Scrim({ onClose, label }: { onClose: () => void; label: string }) {
+function Scrim({ onClose, label }: { onClose: () => void; label?: string }) {
+  const { t } = useT();
   return (
     <button
       type="button"
-      aria-label={label}
+      aria-label={label ?? t("common.close")}
       onClick={onClose}
       className="absolute inset-0 cursor-default bg-surface-scrim animate-fade-in motion-reduce:animate-none"
     />
@@ -144,12 +146,13 @@ export type TFSheetProps = {
 export function TFSheet({ open, onClose, title, description, children, footer, className }: TFSheetProps) {
   const panelRef = useFocusTrap(open, onClose);
   useScrollLock(open);
+  const { t } = useT();
 
   if (!open) return null;
 
   return (
     <div className="absolute inset-0 z-50 flex flex-col justify-end">
-      <Scrim onClose={onClose} label="关闭" />
+      <Scrim onClose={onClose} />
       <div
         ref={panelRef}
         role="dialog"
@@ -173,7 +176,7 @@ export function TFSheet({ open, onClose, title, description, children, footer, c
             <h2 className="text-heading font-semibold text-content">{title}</h2>
             {description ? <p className="mt-0.5 text-caption text-content-muted">{description}</p> : null}
           </div>
-          <TFIconButton label="关闭" size="sm" onClick={onClose} className="-mr-1.5 -mt-1">
+          <TFIconButton label={t("common.close")} size="sm" onClick={onClose} className="-mr-1.5 -mt-1">
             <X size={18} />
           </TFIconButton>
         </div>
@@ -214,7 +217,7 @@ export function TFDialog({ open, onClose, title, description, children, footer, 
 
   return (
     <div className="absolute inset-0 z-50 grid place-items-center overflow-y-auto p-5">
-      <Scrim onClose={onClose} label="关闭" />
+      <Scrim onClose={onClose} />
       <div
         ref={panelRef}
         role="dialog"
@@ -258,7 +261,7 @@ export function TFMenu({
   onClose,
   items,
   align = "right",
-  label = "更多操作",
+  label,
 }: {
   open: boolean;
   onClose: () => void;
@@ -267,16 +270,18 @@ export function TFMenu({
   label?: string;
 }) {
   const panelRef = useFocusTrap(open, onClose);
+  const { t } = useT();
+  const menuLabel = label ?? t("common.moreActions");
 
   if (!open) return null;
 
   return (
     <>
-      <Scrim onClose={onClose} label={label} />
+      <Scrim onClose={onClose} label={menuLabel} />
       <div
         ref={panelRef}
         role="menu"
-        aria-label={label}
+        aria-label={menuLabel}
         tabIndex={-1}
         className={cn(
           "absolute top-full z-40 mt-1 min-w-[168px] overflow-hidden rounded-row border border-border bg-surface py-1 shadow-raised animate-fade-in motion-reduce:animate-none",

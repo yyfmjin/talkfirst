@@ -40,3 +40,28 @@ export function localePath(locale: Locale, path: string): string {
 export function otherLocale(locale: Locale): Locale {
   return locale === DEFAULT_LOCALE ? "en" : DEFAULT_LOCALE;
 }
+
+/**
+ * 路径 → 语言。**这是全站唯一一条规则**：`/en` 与 `/en/...` 是英文，其余是默认语言。
+ *
+ * `useLocale()`（组件）与 `currentLocale()`（纯函数）都调它 —— 两处各写一遍
+ * 迟早会分叉，而那种分叉的症状是「同页上两句话是不同语言」，很难查。
+ */
+export function localeFromPath(path: string | null | undefined): Locale {
+  if (!path) return DEFAULT_LOCALE;
+  return path === "/en" || path.startsWith("/en/") ? "en" : DEFAULT_LOCALE;
+}
+
+/**
+ * 非组件代码（纯函数、事件处理器）怎么知道当前语言。
+ *
+ * 规则与 `useLocale()` 完全一致（同一个 `localeFromPath`），区别只是数据来源：
+ * 这里读的是 `window.location.pathname`，因为纯函数里拿不到 hook。
+ *
+ * 服务端与测试环境没有 `window`，落到默认语言 —— 服务端要发出去的文案是另一套
+ * （接口按**收件人**语言下发，见 `apps/api/src/common/i18n.ts`）。
+ */
+export function currentLocale(): Locale {
+  if (typeof window === "undefined") return DEFAULT_LOCALE;
+  return localeFromPath(window.location?.pathname);
+}

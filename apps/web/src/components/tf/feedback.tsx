@@ -12,6 +12,7 @@ import {
 } from "react";
 import { AlertCircle, CheckCircle2, Info } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/i18n/use-locale";
 import { TFButton } from "./button";
 
 /**
@@ -78,10 +79,11 @@ export function TFRowSkeleton({ avatar = true }: { avatar?: boolean }) {
 }
 
 /** Wraps a loading region so assistive tech is told once that it is busy. */
-export function TFLoadingRegion({ label = "加载中", children }: { label?: string; children: ReactNode }) {
+export function TFLoadingRegion({ label, children }: { label?: string; children: ReactNode }) {
+  const { t } = useT();
   return (
     <div aria-busy="true" aria-live="polite">
-      <span className="sr-only">{label}</span>
+      <span className="sr-only">{label ?? t("common.loading")}</span>
       {children}
     </div>
   );
@@ -140,7 +142,7 @@ export function TFEmptyState({
  * never succeed.
  */
 export function TFErrorState({
-  title = "加载失败",
+  title,
   description,
   onRetry,
   className,
@@ -150,20 +152,21 @@ export function TFErrorState({
   onRetry?: () => void;
   className?: string;
 }) {
+  const { t } = useT();
   return (
     <div className={cn("flex flex-col items-center px-6 py-8 text-center", className)}>
       <span className="mb-3 grid h-12 w-12 place-items-center rounded-full bg-danger-50 text-danger-500" aria-hidden="true">
         <AlertCircle size={24} />
       </span>
       <p role="alert" className="text-ui font-semibold text-content">
-        {title}
+        {title ?? t("common.loadFailed")}
       </p>
       {description ? (
         <p className="mt-1.5 max-w-[260px] break-words text-caption leading-5 text-content-muted">{description}</p>
       ) : null}
       {onRetry ? (
         <TFButton variant="secondary" size="sm" className="mt-4" onClick={onRetry}>
-          重试
+          {t("common.retry")}
         </TFButton>
       ) : null}
     </div>

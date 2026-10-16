@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { t, type MsgKey, type MsgParams } from "./dictionary";
-import { DEFAULT_LOCALE, type Locale } from "./locales";
+import { DEFAULT_LOCALE, localeFromPath, type Locale } from "./locales";
 
 /**
  * 客户端组件怎么知道自己是哪个语言。
@@ -22,9 +22,12 @@ import { DEFAULT_LOCALE, type Locale } from "./locales";
  * `locales.ts` 一起改。
  */
 export function useLocale(): Locale {
-  const pathname = usePathname();
-  if (!pathname) return DEFAULT_LOCALE;
-  return pathname === "/en" || pathname.startsWith("/en/") ? "en" : DEFAULT_LOCALE;
+  /*
+   * 由 `localeFromPath` 判定，不在这里重写一遍规则：纯函数（`currentLocale()`，
+   * 例如 `friendlyErrorMessage`）用的是同一条规则，两处各写一遍迟早分叉 ——
+   * 而分叉的症状是「同一页上两句话是不同语言」，很难查。
+   */
+  return localeFromPath(usePathname());
 }
 
 /**

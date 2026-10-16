@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/i18n/use-locale";
 import { avatarInitial } from "@/lib/profile";
 
 /**
@@ -63,7 +64,8 @@ export type TFAvatarProps = {
 };
 
 export function TFAvatar({ name, src, size = "md", alt, ring, online, className }: TFAvatarProps) {
-  const label = name ?? "TalkFirst 用户";
+  const { t } = useT();
+  const label = name ?? t("common.talkFirstUser");
   const dot = online === null || online === undefined ? null : (
     <span
       aria-hidden="true"

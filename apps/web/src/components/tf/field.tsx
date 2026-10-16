@@ -8,6 +8,7 @@ import {
   type TextareaHTMLAttributes,
 } from "react";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/i18n/use-locale";
 
 /**
  * TFField / TFInput / TFTextarea — one form control.
@@ -184,12 +185,15 @@ export type TFSearchProps = {
 export function TFSearch({
   value,
   onValueChange,
-  placeholder = "搜索",
+  placeholder,
   label,
   onClear,
   className,
   ...rest
 }: TFSearchProps) {
+  const { t } = useT();
+  /* 没传就用通用「搜索」（按界面语言）；传了就是调用方自己的（已翻译）文案。 */
+  const resolvedPlaceholder = placeholder ?? t("common.search");
   return (
     <div className={cn("relative min-w-0", className)}>
       <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-content-subtle">
@@ -202,8 +206,8 @@ export function TFSearch({
         type="search"
         value={value}
         onChange={(event) => onValueChange(event.target.value)}
-        placeholder={placeholder}
-        aria-label={label ?? placeholder}
+        placeholder={resolvedPlaceholder}
+        aria-label={label ?? resolvedPlaceholder}
         className={cn(
           CONTROL_BASE,
           controlState(false),
@@ -215,7 +219,7 @@ export function TFSearch({
         <button
           type="button"
           onClick={onClear}
-          aria-label="清除搜索"
+          aria-label={t("common.clearSearch")}
           className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-content-subtle hover:bg-surface-sunken hover:text-content"
         >
           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
