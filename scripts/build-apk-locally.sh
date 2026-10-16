@@ -59,6 +59,34 @@ if [ ! -f "$KS" ]; then
     -dname "CN=TalkFirst Local, OU=Dev, O=TalkFirst, L=-, S=-, C=CN" >/dev/null 2>&1 || exit 1
 fi
 
+# ── 3.5 让包带上更新渠道（热更新的前提）──────────────────────────────────────
+#
+# expo-updates 把「渠道」当成**请求头** `expo-channel-name` 发出去，而它只从
+# manifest 的 meta-data 里读（`UpdatesConfiguration.kt` 里的
+# `UPDATES_CONFIGURATION_REQUEST_HEADERS_KEY`）。EAS 构建会自动写这条，
+# **本地构建不会** —— 没有它的包，更新请求缺 channel-name，服务端直接 400，
+# 热更新永遠收不到（2026-10-16 实测：官网那个包就是这种，所以每次改动都得
+# 重新下载安装）。渠道名要与 `eas.json` 的 `preview.channel` 一致。
+MANIFEST="$DEST/apps/mobile/android/app/src/main/AndroidManifest.xml"
+if ! grep -q "UPDATES_CONFIGURATION_REQUEST_HEADERS_KEY" "$MANIFEST"; then
+  log "写入更新渠道 meta-data（expo-channel-name=preview）…"
+  python - "$MANIFEST" <<'PY'
+import io, sys
+path = sys.argv[1]
+html = io.open(path, encoding='utf-8').read()
+if 'UPDATES_CONFIGURATION_REQUEST_HEADERS_KEY' not in html:
+    meta = ('    <meta-data\n'
+            '      android:name="expo.modules.updates.UPDATES_CONFIGURATION_REQUEST_HEADERS_KEY"\n'
+            '      android:value=\'{"expo-channel-name":"preview"}\' />\n')
+    html = html.replace('</application>', meta + '  </application>', 1)
+io.open(path, 'w', encoding='utf-8').write(html)
+PY
+fi
+if ! grep -q "UPDATES_CONFIGURATION_REQUEST_HEADERS_KEY" "$MANIFEST"; then
+  log "错误：渠道 meta-data 没写进去，停止（否则出了包也收不到热更新）"
+  exit 1
+fi
+
 # ── 4. 让 release 用我们的密钥签名 ───────────────────────────────────────────
 #
 # 2026-10-11 踩过的坑：expo prebuild 生成的模板里，release 构建类型指向的是
