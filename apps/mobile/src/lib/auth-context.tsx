@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { apiFetch, apiFetchEnvelope, ApiRequestError, tryRefresh } from "./api";
+import { apiFetch, apiFetchEnvelope, ApiRequestError, reportLocale, tryRefresh } from "./api";
+import { getActiveLocale } from "./i18n";
 import { clearTokens, getAccessToken, getRefreshToken, saveTokens } from "./storage";
 import type { AuthSession, SessionUser } from "./types";
 
@@ -58,6 +59,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, []);
+
+  /**
+   * 会话一建立（启动恢复、登录、注册）就把界面语言同步到账号上。
+   *
+   * 为什么要在这里而不是在 `I18nProvider`：启动时那一次上报可能还没有 token
+   * （401 会被 `reportLocale` 默默吞掉），而语言一旦不改，effect 就不会再跑 ——
+   * 于是新登录的账号永远没上报过。挂在 `user` 上就盖住了全部三条路径。
+   */
+  useEffect(() => {
+    if (user) reportLocale(getActiveLocale());
+  }, [user]);
 
   /**
    * 把一次登录 / 注册的结果落地：token 进 SecureStore，用户进状态。

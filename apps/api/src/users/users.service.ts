@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import type { SupportedLocale } from "../common/i18n";
 import { NotificationService } from "../notifications/notification.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { normalizeUploadUrl } from "../uploads/upload-url";
@@ -363,6 +364,7 @@ export class UsersService {
       region?: string;
       gender?: "UNKNOWN" | "MALE" | "FEMALE" | "OTHER";
       bio?: string;
+      locale?: SupportedLocale;
     },
   ) {
     // PC-1.3 22: `region` is normalized to null when blank. `undefined` still
@@ -380,6 +382,9 @@ export class UsersService {
         region,
         gender: dto.gender,
         bio: dto.bio,
+        // 与其余字段一样：`undefined` 表示不改。服务端下发的文案（通知、邮件）
+        // 从这里取语言，见 `common/locale.ts`。
+        locale: dto.locale,
       },
     });
     return this.getFullCard(user.id);

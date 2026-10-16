@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { NotificationService } from "../notifications/notification.service";
+import { msg } from "../common/i18n";
 import { keysetFilterAfter, keysetNextCursor, keysetOrderBy, parseKeysetCursor } from "../common/keyset-cursor";
 import { PrismaService } from "../prisma/prisma.service";
 import { SafetyService, type SafetyScan } from "../safety/safety.service";
@@ -664,7 +665,7 @@ export class MomentsService {
       await this.notifications.notify({
         userId: moment.userId,
         type: "MOMENT_LIKE",
-        title: "你的动态收到点赞",
+        title: msg("notify.momentLike.title"),
         body: moment.content.slice(0, 120),
         data: {
           actorId: userId,
@@ -1013,7 +1014,7 @@ export class MomentsService {
       await this.notifications.notify({
         userId: parentAuthorId,
         type: "MOMENT_REPLY",
-        title: "你的评论收到回复",
+        title: msg("notify.commentReply.title"),
         body: trimmed.slice(0, 120),
         data: {
           actorId: userId,
@@ -1028,7 +1029,7 @@ export class MomentsService {
       await this.notifications.notify({
         userId: moment.userId,
         type: "MOMENT_COMMENT",
-        title: "你的动态收到评论",
+        title: msg("notify.momentComment.title"),
         body: trimmed.slice(0, 120),
         data: {
           actorId: userId,

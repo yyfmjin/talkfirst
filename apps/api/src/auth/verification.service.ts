@@ -1,6 +1,7 @@
 import { BadRequestException, HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { newVerificationCode, sha256Hex } from "../common/crypto";
+import { localeForEmail } from "../common/locale";
 import { mayExposeVerificationCode } from "../common/security-config";
 import { MailService } from "../mail/mail.service";
 import { SecurityEventService } from "../security/security-event.service";
@@ -101,7 +102,15 @@ export class VerificationService {
    * an outstanding code are bounded by `maxAttempts`, which is the counter
    * designed for that.
    */
-  async sendCode(email: string, purpose = "REGISTER") {
+  async sendCode(
+    email: string,
+    purpose = "REGISTER",
+    /**
+     * `acceptLanguage` 只在**账号还不存在**时起作用（注册验证码）：那时没有
+     * 任何账号设置可看，请求头是唯一能表达「这个人想看什么语言」的信号。
+     */
+    options: { acceptLanguage?: string | null } = {},
+  ) {
     const normalized = email.trim().toLowerCase();
     const now = Date.now();
 
@@ -146,6 +155,7 @@ export class VerificationService {
         to: normalized,
         code,
         expiresInSeconds: EMAIL_VERIFICATION_POLICY.codeTtlMs / 1000,
+        locale: await localeForEmail(this.prisma, normalized, options.acceptLanguage),
       });
     } catch (error) {
       // A code nobody can receive must not occupy the address' cooldown, or the

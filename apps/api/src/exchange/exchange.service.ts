@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import type { SocialPlatform } from "@prisma/client";
 import { NotificationService } from "../notifications/notification.service";
+import { msg } from "../common/i18n";
 import { PrismaService } from "../prisma/prisma.service";
 
 const EXCHANGE_MESSAGE_LIMIT = 5;
@@ -159,11 +160,18 @@ export class ExchangeService {
 
     // PC-3.1b — outside the transaction: the exchange request is the real work,
     // and a notification must not be able to roll it back.
+    // 平台名与「谁想交换」都是变量，交给文案层拼：列表连接符才会跟着语言走
+    // （中文顿号 / 英文逗号）。
+    const platformNames = normalized.map((platform) => PLATFORM_LABELS[platform]);
+    const requesterName = created.requester.nickname;
+
     await this.notifications.notify({
       userId: context.peerId,
       type: "EXCHANGE_REQUEST",
-      title: "🔗 Contact exchange request",
-      body: `${created.requester.nickname ?? "Someone"} wants to exchange ${normalized.map((p) => PLATFORM_LABELS[p]).join("、")}`,
+      title: msg("notify.exchangeRequest.title"),
+      body: requesterName
+        ? msg("notify.exchangeRequest.body", { name: requesterName, platforms: platformNames })
+        : msg("notify.exchangeRequest.anonymousBody", { platforms: platformNames }),
       data: {
         actorId: userId,
         targetType: "EXCHANGE",
@@ -294,8 +302,8 @@ export class ExchangeService {
     await this.notifications.notify({
       userId: exchange.requesterId,
       type: "EXCHANGE_ACCEPTED",
-      title: "🎉 Contact exchange accepted",
-      body: "Check Connections to see each other's accounts.",
+      title: msg("notify.exchangeAccepted.title"),
+      body: msg("notify.exchangeAccepted.body"),
       data: {
         actorId: userId,
         targetType: "EXCHANGE",

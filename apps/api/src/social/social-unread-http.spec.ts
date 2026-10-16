@@ -120,7 +120,16 @@ describe("SocialSafetyController — 未读数与已读（C3）", () => {
       providers: [
         { provide: PrismaService, useValue: prisma },
         { provide: SafetyService, useValue: { scanText: () => ({ blocked: false }) } },
-        { provide: NotificationService, useValue: { notify: jest.fn() } },
+        // 三个方法都要有：合并未读消息通知（AI 朋友的消息 senderId 为空，也算未读）
+        // 与「读完就标记」是上一轮加的，mock 没跟上就会在每个 POST 上 500。
+        {
+          provide: NotificationService,
+          useValue: {
+            notify: jest.fn(),
+            notifyNewMessage: jest.fn(),
+            markConversationMessageNotificationsRead: jest.fn(async () => 0),
+          },
+        },
         { provide: MomentsService, useValue: {} },
       ],
     }).compile();
@@ -171,11 +180,12 @@ describe("SocialSafetyController — 未读数与已读（C3）", () => {
     expect(data[0].unreadCount).toBe(7);
 
     // 形状一并钉住：三个排除项都必须出现在查询里。
+    // `senderId` 是「不是我说的话」= 别人发的 + AI 朋友发的（`senderId` 为空）。
     expect(prisma.message.count).toHaveBeenCalledWith({
       where: {
         conversationId: CONV,
         deletedAt: null,
-        senderId: { not: ME },
+        OR: [{ senderId: { not: ME } }, { senderId: null }],
         type: { not: "SYSTEM" },
         createdAt: { gt: LAST_READ },
       },
@@ -190,7 +200,7 @@ describe("SocialSafetyController — 未读数与已读（C3）", () => {
     const where = (prisma.message.count.mock.calls[0][0] as { where: Record<string, unknown> }).where;
     expect(where.createdAt).toBeUndefined();
     // 其余三条排除仍然要在 —— 「没读过」不等于「什么都算」。
-    expect(where.senderId).toEqual({ not: ME });
+    expect(where.OR).toEqual([{ senderId: { not: ME } }, { senderId: null }]);
     expect(where.type).toEqual({ not: "SYSTEM" });
     expect(where.deletedAt).toBeNull();
   });

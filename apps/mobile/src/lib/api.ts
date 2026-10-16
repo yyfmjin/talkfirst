@@ -1,5 +1,5 @@
 import { apiBaseUrl, API_REQUEST_TIMEOUT_MS } from "./config";
-import { t } from "./i18n";
+import { getActiveLocale, t } from "./i18n";
 import { clearTokens, getAccessToken, getRefreshToken, saveTokens } from "./storage";
 import type { ApiErrorBody, AuthSession, SessionUser } from "./types";
 
@@ -132,7 +132,12 @@ async function doFetch<T>(
    * 用户看到白屏 —— 2026-10-08 的事故就是这么来的，见 `config.ts` 文件头。
    */
   const accessToken = await getAccessToken();
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    // 服务端用它做**请求期**的文案（接口报错、注册验证码邮件）：
+    // 这些场景里收件人就是发起请求的人，请求头就是最准的信号。
+    "Accept-Language": getActiveLocale(),
+  };
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
   const response = await fetchWithTimeout(
@@ -200,7 +205,7 @@ const UPLOAD_REQUEST_TIMEOUT_MS = 600_000;
  */
 export async function apiUploadMultipart<T>(path: string, form: FormData): Promise<T> {
   const accessToken = await getAccessToken();
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { "Accept-Language": getActiveLocale() };
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
   const response = await fetchWithTimeout(
@@ -223,6 +228,20 @@ export async function apiUploadMultipart<T>(path: string, form: FormData): Promi
     );
   }
   return envelope.data as T;
+}
+
+/**
+ * 把当前界面语言告诉服务端。
+ *
+ * 为什么服务端要知道：通知的标题/正文、验证码邮件都必须按**收件人**的语言生成，
+ * 而收件人往往不是发起请求的人（给你发消息的是对方）—— 那时没有任何请求头
+ * 可以问「用什么语言」。所以语言得存在账号上。
+ *
+ * 失败一律忽略：没登录（401）、离线、接口 5xx —— 界面语言不受影响，服务端仍会
+ * 按母语推断一个合理的语言。所以这里不抛错、不提示、不要用户等。
+ */
+export function reportLocale(locale: string): void {
+  void apiFetch("/users/me", { method: "PATCH", body: { locale } }).catch(() => undefined);
 }
 
 /**

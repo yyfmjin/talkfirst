@@ -13,6 +13,7 @@ import type {
   UserStatus,
 } from "@prisma/client";
 import { NotificationService } from "../notifications/notification.service";
+import { msg, type LocalizedText } from "../common/i18n";
 import { PrismaService } from "../prisma/prisma.service";
 import { normalizeIp } from "../security/client-ip";
 import { normalizeChannelFilter } from "../security/access-channel";
@@ -327,11 +328,11 @@ const STATUS_ACTIONS: readonly UserStatusAction[] = [
  * account does not read. A status with no entry yields no body rather than a
  * fabricated one.
  */
-const USER_STATUS_BODY: Record<string, string> = {
-  ACTIVE: "你的账号已恢复正常。",
-  DISABLED: "你的账号已被停用。",
-  SUSPENDED: "你的账号已被临时封禁。",
-  BANNED: "你的账号已被封禁。",
+const USER_STATUS_BODY: Record<string, LocalizedText> = {
+  ACTIVE: msg("notify.userStatus.body.ACTIVE"),
+  DISABLED: msg("notify.userStatus.body.DISABLED"),
+  SUSPENDED: msg("notify.userStatus.body.SUSPENDED"),
+  BANNED: msg("notify.userStatus.body.BANNED"),
 };
 
 /**
@@ -1076,10 +1077,10 @@ const REPORT_STATUSES: readonly string[] = ["OPEN", "REVIEWING", "RESOLVED", "RE
  * `AdminAuditLog`. `OPEN` is absent because no action produces it: a review can
  * only move a report forward.
  */
-const REPORT_REVIEW_BODY: Record<string, string> = {
-  REVIEWING: "你提交的举报正在处理中。",
-  RESOLVED: "你提交的举报已处理。",
-  REJECTED: "你提交的举报已审核。",
+const REPORT_REVIEW_BODY: Record<string, LocalizedText> = {
+  REVIEWING: msg("notify.reportReview.body.REVIEWING"),
+  RESOLVED: msg("notify.reportReview.body.RESOLVED"),
+  REJECTED: msg("notify.reportReview.body.REJECTED"),
 };
 
 /**
@@ -2821,7 +2822,7 @@ export class AdminService {
       await this.notifications?.notify({
         userId: targetUserId,
         type: "USER_STATUS",
-        title: "账号状态已更新",
+        title: msg("notify.userStatus.title"),
         body: USER_STATUS_BODY[next.status],
         data: {
           targetType: "USER",
@@ -3235,7 +3236,7 @@ export class AdminService {
       await this.notifications?.notify({
         userId: existing.reporterId,
         type: "REPORT_REVIEW",
-        title: "举报处理结果",
+        title: msg("notify.reportReview.title"),
         body: REPORT_REVIEW_BODY[status],
         data: {
           targetType: "REPORT",

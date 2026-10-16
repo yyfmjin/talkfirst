@@ -470,6 +470,12 @@ oauth / clientSecret  social handle  isAdmin  status  ip  userAgent
 11. **发现缺口先报告**（`API_GAP` / `SCHEMA_CHANGE_REQUIRED`），
     不要顺手自己加 endpoint 或 migration。
 12. **不要顺手升级依赖、不要顺手做 P1/P2、不要顺手重构**。范围外的事先问。
+13. **服务端下发的文案必须走 `apps/api/src/common/i18n.ts`**，不要写死字符串：
+    通知的 `title` / `body`、验证码邮件都按**收件人**的语言渲染。产出点传
+    `msg("notify.xxx")`（系统文案）或普通字符串（用户自己产出的内容，不翻译）；
+    语言由 `common/locale.ts` 判定（账号设置 → 母语 → 中文）。
+    新增文案**必须中英各一条** —— `EN` 是 `Record<MessageKey, string>`，漏翻编译不过。
+    完整说明见 `docs/I18N-SERVER-TEXT.md`。
 
 ---
 

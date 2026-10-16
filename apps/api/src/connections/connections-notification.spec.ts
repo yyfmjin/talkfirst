@@ -1,5 +1,6 @@
 import { ConnectionsService } from "./connections.service";
 import { NotificationService } from "../notifications/notification.service";
+import { clearLocaleCache } from "../common/locale";
 
 /**
  * PC-3.1b — the two connection notifications, after the move to the single
@@ -35,7 +36,13 @@ type NotificationRow = {
   data: string | null;
 };
 
-function makeHarness() {
+/**
+ * 收件人的语言缓存是模块级的（见 `common/locale.ts`），不清就会把上一个用例的
+ * 语言带进下一个 —— 而下面的用例故意用同一个收件人 id 对比两种语言。
+ */
+beforeEach(() => clearLocaleCache());
+
+function makeHarness(recipientLocale: "zh" | "en" = "en") {
   const notificationRows: NotificationRow[] = [];
 
   const requestRow = {
@@ -78,7 +85,15 @@ function makeHarness() {
   };
 
   const prisma = {
-    user: { findUnique: jest.fn(async () => ({ id: RECEIVER, status: "ACTIVE" })) },
+    user: {
+      findUnique: jest.fn(async () => ({
+        id: RECEIVER,
+        status: "ACTIVE",
+        // 通知文案的语言来源：显式选择的界面语言优先于母语（`common/locale.ts`）。
+        locale: recipientLocale,
+        languages: [],
+      })),
+    },
     block: { findFirst: jest.fn(async () => null) },
     connectionRequest: {
       count: jest.fn(async () => 0),
@@ -134,6 +149,19 @@ describe("ConnectionsService — SAY_HELLO", () => {
     const { service, notificationRows } = makeHarness();
     await service.sendRequest(SENDER, RECEIVER, undefined, "gaming");
     expect(notificationRows[0].body).toBe("🎮 We both like gaming.");
+  });
+
+  it("按收件人的语言渲染文案：英文账号英文，中文账号中文", async () => {
+    const english = makeHarness("en");
+    await english.service.sendRequest(SENDER, RECEIVER, undefined, "language");
+    expect(english.notificationRows[0].title).toBe("Ann said hello");
+    expect(english.notificationRows[0].body).toBe("🗣️ I'd like to practice languages.");
+
+    clearLocaleCache();
+    const chinese = makeHarness("zh");
+    await chinese.service.sendRequest(SENDER, RECEIVER, undefined, "language");
+    expect(chinese.notificationRows[0].title).toBe("Ann 想和你打个招呼");
+    expect(chinese.notificationRows[0].body).toBe("🗣️ 我想练练口语");
   });
 });
 

@@ -7,7 +7,6 @@ import {
 import { PrismaService } from "../prisma/prisma.service";
 import { SafetyService } from "../safety/safety.service";
 import { AiService, AiUnavailableError } from "./ai.service";
-import type { Prisma } from "@prisma/client";
 
 /** 会话历史里带进 LLM 的条数上限（也限制上下文体积）。 */
 const HISTORY_LIMIT = 20;

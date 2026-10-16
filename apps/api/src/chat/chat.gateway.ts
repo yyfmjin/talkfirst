@@ -10,6 +10,7 @@ import {
 import { HttpException } from "@nestjs/common";
 import { Server, Socket } from "socket.io";
 import { NotificationService } from "../notifications/notification.service";
+import { msg } from "../common/i18n";
 import { PrismaService } from "../prisma/prisma.service";
 import { SafetyService } from "../safety/safety.service";
 import { ChatAuthService, type SocketAuthFailure } from "./chat-auth.service";
@@ -274,7 +275,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         userId: peerId,
         actorId: user.id,
         conversationId: payload.conversationId,
-        title: "New message",
+        title: msg("notify.newMessage.title"),
         body: content.slice(0, 120),
       });
     }

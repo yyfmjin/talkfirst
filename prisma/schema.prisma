@@ -588,6 +588,17 @@ model User {
   region      String?   @db.VarChar(80)
   gender      Gender    @default(UNKNOWN)
   bio         String?   @db.VarChar(500)
+  /**
+   * 用户选择的**界面语言**（`zh` / `en`），由客户端在切换语言时上报。
+   *
+   * 只影响服务端下发的文案（通知、邮件），不承担界面责任 —— 界面语言仍是
+   * 客户端自己的事。之所以要存在服务端：收件人往往不是发起请求的人
+   * （给你发消息的是对方），那时没有任何请求上下文可以问「用什么语言」。
+   *
+   * 为 null 表示还没上报过，此时按母语推断（见 `common/i18n.ts` 的
+   * `resolveLocale`），再兜底中文。
+   */
+  locale      String?   @db.VarChar(8)
 
   lastActiveAt DateTime?
   createdAt    DateTime  @default(now())

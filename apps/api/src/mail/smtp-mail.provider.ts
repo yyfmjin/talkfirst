@@ -1,4 +1,9 @@
 import * as nodemailer from "nodemailer";
+import {
+  type SupportedLocale,
+  localeOrDefault,
+  t,
+} from "../common/i18n";
 import type { EmailVerificationMessage, MailProvider, SmtpConfig } from "./mail.types";
 
 /**
@@ -28,18 +33,19 @@ export class SmtpMailProvider implements MailProvider {
 
   async sendEmailVerificationCode(message: EmailVerificationMessage): Promise<void> {
     const minutes = Math.max(1, Math.round(message.expiresInSeconds / 60));
+    const locale = localeOrDefault(message.locale);
     await this.getTransport().sendMail({
       from: this.config.from,
       to: message.to,
-      subject: "TalkFirst 邮箱验证码",
+      subject: t(locale, "mail.verification.subject"),
       // Plain text first: it is what a text-only client, a screen reader and a
       // watch notification will render, and it must stand on its own.
-      text: `你的 TalkFirst 验证码是 ${message.code}，${minutes} 分钟内有效。如非本人操作请忽略本邮件。`,
+      text: t(locale, "mail.verification.text", { code: message.code, minutes }),
       // HTML alongside it, never instead of it. Ported from the Gmail-SMTP branch
       // (see the merge note below) because a bare code in a plain-text body is
       // easy to mistake for spam, and the styled box is what makes the 6 digits
       // readable at a glance on a phone.
-      html: verificationEmailHtml(message.code, minutes),
+      html: verificationEmailHtml(locale, message.code, minutes),
     });
   }
 }
@@ -67,14 +73,15 @@ export class SmtpMailProvider implements MailProvider {
  * `SMTP_PASSWORD=<app password>`.
  *
  * `minutes` is passed in rather than recomputed: the TTL is policy and belongs to
- * `EMAIL_VERIFICATION_POLICY`, not to a template.
+ * `EMAIL_VERIFICATION_POLICY`, not to a template. `locale` 同理来自调用方：
+ * 语言是**收件人**的属性，不是模板的属性。
  */
-function verificationEmailHtml(code: string, minutes: number): string {
+function verificationEmailHtml(locale: SupportedLocale, code: string, minutes: number): string {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 20px; color: #222;">
-      <h2 style="margin-bottom: 24px;">TalkFirst 邮箱验证</h2>
-      <p>你好，</p>
-      <p>你正在注册 TalkFirst 账号，请使用下面的验证码完成邮箱验证：</p>
+      <h2 style="margin-bottom: 24px;">${t(locale, "mail.verification.heading")}</h2>
+      <p>${t(locale, "mail.verification.greeting")}</p>
+      <p>${t(locale, "mail.verification.intro")}</p>
 
       <div style="margin: 28px 0; padding: 18px; background: #f5f6ff; border-radius: 12px; text-align: center;">
         <span style="font-size: 32px; font-weight: 700; letter-spacing: 8px;">
@@ -82,9 +89,9 @@ function verificationEmailHtml(code: string, minutes: number): string {
         </span>
       </div>
 
-      <p>验证码有效期为 <strong>${minutes} 分钟</strong>。</p>
+      <p>${t(locale, "mail.verification.expiry", { minutes })}</p>
       <p style="color: #888; font-size: 13px;">
-        如果这不是你的操作，请忽略此邮件。请勿将验证码透露给他人。
+        ${t(locale, "mail.verification.ignore")}
       </p>
 
       <p style="margin-top: 32px; color: #888; font-size: 12px;">

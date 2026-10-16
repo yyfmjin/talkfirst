@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { NotificationService } from "../notifications/notification.service";
+import { msg, type LocalizedText, type MessageKey } from "../common/i18n";
 import { PrismaService } from "../prisma/prisma.service";
 import { SafetyService } from "../safety/safety.service";
 
@@ -17,6 +18,31 @@ export const SAY_HELLO_TEMPLATES = [
 ] as const;
 
 export type SayHelloTemplate = (typeof SAY_HELLO_TEMPLATES)[number];
+
+/**
+ * 模板 id → 文案键。写完整映射而不是拼字符串键，是为了让「加了模板忘了翻译」
+ * 变成编译错误：`Record<SayHelloTemplate["id"], MessageKey>` 要求每个 id 都在。
+ */
+const SAY_HELLO_TEMPLATE_KEYS: Record<SayHelloTemplate["id"], MessageKey> = {
+  language: "notify.sayHello.template.language",
+  gaming: "notify.sayHello.template.gaming",
+  country: "notify.sayHello.template.country",
+  music: "notify.sayHello.template.music",
+  travel: "notify.sayHello.template.travel",
+  custom: "notify.sayHello.template.custom",
+};
+
+/**
+ * 通知正文里的招呼语。
+ *
+ * 用户自己写的（`trimmedMessage`）原样保留；选模板的则要在通知里翻译 ——
+ * 模板文案并没有落库成消息（`ConnectionRequest.message` 只存自定义内容），
+ * 所以它只在这里出现一次，按收件人的语言渲染没有「和会话里的原文不一致」的问题。
+ */
+function sayHelloTemplateBody(templateId: string | undefined): LocalizedText | undefined {
+  const template = SAY_HELLO_TEMPLATES.find((item) => item.id === templateId);
+  return template ? msg(SAY_HELLO_TEMPLATE_KEYS[template.id]) : undefined;
+}
 
 @Injectable()
 export class ConnectionsService {
@@ -159,8 +185,11 @@ export class ConnectionsService {
     await this.notifications.notify({
       userId: receiverId,
       type: "SAY_HELLO",
-      title: `${request.sender.nickname ?? "Someone"} said hello`,
-      body: trimmedMessage ?? SAY_HELLO_TEMPLATES.find((t) => t.id === templateId)?.label ?? undefined,
+      // 昵称缺失时走另一条文案：参数没法翻译，不能把 “Someone” 拼进中文句子。
+      title: request.sender.nickname
+        ? msg("notify.sayHello.title", { name: request.sender.nickname })
+        : msg("notify.sayHello.anonymousTitle"),
+      body: trimmedMessage ?? sayHelloTemplateBody(templateId),
       data: {
         actorId: senderId,
         targetType: "CONNECTION",
@@ -298,8 +327,8 @@ export class ConnectionsService {
     await this.notifications.notify({
       userId: request.senderId,
       type: "REQUEST_ACCEPTED",
-      title: "🎉 It's a connection!",
-      body: "You both want to talk. Start chatting.",
+      title: msg("notify.requestAccepted.title"),
+      body: msg("notify.requestAccepted.body"),
       data: {
         actorId: userId,
         targetType: "CONVERSATION",

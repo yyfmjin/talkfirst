@@ -1,4 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { type LocalizedText, renderText } from "../common/i18n";
+import { localeForUserId } from "../common/locale";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   NOTIFICATION_CORE_DATA_KEYS,
@@ -13,8 +15,16 @@ export type NotifyInput = {
   /** The recipient. Never the actor — the actor travels inside `data.actorId`. */
   userId: string;
   type: NotificationType;
-  title: string;
-  body?: string | null;
+  /**
+   * 收件人看到的标题。
+   *
+   * 传 `msg("notify.xxx")` 表示这是**系统文案**，在写入时按收件人的语言渲染；
+   * 传普通字符串表示这段话就是最终形态（用户自己写的招呼语等），不再翻译。
+   * 两种都收：把它们拆成两个方法只会让调用方在选择上犯错。
+   */
+  title: string | LocalizedText;
+  /** 同上。正文经常是用户内容（消息/动态摘要），那时传字符串。 */
+  body?: string | LocalizedText | null;
   data?: NotificationData;
 };
 
@@ -75,12 +85,16 @@ export class NotificationService {
       // actor is unknown, not equal.
       if (actorId && actorId === input.userId) return;
 
+      const locale = await localeForUserId(this.prisma, input.userId);
+      const title = renderText(locale, input.title) ?? "";
+      const body = renderText(locale, input.body);
+
       await this.prisma.notification.create({
         data: {
           userId: input.userId,
           type: input.type,
-          title: truncate(input.title ?? "", NOTIFICATION_LIMITS.title),
-          body: input.body ? truncate(input.body, NOTIFICATION_LIMITS.body) : null,
+          title: truncate(title, NOTIFICATION_LIMITS.title),
+          body: body ? truncate(body, NOTIFICATION_LIMITS.body) : null,
           data: this.encodeData(input.data),
         },
       });
@@ -112,8 +126,9 @@ export class NotificationService {
     userId: string;
     actorId: string;
     conversationId: string;
-    title: string;
-    body: string;
+    title: string | LocalizedText;
+    /** 消息预览：用户内容传字符串，系统文案（如「收到一张图片」）传键。 */
+    body: string | LocalizedText;
   }): Promise<void> {
     try {
       if (!input.userId) {
@@ -124,8 +139,9 @@ export class NotificationService {
       if (input.actorId === input.userId) return;
 
       const dedupeKey = messageDedupeKey(input.conversationId);
-      const title = truncate(input.title, NOTIFICATION_LIMITS.title);
-      const body = truncate(input.body, NOTIFICATION_LIMITS.body);
+      const locale = await localeForUserId(this.prisma, input.userId);
+      const title = truncate(renderText(locale, input.title) ?? "", NOTIFICATION_LIMITS.title);
+      const body = truncate(renderText(locale, input.body) ?? "", NOTIFICATION_LIMITS.body);
       const data: NotificationData = {
         actorId: input.actorId,
         targetType: "CONVERSATION",

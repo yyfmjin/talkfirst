@@ -102,7 +102,21 @@ describe("SEC-005 — sendCode 生命周期", () => {
       to: "alice@example.com",
       code: result.devCode,
       expiresInSeconds: 600,
+      // 账号还不存在时的兑底语言（见 `common/locale.ts`）。
+      locale: "zh",
     });
+  });
+
+  it("按请求头选验证码邮件的语言：账号还不存在时只能看 Accept-Language", async () => {
+    const { service, mail } = makeVerification();
+
+    await service.sendCode("bob@example.com", "REGISTER", {
+      acceptLanguage: "en-US,en;q=0.9",
+    });
+
+    expect(mail.sendEmailVerificationCode).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "bob@example.com", locale: "en" }),
+    );
   });
 
   it("审计事件 EMAIL_VERIFICATION_SENT 不含验证码明文", async () => {

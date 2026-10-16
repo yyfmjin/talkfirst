@@ -46,6 +46,7 @@ const mockCalls: MockCall[] = [];
 let mockResponses: Record<string, unknown> = {};
 
 jest.mock("../lib/api", () => ({
+  reportLocale: jest.fn(),
   apiFetch: jest.fn(async (path: string, options: { method?: string; body?: unknown } = {}) => {
     mockCalls.push({ path, options });
     return mockResponses[path] ?? {};

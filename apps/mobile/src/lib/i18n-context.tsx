@@ -9,6 +9,7 @@ import {
 } from "react";
 import { detectLocale, systemLocaleTags, type Locale } from "./locale";
 import { translate, type MsgKey, type MsgParams } from "./messages";
+import { reportLocale } from "./api";
 import { setActiveLocale } from "./i18n";
 import { getLocalePreference, saveLocalePreference } from "./storage";
 
@@ -76,11 +77,13 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     [preference],
   );
 
-  // 让非 React 的 `t()`（api.ts 的错误兜底）与界面同语言。
+  // 让非 React 的 `t()`（api.ts 的错误兜底）与界面同语言，
+  // 并把语言告诉服务端（通知/邮件要按收件人的语言发）。
   // 放在 effect 里而不是渲染中：渲染不该有副作用，而这里晚一帧没有影响 ——
   // 它唯一服务的场景是「请求失败」，那时早就过了首次渲染。
   useEffect(() => {
     setActiveLocale(locale);
+    reportLocale(locale);
   }, [locale]);
 
   const setPreference = useCallback((next: LocalePreference) => {

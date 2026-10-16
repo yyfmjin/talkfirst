@@ -1,4 +1,5 @@
 import { Type } from "class-transformer";
+import { SUPPORTED_LOCALES, type SupportedLocale } from "../common/i18n";
 import {
   IsEmail,
   IsIn,
@@ -52,6 +53,14 @@ export class UpdateProfileDto {
   @IsString()
   @Length(2, 24, { message: "Nickname must be 2-24 characters" })
   nickname?: string;
+
+  /**
+   * 客户端选择的界面语言。只影响**服务端下发的文案**（通知、邮件）——
+   * 界面本身仍由客户端自己切。切换语言时由客户端上报，见 `common/locale.ts`。
+   */
+  @IsOptional()
+  @IsIn([...SUPPORTED_LOCALES])
+  locale?: SupportedLocale;
 
   @IsOptional()
   @IsString()

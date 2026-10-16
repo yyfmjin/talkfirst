@@ -13,6 +13,7 @@ import {
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { NotificationService } from "../notifications/notification.service";
+import { msg } from "../common/i18n";
 import { PrismaService } from "../prisma/prisma.service";
 import { SafetyService } from "../safety/safety.service";
 import { CurrentUser, type AuthUser } from "../auth/current-user.decorator";
@@ -358,7 +359,7 @@ export class SocialSafetyController {
         userId: peerId,
         actorId: user.id,
         conversationId: id,
-        title: "New message",
+        title: msg("notify.newMessage.title"),
         body: dto.content.trim().slice(0, 120),
       });
     }
@@ -421,8 +422,8 @@ export class SocialSafetyController {
         userId: peerId,
         actorId: user.id,
         conversationId: id,
-        title: "New image",
-        body: "对方发来一张图片",
+        title: msg("notify.newMessage.imageTitle"),
+        body: msg("notify.newMessage.imageBody"),
       });
     }
     return { success: true as const, data: message };

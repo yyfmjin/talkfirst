@@ -44,6 +44,9 @@ import { VisibilityScreen } from "./VisibilityScreen";
  */
 
 jest.mock("../lib/api", () => ({
+  // 语言上报（`reportLocale`）在屏幕冒烟测试里不需要真的发请求，
+  // 但整个模块被替换了，缺了它 Provider 一挂载就会 TypeError。
+  reportLocale: jest.fn(),
   apiFetch: jest.fn(async (path: string) => {
     if (path.startsWith("/conversations")) {
       return path.includes("/messages") ? { items: [], nextCursor: null } : [];

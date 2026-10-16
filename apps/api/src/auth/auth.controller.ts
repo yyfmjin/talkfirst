@@ -168,8 +168,14 @@ export class AuthController {
   @Post("send-verification-code")
   @HttpCode(200)
   @Throttle({ default: { limit: 20, ttl: 60000 } })
-  async sendVerificationCode(@Body(new ValidationPipe()) dto: SendVerificationCodeDto) {
-    const result = await this.verificationService.sendCode(dto.email, "REGISTER");
+  async sendVerificationCode(
+    @Body(new ValidationPipe()) dto: SendVerificationCodeDto,
+    // 注册时账号还不存在，请求头是唯一能表达「这个人想看什么语言」的信号。
+    @Headers("accept-language") acceptLanguage?: string,
+  ) {
+    const result = await this.verificationService.sendCode(dto.email, "REGISTER", {
+      acceptLanguage,
+    });
     return { success: true as const, data: result };
   }
 
