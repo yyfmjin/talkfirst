@@ -13,6 +13,7 @@ import {
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { NotificationService } from "../notifications/notification.service";
+import { emitConversationActivity, emitMessageNew } from "../chat/chat-events";
 import { msg } from "../common/i18n";
 import { PrismaService } from "../prisma/prisma.service";
 import { SafetyService } from "../safety/safety.service";
@@ -355,6 +356,33 @@ export class SocialSafetyController {
     }
 
     if (peerId) {
+      /**
+       * 广播与通知是两件事：通知进对方的通知中心（表里一行），广播给**正在看**的人。
+       *
+       * App 走的就是这条 REST 路径，所以这里必须发出与 socket 发送路径**完全相同**
+       * 的事件 —— 否则「用 App 发的消息对方收不到实时、用 web 发的能收到」。
+       * 详见 `chat-events.ts` 文件头。
+       */
+      emitMessageNew({
+        conversationId: id,
+        message: {
+          id: message.id,
+          conversationId: id,
+          senderId: user.id,
+          content: message.content,
+          type: message.type,
+          createdAt: message.createdAt.toISOString(),
+        },
+      });
+      emitConversationActivity({
+        recipientId: peerId,
+        conversationId: id,
+        messageId: message.id,
+        senderId: user.id,
+        type: message.type,
+        preview: message.content.slice(0, 120),
+        createdAt: message.createdAt,
+      });
       await this.notificationService.notifyNewMessage({
         userId: peerId,
         actorId: user.id,

@@ -3,6 +3,7 @@ import {
   MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
@@ -14,6 +15,13 @@ import { msg } from "../common/i18n";
 import { PrismaService } from "../prisma/prisma.service";
 import { SafetyService } from "../safety/safety.service";
 import { ChatAuthService, type SocketAuthFailure } from "./chat-auth.service";
+import {
+  attachChatServer,
+  conversationRoom,
+  emitConversationActivity,
+  emitMessageNew,
+  userRoom,
+} from "./chat-events";
 import { assertNotBlocked } from "../common/block-guard";
 import { assertConnectionActive, requireActiveAccount } from "../common/connection-guard";
 import { PresenceService } from "./presence.service";
@@ -77,7 +85,7 @@ function errorCodeOf(error: unknown): string | null {
     credentials: true,
   },
 })
-export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
   @WebSocketServer()
   server!: Server;
 
@@ -88,6 +96,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly safety: SafetyService,
     private readonly notifications: NotificationService,
   ) {}
+
+  /**
+   * 把 server 交给广播层：REST 发消息那条路径不在网关里，不能靠 `this.server`。
+   */
+  afterInit(server: Server) {
+    attachChatServer(server);
+  }
 
   async handleConnection(client: AuthedSocket) {
     // Authenticating is asynchronous (a DB lookup), but socket.io tells the
@@ -268,10 +283,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         links: this.safety.extractLinks(content),
       },
     };
-    this.server.to(this.conversationRoom(payload.conversationId)).emit("message.new", event);
+    emitMessageNew({
+      conversationId: payload.conversationId,
+      clientMessageId: payload.clientMessageId ?? null,
+      message: event,
+    });
 
     if (peerId) {
-      this.emitConversationActivity({
+      emitConversationActivity({
         recipientId: peerId,
         conversationId: payload.conversationId,
         messageId: message.id,
@@ -431,17 +450,20 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
       return created;
     });
-    this.server.to(this.conversationRoom(payload.conversationId)).emit("message.new", {
-      id: message.id,
-      conversationId: message.conversationId,
-      senderId: message.senderId,
-      content: message.content,
-      type: message.type,
-      createdAt: message.createdAt.toISOString(),
+    emitMessageNew({
+      conversationId: payload.conversationId,
       clientMessageId: payload.clientMessageId ?? null,
+      message: {
+        id: message.id,
+        conversationId: message.conversationId,
+        senderId: message.senderId,
+        content: message.content,
+        type: message.type,
+        createdAt: message.createdAt.toISOString(),
+      },
     });
     if (peerId) {
-      this.emitConversationActivity({
+      emitConversationActivity({
         recipientId: peerId,
         conversationId: payload.conversationId,
         messageId: message.id,
@@ -480,43 +502,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return user;
   }
 
-  /**
-   * 会话列表的实时更新（`conversation.activity`）。
-   *
-   * 为什么不能只靠 `message.new`：那条事件只发给**会话房间**，而房间是靠
-   * `conversation.join` 进来的 —— 列表页不可能把所有会话都 join 一遍。所以这里
-   * 再往收件人**自己的房间**（`userRoom`，连接时已自动加入）发一条轻量事件，
-   * 只带列表要用的字段。
-   *
-   * 只发给对方：发送方自己的列表由本地直接更新（他也收到了 `message.new`）。
-   *
-   * `preview` 对图片为空 —— 客户端按 `type` 显示自己的「图片」文案，
-   * 不把 `https://…` 当预览摆到列表里。
-   */
-  private emitConversationActivity(input: {
-    recipientId: string;
-    conversationId: string;
-    messageId: string;
-    senderId: string;
-    type: string;
-    preview: string | null;
-    createdAt: Date;
-  }) {
-    this.server.to(this.userRoom(input.recipientId)).emit("conversation.activity", {
-      conversationId: input.conversationId,
-      messageId: input.messageId,
-      senderId: input.senderId,
-      type: input.type,
-      preview: input.preview === null ? null : input.preview.slice(0, 120),
-      createdAt: input.createdAt.toISOString(),
-    });
-  }
-
   private userRoom(userId: string) {
-    return `user:${userId}`;
+    return userRoom(userId);
   }
 
   private conversationRoom(conversationId: string) {
-    return `conversation:${conversationId}`;
+    return conversationRoom(conversationId);
   }
 }
