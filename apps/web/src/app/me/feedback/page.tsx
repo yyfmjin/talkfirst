@@ -16,6 +16,7 @@ import {
   TFLoadingRegion,
 } from "@/components/tf";
 import { ApiRequestError, apiFetch } from "@/lib/api";
+import { useT, type MsgKey } from "@/lib/i18n";
 
 /**
  * 「意见反馈」 — send the team a message, and read any answer.
@@ -56,18 +57,18 @@ type MyFeedback = {
   createdAt: string;
 };
 
-const KIND_OPTIONS: Array<{ value: FeedbackKind; label: string }> = [
-  { value: "SUGGESTION", label: "建议" },
-  { value: "BUG", label: "问题" },
-  { value: "COMPLAINT", label: "投诉" },
-  { value: "OTHER", label: "其他" },
+const KIND_OPTIONS: Array<{ value: FeedbackKind; label: MsgKey }> = [
+  { value: "SUGGESTION", label: "fb.kindSuggestion" },
+  { value: "BUG", label: "fb.kindBug" },
+  { value: "COMPLAINT", label: "fb.kindComplaint" },
+  { value: "OTHER", label: "fb.kindOther" },
 ];
 
-const STATUS_LABEL: Record<MyFeedback["status"], string> = {
-  OPEN: "待处理",
-  IN_PROGRESS: "处理中",
-  RESOLVED: "已回复",
-  CLOSED: "已关闭",
+const STATUS_LABEL: Record<MyFeedback["status"], MsgKey> = {
+  OPEN: "fb.statusOpen",
+  IN_PROGRESS: "fb.statusInProgress",
+  RESOLVED: "fb.statusResolved",
+  CLOSED: "fb.statusClosed",
 };
 
 const STATUS_TONE: Record<MyFeedback["status"], "warning" | "neutral" | "success"> = {
@@ -78,6 +79,7 @@ const STATUS_TONE: Record<MyFeedback["status"], "warning" | "neutral" | "success
 };
 
 export default function FeedbackPage() {
+  const { t } = useT();
   const [context, setContext] = useState<SubmissionContext | null>(null);
   const [items, setItems] = useState<MyFeedback[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,7 +103,7 @@ export default function FeedbackPage() {
       setContext(config);
       setItems(mine.items);
     } catch (error) {
-      setLoadError(friendlyError(error, "加载失败，请稍后重试"));
+      setLoadError(friendlyError(error, t("fb.loadFailed")));
     } finally {
       setLoading(false);
     }
@@ -117,7 +119,7 @@ export default function FeedbackPage() {
     setSent(false);
 
     if (!body.trim()) {
-      setFormError("请填写反馈内容");
+      setFormError(t("fb.bodyRequired"));
       return;
     }
 
@@ -137,7 +139,7 @@ export default function FeedbackPage() {
       setSent(true);
       await load();
     } catch (error) {
-      setFormError(friendlyError(error, "提交失败，请稍后重试"));
+      setFormError(friendlyError(error, t("fb.submitFailed")));
     } finally {
       setSubmitting(false);
     }
@@ -147,9 +149,9 @@ export default function FeedbackPage() {
 
   return (
     <PhoneShell>
-      <ScreenHeader title="意见反馈" backHref="/me" />
+      <ScreenHeader title={t("fb.title")} backHref="/me" />
 
-      <TFLoadingRegion label="正在加载反馈信息">
+      <TFLoadingRegion label={t("fb.loading")}>
         {loading ? (
           /* Shapes rather than a spinner: the form has a known layout, so a skeleton
              keeps the page from jumping when the data arrives. */
@@ -159,7 +161,7 @@ export default function FeedbackPage() {
             <TFRowSkeleton />
           </div>
         ) : loadError ? (
-          <TFErrorState title="加载失败" description={loadError} onRetry={() => void load()} />
+          <TFErrorState title={t("fb.loadFailedTitle")} description={loadError} onRetry={() => void load()} />
         ) : (
           <div className="space-y-4 px-4 pb-8 pt-2">
             {/* The address first, because a member who would rather write an e-mail than
@@ -171,7 +173,7 @@ export default function FeedbackPage() {
                     <Mail size={16} aria-hidden="true" />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-ui font-medium text-content">也可以直接发邮件</p>
+                    <p className="text-ui font-medium text-content">{t("fb.orEmail")}</p>
                     <a
                       data-testid="feedback-support-email"
                       href={`mailto:${context.supportEmail}`}
@@ -185,7 +187,7 @@ export default function FeedbackPage() {
             ) : null}
 
             <form onSubmit={submit} className="space-y-4" data-testid="feedback-form">
-              <TFField label="反馈类型">
+              <TFField label={t("fb.kindLabel")}>
                 {() => (
                   <div className="flex flex-wrap gap-2">
                     {KIND_OPTIONS.map((option) => (
@@ -201,7 +203,7 @@ export default function FeedbackPage() {
                             : "rounded-full border border-border px-3 py-1.5 text-caption text-content-muted transition-colors duration-instant hover:bg-surface-sunken"
                         }
                       >
-                        {option.label}
+                        {t(option.label)}
                       </button>
                     ))}
                   </div>
@@ -209,8 +211,8 @@ export default function FeedbackPage() {
               </TFField>
 
               <TFField
-                label="反馈内容"
-                hint="请描述你遇到的问题或想要的功能，越具体越好。"
+                label={t("fb.bodyLabel")}
+                hint={t("fb.bodyHint")}
                 error={formError || undefined}
                 labelAction={
                   <span
@@ -232,14 +234,14 @@ export default function FeedbackPage() {
                     maxLength={maxBody}
                     value={body}
                     onChange={(event) => setBody(event.target.value)}
-                    placeholder="例如：在「动态」里上传竖屏视频后，封面显示被裁掉了。"
+                    placeholder={t("fb.bodyPlaceholder")}
                   />
                 )}
               </TFField>
 
               <TFField
-                label="联系邮箱（可选）"
-                hint="留空表示不需要回复；填写后我们会把答复发到这个地址。"
+                label={t("fb.contactLabel")}
+                hint={t("fb.contactHint")}
               >
                 {({ id, describedBy, invalid }) => (
                   <input
@@ -265,23 +267,23 @@ export default function FeedbackPage() {
                   disabled={submitting || !body.trim() || body.length > maxBody}
                   leadingIcon={<Send size={16} />}
                 >
-                  {submitting ? "提交中…" : "提交反馈"}
+                  {submitting ? t("fb.submitting") : t("fb.submit")}
                 </TFButton>
                 {sent ? (
                   <span data-testid="feedback-sent" className="text-caption text-success-600">
-                    已收到，谢谢！
+                    {t("fb.sent")}
                   </span>
                 ) : null}
               </div>
             </form>
 
             <section className="pt-2">
-              <h2 className="mb-2 text-caption font-medium text-content-muted">我的反馈</h2>
+              <h2 className="mb-2 text-caption font-medium text-content-muted">{t("fb.mine")}</h2>
               {items.length === 0 ? (
                 <TFEmptyState
                   icon={<MessageSquare size={20} />}
-                  title="还没有提交过反馈"
-                  description="提交后可以在这里查看处理进度和我们的回复。"
+                  title={t("fb.emptyTitle")}
+                  description={t("fb.emptyDesc")}
                 />
               ) : (
                 <ul className="space-y-3" data-testid="feedback-list">
@@ -290,7 +292,7 @@ export default function FeedbackPage() {
                       <TFCard className="p-4" data-testid={`feedback-item-${item.id}`}>
                         <div className="flex flex-wrap items-center gap-2">
                           <TFBadge tone={STATUS_TONE[item.status]}>
-                            {STATUS_LABEL[item.status]}
+                            {t(STATUS_LABEL[item.status])}
                           </TFBadge>
                           <span className="text-overline text-content-subtle">
                             {new Date(item.createdAt).toLocaleString()}
@@ -304,7 +306,7 @@ export default function FeedbackPage() {
                             data-testid={`feedback-reply-${item.id}`}
                             className="mt-3 rounded-control bg-surface-sunken p-3"
                           >
-                            <p className="text-overline font-medium text-content-muted">官方回复</p>
+                            <p className="text-overline font-medium text-content-muted">{t("fb.officialReply")}</p>
                             <p className="mt-1 whitespace-pre-wrap break-words text-ui text-content">
                               {item.replyBody}
                             </p>
