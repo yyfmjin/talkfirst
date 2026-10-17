@@ -34,6 +34,8 @@
  */
 module.exports = {
   preset: "./jest/preset",
+  /* 全局测试稳定化（expo-font 原生模块桩），见 jest/setup.ts 文件头。 */
+  setupFilesAfterEnv: ["<rootDir>/jest/setup.ts"],
   modulePaths: ["<rootDir>/node_modules"],
   moduleNameMapper: {
     "^react$": "<rootDir>/node_modules/react",

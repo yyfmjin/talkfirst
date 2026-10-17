@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,6 +13,7 @@ import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { SubHeader } from "../components/SubHeader";
+import { applyUpdate, checkForUpdate } from "../lib/update-check";
 import { useBackHandler } from "../lib/back-stack";
 import { apiFetch } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
@@ -124,10 +126,43 @@ export function MeScreen() {
   /* 引导不放在 `open` 里：它不是「我的」的一个子页，而是一个会盖住底部导航的
      独立流程（与「注册后马上走一遍」是同一个组件）。 */
   const [onboarding, setOnboarding] = useState(false);
+  /** 正在检查/下载更新（按钮期间转圈，避免连点）。 */
+  const [updating, setUpdating] = useState(false);
 
   /* 系统返回键：引导 → 子页 → （没有任何子页时退出 app，交由系统默认）。 */
   useBackHandler(open !== null, () => setOpen(null));
   useBackHandler(onboarding, () => setOnboarding(false));
+
+  /**
+   * 应用内检查更新：检查 →（有就）下载 → 问用户要不要现在重启。
+   *
+   * 四种结果都要说清楚，尤其是 **unsupported**：那是「安装包本身不支持」，
+   * 重试多少次都没用，只能重新装一次包（说法在 `update-check.ts` 文件头）。
+   */
+  async function runUpdateCheck() {
+    if (updating) return;
+    setUpdating(true);
+    const result = await checkForUpdate();
+    setUpdating(false);
+
+    if (result === "unsupported") {
+      Alert.alert(t("me.updateUnsupportedTitle"), t("me.updateUnsupportedBody"));
+      return;
+    }
+    if (result === "latest") {
+      Alert.alert(t("me.updateLatest"));
+      return;
+    }
+    if (result === "failed") {
+      Alert.alert(t("me.updateFailed"));
+      return;
+    }
+    // ready：已经下载完，问用户什么时候重启（重启时机交给用户，不偷袭他）。
+    Alert.alert(t("me.updateReadyTitle"), t("me.updateReadyBody"), [
+      { text: t("me.updateLater"), style: "cancel" },
+      { text: t("me.updateNow"), onPress: () => void applyUpdate() },
+    ]);
+  }
 
   if (!user) return null;
 
@@ -256,6 +291,30 @@ export function MeScreen() {
           </View>
         </View>
       ))}
+
+      <View style={styles.group}>
+        <Text style={styles.groupTitle}>{t("me.groupUpdate")}</Text>
+        <View style={styles.groupCard}>
+          <Pressable
+            onPress={() => void runUpdateCheck()}
+            disabled={updating}
+            accessibilityRole="button"
+            accessibilityLabel={t("me.checkUpdate")}
+            accessibilityState={{ busy: updating }}
+            style={styles.row}
+          >
+            <Icon name="cloud-download-outline" size={18} color={colors.primary} />
+            <Text style={styles.rowLabel}>
+              {updating ? t("me.checkingUpdate") : t("me.checkUpdate")}
+            </Text>
+            {updating ? (
+              <ActivityIndicator size="small" color={colors.muted} />
+            ) : (
+              <Icon name="chevron-forward" size={16} color={colors.muted} />
+            )}
+          </Pressable>
+        </View>
+      </View>
 
       <Text style={styles.moreSoon}>{t("me.moreSoon")}</Text>
 
