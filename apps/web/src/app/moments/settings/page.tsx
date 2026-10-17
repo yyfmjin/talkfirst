@@ -7,6 +7,7 @@ import { PhoneShell } from "@/components/phone-shell";
 import { ScreenHeader } from "@/components/screen-header";
 import { TFBadge, TFButton, TFDialog, TFInput, TFLoadingRegion, TFSkeleton } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
+import { useT, type MsgKey } from "@/lib/i18n";
 
 type Platform = { id: string; label: string; icon: string; color: string; connectedLabel: string };
 type Binding = { platform: string; handle: string; displayName: string | null; syncEnabled: boolean };
@@ -24,6 +25,7 @@ type Setting = {
 type ToggleKey = "syncEnabled" | "filterSensitive" | "showPhotos" | "showVideos" | "showTexts" | "showReels" | "showLives";
 
 export default function MomentsSettingsPage() {
+  const { t } = useT();
   const router = useRouter();
   const [platforms, setPlatforms] = useState<Platform[]>([]);
   const [bindings, setBindings] = useState<Binding[]>([]);
@@ -49,7 +51,7 @@ export default function MomentsSettingsPage() {
       setBindings(bindingList);
       setSetting(current);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "加载失败");
+      setError(requestError instanceof Error ? requestError.message : t("ms.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -67,7 +69,7 @@ export default function MomentsSettingsPage() {
   async function bind(platform: string) {
     const handle = (handles[platform] ?? "").trim().replace(/^@+/, "");
     if (!handle) {
-      setError("先填写该平台的账号昵称");
+      setError(t("ms.needHandle"));
       return;
     }
     setActing(platform);
@@ -78,7 +80,7 @@ export default function MomentsSettingsPage() {
       await load();
       flashSaved();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "绑定失败");
+      setError(requestError instanceof Error ? requestError.message : t("ms.bindFailed"));
     } finally {
       setActing(null);
     }
@@ -106,7 +108,7 @@ export default function MomentsSettingsPage() {
       await load();
       flashSaved();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "解绑失败");
+      setError(requestError instanceof Error ? requestError.message : t("ms.unbindFailed"));
     } finally {
       setActing(null);
     }
@@ -118,7 +120,7 @@ export default function MomentsSettingsPage() {
       await apiFetch(`/moments/bindings/${platform}`, { method: "PATCH", body: { syncEnabled } });
       setBindings((current) => current.map((item) => (item.platform === platform ? { ...item, syncEnabled } : item)));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "切换失败");
+      setError(requestError instanceof Error ? requestError.message : t("ms.toggleFailed"));
     } finally {
       setActing(null);
     }
@@ -133,7 +135,7 @@ export default function MomentsSettingsPage() {
       flashSaved();
     } catch (requestError) {
       if (previous) setSetting(previous);
-      setError(requestError instanceof Error ? requestError.message : "设置失败");
+      setError(requestError instanceof Error ? requestError.message : t("ms.saveFailed"));
     }
   }
 
@@ -143,13 +145,13 @@ export default function MomentsSettingsPage() {
   return (
     <PhoneShell>
       <ScreenHeader
-        title="我的动态设置"
+        title={t("ms.title")}
         backHref="/moments"
         action={
           saved ? (
             <TFBadge tone="success">
               <Check size={12} aria-hidden="true" />
-              已保存
+              {t("ms.saved")}
             </TFBadge>
           ) : undefined
         }
@@ -159,15 +161,13 @@ export default function MomentsSettingsPage() {
             connected yet and that everything shown is sample data — the kind of
             claim that should be impossible to miss, so it keeps warning colours. */}
         <div className="rounded-card border border-warning-200 bg-warning-50 p-4 text-caption leading-5 text-warning-800">
-          <p className="font-semibold">示例内容说明</p>
+          <p className="font-semibold">{t("ms.noticeTitle")}</p>
           <p className="mt-1">
-            TalkFirst 目前尚未接入 Instagram、X、TikTok 等平台的官方授权，暂不会拉取你的真实动态。
-            绑定账号后展示的内容为<b>示例数据</b>，仅用于预览界面效果，均标注为「示例」。
-            真实同步功能正在开发中。
+            {t("ms.noticeBody")}
           </p>
         </div>
         <p className="mt-3 rounded-card bg-surface-sunken p-4 text-caption leading-5 text-content-muted">
-          同步你在其他社交平台的最新动态，让朋友了解真实的你。默认只同步你绑定的平台，可随时关闭。已绑定 {boundCount} 个平台。
+          {t("ms.intro", { count: boundCount })}
         </p>
         {error ? (
           <p role="alert" className="mt-3 break-words text-caption text-danger-600">
@@ -176,7 +176,7 @@ export default function MomentsSettingsPage() {
         ) : null}
 
         {loading ? (
-          <TFLoadingRegion label="正在加载动态设置">
+          <TFLoadingRegion label={t("ms.loading")}>
             <div className="mt-5 space-y-3">
               <TFSkeleton shape="block" className="h-20 w-full" />
               <TFSkeleton shape="block" className="h-20 w-full" />
@@ -189,11 +189,11 @@ export default function MomentsSettingsPage() {
               <div className="flex items-center justify-between">
                 <h2 className="flex items-center gap-1.5 text-ui font-semibold text-content">
                   <Link2 size={16} className="text-brand-500" aria-hidden="true" />
-                  同步其他社交平台动态
+                  {t("ms.syncHeading")}
                 </h2>
                 <Toggle
                   checked={Boolean(setting?.syncEnabled)}
-                  label="动态总开关"
+                  label={t("ms.masterToggle")}
                   onClick={() => void updateSetting({ syncEnabled: !setting?.syncEnabled })}
                 />
               </div>
@@ -221,13 +221,13 @@ export default function MomentsSettingsPage() {
                           {binding ? (
                             <Toggle
                               checked={binding.syncEnabled}
-                              label={`${item.label}同步开关`}
+                              label={t("ms.syncToggleAria", { platform: item.label })}
                               busy={acting === item.id}
                               onClick={() => void togglePlatform(item.id, !binding.syncEnabled)}
                             />
                           ) : (
                             <TFBadge tone="neutral" className="shrink-0">
-                              未绑定
+                              {t("ms.unbound")}
                             </TFBadge>
                           )}
                         </div>
@@ -241,9 +241,9 @@ export default function MomentsSettingsPage() {
                               onKeyDown={(event) => {
                                 if (event.key === "Enter") void bind(item.id);
                               }}
-                              placeholder={`填写${item.label}账号，如 yuki_travel`}
+                              placeholder={t("ms.handlePlaceholder", { platform: item.label })}
                               maxLength={128}
-                              aria-label={`${item.label}账号`}
+                              aria-label={t("ms.handleAria", { platform: item.label })}
                               className="min-w-0 flex-1"
                             />
                             <TFButton
@@ -251,9 +251,9 @@ export default function MomentsSettingsPage() {
                               onClick={() => void bind(item.id)}
                               disabled={acting === item.id && acting !== null}
                               loading={acting === item.id}
-                              loadingLabel="绑定中…"
+                              loadingLabel={t("ms.binding")}
                             >
-                              绑定
+                              {t("ms.bind")}
                             </TFButton>
                           </div>
                         ) : (
@@ -263,7 +263,7 @@ export default function MomentsSettingsPage() {
                             className="mt-2.5 flex items-center gap-1 rounded-control px-1.5 py-1 text-caption text-content-muted transition-colors duration-instant hover:bg-surface-sunken"
                           >
                             <Unplug size={13} aria-hidden="true" />
-                            解绑该平台
+                            {t("ms.unbindPlatform")}
                           </button>
                         )}
                       </div>
@@ -277,20 +277,20 @@ export default function MomentsSettingsPage() {
                 <section className="mt-6">
                   <h2 className="flex items-center gap-1.5 text-ui font-semibold text-content">
                     <ShieldCheck size={16} className="text-brand-500" aria-hidden="true" />
-                    隐私设置
+                    {t("ms.privacyHeading")}
                   </h2>
-                  <p className="mt-1 text-caption text-content-muted">谁可以看到你在 TalkFirst 的动态聚合页。</p>
+                  <p className="mt-1 text-caption text-content-muted">{t("ms.privacyHint")}</p>
                   {/* A real `radiogroup`: the three options are mutually exclusive,
                       and each carries `aria-checked` so the state is announced
                       rather than only tinted. */}
-                  <div role="radiogroup" aria-label="谁能看到你的动态聚合页" className="mt-3 space-y-1 rounded-card border border-border p-2">
+                  <div role="radiogroup" aria-label={t("ms.visibleAria")} className="mt-3 space-y-1 rounded-card border border-border p-2">
                     {(
                       [
-                        ["everyone", "所有人可见", "推荐流和个人主页都可见"],
-                        ["connections", "仅连接可见", "只有互相连接的朋友可见"],
-                        ["private", "仅自己可见", "别人打不开你的动态页"],
+                        ["everyone", "ms.visEveryone", "ms.visEveryoneDesc"],
+                        ["connections", "ms.visConnections", "ms.visConnectionsDesc"],
+                        ["private", "ms.visPrivate", "ms.visPrivateDesc"],
                       ] as const
-                    ).map(([value, label, desc]) => {
+                    ).map(([value, labelKey, descKey]) => {
                       const active = setting.visibleTo === value;
                       return (
                         <button
@@ -304,8 +304,8 @@ export default function MomentsSettingsPage() {
                           }`}
                         >
                           <span className="min-w-0">
-                            <span className={`block ${active ? "font-medium text-brand-600" : "text-content"}`}>{label}</span>
-                            <span className="block text-caption text-content-muted">{desc}</span>
+                            <span className={`block ${active ? "font-medium text-brand-600" : "text-content"}`}>{t(labelKey)}</span>
+                            <span className="block text-caption text-content-muted">{t(descKey)}</span>
                           </span>
                           <span
                             aria-hidden="true"
@@ -324,25 +324,25 @@ export default function MomentsSettingsPage() {
                 <section className="mt-6">
                   <h2 className="flex items-center gap-1.5 text-ui font-semibold text-content">
                     <SlidersHorizontal size={16} className="text-brand-500" aria-hidden="true" />
-                    动态内容筛选
+                    {t("ms.filterHeading")}
                   </h2>
                   <div className="mt-3 divide-y divide-border rounded-card border border-border px-4">
                     {(
                       [
-                        ["showPhotos", "照片", "同步 Instagram 等图片"],
-                        ["showVideos", "视频", "同步短视频和频道视频"],
-                        ["showTexts", "文字动态", "同步 X 等纯文字"],
-                        ["showReels", "Reels / 短视频", "多图时保留滑动组图"],
-                        ["showLives", "故事", "默认不同步故事"],
-                        ["filterSensitive", "过滤敏感内容", "自动打码邮箱电话等联系方式"],
-                      ] as Array<[ToggleKey, string, string]>
-                    ).map(([key, label, desc]) => (
+                        ["showPhotos", "ms.fPhotos", "ms.fPhotosDesc"],
+                        ["showVideos", "ms.fVideos", "ms.fVideosDesc"],
+                        ["showTexts", "ms.fTexts", "ms.fTextsDesc"],
+                        ["showReels", "ms.fReels", "ms.fReelsDesc"],
+                        ["showLives", "ms.fLives", "ms.fLivesDesc"],
+                        ["filterSensitive", "ms.fSensitive", "ms.fSensitiveDesc"],
+                      ] as Array<[ToggleKey, MsgKey, MsgKey]>
+                    ).map(([key, labelKey, descKey]) => (
                       <div key={key} className="flex items-center justify-between gap-3 py-3">
                         <span className="min-w-0">
-                          <span className="block text-ui font-medium text-content">{label}</span>
-                          <span className="block text-caption text-content-muted">{desc}</span>
+                          <span className="block text-ui font-medium text-content">{t(labelKey)}</span>
+                          <span className="block text-caption text-content-muted">{t(descKey)}</span>
                         </span>
-                        <Toggle checked={setting[key]} label={label} onClick={() => void updateSetting({ [key]: !setting[key] } as Partial<Setting>)} />
+                        <Toggle checked={setting[key]} label={t(labelKey)} onClick={() => void updateSetting({ [key]: !setting[key] } as Partial<Setting>)} />
                       </div>
                     ))}
                   </div>
@@ -353,7 +353,7 @@ export default function MomentsSettingsPage() {
         )}
 
         <TFButton variant="secondary" fullWidth className="mt-6" onClick={() => router.push("/moments")}>
-          完成
+          {t("ms.done")}
         </TFButton>
       </div>
 
@@ -363,29 +363,29 @@ export default function MomentsSettingsPage() {
       <TFDialog
         open={pendingUnbind !== null}
         onClose={() => setPendingUnbind(null)}
-        title="确定解绑该平台吗？"
-        description="已展示的动态会保留。"
+        title={t("ms.unbindTitle")}
+        description={t("ms.unbindBody")}
         footer={
           <>
             <TFButton variant="secondary" className="flex-1" onClick={() => setPendingUnbind(null)}>
-              取消
+              {t("ms.cancel")}
             </TFButton>
             <TFButton
               variant="danger"
               className="flex-1"
               onClick={() => void confirmUnbind()}
               loading={acting === pendingUnbind && pendingUnbind !== null}
-              loadingLabel="解绑中…"
+              loadingLabel={t("ms.unbinding")}
               data-testid="unbind-confirm"
             >
-              确认解绑
+              {t("ms.unbindConfirm")}
             </TFButton>
           </>
         }
       >
         {pendingUnbind ? (
           <p className="break-words text-caption leading-5 text-content-muted">
-            将要解绑：
+            {t("ms.aboutToUnbind")}
             {platforms.find((item) => item.id === pendingUnbind)?.label ?? pendingUnbind}
             {bound(pendingUnbind)?.handle ? `（@${bound(pendingUnbind)?.handle}）` : ""}
           </p>
