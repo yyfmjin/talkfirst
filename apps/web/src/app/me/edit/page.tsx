@@ -10,12 +10,13 @@ import { cn } from "@/lib/cn";
 import { apiFetch } from "@/lib/api";
 import { friendlyErrorMessage } from "@/lib/errors";
 import { useSession, type SessionUser } from "@/lib/session";
+import { useT, type MsgKey } from "@/lib/i18n";
 
-const genders = [
-  { label: "男", value: "MALE" },
-  { label: "女", value: "FEMALE" },
-  { label: "其他", value: "OTHER" },
-  { label: "不想说", value: "UNKNOWN" },
+const genders: Array<{ labelKey: MsgKey; value: string }> = [
+  { labelKey: "ed.genderMale", value: "MALE" },
+  { labelKey: "ed.genderFemale", value: "FEMALE" },
+  { labelKey: "ed.genderOther", value: "OTHER" },
+  { labelKey: "ed.genderUnknown", value: "UNKNOWN" },
 ];
 
 type Country = { code: string; name: string; flag: string | null };
@@ -48,6 +49,7 @@ function ageOf(date: string) {
 }
 
 export default function EditProfilePage() {
+  const { t } = useT();
   const { user, setUser } = useSession();
   const [countries, setCountries] = useState<Country[]>([]);
   const [nickname, setNickname] = useState("");
@@ -89,7 +91,7 @@ export default function EditProfilePage() {
       setGender(profile.gender || "UNKNOWN");
       setBio(profile.bio ?? "");
     } catch (requestError) {
-      setError(friendlyErrorMessage(requestError, "资料加载失败，请稍后再试。"));
+      setError(friendlyErrorMessage(requestError, t("ed.loadFailed")));
     } finally {
       setPrefilling(false);
     }
@@ -108,32 +110,32 @@ export default function EditProfilePage() {
     const trimmedRegion = region.trim();
     const trimmedCity = city.trim();
     if (trimmedNickname.length < 2) {
-      setError("昵称至少 2 个字符。");
+      setError(t("ed.nicknameTooShort"));
       return;
     }
     if (trimmedNickname.length > NICKNAME_MAX) {
-      setError(`昵称最多 ${NICKNAME_MAX} 个字符。`);
+      setError(t("ed.nicknameTooLong", { max: NICKNAME_MAX }));
       return;
     }
     const age = ageOf(birthDate);
     if (age === null) {
-      setError("请填写有效的出生日期。");
+      setError(t("ed.birthInvalid"));
       return;
     }
     if (age < 18) {
-      setError("需要年满 18 岁才能使用 TalkFirst。");
+      setError(t("ed.ageTooYoung"));
       return;
     }
     if (!countryCode) {
-      setError("请选择所在国家。");
+      setError(t("ed.countryRequired"));
       return;
     }
     if (trimmedRegion.length > REGION_MAX) {
-      setError(`地区最多 ${REGION_MAX} 个字符。`);
+      setError(t("ed.regionTooLong", { max: REGION_MAX }));
       return;
     }
     if (trimmedCity.length > CITY_MAX) {
-      setError(`城市最多 ${CITY_MAX} 个字符。`);
+      setError(t("ed.cityTooLong", { max: CITY_MAX }));
       return;
     }
 
@@ -156,9 +158,9 @@ export default function EditProfilePage() {
       await prefill();
       const session = await apiFetch<SessionUser>("/users/me");
       setUser(session);
-      setSaved("已保存。刷新页面或换设备登录后依然生效。");
+      setSaved(t("ed.saved"));
     } catch (requestError) {
-      setError(friendlyErrorMessage(requestError, "保存失败，请稍后再试。"));
+      setError(friendlyErrorMessage(requestError, t("ed.saveFailed")));
     } finally {
       setLoading(false);
     }
@@ -168,7 +170,7 @@ export default function EditProfilePage() {
 
   return (
     <PhoneShell>
-      <ScreenHeader title="编辑资料" backHref="/me" />
+      <ScreenHeader title={t("ed.title")} backHref="/me" />
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-4">
         {prefilling ? (
           <div className="animate-pulse space-y-4">
@@ -186,7 +188,7 @@ export default function EditProfilePage() {
                 size="xl"
                 onClick={() => setAvatarSheetOpen(true)}
               />
-              <p className="mt-2 text-caption text-content-muted">点击头像查看或更换</p>
+              <p className="mt-2 text-caption text-content-muted">{t("ed.tapAvatar")}</p>
             </div>
 
             {/*
@@ -201,12 +203,12 @@ export default function EditProfilePage() {
 
             <div className="mt-4">
               <label htmlFor="edit-nickname" className="mb-1.5 block text-caption font-medium text-content-muted">
-                昵称
+                {t("ed.nickname")}
               </label>
               <TFInput
                 id="edit-nickname"
                 autoComplete="nickname"
-                placeholder="大家怎么称呼你"
+                placeholder={t("ed.nicknamePlaceholder")}
                 value={nickname}
                 onChange={(event) => setNickname(event.target.value)}
               />
@@ -214,7 +216,7 @@ export default function EditProfilePage() {
 
             <div className="mt-4">
               <label htmlFor="edit-birthdate" className="mb-1.5 block text-caption font-medium text-content-muted">
-                出生日期
+                {t("ed.birthDate")}
               </label>
               <TFInput
                 id="edit-birthdate"
@@ -225,14 +227,14 @@ export default function EditProfilePage() {
               />
               {age !== null ? (
                 <p className={cn("mt-1.5 text-caption", age >= 18 ? "text-content-muted" : "text-danger-600")}>
-                  {age >= 18 ? `已满 ${age} 岁` : "需要年满 18 岁才能使用 TalkFirst"}
+                  {age >= 18 ? t("ed.ageOk", { age }) : t("ed.ageTooYoungShort")}
                 </p>
               ) : null}
             </div>
 
             <div className="mt-4">
               <label htmlFor="edit-country" className="mb-1.5 block text-caption font-medium text-content-muted">
-                所在国家
+                {t("ed.country")}
               </label>
               <select
                 id="edit-country"
@@ -241,7 +243,7 @@ export default function EditProfilePage() {
                 onChange={(event) => setCountryCode(event.target.value)}
                 className="h-11 w-full min-w-0 rounded-control border border-border bg-surface-sunken px-3.5 text-ui text-content transition-colors duration-instant ease-out focus:border-brand-500 focus:bg-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-200"
               >
-                <option value="">请选择…</option>
+                <option value="">{t("ed.countryPlaceholder")}</option>
                 {countries.map((item) => (
                   <option key={item.code} value={item.code}>
                     {item.flag ?? ""} {item.name}
@@ -252,12 +254,12 @@ export default function EditProfilePage() {
 
             <div className="mt-4">
               <label htmlFor="edit-region" className="mb-1.5 block text-caption font-medium text-content-muted">
-                {`地区 / 省 / 州（可选，最多 ${REGION_MAX} 字）`}
+                {t("ed.regionLabel", { max: REGION_MAX })}
               </label>
               <TFInput
                 id="edit-region"
                 autoComplete="address-level1"
-                placeholder="东京 / 加州"
+                placeholder={t("ed.regionPlaceholder")}
                 value={region}
                 onChange={(event) => setRegion(event.target.value)}
               />
@@ -265,12 +267,12 @@ export default function EditProfilePage() {
 
             <div className="mt-4">
               <label htmlFor="edit-city" className="mb-1.5 block text-caption font-medium text-content-muted">
-                {`城市（可选，最多 ${CITY_MAX} 字）`}
+                {t("ed.cityLabel", { max: CITY_MAX })}
               </label>
               <TFInput
                 id="edit-city"
                 autoComplete="address-level2"
-                placeholder="上海"
+                placeholder={t("ed.cityPlaceholder")}
                 value={city}
                 onChange={(event) => setCity(event.target.value)}
               />
@@ -280,7 +282,7 @@ export default function EditProfilePage() {
                 but no group label, so a screen reader announced six unlabelled
                 toggles with no indication of what they belonged to. */}
             <fieldset className="mt-5">
-              <legend className="mb-2 text-caption font-medium text-content-muted">性别（可选）</legend>
+              <legend className="mb-2 text-caption font-medium text-content-muted">{t("ed.genderLabel")}</legend>
               <div className="grid grid-cols-2 gap-2">
                 {genders.map((item) => (
                   <TFChip
@@ -289,7 +291,7 @@ export default function EditProfilePage() {
                     onClick={() => setGender(item.value)}
                     className="w-full justify-center"
                   >
-                    {item.label}
+                    {t(item.labelKey)}
                   </TFChip>
                 ))}
               </div>
@@ -297,7 +299,7 @@ export default function EditProfilePage() {
 
             <div className="mt-4">
               <label htmlFor="edit-bio" className="mb-1.5 block text-caption font-medium text-content-muted">
-                {`简介（最多 ${BIO_MAX} 字）`}
+                {t("ed.bioLabel", { max: BIO_MAX })}
               </label>
               <TFTextarea
                 id="edit-bio"
@@ -305,7 +307,7 @@ export default function EditProfilePage() {
                 onChange={(event) => setBio(event.target.value)}
                 maxLength={BIO_MAX}
                 rows={4}
-                placeholder="介绍一下自己…"
+                placeholder={t("ed.bioPlaceholder")}
               />
               <p className="mt-1 text-right text-caption text-content-subtle">
                 {bio.length}/{BIO_MAX}
@@ -331,27 +333,27 @@ export default function EditProfilePage() {
                 fullWidth
                 onClick={() => void handleSave()}
                 loading={loading}
-                loadingLabel="保存中…"
-                aria-label="保存资料"
+                loadingLabel={t("ed.submitting")}
+                aria-label={t("ed.save")}
               >
-                保存资料
+                {t("ed.save")}
               </TFButton>
             </div>
 
             <div className="mt-6 rounded-card bg-surface-sunken p-4">
-              <p className="text-ui font-medium text-content">还能继续完善</p>
+              <p className="text-ui font-medium text-content">{t("ed.moreTitle")}</p>
               <div className="mt-3 space-y-2">
                 {[
-                  { href: "/me/interests", label: "语言 · 兴趣 · 交友目的 · 想认识的国家" },
-                  { href: "/me/attributes", label: "交友属性（我的介绍 / 交友需求）" },
-                  { href: "/me/visibility", label: "资料可见范围" },
+                  { href: "/me/interests", labelKey: "ed.moreInterests" },
+                  { href: "/me/attributes", labelKey: "ed.moreAttributes" },
+                  { href: "/me/visibility", labelKey: "ed.moreVisibility" },
                 ].map((entry) => (
                   <Link
                     key={entry.href}
                     href={entry.href}
                     className="flex items-center justify-between gap-3 rounded-row bg-surface px-3.5 py-3 text-ui text-brand-600 transition-colors duration-instant hover:bg-brand-50"
                   >
-                    <span className="min-w-0">{entry.label}</span>
+                    <span className="min-w-0">{t(entry.labelKey as MsgKey)}</span>
                     <span aria-hidden="true" className="shrink-0">→</span>
                   </Link>
                 ))}
@@ -368,7 +370,7 @@ export default function EditProfilePage() {
         name={nickname || user?.nickname || null}
         onAvatarUpdated={(newUrl) => {
           setAvatarUrl(newUrl);
-          setSaved("头像已更新。");
+          setSaved(t("ed.avatarUpdated"));
         }}
       />
     </PhoneShell>
