@@ -57,11 +57,11 @@ type MyFeedback = {
   createdAt: string;
 };
 
-const KIND_OPTIONS: Array<{ value: FeedbackKind; label: MsgKey }> = [
-  { value: "SUGGESTION", label: "fb.kindSuggestion" },
-  { value: "BUG", label: "fb.kindBug" },
-  { value: "COMPLAINT", label: "fb.kindComplaint" },
-  { value: "OTHER", label: "fb.kindOther" },
+const KIND_OPTIONS: Array<{ value: FeedbackKind; labelKey: MsgKey }> = [
+  { value: "SUGGESTION", labelKey: "fb.kindSuggestion" },
+  { value: "BUG", labelKey: "fb.kindBug" },
+  { value: "COMPLAINT", labelKey: "fb.kindComplaint" },
+  { value: "OTHER", labelKey: "fb.kindOther" },
 ];
 
 const STATUS_LABEL: Record<MyFeedback["status"], MsgKey> = {
@@ -203,7 +203,7 @@ export default function FeedbackPage() {
                             : "rounded-full border border-border px-3 py-1.5 text-caption text-content-muted transition-colors duration-instant hover:bg-surface-sunken"
                         }
                       >
-                        {t(option.label)}
+                        {t(option.labelKey)}
                       </button>
                     ))}
                   </div>
