@@ -5,6 +5,7 @@ import { PhoneShell } from "@/components/phone-shell";
 import { ScreenHeader } from "@/components/screen-header";
 import { TFButton, TFInput } from "@/components/tf";
 import { ApiRequestError, apiFetch, fetchAuthMethods } from "@/lib/api";
+import { useT, type MsgKey } from "@/lib/i18n";
 
 /**
  * 修改密码 —— 或者，对没有密码的账号，设置第一个密码。
@@ -45,24 +46,26 @@ type Mode = "loading" | "set" | "change";
  * Every code this endpoint can answer with is mapped instead, and an unmapped one
  * degrades to a Chinese sentence rather than to the API's English.
  */
-const PASSWORD_ERROR_TEXT: Record<string, string> = {
-  PASSWORD_MISMATCH: "两次输入的新密码不一致。",
-  PASSWORD_UNCHANGED: "新密码不能与当前密码相同。",
-  INVALID_CREDENTIALS: "当前密码不正确。",
-  VALIDATION_ERROR: "新密码长度需为 8-72 个字符。",
-  USER_SUSPENDED: "账号当前处于受限状态，暂时无法修改密码。",
-  USER_BANNED: "账号已被封禁，暂时无法修改密码。",
-  UNAUTHORIZED: "登录状态已过期，请重新登录。",
+const PASSWORD_ERROR_KEY: Record<string, MsgKey> = {
+  PASSWORD_MISMATCH: "me.pwErrMismatch",
+  PASSWORD_UNCHANGED: "me.pwErrUnchanged",
+  INVALID_CREDENTIALS: "me.pwErrCurrent",
+  VALIDATION_ERROR: "me.pwErrLength",
+  USER_SUSPENDED: "me.pwErrSuspended",
+  USER_BANNED: "me.pwErrBanned",
+  UNAUTHORIZED: "me.pwErrExpired",
 };
 
-function passwordErrorMessage(error: unknown): string {
+function passwordErrorMessage(error: unknown, t: (key: MsgKey) => string): string {
   if (error instanceof ApiRequestError) {
-    return PASSWORD_ERROR_TEXT[error.code] ?? "保存失败，请稍后再试";
+    const key = PASSWORD_ERROR_KEY[error.code];
+    return key ? t(key) : t("me.pwErrSave");
   }
-  return "保存失败，请稍后再试";
+  return t("me.pwErrSave");
 }
 
 export default function ChangePasswordPage() {
+  const { t } = useT();
   const [mode, setMode] = useState<Mode>("loading");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -87,7 +90,7 @@ export default function ChangePasswordPage() {
          */
         if (alive) {
           setMode("change");
-          setError("读取账号登录方式失败，请刷新页面后重试。");
+          setError(t("me.pwErrMethods"));
         }
       });
     return () => {
@@ -106,15 +109,15 @@ export default function ChangePasswordPage() {
      * that can give the account a password.
      */
     if (!settingFirstPassword && !currentPassword) {
-      setError("请输入当前密码。");
+      setError(t("me.pwErrEnterCurrent"));
       return;
     }
     if (newPassword.length < 8) {
-      setError("新密码至少 8 个字符。");
+      setError(t("me.pwErrMin8"));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError("两次输入的新密码不一致。");
+      setError(t("me.pwErrMismatch"));
       return;
     }
     setLoading(true);
@@ -144,12 +147,12 @@ export default function ChangePasswordPage() {
        * pointless attempt.
        */
       setMode("change");
-      setSuccess(settingFirstPassword ? "密码已设置，之后可以用邮箱和密码登录。" : "密码已修改。");
+      setSuccess(t(settingFirstPassword ? "me.pwDoneSet" : "me.pwDoneChange"));
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (requestError) {
-      setError(passwordErrorMessage(requestError));
+      setError(passwordErrorMessage(requestError, t));
     } finally {
       setLoading(false);
     }
@@ -157,12 +160,13 @@ export default function ChangePasswordPage() {
 
   return (
     <PhoneShell>
-      <ScreenHeader title={settingFirstPassword ? "设置密码" : "修改密码"} backHref="/me" />
+      <ScreenHeader
+        title={t(settingFirstPassword ? "me.pwTitleSet" : "me.pwTitleChange")}
+        backHref="/me"
+      />
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-6">
         <p className="mb-5 text-caption leading-5 text-content-muted">
-          {settingFirstPassword
-            ? "你的账号是通过 Google 创建的，目前还没有密码。设置之后，你也可以用邮箱和密码登录。"
-            : "修改成功后，其他设备会被登出，需要重新登录。当前设备会保持登录状态。"}
+          {t(settingFirstPassword ? "me.pwIntroSet" : "me.pwIntroChange")}
         </p>
 
         {/* A real `<form>` so Enter submits — a password change is exactly the
@@ -181,7 +185,7 @@ export default function ChangePasswordPage() {
           {settingFirstPassword ? null : (
             <div>
               <label htmlFor="pw-current" className="mb-1.5 block text-caption font-medium text-content-muted">
-                当前密码
+                {t("me.pwCurrent")}
               </label>
               <TFInput
                 id="pw-current"
@@ -196,7 +200,7 @@ export default function ChangePasswordPage() {
 
           <div>
             <label htmlFor="pw-new" className="mb-1.5 block text-caption font-medium text-content-muted">
-              {settingFirstPassword ? "密码（8-72 字符）" : "新密码（8-72 字符）"}
+              {t(settingFirstPassword ? "me.pwFirstWithLen" : "me.pwNewWithLen")}
             </label>
             <TFInput
               id="pw-new"
@@ -211,7 +215,7 @@ export default function ChangePasswordPage() {
 
           <div>
             <label htmlFor="pw-confirm" className="mb-1.5 block text-caption font-medium text-content-muted">
-              {settingFirstPassword ? "确认密码" : "确认新密码"}
+              {t(settingFirstPassword ? "me.pwConfirmFirst" : "me.pwConfirm")}
             </label>
             <TFInput
               id="pw-confirm"
@@ -225,7 +229,7 @@ export default function ChangePasswordPage() {
           </div>
 
           <p id="pw-hint" className="text-caption leading-4 text-content-subtle">
-            密码长度 8-72 个字符，建议混用大小写字母、数字和符号。
+            {t("me.pwHint")}
           </p>
 
           {success ? (
@@ -250,11 +254,11 @@ export default function ChangePasswordPage() {
             size="lg"
             fullWidth
             loading={loading}
-            loadingLabel={settingFirstPassword ? "设置中…" : "修改中…"}
+            loadingLabel={t(settingFirstPassword ? "me.pwLoadingSet" : "me.pwLoadingChange")}
             disabled={mode === "loading"}
             data-testid="password-submit"
           >
-            {settingFirstPassword ? "设置密码" : "确认修改"}
+            {t(settingFirstPassword ? "me.pwSubmitSet" : "me.pwSubmitChange")}
           </TFButton>
         </form>
       </div>
