@@ -14,6 +14,7 @@ import {
   TFLoadingRegion,
 } from "@/components/tf";
 import { ApiRequestError, apiFetch } from "@/lib/api";
+import { useT, type MsgKey } from "@/lib/i18n";
 
 /**
  * 「社交账号」 — connect external accounts and sync recent posts.
@@ -70,15 +71,17 @@ type SyncAccount = {
 /** The legacy handle-sharing rows, read-only here. */
 type SharedBinding = { platform: string; handle: string; displayName: string | null; syncEnabled: boolean };
 
-const AVAILABILITY_HINT: Record<ProviderAvailability, string> = {
-  AVAILABLE: "",
-  REQUIRES_APPROVAL: "该平台需要开发者审批，目前无法读取动态。你可以把内容直接发布到 TalkFirst。",
-  NOT_CONFIGURED: "本部署尚未配置该平台，请联系管理员。",
-};
-
 const SYNC_LIMITS = [1, 2, 3];
 
 export default function SocialAccountsPage() {
+  const { t } = useT();
+  /* 不可用原因属于「当前语言的一句话」，所以做成函数而不是模块级常量表。 */
+  const availabilityHint = (availability: ProviderAvailability): string =>
+    availability === "REQUIRES_APPROVAL"
+      ? t("sc.hintApproval")
+      : availability === "NOT_CONFIGURED"
+        ? t("sc.hintNotConfigured")
+        : "";
   const [providers, setProviders] = useState<Provider[]>([]);
   const [accounts, setAccounts] = useState<SyncAccount[]>([]);
   const [bindings, setBindings] = useState<SharedBinding[]>([]);
@@ -105,7 +108,7 @@ export default function SocialAccountsPage() {
       setAccounts(syncAccounts.accounts);
       setBindings(legacy);
     } catch (requestError) {
-      setError(friendlyError(requestError, "加载失败，请稍后重试"));
+      setError(friendlyError(requestError, t("sc.loadFailed")));
     } finally {
       setLoading(false);
     }
@@ -121,12 +124,12 @@ export default function SocialAccountsPage() {
     const result = params.get("social_sync");
     if (!result) return;
 
-    if (result === "connected") setNotice("已连接并完成首次同步");
+    if (result === "connected") setNotice(t("sc.connected"));
     else if (result === "connected_sync_failed") {
-      setNotice("已连接，但首次同步失败。可以稍后点「立即同步」重试。");
+      setNotice(t("sc.connectedSyncFailed"));
     }
     const socialError = params.get("social_error");
-    if (socialError) setError(translateSyncError(socialError));
+    if (socialError) setError(translateSyncError(socialError, t));
 
     // Removed so a refresh does not re-show a message about an action already taken.
     params.delete("social_sync");
@@ -146,7 +149,7 @@ export default function SocialAccountsPage() {
       // Full-page navigation: the consent screen must run in the top-level context.
       window.location.href = data.authorizationUrl;
     } catch (requestError) {
-      setError(friendlyError(requestError, "无法开始授权，请稍后重试"));
+      setError(friendlyError(requestError, t("sc.authStartFailed")));
       setBusy(null);
     }
   }
@@ -159,7 +162,7 @@ export default function SocialAccountsPage() {
       await apiFetch(`/social-sync/accounts/${account.id}`, { method: "PATCH", body: patch });
       await load();
     } catch (requestError) {
-      setError(friendlyError(requestError, "保存失败，请稍后重试"));
+      setError(friendlyError(requestError, t("sc.saveFailed")));
     } finally {
       setBusy(null);
     }
@@ -173,10 +176,10 @@ export default function SocialAccountsPage() {
       const result = await apiFetch<{ fetched: number }>(`/social-sync/accounts/${account.id}/sync`, {
         method: "POST",
       });
-      setNotice(`已同步 ${result.fetched} 条`);
+      setNotice(t("sc.synced", { count: result.fetched }));
       await load();
     } catch (requestError) {
-      setError(friendlyError(requestError, "同步失败，请稍后重试"));
+      setError(friendlyError(requestError, t("sc.syncFailed")));
       await load();
     } finally {
       setBusy(null);
@@ -189,10 +192,10 @@ export default function SocialAccountsPage() {
     setNotice("");
     try {
       await apiFetch(`/social-sync/accounts/${account.id}`, { method: "DELETE" });
-      setNotice("已解除绑定");
+      setNotice(t("sc.disconnected"));
       await load();
     } catch (requestError) {
-      setError(friendlyError(requestError, "解绑失败，请稍后重试"));
+      setError(friendlyError(requestError, t("sc.disconnectFailed")));
     } finally {
       setBusy(null);
     }
@@ -200,9 +203,9 @@ export default function SocialAccountsPage() {
 
   return (
     <PhoneShell>
-      <ScreenHeader title="社交账号" backHref="/me" />
+      <ScreenHeader title={t("sc.title")} backHref="/me" />
 
-      <TFLoadingRegion label="正在加载社交账号">
+      <TFLoadingRegion label={t("sc.loading")}>
         {loading ? (
           <div className="space-y-3 px-4 pb-8 pt-2">
             <TFRowSkeleton />
@@ -210,7 +213,7 @@ export default function SocialAccountsPage() {
             <TFRowSkeleton />
           </div>
         ) : error && accounts.length === 0 && providers.length === 0 ? (
-          <TFErrorState title="加载失败" description={error} onRetry={() => void load()} />
+          <TFErrorState title={t("sc.loadFailedTitle")} description={error} onRetry={() => void load()} />
         ) : (
           <div className="space-y-5 px-4 pb-8 pt-2">
             {notice ? (
@@ -225,16 +228,16 @@ export default function SocialAccountsPage() {
             ) : null}
 
             <section>
-              <h2 className="mb-2 text-caption font-medium text-content-muted">同步外部动态</h2>
+              <h2 className="mb-2 text-caption font-medium text-content-muted">{t("sc.syncHeading")}</h2>
               <p className="mb-3 text-overline leading-4 text-content-subtle">
-                授权后 TalkFirst 会读取你最近 1~3 条公开动态并展示在个人主页。我们只读取，不会发布或修改任何内容。
+                {t("sc.syncIntro")}
               </p>
 
               {providers.length === 0 ? (
                 <TFEmptyState
                   icon={<Link2 size={20} />}
-                  title="暂无可同步的平台"
-                  description="本部署还没有配置任何可读取的平台。"
+                  title={t("sc.emptyTitle")}
+                  description={t("sc.emptyDesc")}
                 />
               ) : (
                 <ul className="space-y-2" data-testid="social-sync-providers">
@@ -251,13 +254,13 @@ export default function SocialAccountsPage() {
                                 dot={account.status === "ACTIVE"}
                               >
                                 {account.status === "ACTIVE"
-                                  ? "已绑定"
+                                  ? t("sc.bound")
                                   : account.status === "NEEDS_REAUTH"
-                                    ? "需要重新授权"
-                                    : "已解绑"}
+                                    ? t("sc.needsReauth")
+                                    : t("sc.unbound")}
                               </TFBadge>
                             ) : (
-                              <span className="text-overline text-content-subtle">未绑定</span>
+                              <span className="text-overline text-content-subtle">{t("sc.notBound")}</span>
                             )}
                           </div>
 
@@ -267,7 +270,7 @@ export default function SocialAccountsPage() {
                               className="mt-2 flex items-start gap-1.5 text-overline leading-4 text-content-muted"
                             >
                               <Lock size={12} className="mt-0.5 shrink-0" aria-hidden="true" />
-                              {AVAILABILITY_HINT[provider.availability]}
+                              {availabilityHint(provider.availability)}
                             </p>
                           ) : account ? (
                             <>
@@ -281,14 +284,14 @@ export default function SocialAccountsPage() {
                               {account.status === "NEEDS_REAUTH" ? (
                                 <p className="mt-2 flex items-start gap-1.5 text-overline leading-4 text-warning-600">
                                   <AlertTriangle size={12} className="mt-0.5 shrink-0" aria-hidden="true" />
-                                  授权已失效（{translateSyncError(account.lastSyncError)}），请重新授权。
+                                  {t("sc.reauthExpired", { reason: translateSyncError(account.lastSyncError, t) })}
                                 </p>
                               ) : null}
 
                               {/* Sync count. The three values are the product's promise, and the
                                   API validates them again — this is the control, not the rule. */}
                               <div className="mt-3 flex flex-wrap items-center gap-2">
-                                <span className="text-overline text-content-muted">同步</span>
+                                <span className="text-overline text-content-muted">{t("sc.syncCountLabel")}</span>
                                 {SYNC_LIMITS.map((value) => (
                                   <button
                                     key={value}
@@ -306,7 +309,7 @@ export default function SocialAccountsPage() {
                                     {value}
                                   </button>
                                 ))}
-                                <span className="text-overline text-content-muted">条</span>
+                                <span className="text-overline text-content-muted">{t("sc.countUnit")}</span>
                                 <button
                                   type="button"
                                   data-testid={`social-toggle-${provider.provider}`}
@@ -314,15 +317,15 @@ export default function SocialAccountsPage() {
                                   onClick={() => void updateAccount(account, { syncEnabled: !account.syncEnabled })}
                                   className="ml-1 text-overline text-content-muted underline"
                                 >
-                                  {account.syncEnabled ? "暂停自动同步" : "开启自动同步"}
+                                  {account.syncEnabled ? t("sc.pauseAuto") : t("sc.enableAuto")}
                                 </button>
                               </div>
 
                               <p className="mt-2 text-overline text-content-subtle">
-                                最近同步：
+                                {t("sc.lastSynced")}
                                 {account.lastSyncedAt
                                   ? new Date(account.lastSyncedAt).toLocaleString()
-                                  : "尚未同步"}
+                                  : t("sc.notSyncedYet")}
                               </p>
 
                               <div className="mt-3 flex flex-wrap gap-2">
@@ -334,7 +337,7 @@ export default function SocialAccountsPage() {
                                   leadingIcon={<RefreshCw size={14} />}
                                   onClick={() => void syncNow(account)}
                                 >
-                                  立即同步
+                                  {t("sc.syncNow")}
                                 </TFButton>
                                 {account.status === "NEEDS_REAUTH" ? (
                                   <TFButton
@@ -344,7 +347,7 @@ export default function SocialAccountsPage() {
                                     disabled={busy === account.id}
                                     onClick={() => void connect(provider.provider)}
                                   >
-                                    重新授权
+                                    {t("sc.reauth")}
                                   </TFButton>
                                 ) : null}
                                 <TFButton
@@ -355,7 +358,7 @@ export default function SocialAccountsPage() {
                                   leadingIcon={<Unplug size={14} />}
                                   onClick={() => void disconnect(account)}
                                 >
-                                  解除绑定
+                                  {t("sc.disconnect")}
                                 </TFButton>
                               </div>
                             </>
@@ -369,7 +372,7 @@ export default function SocialAccountsPage() {
                                 trailingIcon={<ArrowRight size={14} />}
                                 onClick={() => void connect(provider.provider)}
                               >
-                                绑定 {provider.label}
+                                {t("sc.connect", { platform: provider.label })}
                               </TFButton>
                             </div>
                           )}
@@ -388,24 +391,24 @@ export default function SocialAccountsPage() {
             */}
             {bindings.length > 0 ? (
               <section>
-                <h2 className="mb-2 text-caption font-medium text-content-muted">展示给好友的账号</h2>
+                <h2 className="mb-2 text-caption font-medium text-content-muted">{t("sc.sharedHeading")}</h2>
                 <TFCard className="p-4">
                   <ul className="space-y-2">
                     {bindings.map((binding) => (
                       <li key={binding.platform} className="flex items-center justify-between gap-2">
                         <span className="text-ui text-content">{binding.handle}</span>
                         <TFBadge tone={binding.syncEnabled ? "success" : "neutral"}>
-                          {binding.syncEnabled ? "展示中" : "已暂停"}
+                          {binding.syncEnabled ? t("sc.shown") : t("sc.paused")}
                         </TFBadge>
                       </li>
                     ))}
                   </ul>
                   <p className="mt-3 text-overline leading-4 text-content-subtle">
-                    这部分是「好友之间互相查看的账号」，与上面的动态同步是两件事。
+                    {t("sc.sharedNote")}
                   </p>
                   <div className="mt-2">
                     <TFButton size="sm" variant="ghost" href="/moments/settings" trailingIcon={<ArrowRight size={14} />}>
-                      前往管理
+                      {t("sc.manage")}
                     </TFButton>
                   </div>
                 </TFCard>
@@ -424,28 +427,28 @@ export default function SocialAccountsPage() {
  * The server never sends a provider's own message, so every string here is written for this
  * screen. The fallback is deliberately vague rather than echoing input.
  */
-function translateSyncError(code: string | null): string {
+function translateSyncError(code: string | null, t: (key: MsgKey) => string): string {
   switch (code) {
     case "SOCIAL_AUTH_REQUIRED":
-      return "授权已失效";
+      return t("sc.errAuthRequired");
     case "SOCIAL_TOKEN_REFRESH_FAILED":
-      return "无法续期授权";
+      return t("sc.errRefreshFailed");
     case "SOCIAL_PERMISSION_DENIED":
-      return "缺少读取权限";
+      return t("sc.errPermission");
     case "SOCIAL_RATE_LIMITED":
-      return "平台访问频率受限，请稍后再试";
+      return t("sc.errRateLimited");
     case "SOCIAL_PROVIDER_NOT_SUPPORTED":
-      return "该平台暂不支持";
+      return t("sc.errNotSupported");
     case "SOCIAL_PROVIDER_REQUIRES_APPROVAL":
-      return "该平台需要开发者审批";
+      return t("sc.errApproval");
     case "SOCIAL_AUTH_FAILED":
-      return "授权失败";
+      return t("sc.errAuthFailed");
     case "SOCIAL_SYNC_FAILED":
-      return "同步失败";
+      return t("sc.errSyncFailed");
     case "SOCIAL_PROVIDER_ERROR":
-      return "平台暂时不可用";
+      return t("sc.errProviderError");
     default:
-      return "未知错误";
+      return t("sc.errUnknown");
   }
 }
 
