@@ -12,6 +12,7 @@ import {
 } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { friendlyErrorMessage } from "@/lib/errors";
+import { useT } from "@/lib/i18n";
 
 /**
  * PC-1.4 §5: everyday editing of the fields that used to be onboarding-only.
@@ -47,6 +48,7 @@ type SectionId = "languages" | "interests" | "purposes" | "countries";
 
 
 export default function MeInterestsPage() {
+  const { t } = useT();
   const [languages, setLanguages] = useState<Language[]>([]);
   const [interests, setInterests] = useState<Interest[]>([]);
   const [purposes, setPurposes] = useState<Purpose[]>([]);
@@ -86,7 +88,7 @@ export default function MeInterestsPage() {
       setPurposeSlugs(me.purposes.map((item) => item.slug));
       setCountryCodes(me.preferredCountries.map((item) => item.code));
     } catch (requestError) {
-      setError(friendlyErrorMessage(requestError, "加载失败，请稍后再试。"));
+      setError(friendlyErrorMessage(requestError, t("it.loadFailed")));
     } finally {
       setLoading(false);
     }
@@ -108,24 +110,24 @@ export default function MeInterestsPage() {
         setNotice(successMessage);
         return true;
       } catch (requestError) {
-        setError(friendlyErrorMessage(requestError, "保存失败，请稍后再试。"));
+        setError(friendlyErrorMessage(requestError, t("it.saveFailed")));
         return false;
       } finally {
         setSaving(null);
       }
     },
-    [load],
+    [load, t],
   );
 
   const learningClean = learning.filter((code) => code !== nativeCode);
 
   async function saveLanguages() {
     if (!nativeCode) {
-      setError("请选择母语。");
+      setError(t("it.nativeRequired"));
       return;
     }
     if (learningClean.length === 0) {
-      setError("请至少选择 1 门正在学习的语言。");
+      setError(t("it.learningRequired"));
       return;
     }
     await save(
@@ -140,31 +142,31 @@ export default function MeInterestsPage() {
             ],
           },
         }),
-      "语言已保存。",
+      t("it.savedLanguages"),
     );
   }
 
   async function saveInterests() {
     if (interestSlugs.length < INTEREST_MIN) {
-      setError(`请至少选择 ${INTEREST_MIN} 个兴趣（已选 ${interestSlugs.length}）。`);
+      setError(t("it.interestsMin", { min: INTEREST_MIN, count: interestSlugs.length }));
       return;
     }
     await save(
       "interests",
       () => apiFetch("/users/me/interests", { method: "PUT", body: { slugs: interestSlugs } }),
-      "兴趣已保存。",
+      t("it.savedInterests"),
     );
   }
 
   async function savePurposes() {
     if (purposeSlugs.length === 0) {
-      setError("请至少选择 1 个交友目的。");
+      setError(t("it.purposeRequired"));
       return;
     }
     await save(
       "purposes",
       () => apiFetch("/users/me/purposes", { method: "PUT", body: { slugs: purposeSlugs } }),
-      "交友目的已保存。",
+      t("it.savedPurposes"),
     );
   }
 
@@ -172,7 +174,7 @@ export default function MeInterestsPage() {
     await save(
       "countries",
       () => apiFetch("/users/me/preferred-countries", { method: "PUT", body: { codes: countryCodes } }),
-      "想认识的国家/地区已保存。",
+      t("it.savedCountries"),
     );
   }
 
@@ -200,10 +202,10 @@ export default function MeInterestsPage() {
 
   return (
     <PhoneShell>
-      <ScreenHeader title="语言 · 兴趣 · 目的" backHref="/me" />
+      <ScreenHeader title={t("it.title")} backHref="/me" />
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-4">
         <p className="text-ui leading-6 text-content-muted">
-          这里以前只能在注册时填写，现在随时都能改。改完记得点对应小节的保存。
+          {t("it.intro")}
         </p>
 
         {loading ? (
@@ -223,11 +225,11 @@ export default function MeInterestsPage() {
         {!loading ? (
           <>
             <section className="mt-5 rounded-card border border-border bg-surface p-4">
-              <p className="text-ui font-semibold text-content">语言</p>
+              <p className="text-ui font-semibold text-content">{t("it.langHeading")}</p>
               <p className="mt-0.5 text-caption leading-4 text-content-muted">
-                语言互补是推荐的核心：母语 1 门，正在学习最多 {LANGUAGE_MAX - 1} 门。
+                {t("it.langHint", { max: LANGUAGE_MAX - 1 })}
               </p>
-              <p className="mb-2 mt-3 text-caption font-medium text-content-muted">母语（单选）</p>
+              <p className="mb-2 mt-3 text-caption font-medium text-content-muted">{t("it.nativeLabel")}</p>
               <div data-testid="native-languages" className="flex flex-wrap gap-1.5">
                 {languages.map((item) => (
                   <TFChip
@@ -243,7 +245,7 @@ export default function MeInterestsPage() {
                 ))}
               </div>
               <p className="mb-2 mt-4 text-caption font-medium text-content-muted">
-                正在学习（已选 {learningClean.length}）
+                {t("it.learningLabel", { count: learningClean.length })}
               </p>
               <div data-testid="learning-languages" className="flex flex-wrap gap-1.5">
                 {languages
@@ -259,8 +261,11 @@ export default function MeInterestsPage() {
                   ))}
               </div>
               <p className="mt-3 text-caption leading-4 text-content-muted">
-                母语：{nativeCode ? languageName(nativeCode) : "未选"}；学习中：
-                {learningClean.length > 0 ? learningClean.map(languageName).join("、") : "暂无"}
+                {t("it.summary", {
+                  native: nativeCode ? languageName(nativeCode) : t("it.notChosen"),
+                  learning:
+                    learningClean.length > 0 ? learningClean.map(languageName).join(", ") : t("it.none"),
+                })}
               </p>
               <TFButton
                 size="lg"
@@ -269,19 +274,19 @@ export default function MeInterestsPage() {
                 onClick={() => void saveLanguages()}
                 disabled={saving !== null && saving !== "languages"}
                 loading={saving === "languages"}
-                loadingLabel="保存中…"
-                aria-label="保存语言"
+                loadingLabel={t("it.saving")}
+                aria-label={t("it.saveLanguagesAria")}
               >
-                保存语言
+                {t("it.saveLanguages")}
               </TFButton>
             </section>
 
             <section className="mt-5 rounded-card border border-border bg-surface p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-ui font-semibold text-content">兴趣</p>
+                  <p className="text-ui font-semibold text-content">{t("it.interestsHeading")}</p>
                   <p className="mt-0.5 text-caption leading-4 text-content-muted">
-                    至少 {INTEREST_MIN} 个，最多 {INTEREST_MAX} 个。
+                    {t("it.interestsHint", { min: INTEREST_MIN, max: INTEREST_MAX })}
                   </p>
                 </div>
                 <TFBadge tone="brand" className="shrink-0">
@@ -298,7 +303,7 @@ export default function MeInterestsPage() {
                         key={slug}
                         type="button"
                         onClick={() => setInterestSlugs((current) => toggle(current, slug))}
-                        aria-label={`移除 ${found?.nameZh ?? found?.name ?? slug}`}
+                        aria-label={t("it.removeInterest", { name: found?.nameZh ?? found?.name ?? slug })}
                         className="inline-flex max-w-full items-center gap-1 rounded-full bg-surface px-2.5 py-1 text-caption text-brand-600 transition-colors duration-instant hover:bg-brand-50"
                       >
                         <span className="min-w-0 truncate">{found?.nameZh ?? found?.name ?? slug}</span>
@@ -313,15 +318,15 @@ export default function MeInterestsPage() {
                   affordance + leading icon. */}
               <TFSearch
                 className="mt-3"
-                label="搜索兴趣"
-                placeholder="搜索兴趣，如 游戏、音乐、旅行"
+                label={t("it.searchLabel")}
+                placeholder={t("it.searchPlaceholder")}
                 value={search}
                 onValueChange={setSearch}
                 onClear={() => setSearch("")}
               />
 
               {interestCategories.length === 0 ? (
-                <p className="mt-3 text-caption text-content-muted">没有匹配的兴趣，换个关键词试试。</p>
+                <p className="mt-3 text-caption text-content-muted">{t("it.noMatch")}</p>
               ) : (
                 interestCategories.map((category) => (
                   <div key={category} className="mt-4">
@@ -355,7 +360,7 @@ export default function MeInterestsPage() {
               )}
 
               {interestSlugs.length >= INTEREST_MAX ? (
-                <p className="mt-3 text-caption text-warning-800">已达上限 {INTEREST_MAX} 个，请先移除再添加。</p>
+                <p className="mt-3 text-caption text-warning-800">{t("it.interestLimit", { max: INTEREST_MAX })}</p>
               ) : null}
 
               <TFButton
@@ -365,19 +370,19 @@ export default function MeInterestsPage() {
                 onClick={() => void saveInterests()}
                 disabled={saving !== null && saving !== "interests"}
                 loading={saving === "interests"}
-                loadingLabel="保存中…"
-                aria-label="保存兴趣"
+                loadingLabel={t("it.saving")}
+                aria-label={t("it.saveInterests")}
               >
-                保存兴趣
+                {t("it.saveInterests")}
               </TFButton>
             </section>
 
             <section className="mt-5 rounded-card border border-border bg-surface p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-ui font-semibold text-content">交友目的</p>
+                  <p className="text-ui font-semibold text-content">{t("it.purposesHeading")}</p>
                   <p className="mt-0.5 text-caption leading-4 text-content-muted">
-                    你希望在这段关系里得到什么，至少 1 个，最多 {PURPOSE_MAX} 个。
+                    {t("it.purposesHint", { max: PURPOSE_MAX })}
                   </p>
                 </div>
                 <TFBadge tone="brand" className="shrink-0">
@@ -413,19 +418,19 @@ export default function MeInterestsPage() {
                 onClick={() => void savePurposes()}
                 disabled={saving !== null && saving !== "purposes"}
                 loading={saving === "purposes"}
-                loadingLabel="保存中…"
-                aria-label="保存交友目的"
+                loadingLabel={t("it.saving")}
+                aria-label={t("it.savePurposes")}
               >
-                保存交友目的
+                {t("it.savePurposes")}
               </TFButton>
             </section>
 
             <section className="mt-5 rounded-card border border-border bg-surface p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-ui font-semibold text-content">想认识的国家/地区</p>
+                  <p className="text-ui font-semibold text-content">{t("it.countriesHeading")}</p>
                   <p className="mt-0.5 text-caption leading-4 text-content-muted">
-                    可留空，最多 {COUNTRY_MAX} 个。
+                    {t("it.countriesHint", { max: COUNTRY_MAX })}
                   </p>
                 </div>
                 <TFBadge tone="brand" className="shrink-0">
@@ -471,10 +476,10 @@ export default function MeInterestsPage() {
                 onClick={() => void saveCountries()}
                 disabled={saving !== null && saving !== "countries"}
                 loading={saving === "countries"}
-                loadingLabel="保存中…"
-                aria-label="保存想认识的国家地区"
+                loadingLabel={t("it.saving")}
+                aria-label={t("it.saveCountriesAria")}
               >
-                保存国家/地区
+                {t("it.saveCountries")}
               </TFButton>
             </section>
           </>
@@ -488,7 +493,7 @@ export default function MeInterestsPage() {
 
         <div className="mt-6">
           <TFButton variant="secondary" fullWidth href="/me">
-            返回我的
+            {t("it.back")}
           </TFButton>
         </div>
       </div>
