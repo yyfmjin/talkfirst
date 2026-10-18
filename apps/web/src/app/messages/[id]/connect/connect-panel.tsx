@@ -13,6 +13,7 @@ import {
 } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { useSession } from "@/lib/session";
+import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 
 type PlatformOption = { id: string; label: string };
@@ -55,6 +56,7 @@ export default function ConnectPanel({ conversationId }: { conversationId: strin
   // Who the viewer is decides whether a pending request is theirs to withdraw or
   // theirs to answer (see the pending list below).
   const { user } = useSession();
+  const { t } = useT();
   const [state, setState] = useState<ExchangeEligibility | null>(null);
   const [contacts, setContacts] = useState<SharedContact[]>([]);
   const [platforms, setPlatforms] = useState<PlatformOption[]>([]);
@@ -84,7 +86,7 @@ export default function ConnectPanel({ conversationId }: { conversationId: strin
           setContacts([]);
         }
       } catch (requestError) {
-        setError(requestError instanceof Error ? requestError.message : "加载失败");
+        setError(requestError instanceof Error ? requestError.message : t("cx.loadFailed"));
       } finally {
         setLoading(false);
       }
@@ -105,7 +107,7 @@ export default function ConnectPanel({ conversationId }: { conversationId: strin
         setContacts(shared.contacts);
       }
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "刷新失败");
+      setError(requestError instanceof Error ? requestError.message : t("cx.refreshFailed"));
     }
   }
 
@@ -130,7 +132,7 @@ export default function ConnectPanel({ conversationId }: { conversationId: strin
       setMessage("");
       await refresh();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "发送失败");
+      setError(requestError instanceof Error ? requestError.message : t("cx.sendFailed"));
     } finally {
       setActing(false);
     }
@@ -143,7 +145,7 @@ export default function ConnectPanel({ conversationId }: { conversationId: strin
       await apiFetch(`/exchange/${exchangeId}/respond`, { method: "POST", body: { action } });
       await refresh();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "操作失败");
+      setError(requestError instanceof Error ? requestError.message : t("cx.actionFailed"));
     } finally {
       setActing(false);
     }
@@ -156,7 +158,7 @@ export default function ConnectPanel({ conversationId }: { conversationId: strin
       await apiFetch(`/exchange/${exchangeId}/cancel`, { method: "POST" });
       await refresh();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "取消失败");
+      setError(requestError instanceof Error ? requestError.message : t("cx.cancelFailed"));
     } finally {
       setActing(false);
     }
@@ -164,15 +166,14 @@ export default function ConnectPanel({ conversationId }: { conversationId: strin
 
   return (
     <PhoneShell>
-      <ScreenHeader title="交换联系方式" backHref={`/messages/${conversationId}`} />
+      <ScreenHeader title={t("cx.title")} backHref={`/messages/${conversationId}`} />
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-2">
         <p className="text-ui leading-6 text-content-muted">
-          这还不是加好友，只是双方愿意继续保持联系。需要先聊天至少 {state?.requiredMessages ?? 5}{" "}
-          条消息，才能申请交换。
+          {t("cx.intro", { count: state?.requiredMessages ?? 5 })}
         </p>
 
         {loading ? (
-          <TFLoadingRegion label="正在加载交换状态">
+          <TFLoadingRegion label={t("cx.loading")}>
             <div className="mt-5 space-y-3">
               <TFRowSkeleton avatar={false} />
               <TFRowSkeleton avatar={false} />
@@ -187,14 +188,14 @@ export default function ConnectPanel({ conversationId }: { conversationId: strin
                 the numbers and lets the flag decide the wording. */}
             <TFCard tone="quiet" className="mt-5">
               <p className="text-caption leading-5 text-content-muted">
-                已聊天 {state.messageCount}/{state.requiredMessages} 条
-                {state.eligible ? " · 已满足交换门槛" : " · 继续聊聊再交换"}
+                {t("cx.progress", { count: state.messageCount, required: state.requiredMessages })}
+                {state.eligible ? t("cx.eligibleMet") : t("cx.continueChat")}
               </p>
             </TFCard>
 
             {state.exchanged.length > 0 ? (
               <section className="mt-5">
-                <h2 className="text-ui font-semibold text-content">已交换的联系方式</h2>
+                <h2 className="text-ui font-semibold text-content">{t("cx.exchangedHeading")}</h2>
                 <div className="mt-3 space-y-2">
                   {contacts.map((contact) => (
                     <div
@@ -202,7 +203,7 @@ export default function ConnectPanel({ conversationId }: { conversationId: strin
                       className="rounded-row border border-border bg-surface p-3.5"
                     >
                       <p className="text-ui font-medium text-content">
-                        {contact.nickname ?? "对方"} · {contact.label}
+                        {contact.nickname ?? t("cx.peer")} · {contact.label}
                       </p>
                       {/* `select-all` so a long-press selects the whole handle
                           instead of a character — this is the one string on the
@@ -211,7 +212,7 @@ export default function ConnectPanel({ conversationId }: { conversationId: strin
                     </div>
                   ))}
                   {contacts.length === 0 ? (
-                    <p className="text-caption text-content-muted">交换已完成，联系方式加载中。</p>
+                    <p className="text-caption text-content-muted">{t("cx.contactsLoading")}</p>
                   ) : null}
                 </div>
               </section>
@@ -219,7 +220,7 @@ export default function ConnectPanel({ conversationId }: { conversationId: strin
 
             {state.pending.length > 0 ? (
               <section className="mt-5 space-y-3">
-                <h2 className="text-ui font-semibold text-content">待处理的交换请求</h2>
+                <h2 className="text-ui font-semibold text-content">{t("cx.pendingHeading")}</h2>
                 {state.pending.map((item) => {
                   /**
                    * FIX (audit): 「取消我发起的请求」 was rendered for EVERY
@@ -237,7 +238,7 @@ export default function ConnectPanel({ conversationId }: { conversationId: strin
                   return (
                     <TFCard key={item.id}>
                       <p className="text-ui font-medium text-content">
-                        {mine ? "你" : (item.requester?.nickname ?? "对方")} 申请交换{" "}
+                        {mine ? t("cx.you") : (item.requester?.nickname ?? t("cx.peer"))} {t("cx.requestAsk")}{" "}
                         {item.platforms.map((platform) => platform.label).join("、")}
                       </p>
                       {item.message ? (
@@ -246,7 +247,7 @@ export default function ConnectPanel({ conversationId }: { conversationId: strin
                       {mine ? (
                         <>
                           <p className="mt-3 text-caption leading-5 text-content-muted">
-                            等待对方确认，你可以先撤回。
+                            {t("cx.waitingPeer")}
                           </p>
                           <TFButton
                             variant="ghost"
@@ -256,9 +257,9 @@ export default function ConnectPanel({ conversationId }: { conversationId: strin
                             onClick={() => void cancel(item.id)}
                             disabled={acting}
                             loading={acting}
-                            loadingLabel="撤回中…"
+                            loadingLabel={t("cx.withdrawing")}
                           >
-                            撤回我发起的请求
+                            {t("cx.withdraw")}
                           </TFButton>
                         </>
                       ) : (
@@ -270,18 +271,18 @@ export default function ConnectPanel({ conversationId }: { conversationId: strin
                               disabled={acting}
                               onClick={() => void respond(item.id, "reject")}
                             >
-                              拒绝
+                              {t("cx.reject")}
                             </TFButton>
                             <TFButton
                               className="flex-[2]"
                               disabled={acting}
                               onClick={() => void respond(item.id, "accept")}
                             >
-                              接受并交换
+                              {t("cx.accept")}
                             </TFButton>
                           </div>
                           <p className="mt-2 text-caption leading-4 text-content-subtle">
-                            只有发起方可以撤回；对方发起的请求由你决定接受或拒绝。
+                            {t("cx.onlySender")}
                           </p>
                         </>
                       )}
@@ -293,9 +294,9 @@ export default function ConnectPanel({ conversationId }: { conversationId: strin
 
             {state.exchanged.length === 0 && state.pending.length === 0 ? (
               <section className="mt-5">
-                <h2 className="text-ui font-semibold text-content">选择要交换的平台（最多 3 个）</h2>
+                <h2 className="text-ui font-semibold text-content">{t("cx.selectHeading")}</h2>
                 <fieldset className="mt-3 flex flex-wrap gap-2">
-                  <legend className="sr-only">选择要交换的平台</legend>
+                  <legend className="sr-only">{t("cx.selectLegend")}</legend>
                   {platforms.map((platform) => {
                     const owned = state.myAccounts.some((account) => account.platform === platform.id);
                     return (
@@ -304,10 +305,10 @@ export default function ConnectPanel({ conversationId }: { conversationId: strin
                         selected={selected.includes(platform.id)}
                         onClick={() => toggle(platform.id)}
                         className={cn("max-w-full", !owned && "opacity-60")}
-                        title={owned ? platform.label : `${platform.label}（需先在「我的」绑定）`}
+                        title={owned ? platform.label : t("cx.needsBinding", { platform: platform.label })}
                       >
                         <span className="truncate">{platform.label}</span>
-                        {owned ? null : <span className="shrink-0 text-overline">· 未绑定</span>}
+                        {owned ? null : <span className="shrink-0 text-overline">{t("cx.unbound")}</span>}
                       </TFChip>
                     );
                   })}
@@ -315,7 +316,7 @@ export default function ConnectPanel({ conversationId }: { conversationId: strin
 
                 <div className="mt-3">
                   <label htmlFor="exchange-message" className="mb-1.5 block text-caption font-medium text-content-muted">
-                    留言（可选）
+                    {t("cx.messageLabel")}
                   </label>
                   <TFTextarea
                     id="exchange-message"
@@ -323,7 +324,7 @@ export default function ConnectPanel({ conversationId }: { conversationId: strin
                     onChange={(event) => setMessage(event.target.value)}
                     maxLength={200}
                     rows={2}
-                    placeholder="可选留言，最多 200 字"
+                    placeholder={t("cx.messagePlaceholder")}
                   />
                 </div>
 
@@ -340,14 +341,14 @@ export default function ConnectPanel({ conversationId }: { conversationId: strin
                   onClick={() => void submit()}
                   disabled={selected.length === 0 || acting || !state.eligible}
                   loading={acting && state.eligible && selected.length > 0}
-                  loadingLabel="申请中…"
+                  loadingLabel={t("cx.applying")}
                 >
                   {state.eligible
-                    ? "申请交换"
-                    : `还需 ${Math.max((state.requiredMessages ?? 5) - state.messageCount, 0)} 条消息`}
+                    ? t("cx.apply")
+                    : t("cx.needMore", { count: Math.max((state.requiredMessages ?? 5) - state.messageCount, 0) })}
                 </TFButton>
                 <p className="mt-2 text-caption leading-4 text-content-subtle">
-                  申请前请先在「我的」里绑定对应平台账号，对方接受后双方互相可见。
+                  {t("cx.bindingNote")}
                 </p>
               </section>
             ) : null}
