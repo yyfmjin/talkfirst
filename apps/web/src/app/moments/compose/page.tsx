@@ -90,16 +90,18 @@ type MediaItem = {
 
 type VisibilityValue = "everyone" | "connections" | "private";
 
-const VISIBILITY_OPTIONS: Array<{ value: VisibilityValue; label: string; hint: string; icon: typeof Globe }> = [
-  { value: "everyone", label: "公开", hint: "任何人都能看到这条动态", icon: Globe },
-  { value: "connections", label: "仅好友", hint: "只有互相连接的朋友能看到", icon: Users },
-  { value: "private", label: "仅自己", hint: "只有你自己能看到", icon: Lock },
+import { useT, type MsgKey } from "@/lib/i18n";
+
+const VISIBILITY_OPTIONS: Array<{ value: VisibilityValue; labelKey: MsgKey; hintKey: MsgKey; icon: typeof Globe }> = [
+  { value: "everyone", labelKey: "cm.vPublic", hintKey: "cm.vPublicHint", icon: Globe },
+  { value: "connections", labelKey: "cm.vFriends", hintKey: "cm.vFriendsHint", icon: Users },
+  { value: "private", labelKey: "cm.vPrivate", hintKey: "cm.vPrivateHint", icon: Lock },
 ];
 
-const VISIBILITY_LABEL: Record<VisibilityValue, string> = {
-  everyone: "公开",
-  connections: "仅好友",
-  private: "仅自己",
+const VISIBILITY_LABEL: Record<VisibilityValue, MsgKey> = {
+  everyone: "cm.vPublic",
+  connections: "cm.vFriends",
+  private: "cm.vPrivate",
 };
 
 const HOT_TOPICS = ["旅行", "美食", "音乐", "游戏", "摄影", "电影", "学习", "运动"];
@@ -122,6 +124,7 @@ function formatBytes(bytes: number) {
 }
 
 export default function ComposePage() {
+  const { t } = useT();
   const router = useRouter();
   const { user } = useSession();
 
@@ -212,7 +215,7 @@ export default function ComposePage() {
         } catch (uploadError) {
           patchItem(item.id, {
             status: "error",
-            error: friendlyErrorMessage(uploadError, "上传失败"),
+            error: friendlyErrorMessage(uploadError, t("cm.uploadFailed")),
           });
         } finally {
           inflight.current.delete(item.id);
@@ -274,7 +277,7 @@ export default function ComposePage() {
   const dirty = hasContent || items.length > 0 || tags.length > 0 || location.trim().length > 0;
   const canPublish = !publishing && (hasContent || items.length > 0);
 
-  const submitterName = user?.nickname?.trim() || "我";
+  const submitterName = user?.nickname?.trim() || t("cm.me");
   const avatarUrl = user?.avatarUrl ?? null;
 
   function rememberTags(next: string[]) {
@@ -294,28 +297,28 @@ export default function ComposePage() {
     for (const file of Array.from(list)) {
       if (kind === "image") {
         if (next.filter((item) => item.kind === "image").length >= MAX_IMAGES) {
-          setError(`最多添加 ${MAX_IMAGES} 张照片`);
+          setError(t("cm.maxImages", { max: MAX_IMAGES }));
           break;
         }
         if (!IMAGE_MIME.includes(file.type)) {
-          setError("照片仅支持 jpg / png / webp");
+          setError(t("cm.imageType"));
           continue;
         }
         if (file.size > MAX_IMAGE_BYTES) {
-          setError(`照片不能超过 ${formatBytes(MAX_IMAGE_BYTES)}`);
+          setError(t("cm.imageTooBig", { size: formatBytes(MAX_IMAGE_BYTES) }));
           continue;
         }
       } else {
         if (next.some((item) => item.kind === "video")) {
-          setError("最多添加 1 个视频");
+          setError(t("cm.maxVideo"));
           break;
         }
         if (!VIDEO_MIME.includes(file.type)) {
-          setError("视频仅支持 mp4 / webm / mov");
+          setError(t("cm.videoType"));
           continue;
         }
         if (file.size > MAX_VIDEO_BYTES) {
-          setError(`视频不能超过 ${formatBytes(MAX_VIDEO_BYTES)}`);
+          setError(t("cm.videoTooBig", { size: formatBytes(MAX_VIDEO_BYTES) }));
           continue;
         }      }
       const item: MediaItem = {
@@ -380,7 +383,7 @@ export default function ComposePage() {
       await apiFetch("/moments/settings", { method: "PATCH", body: { visibleTo: value } });
     } catch (requestError) {
       setVisibleTo(previous);
-      setError(friendlyErrorMessage(requestError, "可见范围保存失败，请重试。"));
+      setError(friendlyErrorMessage(requestError, t("cm.visibilitySaveFailed")));
     } finally {
       setSavingVisibility(false);
     }
@@ -390,7 +393,7 @@ export default function ComposePage() {
     if (!canPublish) return;
     setError("");
     if (itemsRef.current.some((item) => item.status === "error")) {
-      setError("有媒体上传失败，请重试或删除后再发布。");
+      setError(t("cm.uploadFailedBlock"));
       return;
     }
     setPublishing(true);
@@ -399,7 +402,7 @@ export default function ComposePage() {
       if (pending.length > 0) await Promise.all(pending);
 
       if (itemsRef.current.some((item) => item.status === "error")) {
-        setError("有媒体上传失败，请重试或删除后再发布。");
+        setError(t("cm.uploadFailedBlock"));
         setPublishing(false);
         return;
       }
@@ -417,7 +420,7 @@ export default function ComposePage() {
         (item) => item.status === "uploading" || item.status === "processing",
       );
       if (unfinished.length > 0) {
-        setError("还有媒体正在处理，请稍候再发布。");
+        setError(t("cm.stillProcessing"));
         setPublishing(false);
         return;
       }
@@ -461,7 +464,7 @@ export default function ComposePage() {
 
       router.push("/moments");
     } catch (requestError) {
-      setError(friendlyErrorMessage(requestError, "发布失败，请稍后再试。"));
+      setError(friendlyErrorMessage(requestError, t("cm.publishFailed")));
       setPublishing(false);
     }
   }
@@ -493,7 +496,7 @@ export default function ComposePage() {
 
   return (
     <PhoneShell>
-      <ScreenHeader title="发布动态" backHref="/moments" onBack={handleBack} />
+      <ScreenHeader title={t("cm.title")} backHref="/moments" onBack={handleBack} />
 
       <div className="relative flex min-h-0 flex-1 flex-col">
         <div className="tf-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6 pt-3">
@@ -513,10 +516,10 @@ export default function ComposePage() {
                 type="button"
                 data-testid="moment-visibility"
                 onClick={() => setSheet("visibility")}
-                aria-label="谁可以看到"
+                aria-label={t("cm.whoCanSee")}
                 className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-[#F1F3FF] px-2.5 py-0.5 text-[11px] font-medium text-[#6572D8]"
               >
-                {VISIBILITY_LABEL[visibleTo]}
+                {t(VISIBILITY_LABEL[visibleTo])}
                 <span className="text-[9px]">▼</span>
               </button>
             </div>
@@ -527,10 +530,10 @@ export default function ComposePage() {
             ref={textareaRef}
             value={content}
             onChange={(event) => setContent(event.target.value)}
-            placeholder="分享这一刻，或者说点什么……"
+            placeholder={t("cm.placeholder")}
             maxLength={MAX_CONTENT}
             rows={4}
-            aria-label="动态内容"
+            aria-label={t("cm.contentAria")}
             data-testid="moment-content"
             className="mt-4 max-h-[220px] min-h-[7rem] w-full resize-none overflow-y-auto bg-transparent text-[15px] leading-7 outline-none placeholder:text-muted/70"
           />
@@ -557,18 +560,18 @@ export default function ComposePage() {
                       <StatusOverlay item={item} />
                       <div className="absolute left-1 top-1 flex gap-1">
                         {index > 0 ? (
-                          <IconButton label="前移" onClick={() => moveItem(item.id, -1)}>
+                          <IconButton label={t("cm.moveEarlier")} onClick={() => moveItem(item.id, -1)}>
                             <ArrowLeft size={13} />
                           </IconButton>
                         ) : null}
                         {index < images.length - 1 ? (
-                          <IconButton label="后移" onClick={() => moveItem(item.id, 1)}>
+                          <IconButton label={t("cm.moveLater")} onClick={() => moveItem(item.id, 1)}>
                             <ArrowRight size={13} />
                           </IconButton>
                         ) : null}
                       </div>
                       <div className="absolute right-1 top-1">
-                        <IconButton label="删除媒体" onClick={() => removeItem(item.id)}>
+                        <IconButton label={t("cm.removeMedia")} onClick={() => removeItem(item.id)}>
                           <Trash2 size={13} />
                         </IconButton>
                       </div>
@@ -580,7 +583,7 @@ export default function ComposePage() {
                           className="absolute bottom-1 left-1 inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-[10px] text-[#6572D8] shadow"
                         >
                           <RefreshCw size={11} />
-                          重试
+                          {t("cm.retry")}
                         </button>
                       ) : null}
                     </div>
@@ -598,7 +601,7 @@ export default function ComposePage() {
             className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line py-3 text-[13px] text-[#6572D8] transition active:scale-[0.99] disabled:opacity-50"
           >
             <ImagePlus size={16} />
-            添加照片/视频
+            {t("cm.addMedia")}
           </button>
 
           <input
@@ -608,7 +611,7 @@ export default function ComposePage() {
             accept={IMAGE_MIME.join(",")}
             multiple
             className="sr-only"
-            aria-label="选择照片"
+            aria-label={t("cm.choosePhotos")}
             onChange={(event) => {
               addFiles(event.target.files, "image");
               event.target.value = "";
@@ -620,7 +623,7 @@ export default function ComposePage() {
             type="file"
             accept={VIDEO_MIME.join(",")}
             className="sr-only"
-            aria-label="选择视频"
+            aria-label={t("cm.chooseVideo")}
             onChange={(event) => {
               addFiles(event.target.files, "video");
               event.target.value = "";
@@ -637,7 +640,7 @@ export default function ComposePage() {
               className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-[12px] text-[#6572D8]"
             >
               <Hash size={13} />
-              添加话题
+              {t("cm.addTopic")}
             </button>
 
             {tags.length > 0 ? (
@@ -649,7 +652,7 @@ export default function ComposePage() {
                     className="inline-flex items-center gap-1 rounded-full bg-[#F1F3FF] px-2.5 py-1 text-[11px] text-[#6572D8]"
                   >
                     #{tag}
-                    <button type="button" aria-label={`移除话题 ${tag}`} onClick={() => toggleTag(tag)}>
+                    <button type="button" aria-label={t("cm.removeTopic", { tag })} onClick={() => toggleTag(tag)}>
                       <X size={11} />
                     </button>
                   </span>
@@ -662,8 +665,8 @@ export default function ComposePage() {
                 <input
                   value={topicQuery}
                   onChange={(event) => setTopicQuery(event.target.value)}
-                  placeholder="搜索或输入话题，如 旅行"
-                  aria-label="搜索话题"
+                  placeholder={t("cm.topicPlaceholder")}
+                  aria-label={t("cm.topicSearchAria")}
                   data-testid="moment-topic-input"
                   className="h-9 w-full rounded-xl border border-line px-3 text-[12px] outline-none focus:ring-2 focus:ring-indigo-200"
                 />
@@ -677,11 +680,11 @@ export default function ComposePage() {
                     }}
                     className="mt-2 text-[12px] text-[#6572D8]"
                   >
-                    使用「#{topicQuery.trim().replace(/^#+/, "")}」
+                    {t("cm.useTopic", { topic: topicQuery.trim().replace(/^#+/, "") })}
                   </button>
                 ) : null}
                 {recentTags.length > 0 && !topicQuery ? (
-                  <p className="mt-3 text-[11px] text-muted">最近使用</p>
+                  <p className="mt-3 text-[11px] text-muted">{t("cm.recent")}</p>
                 ) : null}
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {filteredTopics.map((tag) => (
@@ -709,15 +712,15 @@ export default function ComposePage() {
                 <input
                   value={location}
                   onChange={(event) => setLocation(event.target.value)}
-                  placeholder="你在哪里？"
+                  placeholder={t("cm.locationPlaceholder")}
                   maxLength={40}
-                  aria-label="位置"
+                  aria-label={t("cm.locationAria")}
                   data-testid="moment-location-input"
                   className="min-w-0 flex-1 bg-transparent outline-none"
                 />
                 <button
                   type="button"
-                  aria-label="清除位置"
+                  aria-label={t("cm.clearLocation")}
                   onClick={() => {
                     setLocation("");
                     setLocationOpen(false);
@@ -734,7 +737,7 @@ export default function ComposePage() {
                 className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-[12px] text-[#6572D8]"
               >
                 <MapPin size={13} />
-                添加位置
+                {t("cm.addLocation")}
               </button>
             )}
           </div>
@@ -755,7 +758,7 @@ export default function ComposePage() {
               className="mt-3 rounded-2xl bg-surface-sunken p-3"
             >
               <p className="text-[12px] leading-5 text-content-muted">
-                已提交，正在审核中。审核通过后其他成员才能看到，你可以先返回动态页。
+                {t("cm.pendingBody")}
               </p>
               <button
                 type="button"
@@ -763,7 +766,7 @@ export default function ComposePage() {
                 onClick={() => router.push("/moments")}
                 className="mt-2 text-[12px] font-medium text-brand-600 underline"
               >
-                返回动态
+                {t("cm.pendingLeave")}
               </button>
             </div>
           ) : null}
@@ -776,17 +779,17 @@ export default function ComposePage() {
             disabled={!canPublish}
             className="shadow-lg"
           >
-            {publishing ? "发布中…" : "发布"}
+            {publishing ? t("cm.publishing") : t("cm.publish")}
           </GradientButton>
         </div>
 
         {/* Media source picker. */}
-        <Sheet open={sheet === "media"} onClose={() => setSheet(null)} title="添加照片/视频">
+        <Sheet open={sheet === "media"} onClose={() => setSheet(null)} title={t("cm.addMedia")}>
           <div className="space-y-2">
             <SheetOption
               icon={<ImagePlus size={17} />}
-              label="照片"
-              hint="jpg / png / webp，最多 9 张"
+              label={t("cm.photo")}
+              hint={t("cm.photoHint", { max: MAX_IMAGES })}
               onClick={() => {
                 setSheet(null);
                 imageInputRef.current?.click();
@@ -794,10 +797,10 @@ export default function ComposePage() {
             />
             <SheetOption
               icon={<Play size={17} />}
-              label="视频"
+              label={t("cm.video")}
               /* The old copy said 「不能超过5MB」. Both numbers are stated so the
                  user is not surprised that a 90MB pick becomes a ~15MB post. */
-              hint={`mp4 / webm / mov，最大 ${formatBytes(MAX_VIDEO_BYTES)}，上传后自动压缩到约 ${VIDEO_TARGET_LABEL}`}
+              hint={t("cm.videoHint", { size: formatBytes(MAX_VIDEO_BYTES), target: VIDEO_TARGET_LABEL })}
               disabled={Boolean(video)}
               onClick={() => {
                 setSheet(null);
@@ -808,7 +811,7 @@ export default function ComposePage() {
         </Sheet>
 
         {/* Visibility picker. */}
-        <Sheet open={sheet === "visibility"} onClose={() => setSheet(null)} title="谁可以看到">
+        <Sheet open={sheet === "visibility"} onClose={() => setSheet(null)} title={t("cm.whoCanSee")}>
           <div className="space-y-2">
             {VISIBILITY_OPTIONS.map((option) => {
               const Icon = option.icon;
@@ -830,8 +833,8 @@ export default function ComposePage() {
                     <Icon size={16} />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-medium">{option.label}</span>
-                    <span className="block text-[11px] text-muted">{option.hint}</span>
+                    <span className="block text-[13px] font-medium">{t(option.labelKey)}</span>
+                    <span className="block text-[11px] text-muted">{t(option.hintKey)}</span>
                   </span>
                   {active ? <Check size={16} className="shrink-0 text-[#6572D8]" /> : null}
                 </button>
@@ -845,13 +848,13 @@ export default function ComposePage() {
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="放弃这条动态"
+            aria-label={t("cm.leaveDialog")}
             data-testid="moment-leave-dialog"
             className="absolute inset-0 z-50 grid place-items-center overflow-y-auto bg-black/30 p-5"
           >
             <div className="w-full max-w-[320px] rounded-3xl bg-white p-5 text-center shadow-xl">
-              <p className="text-[15px] font-semibold">放弃这条动态？</p>
-              <p className="mt-1 text-[12px] leading-5 text-muted">你编辑的内容还没有发布，离开后将不会保存。</p>
+              <p className="text-[15px] font-semibold">{t("cm.leaveTitle")}</p>
+              <p className="mt-1 text-[12px] leading-5 text-muted">{t("cm.leaveBody")}</p>
               <div className="mt-4 flex gap-2">
                 <button
                   type="button"
@@ -859,7 +862,7 @@ export default function ComposePage() {
                   onClick={() => setLeaveOpen(false)}
                   className="h-10 min-w-0 flex-1 rounded-full border border-line text-[13px] text-[#3D4663]"
                 >
-                  继续编辑
+                  {t("cm.keepEditing")}
                 </button>
                 <button
                   type="button"
@@ -870,7 +873,7 @@ export default function ComposePage() {
                   }}
                   className="h-10 min-w-0 flex-1 rounded-full bg-[#6572D8] text-[13px] text-white"
                 >
-                  放弃
+                  {t("cm.discard")}
                 </button>
               </div>
             </div>
@@ -896,6 +899,7 @@ function tileClasses(count: number, index: number) {
 }
 
 function StatusOverlay({ item }: { item: MediaItem }) {
+  const { t } = useT();
   /**
    * Two different waits, two different labels.
    *
@@ -912,7 +916,7 @@ function StatusOverlay({ item }: { item: MediaItem }) {
         className="absolute inset-0 grid place-items-center gap-1 bg-black/35 text-white"
       >
         <Loader2 size={20} className="animate-spin motion-reduce:animate-none" />
-        <span className="text-[11px]">正在上传…</span>
+        <span className="text-[11px]">{t("cm.uploading")}</span>
       </span>
     );
   }
@@ -923,7 +927,7 @@ function StatusOverlay({ item }: { item: MediaItem }) {
         className="absolute inset-0 grid place-items-center gap-1 bg-black/45 px-2 text-center text-white"
       >
         <Loader2 size={20} className="animate-spin motion-reduce:animate-none" />
-        <span className="text-[11px]">正在处理视频…</span>
+        <span className="text-[11px]">{t("cm.processing")}</span>
       </span>
     );
   }
@@ -933,7 +937,7 @@ function StatusOverlay({ item }: { item: MediaItem }) {
         data-testid="moment-media-error"
         className="absolute inset-0 grid place-items-center bg-black/45 px-2 text-center text-[10px] text-white"
       >
-        上传失败
+        {t("cm.uploadFailed")}
       </span>
     );
   }
@@ -941,6 +945,7 @@ function StatusOverlay({ item }: { item: MediaItem }) {
 }
 
 function VideoTile({ item, onRemove, onRetry }: { item: MediaItem; onRemove: () => void; onRetry: () => void }) {
+  const { t } = useT();
   return (
     <div className="relative overflow-hidden rounded-2xl bg-black" data-testid="moment-media-video">
       <video src={item.previewUrl} className="aspect-video w-full object-cover" muted playsInline preload="metadata" />
@@ -951,7 +956,7 @@ function VideoTile({ item, onRemove, onRetry }: { item: MediaItem; onRemove: () 
       </span>
       <StatusOverlay item={item} />
       <div className="absolute right-1 top-1">
-        <IconButton label="删除媒体" onClick={onRemove}>
+        <IconButton label={t("cm.removeMedia")} onClick={onRemove}>
           <Trash2 size={13} />
         </IconButton>
       </div>
@@ -963,7 +968,7 @@ function VideoTile({ item, onRemove, onRetry }: { item: MediaItem; onRemove: () 
           className="absolute bottom-1 left-1 inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-[10px] text-[#6572D8] shadow"
         >
           <RefreshCw size={11} />
-          重试
+          {t("cm.retry")}
         </button>
       ) : null}
     </div>
