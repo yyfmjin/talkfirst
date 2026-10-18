@@ -9,6 +9,7 @@ import { TFErrorState, TFLoadingRegion, TFSkeleton } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { connectionLabel, useChatSocket } from "@/lib/chat-socket";
 import { useSession } from "@/lib/session";
+import { useT } from "@/lib/i18n";
 import SafetyActions from "./safety-actions";
 import { cn } from "@/lib/cn";
 
@@ -29,6 +30,7 @@ export default function ChatDetailPage() {
   const params = useParams<{ id: string }>();
   const conversationId = Array.isArray(params.id) ? params.id[0] : params.id;
   const { user } = useSession();
+  const { t, locale } = useT();
   const {
     connectionState,
     messages: liveMessages,
@@ -90,7 +92,7 @@ export default function ChatDetailPage() {
       setLiveMessages((current) => current.filter((message) => message.id !== messageId));
     } catch (requestError) {
       // Inline banner: the thread stays on screen, only the action is reported.
-      setActionError(requestError instanceof Error ? requestError.message : "撤回失败");
+      setActionError(requestError instanceof Error ? requestError.message : t("mc.recallFailed"));
     } finally {
       setDeleting(null);
     }
@@ -109,13 +111,13 @@ export default function ChatDetailPage() {
     try {
       const result = await apiFetch<{ text: string; targetLang: string }>(
         `/messages/${messageId}/translate`,
-        { method: "POST", body: { targetLang: "zh" } },
+        { method: "POST", body: { targetLang: locale } },
       );
       setTranslations((current) => ({ ...current, [messageId]: result }));
     } catch (requestError) {
       setTranslationErrors((current) => ({
         ...current,
-        [messageId]: requestError instanceof Error ? requestError.message : "翻译失败",
+        [messageId]: requestError instanceof Error ? requestError.message : t("mc.translateFailed"),
       }));
     } finally {
       setTranslatingId(null);
@@ -143,7 +145,7 @@ export default function ChatDetailPage() {
         return [...normalized, ...liveOnly];
       });
     } catch (requestError) {
-      setLoadError(requestError instanceof Error ? requestError.message : "聊天加载失败");
+      setLoadError(requestError instanceof Error ? requestError.message : t("mc.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -193,7 +195,7 @@ export default function ChatDetailPage() {
         container.scrollTop = previousTop + (container.scrollHeight - previousHeight);
       });
     } catch (requestError) {
-      setActionError(requestError instanceof Error ? requestError.message : "更早的消息加载失败");
+      setActionError(requestError instanceof Error ? requestError.message : t("mc.olderFailed"));
     } finally {
       setLoadingOlder(false);
     }
@@ -293,18 +295,18 @@ export default function ChatDetailPage() {
     if (!file || !conversationId) return;
     setActionError("");
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      setActionError("只支持 jpg / png / webp 图片");
+      setActionError(t("mc.imageType"));
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setActionError("图片不能超过 5MB");
+      setActionError(t("mc.imageTooBig"));
       return;
     }
     try {
       const dataUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error("读取图片失败"));
+        reader.onerror = () => reject(new Error(t("mc.readImageFailed")));
         reader.readAsDataURL(file);
       });
       const uploaded = await apiFetch<{ imageUrl: string }>("/uploads/message-image", {
@@ -317,7 +319,7 @@ export default function ChatDetailPage() {
       });
       await loadHistory();
     } catch (requestError) {
-      setActionError(requestError instanceof Error ? requestError.message : "图片发送失败");
+      setActionError(requestError instanceof Error ? requestError.message : t("mc.imageSendFailed"));
     } finally {
       /*
        * `input.value` is cleared on every exit path. It used to be cleared
@@ -334,7 +336,7 @@ export default function ChatDetailPage() {
   return (
     <PhoneShell>
       <ScreenHeader
-        title="聊天"
+        title={t("mc.title")}
         backHref="/messages"
         action={
           /*
@@ -346,7 +348,7 @@ export default function ChatDetailPage() {
            */
           <SafetyActions
             peerId={peer?.id ?? null}
-            peerName={peer?.nickname ?? "对方"}
+            peerName={peer?.nickname ?? t("mc.peerFallback")}
             onRetry={() => void loadPeer()}
           />
         }
@@ -380,7 +382,7 @@ export default function ChatDetailPage() {
           </span>
           {peerOnline !== null ? (
             <span className="rounded-full bg-brand-50 px-2.5 py-1 text-brand-600">
-              {peerOnline ? "🟢 对方在线" : "对方离线"}
+              {peerOnline ? t("mc.online") : t("mc.offline")}
             </span>
           ) : null}
           {conversationId ? (
@@ -388,7 +390,7 @@ export default function ChatDetailPage() {
               href={`/messages/${conversationId}/connect`}
               className="rounded-full bg-brand-50 px-2.5 py-1 text-brand-600"
             >
-              🔗 交换联系方式
+              🔗 {t("mc.exchangeCta")}
             </a>
           ) : null}
         </div>
@@ -397,7 +399,7 @@ export default function ChatDetailPage() {
             three anonymous bars. `TFLoadingRegion` announces it for assistive tech,
             which the bare `animate-pulse` block did not. */}
         {loading ? (
-          <TFLoadingRegion label="正在加载消息记录">
+          <TFLoadingRegion label={t("mc.loading")}>
             <div className="mt-6 space-y-3">
               <TFSkeleton shape="block" className="h-10 w-2/3" />
               <div className="flex justify-end">
@@ -416,7 +418,7 @@ export default function ChatDetailPage() {
 
         {socketError ? (
           <p className="mt-3 rounded-row bg-warning-50 px-3 py-2 text-center text-caption leading-5 text-warning-800">
-            {socketError}（历史消息仍可用，实时推送重连中）
+            {socketError}{t("mc.socketHint")}
           </p>
         ) : null}
 
@@ -431,10 +433,10 @@ export default function ChatDetailPage() {
             <button
               type="button"
               onClick={() => setActionError("")}
-              aria-label="关闭错误提示"
+              aria-label={t("mc.closeErrorAria")}
               className="shrink-0 font-medium underline"
             >
-              关闭
+              {t("mc.close")}
             </button>
           </div>
         ) : null}
@@ -446,7 +448,7 @@ export default function ChatDetailPage() {
                 hand out contact details before both sides agreed. Warning colours
                 from the token scale; the copy is unchanged. */}
             <p className="sticky top-0 rounded-row bg-warning-50 px-3 py-2 text-center text-caption leading-4 text-warning-800">
-              ⚠️ 小心外部链接。请通过「交换联系方式」交换账号，不要直接在聊天里发送。
+              {t("mc.safetyBanner")}
             </p>
             {/* FEATURE (post-audit): the thread used to stop at the newest 50
                 messages with no way to read earlier ones. */}
@@ -458,7 +460,7 @@ export default function ChatDetailPage() {
                   disabled={loadingOlder}
                   className="rounded-full border border-border bg-surface px-4 py-2 text-caption text-content transition-colors duration-instant hover:bg-surface-sunken disabled:opacity-60"
                 >
-                  {loadingOlder ? "加载中…" : "加载更早的消息"}
+                  {loadingOlder ? t("mc.loadingOlder") : t("mc.loadOlder")}
                 </button>
               </div>
             ) : null}
@@ -479,10 +481,10 @@ export default function ChatDetailPage() {
               );
             })}
             {typingUserIds.length > 0 ? (
-              <p className="text-caption text-content-muted">对方正在输入…</p>
+              <p className="text-caption text-content-muted">{t("mc.typing")}</p>
             ) : null}
             {liveMessages.length === 0 ? (
-              <p className="pt-10 text-center text-ui text-content-muted">还没有消息，打个招呼吧。</p>
+              <p className="pt-10 text-center text-ui text-content-muted">{t("mc.empty")}</p>
             ) : null}
             <div ref={bottomRef} />
           </div>
@@ -511,8 +513,8 @@ export default function ChatDetailPage() {
           <label
             data-testid="chat-attach"
             className="grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-full border border-border bg-surface-sunken text-content-muted transition-colors duration-instant hover:bg-neutral-200 focus-within:ring-2 focus-within:ring-brand-300"
-            aria-label="发送图片"
-            title="发送图片"
+            aria-label={t("mc.sendImage")}
+            title={t("mc.sendImage")}
           >
             <ImageIcon className="h-[18px] w-[18px]" aria-hidden="true" />
             <input
@@ -520,7 +522,7 @@ export default function ChatDetailPage() {
               type="file"
               accept="image/jpeg,image/png,image/webp"
               className="sr-only"
-              aria-label="选择图片"
+              aria-label={t("mc.chooseImage")}
               onChange={(event) => void sendImage(event.target.files?.[0])}
             />
           </label>
@@ -538,8 +540,8 @@ export default function ChatDetailPage() {
                 send();
               }
             }}
-            placeholder="输入消息…"
-            aria-label="输入聊天消息"
+            placeholder={t("mc.placeholder")}
+            aria-label={t("mc.inputAria")}
             data-testid="chat-input"
             maxLength={2000}
             className="max-h-[120px] min-h-11 min-w-0 flex-1 resize-none rounded-2xl border border-border bg-surface-sunken px-4 py-2.5 text-ui leading-5 text-content transition-colors duration-instant placeholder:text-content-subtle focus:border-brand-500 focus:bg-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-200"
@@ -548,8 +550,8 @@ export default function ChatDetailPage() {
             type="button"
             onClick={send}
             disabled={!draft.trim()}
-            aria-label="发送"
-            title="发送"
+            aria-label={t("mc.send")}
+            title={t("mc.send")}
             data-testid="chat-send"
             className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-500 text-white transition-[background-color,transform] duration-instant ease-out hover:bg-brand-600 active:scale-95 disabled:cursor-not-allowed disabled:bg-brand-200 disabled:active:scale-100 motion-reduce:transition-none"
           >
@@ -581,6 +583,7 @@ function ChatBubble({
   onDelete: (id: string) => void;
   deleting: string | null;
 }) {
+  const { t } = useT();
   if (message.type === "SYSTEM") {
     return (
       /* A system note is neither "mine" nor "theirs", so it gets the neutral
@@ -597,7 +600,7 @@ function ChatBubble({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={message.content}
-          alt="聊天图片"
+          alt={t("mc.imageAlt")}
           className="block h-auto w-full rounded-row border border-border object-cover"
           loading="lazy"
         />
@@ -607,7 +610,7 @@ function ChatBubble({
             onClick={() => onDelete(message.id)}
             className="mt-1 rounded-control px-1 text-overline text-brand-600 underline transition-colors duration-instant hover:bg-surface-sunken"
           >
-            {deleting === message.id ? "撤回中…" : "撤回"}
+            {deleting === message.id ? t("mc.deletingRecall") : t("mc.recall")}
           </button>
         ) : null}
       </div>
@@ -650,7 +653,7 @@ function ChatBubble({
               translatingId !== null && translatingId !== message.id ? "opacity-50" : "",
             )}
           >
-            {translatingId === message.id ? "翻译中…" : translated ? "重新翻译" : "翻译"}
+            {translatingId === message.id ? t("mc.translating") : translated ? t("mc.retranslate") : t("mc.translate")}
           </button>
           {mine && message.type !== "SYSTEM" ? (
             <button
@@ -658,7 +661,7 @@ function ChatBubble({
               onClick={() => onDelete(message.id)}
               className="rounded-control px-1 text-overline text-white/80 underline transition-colors duration-instant hover:bg-white/10"
             >
-              {deleting === message.id ? "撤回中…" : "撤回"}
+              {deleting === message.id ? t("mc.deletingRecall") : t("mc.recall")}
             </button>
           ) : null}
         </span>
