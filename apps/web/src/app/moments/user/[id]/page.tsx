@@ -22,6 +22,7 @@ import {
 import { ProfilePreviewCard } from "@/components/profile-preview-card";
 import { apiFetch } from "@/lib/api";
 import { formatCount, relativeTime } from "@/lib/moments";
+import { useT } from "@/lib/i18n";
 
 type Comment = {
   id: string;
@@ -70,6 +71,7 @@ export default function UserMomentsPage() {
   const [draft, setDraft] = useState("");
   const [sharing, setSharing] = useState(false);
   const [previewUserId, setPreviewUserId] = useState<string | null>(null);
+  const { t } = useT();
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -79,7 +81,7 @@ export default function UserMomentsPage() {
       const result = await apiFetch<Detail>(`/moments/user/${id}${platform ? `?platform=${platform}` : ""}`);
       setData(result);
     } catch (requestError) {
-      setLoadError(requestError instanceof Error ? requestError.message : "加载失败");
+      setLoadError(requestError instanceof Error ? requestError.message : t("mu.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -106,7 +108,7 @@ export default function UserMomentsPage() {
           : current,
       );
     } catch (requestError) {
-      setActionError(requestError instanceof Error ? requestError.message : "点赞失败");
+      setActionError(requestError instanceof Error ? requestError.message : t("mu.likeFailed"));
     }
   }
 
@@ -131,7 +133,7 @@ export default function UserMomentsPage() {
         // The old `[]` fallback made a failed request look like an empty thread.
         setCommentErrors((current) => ({
           ...current,
-          [momentId]: requestError instanceof Error ? requestError.message : "评论加载失败",
+          [momentId]: requestError instanceof Error ? requestError.message : t("mu.commentsLoadFailed"),
         }));
       }
     }
@@ -151,7 +153,7 @@ export default function UserMomentsPage() {
       );
       setDraft("");
     } catch (requestError) {
-      setActionError(requestError instanceof Error ? requestError.message : "评论失败");
+      setActionError(requestError instanceof Error ? requestError.message : t("mu.commentFailed"));
     }
   }
 
@@ -159,7 +161,7 @@ export default function UserMomentsPage() {
     const url = window.location.href;
     try {
       if (navigator.share) {
-        await navigator.share({ title: "TalkFirst 个人动态", url });
+        await navigator.share({ title: t("mu.shareTitle"), url });
         return;
       }
       await navigator.clipboard.writeText(url);
@@ -175,18 +177,18 @@ export default function UserMomentsPage() {
       <div className="z-10 grid shrink-0 grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-border bg-surface/95 px-2 py-1 backdrop-blur">
         <Link
           href="/moments"
-          aria-label="返回动态"
+          aria-label={t("mu.back")}
           className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-content transition-colors duration-instant hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
         >
           <ArrowLeft size={22} aria-hidden="true" />
         </Link>
         <p className="min-w-0 truncate text-center text-heading font-semibold text-content">
-          {data?.author.nickname ?? "个人动态"}
+          {data?.author.nickname ?? t("mu.titleFallback")}
         </p>
         <button
           type="button"
           onClick={() => void shareProfile()}
-          aria-label="分享主页"
+          aria-label={t("mu.shareAria")}
           className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-content-muted transition-colors duration-instant hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
         >
           <Share2 size={18} aria-hidden="true" />
@@ -195,7 +197,7 @@ export default function UserMomentsPage() {
 
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-4">
         {loading ? (
-          <TFLoadingRegion label="正在加载动态">
+          <TFLoadingRegion label={t("mu.loading")}>
             <div className="space-y-3">
               <TFRowSkeleton />
               <TFSkeleton shape="block" className="h-64 w-full" />
@@ -217,10 +219,10 @@ export default function UserMomentsPage() {
             <button
               type="button"
               onClick={() => setActionError("")}
-              aria-label="关闭错误提示"
+              aria-label={t("mu.closeError")}
               className="shrink-0 font-medium underline"
             >
-              关闭
+              {t("mu.close")}
             </button>
           </div>
         ) : null}
@@ -234,7 +236,7 @@ export default function UserMomentsPage() {
                   <button
                     type="button"
                     onClick={() => setPreviewUserId(id ?? null)}
-                    aria-label={`查看 ${data.author.nickname ?? "用户"} 的资料卡`}
+                    aria-label={t("mu.viewCard", { name: data.author.nickname ?? t("mu.userFallback") })}
                     className="shrink-0"
                   >
                     <TFAvatar
@@ -246,7 +248,7 @@ export default function UserMomentsPage() {
                     />
                   </button>
                   <TFBadge tone="success" className="mb-1 shrink-0">
-                    {data.items.length} 条动态
+                    {data.items.length} {t("mu.countUnit")}
                   </TFBadge>
                 </div>
                 <p className="mt-2 flex items-center gap-1 text-heading font-semibold text-content">
@@ -255,23 +257,23 @@ export default function UserMomentsPage() {
                     onClick={() => setPreviewUserId(id ?? null)}
                     className="min-w-0 flex-1 truncate text-left"
                   >
-                    {data.author.nickname ?? "TalkFirst 用户"}
+                    {data.author.nickname ?? t("mu.talkfirstUser")}
                   </button>
                   <BadgeCheck size={16} className="shrink-0 text-brand-500" aria-hidden="true" />
                 </p>
                 <p className="mt-0.5 break-words text-caption leading-5 text-content-muted">
-                  {data.author.countryCode ?? "全球"} · {data.author.bio ?? "查看用户在其他社交平台的最新动态，了解对方的真实生活"}
+                  {data.author.countryCode ?? t("mu.countryFallback")} · {data.author.bio ?? t("mu.bioFallback")}
                 </p>
                 {sharing ? (
                   <p role="status" className="mt-1 text-caption text-success-600">
-                    链接已复制
+                    {t("mu.copied")}
                   </p>
                 ) : null}
               </div>
             </section>
 
             <div className="tf-scroll-x mt-4 flex gap-2 overflow-x-auto pb-1">
-              <FilterPill active={!platform} label={`全部 ${data.items.length}`} onClick={() => setPlatform("")} />
+              <FilterPill active={!platform} label={t("mu.allFilter", { count: data.items.length })} onClick={() => setPlatform("")} />
               {data.bindings.map((binding) => {
                 const count = data.items.filter((item) => item.platform === binding.platform).length;
                 return (
@@ -287,10 +289,10 @@ export default function UserMomentsPage() {
 
             {data.locked ? (
               <TFCard tone="quiet" className="mt-4 text-center">
-                <p className="text-ui font-medium text-content">对方设置了动态可见范围</p>
-                <p className="mt-1 text-caption leading-5 text-content-muted">成为连接后才能查看完整动态。</p>
+                <p className="text-ui font-medium text-content">{t("mu.lockedTitle")}</p>
+                <p className="mt-1 text-caption leading-5 text-content-muted">{t("mu.lockedBody")}</p>
                 <TFButton href="/discover" variant="secondary" className="mt-4" fullWidth>
-                  去认识更多朋友
+                  {t("mu.goDiscover")}
                 </TFButton>
               </TFCard>
             ) : null}
@@ -305,8 +307,8 @@ export default function UserMomentsPage() {
                       {item.platformName ?? item.platform} · {relativeTime(item.createdAt)}
                     </span>
                     {item.isDemo ? (
-                      <TFBadge tone="warning" title="示例内容，并非来自该平台的真实同步">
-                        示例
+                      <TFBadge tone="warning" title={t("mu.demoTitle")}>
+                        {t("mu.demoTag")}
                       </TFBadge>
                     ) : null}
                   </p>
@@ -325,14 +327,14 @@ export default function UserMomentsPage() {
                   ) : item.images.length === 1 ? (
                     <div className="relative mt-3 aspect-[4/3] overflow-hidden bg-surface-sunken">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={item.images[0]} alt="动态图片" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+                      <img src={item.images[0]} alt={t("mu.imageAlt")} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
                     </div>
                   ) : item.images.length > 1 ? (
                     <div className="tf-scroll-x mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1">
                       {item.images.map((src, index) => (
                         <div key={`${src}-${index}`} className="relative aspect-[4/3] w-[76%] shrink-0 snap-center overflow-hidden rounded-card bg-surface-sunken">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={src} alt={`动态图片${index + 1}`} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+                          <img src={src} alt={t("mu.imageAltN", { n: index + 1 })} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
                           <span className="absolute right-2 top-2 rounded-full bg-black/50 px-2 py-0.5 text-overline text-white">
                             {index + 1}/{item.images.length}
                           </span>
@@ -344,7 +346,7 @@ export default function UserMomentsPage() {
                     <button
                       type="button"
                       onClick={() => void toggleLike(item.id)}
-                      aria-label="点赞"
+                      aria-label={t("mu.like")}
                       aria-pressed={item.liked}
                       className={`flex min-h-9 items-center gap-1.5 rounded-full px-2.5 transition-colors duration-instant hover:bg-surface-sunken ${
                         item.liked ? "text-danger-500" : ""
@@ -356,7 +358,7 @@ export default function UserMomentsPage() {
                     <button
                       type="button"
                       onClick={() => void toggleComments(item.id)}
-                      aria-label="评论"
+                      aria-label={t("mu.comment")}
                       aria-expanded={commenting === item.id}
                       className="flex min-h-9 items-center gap-1.5 rounded-full px-2.5 transition-colors duration-instant hover:bg-surface-sunken"
                     >
@@ -373,7 +375,7 @@ export default function UserMomentsPage() {
                             onClick={() => setPreviewUserId(comment.user.id)}
                             className="text-left font-semibold"
                           >
-                            {comment.user.nickname ?? "用户"}{" "}
+                            {comment.user.nickname ?? t("mu.userFallback")}{" "}
                           </button>
                           {comment.content}
                         </p>
@@ -386,7 +388,7 @@ export default function UserMomentsPage() {
                             {commentErrors[item.id]}
                           </p>
                         ) : (
-                          <p className="mb-2 text-caption text-content-muted">还没有评论，成为第一个留言的人吧。</p>
+                          <p className="mb-2 text-caption text-content-muted">{t("mu.emptyComments")}</p>
                         )
                       ) : null}
                       <div className="flex gap-2">
@@ -398,13 +400,13 @@ export default function UserMomentsPage() {
                           onKeyDown={(event) => {
                             if (event.key === "Enter") void addComment(item.id);
                           }}
-                          placeholder="说点什么…"
+                          placeholder={t("mu.commentPlaceholder")}
                           maxLength={500}
-                          aria-label="写评论"
+                          aria-label={t("mu.writeComment")}
                           className="h-9 min-w-0 flex-1 rounded-full px-3 text-caption"
                         />
                         <TFButton size="sm" className="shrink-0" onClick={() => void addComment(item.id)}>
-                          发送
+                          {t("mu.send")}
                         </TFButton>
                       </div>
                     </div>
@@ -415,13 +417,13 @@ export default function UserMomentsPage() {
             {data.items.length === 0 && !data.locked ? (
               <TFEmptyState
                 icon={<MessageCircle size={26} />}
-                title="还没有同步到动态"
-                description="绑定社交平台后，对方公开的内容会自动出现在这里。"
+                title={t("mu.emptyTitle")}
+                description={t("mu.emptyDesc")}
               />
             ) : null}
 
             <TFButton href="/moments" variant="secondary" fullWidth className="mt-6">
-              回动态广场
+              {t("mu.backToFeed")}
             </TFButton>
           </>
         ) : null}
