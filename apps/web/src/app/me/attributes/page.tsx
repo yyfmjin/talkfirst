@@ -8,6 +8,7 @@ import { TFBadge, TFButton, TFChip, TFErrorState, TFInput, TFLoadingRegion, TFSk
 import { cn } from "@/lib/cn";
 import { apiFetch } from "@/lib/api";
 import { friendlyErrorMessage } from "@/lib/errors";
+import { useT } from "@/lib/i18n";
 // P0-03: `category` → section heading. Shared so the picker here and any future
 // read-only grouping cannot disagree about which categories fold into 我的兴趣.
 import { groupByAttributeSection } from "@/lib/attribute-sections";
@@ -300,6 +301,7 @@ function AttributeSection({
   onSelect: (attribute: AttributeView) => void;
   onMove: (index: number, delta: number) => void;
 }) {
+  const { t } = useT();
   const full = attributes.length >= MAX_PER_KIND;
 
   return (
@@ -347,7 +349,7 @@ function AttributeSection({
                 </span>
                 <span className="mt-0.5 block break-words text-overline text-content-muted">
                   {attribute.value ? `${attribute.value} · ` : ""}
-                  {VISIBILITY_LABELS[attribute.visibility]}
+                  {t(VISIBILITY_LABELS[attribute.visibility])}
                 </span>
               </button>
               <span className="flex shrink-0 flex-col gap-0.5">

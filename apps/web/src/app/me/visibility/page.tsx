@@ -13,6 +13,7 @@ import {
 } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { friendlyErrorMessage } from "@/lib/errors";
+import { useT } from "@/lib/i18n";
 import {
   FIELD_VISIBILITY_LABELS,
   VISIBILITY_LABELS,
@@ -32,6 +33,7 @@ import {
  * neither is touched here.
  */
 export default function ProfileVisibilityPage() {
+  const { t } = useT();
   const [rows, setRows] = useState<FieldVisibilityRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -45,7 +47,7 @@ export default function ProfileVisibilityPage() {
       const data = await apiFetch<FieldVisibilityRow[]>("/users/me/profile-field-visibility");
       setRows(data);
     } catch (requestError) {
-      setError(friendlyErrorMessage(requestError, "可见性设置加载失败，请稍后再试。"));
+      setError(friendlyErrorMessage(requestError, t("pv.loadFailed")));
     } finally {
       setLoading(false);
     }
@@ -65,9 +67,14 @@ export default function ProfileVisibilityPage() {
         body: { fieldKey, visibility },
       });
       setRows(data);
-      setNotice(`「${FIELD_VISIBILITY_LABELS[fieldKey]}」已设为${VISIBILITY_LABELS[visibility]}。`);
+      setNotice(
+        t("pv.changed", {
+          field: t(FIELD_VISIBILITY_LABELS[fieldKey]),
+          tier: t(VISIBILITY_LABELS[visibility]),
+        }),
+      );
     } catch (requestError) {
-      setError(friendlyErrorMessage(requestError, "保存失败，请稍后再试。"));
+      setError(friendlyErrorMessage(requestError, t("pv.saveFailed")));
       await load();
     } finally {
       setSavingField(null);
@@ -76,17 +83,17 @@ export default function ProfileVisibilityPage() {
 
   return (
     <PhoneShell>
-      <ScreenHeader title="资料可见范围" backHref="/me" />
+      <ScreenHeader title={t("pv.title")} backHref="/me" />
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-4">
         <p className="text-ui leading-6 text-content-muted">
-          这里只控制个人资料的展示范围，不影响社交账号交换，也不影响动态的可见范围。
+          {t("pv.intro")}
         </p>
         <p className="mt-2 rounded-row bg-surface-sunken px-3 py-2.5 text-caption leading-5 text-content-muted">
-          拉黑始终优先于这里的设置：被拉黑的人看不到你的任何资料，包括设为「公开」的部分。
+          {t("pv.blockNote")}
         </p>
 
         {loading ? (
-          <TFLoadingRegion label="正在加载可见范围设置">
+          <TFLoadingRegion label={t("pv.loading")}>
             <div className="mt-5 space-y-3">
               <TFSkeleton shape="block" className="h-56 w-full" />
               <TFSkeleton shape="block" className="h-24 w-full" />
@@ -111,14 +118,14 @@ export default function ProfileVisibilityPage() {
           <div className="mt-5 space-y-3">
             {rows.map((row) => (
               <TFCard key={row.fieldKey} data-testid={`visibility-row-${row.fieldKey}`}>
-                <p className="text-ui font-medium text-content">{FIELD_VISIBILITY_LABELS[row.fieldKey]}</p>
+                <p className="text-ui font-medium text-content">{t(FIELD_VISIBILITY_LABELS[row.fieldKey])}</p>
                 <p className="mb-2.5 mt-0.5 text-caption text-content-muted">
-                  当前：{VISIBILITY_LABELS[row.visibility]}
+                  {t("pv.current", { tier: t(VISIBILITY_LABELS[row.visibility]) })}
                 </p>
                 <VisibilitySelect
                   value={row.visibility}
                   disabled={savingField === row.fieldKey}
-                  label={`${FIELD_VISIBILITY_LABELS[row.fieldKey]} 的可见范围`}
+                  label={t("pv.selectLabel", { field: t(FIELD_VISIBILITY_LABELS[row.fieldKey]) })}
                   onChange={(tier) => void change(row.fieldKey, tier)}
                 />
               </TFCard>
@@ -134,7 +141,7 @@ export default function ProfileVisibilityPage() {
 
         <div className="mt-6">
           <TFButton variant="secondary" fullWidth href="/me">
-            返回我的
+            {t("pv.back")}
           </TFButton>
         </div>
       </div>

@@ -12,6 +12,8 @@
 /** `Visibility` enum: per-attribute tier and per-field profile tier share it. */
 export type VisibilityTier = "PUBLIC" | "CONNECTIONS" | "PRIVATE";
 
+import type { MsgKey } from "@/lib/i18n";
+
 export type AttributeKind = "ABOUT_ME" | "LOOKING_FOR";
 
 /** Derived by the API from `definitionId`; never sent by the client. */
@@ -127,40 +129,40 @@ export type FieldVisibilityRow = {
 
 export const VISIBILITY_TIERS: readonly VisibilityTier[] = ["PUBLIC", "CONNECTIONS", "PRIVATE"];
 
-/** User-facing wording — the raw enum names are never shown to members. */
-export const VISIBILITY_LABELS: Record<VisibilityTier, string> = {
-  PUBLIC: "公开",
-  CONNECTIONS: "仅好友/连接可见",
-  PRIVATE: "仅自己可见",
+/** User-facing wording as **dictionary keys** — the raw enum names are never shown. */
+export const VISIBILITY_LABELS: Record<VisibilityTier, MsgKey> = {
+  PUBLIC: "visibility.publicLabel",
+  CONNECTIONS: "visibility.connectionsLabel",
+  PRIVATE: "visibility.privateLabel",
 };
 
-export const VISIBILITY_HINTS: Record<VisibilityTier, string> = {
-  PUBLIC: "任何登录用户都能看到",
-  CONNECTIONS: "只有已建立连接的对方能看到",
-  PRIVATE: "只有你自己能看到",
+export const VISIBILITY_HINTS: Record<VisibilityTier, MsgKey> = {
+  PUBLIC: "visibility.publicHint",
+  CONNECTIONS: "visibility.connectionsHint",
+  PRIVATE: "visibility.privateHint",
 };
 
 /** Compact wording for the 3-way segmented control, where space is tight. */
-export const VISIBILITY_SHORT_LABELS: Record<VisibilityTier, string> = {
-  PUBLIC: "公开",
-  CONNECTIONS: "仅连接",
-  PRIVATE: "仅自己",
+export const VISIBILITY_SHORT_LABELS: Record<VisibilityTier, MsgKey> = {
+  PUBLIC: "visibility.public",
+  CONNECTIONS: "visibility.connections",
+  PRIVATE: "visibility.private",
 };
 
-export const FIELD_VISIBILITY_LABELS: Record<ProfileVisibilityField, string> = {
-  nickname: "昵称",
-  avatarUrl: "头像",
-  birthDate: "年龄",
-  countryCode: "国家/地区",
-  city: "城市",
-  region: "地区",
-  gender: "性别",
-  bio: "个人简介",
-  languages: "语言",
-  interests: "兴趣",
-  purposes: "交友目的",
-  preferredCountries: "想认识的国家",
-  attributes: "交友属性（我的介绍 / 交友需求）",
+export const FIELD_VISIBILITY_LABELS: Record<ProfileVisibilityField, MsgKey> = {
+  nickname: "field.nickname",
+  avatarUrl: "field.avatarUrl",
+  birthDate: "field.birthDate",
+  countryCode: "field.countryCode",
+  city: "field.city",
+  region: "field.region",
+  gender: "field.gender",
+  bio: "field.bio",
+  languages: "field.languages",
+  interests: "field.interests",
+  purposes: "field.purposes",
+  preferredCountries: "field.preferredCountries",
+  attributes: "field.attributes",
 };
 
 /** The tier assumed when the API reports no stored row for a field. */
