@@ -8,7 +8,7 @@ import { TFBadge, TFButton, TFChip, TFErrorState, TFInput, TFLoadingRegion, TFSk
 import { cn } from "@/lib/cn";
 import { apiFetch } from "@/lib/api";
 import { friendlyErrorMessage } from "@/lib/errors";
-import { useT } from "@/lib/i18n";
+import { useT, type MsgKey } from "@/lib/i18n";
 // P0-03: `category` → section heading. Shared so the picker here and any future
 // read-only grouping cannot disagree about which categories fold into 我的兴趣.
 import { groupByAttributeSection } from "@/lib/attribute-sections";
@@ -31,18 +31,26 @@ const VALUE_MAX = 80;
 
 const EMPTY_GROUPS: AttributeGroups = { aboutMe: [], lookingFor: [] };
 
-const KIND_SECTIONS: Array<{ kind: AttributeKind; title: string; hint: string; example: string }> = [
+const KIND_SECTIONS: Array<{
+  kind: AttributeKind;
+  titleKey: MsgKey;
+  hintKey: MsgKey;
+  exampleKey: MsgKey;
+  placeholderKey: MsgKey;
+}> = [
   {
     kind: "ABOUT_ME",
-    title: "我的介绍",
-    hint: "用标签描述你自己：性格、爱好、生活方式都可以。",
-    example: "例如：夜猫子、City Pop、慢热、摄影",
+    titleKey: "at.aboutTitle",
+    hintKey: "at.aboutHint",
+    exampleKey: "at.aboutExample",
+    placeholderKey: "at.aboutPlaceholder",
   },
   {
     kind: "LOOKING_FOR",
-    title: "交友需求",
-    hint: "写下你想认识什么样的人，系统标签和自定义标签都能用。",
-    example: "例如：语言交换、游戏好友、同城朋友、旅行伙伴",
+    titleKey: "at.lookTitle",
+    hintKey: "at.lookHint",
+    exampleKey: "at.lookExample",
+    placeholderKey: "at.lookPlaceholder",
   },
 ];
 
@@ -55,6 +63,7 @@ function codePointLength(value: string): number {
 }
 
 export default function ProfileAttributesPage() {
+  const { t } = useT();
   const [groups, setGroups] = useState<AttributeGroups>(EMPTY_GROUPS);
   const [definitions, setDefinitions] = useState<AttributeDefinition[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,7 +84,7 @@ export default function ProfileAttributesPage() {
       setGroups(mine);
       setDefinitions(catalog);
     } catch (requestError) {
-      setError(friendlyErrorMessage(requestError, "标签加载失败，请稍后再试。"));
+      setError(friendlyErrorMessage(requestError, t("at.loadFailed")));
     } finally {
       setLoading(false);
     }
@@ -101,13 +110,13 @@ export default function ProfileAttributesPage() {
         setNotice(successMessage);
         return true;
       } catch (requestError) {
-        setError(friendlyErrorMessage(requestError, "保存失败，请稍后再试。"));
+        setError(friendlyErrorMessage(requestError, t("at.saveFailed")));
         return false;
       } finally {
         setBusy(false);
       }
     },
-    [load],
+    [load, t],
   );
 
   const createSystem = useCallback(
@@ -118,11 +127,11 @@ export default function ProfileAttributesPage() {
             method: "POST",
             body: { kind: definition.kind, definitionId: definition.id },
           }),
-        `已添加「${definition.labelZh ?? definition.label}」。`,
+        t("at.added", { name: definition.labelZh ?? definition.label }),
       );
       if (done) setPickerKind(null);
     },
-    [mutate],
+    [mutate, t],
   );
 
   const createCustom = useCallback(
@@ -131,33 +140,33 @@ export default function ProfileAttributesPage() {
       if (value) body.value = value;
       const done = await mutate(
         () => apiFetch("/users/me/attributes", { method: "POST", body }),
-        `已添加「${label}」。`,
+        t("at.added", { name: label }),
       );
       if (done) setPickerKind(null);
     },
-    [mutate],
+    [mutate, t],
   );
 
   const saveAttribute = useCallback(
     async (id: string, patch: { label?: string; value?: string; visibility?: VisibilityTier }) => {
       const done = await mutate(
         () => apiFetch(`/users/me/attributes/${id}`, { method: "PATCH", body: patch }),
-        "已保存。",
+        t("at.saved"),
       );
       if (done) setEditing(null);
     },
-    [mutate],
+    [mutate, t],
   );
 
   const removeAttribute = useCallback(
     async (attribute: AttributeView) => {
       const done = await mutate(
         () => apiFetch(`/users/me/attributes/${attribute.id}`, { method: "DELETE" }),
-        `已删除「${attributeLabel(attribute)}」。`,
+        t("at.removed", { name: attributeLabel(attribute) }),
       );
       if (done) setEditing(null);
     },
-    [mutate],
+    [mutate, t],
   );
 
   /**
@@ -188,10 +197,10 @@ export default function ProfileAttributesPage() {
               }),
             ),
           ),
-        "顺序已更新。",
+        t("at.reordered"),
       );
     },
-    [groups, mutate],
+    [groups, mutate, t],
   );
 
   const usedDefinitionIds = useMemo(() => {
@@ -204,14 +213,14 @@ export default function ProfileAttributesPage() {
 
   return (
     <PhoneShell>
-      <ScreenHeader title="交友属性" backHref="/me" />
+      <ScreenHeader title={t("at.title")} backHref="/me" />
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-4">
         <p className="text-ui leading-6 text-content-muted">
-          标签让别人更快了解你。每一栏最多 10 个，设为「公开」后也会用于「发现」的推荐。
+          {t("at.intro")}
         </p>
 
         {loading ? (
-          <TFLoadingRegion label="正在加载交友属性">
+          <TFLoadingRegion label={t("at.loading")}>
             <div className="mt-5 space-y-3">
               <TFSkeleton shape="block" className="h-40 w-full" />
               <TFSkeleton shape="block" className="h-40 w-full" />
@@ -230,9 +239,9 @@ export default function ProfileAttributesPage() {
               <AttributeSection
                 key={section.kind}
                 kind={section.kind}
-                title={section.title}
-                hint={section.hint}
-                example={section.example}
+                title={t(section.titleKey)}
+                hint={t(section.hintKey)}
+                example={t(section.exampleKey)}
                 attributes={listOf(groups, section.kind)}
                 busy={busy}
                 onAdd={() => setPickerKind(section.kind)}
@@ -250,7 +259,7 @@ export default function ProfileAttributesPage() {
 
         <div className="mt-6">
           <TFButton variant="secondary" fullWidth href="/me">
-            返回我的
+            {t("at.back")}
           </TFButton>
         </div>
       </div>
@@ -387,9 +396,9 @@ function AttributeSection({
         className="mt-3"
         onClick={onAdd}
         disabled={full || busy}
-        aria-label={`添加到${title}`}
+        aria-label={t("at.addTo", { section: title })}
       >
-        {full ? `已达上限 ${MAX_PER_KIND} 个` : "+ 添加"}
+        {full ? t("at.limitReached", { max: MAX_PER_KIND }) : t("at.add")}
       </TFButton>
     </section>
   );
@@ -406,6 +415,7 @@ function SheetShell({
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  const { t } = useT();
   return (
     <div
       className="absolute inset-0 z-30 flex items-end justify-center bg-black/40 sm:items-center"
@@ -424,8 +434,8 @@ function SheetShell({
               <p className="mt-1 text-caption leading-5 text-content-muted">{description}</p>
             ) : null}
           </div>
-          <TFButton variant="ghost" size="sm" className="shrink-0" onClick={onClose} aria-label="关闭面板">
-            关闭
+          <TFButton variant="ghost" size="sm" className="shrink-0" onClick={onClose} aria-label={t("at.closePanel")}>
+            {t("at.close")}
           </TFButton>
         </div>
         {children}
@@ -452,6 +462,7 @@ function PickerSheet({
   onPickCustom: (label: string, value: string) => void;
 }) {
   const [tab, setTab] = useState<"system" | "custom">("system");
+  const { t } = useT();
   const [label, setLabel] = useState("");
   const [value, setValue] = useState("");
   const [localError, setLocalError] = useState("");
@@ -476,15 +487,15 @@ function PickerSheet({
     const trimmedLabel = label.trim();
     const trimmedValue = value.trim();
     if (!trimmedLabel) {
-      setLocalError("请填写标签名称。");
+      setLocalError(t("at.labelRequired"));
       return;
     }
     if (codePointLength(trimmedLabel) > LABEL_MAX) {
-      setLocalError(`标签名称最多 ${LABEL_MAX} 个字符。`);
+      setLocalError(t("at.labelTooLong", { max: LABEL_MAX }));
       return;
     }
     if (codePointLength(trimmedValue) > VALUE_MAX) {
-      setLocalError(`补充说明最多 ${VALUE_MAX} 个字符。`);
+      setLocalError(t("at.valueTooLong", { max: VALUE_MAX }));
       return;
     }
     setLocalError("");
@@ -493,8 +504,8 @@ function PickerSheet({
 
   return (
     <SheetShell
-      title={`添加到${section?.title ?? "属性"}`}
-      description="系统标签直接选择；系统没有收录的说法可以自己写。"
+      title={t("at.pickerTitle", { section: section ? t(section.titleKey) : t("at.attributeFallback") })}
+      description={t("at.pickerDescription")}
       onClose={onClose}
     >
       {/* A two-option segmented control. `role="tablist"` is NOT used here: these
@@ -502,8 +513,8 @@ function PickerSheet({
           an id, so `aria-pressed` on a toggle pair is the honest description. */}
       <div className="mt-4 grid grid-cols-2 gap-1.5 rounded-control bg-surface-sunken p-1">
         {([
-          ["system", "系统标签"],
-          ["custom", "自定义"],
+          ["system", t("at.tabSystem")],
+          ["custom", t("at.tabCustom")],
         ] as const).map(([id, text]) => (
           <button
             key={id}
@@ -529,7 +540,7 @@ function PickerSheet({
         <div className="mt-4" data-testid="system-picker">
           {available.length === 0 ? (
             <p className="rounded-row bg-surface-sunken px-3 py-3 text-caption text-content-muted">
-              系统标签都已经用过了，试试自定义标签。
+              {t("at.allUsed")}
             </p>
           ) : (
             groupByAttributeSection(available).map((section) => (
@@ -562,7 +573,7 @@ function PickerSheet({
         <div className="mt-4" data-testid="custom-picker">
           <div>
             <label htmlFor="custom-attr-label" className="mb-1.5 block text-caption font-medium text-content-muted">
-              标签名称（必填，最多 {LABEL_MAX} 字）
+              {t("at.labelField", { max: LABEL_MAX })}
             </label>
             {/* `aria-label="自定义标签名称"` / `"自定义标签补充说明"` are asserted by
                 `profile.spec.ts`, so they stay on the controls. */}
@@ -571,27 +582,27 @@ function PickerSheet({
               value={label}
               onChange={(event) => setLabel(event.target.value)}
               maxLength={LABEL_MAX}
-              placeholder={section?.example.replace("例如：", "") ?? "例如：夜猫子"}
-              aria-label="自定义标签名称"
+              placeholder={section ? t(section.placeholderKey) : t("at.aboutPlaceholder")}
+              aria-label={t("at.labelAria")}
               invalid={Boolean(localError)}
             />
           </div>
           <div className="mt-3">
             <label htmlFor="custom-attr-value" className="mb-1.5 block text-caption font-medium text-content-muted">
-              补充说明（可选，最多 {VALUE_MAX} 字）
+              {t("at.valueField", { max: VALUE_MAX })}
             </label>
             <TFInput
               id="custom-attr-value"
               value={value}
               onChange={(event) => setValue(event.target.value)}
               maxLength={VALUE_MAX}
-              placeholder="例如：想认识会日语的人"
-              aria-label="自定义标签补充说明"
+              placeholder={t("at.lookPlaceholder")}
+              aria-label={t("at.valueAria")}
               invalid={Boolean(localError)}
             />
           </div>
           <p className="mt-2 text-caption leading-4 text-content-muted">
-            名称会由服务器统一规格化（去空格、大小写不敏感）后判重，重复会提示已存在。
+            {t("at.normaliseNote")}
           </p>
           {localError ? (
             <p role="alert" className="mt-2 break-words text-caption text-danger-600">
@@ -604,11 +615,11 @@ function PickerSheet({
             className="mt-4"
             disabled={busy}
             loading={busy}
-            loadingLabel="添加中…"
+            loadingLabel={t("at.adding")}
             onClick={submitCustom}
-            aria-label="添加自定义标签"
+            aria-label={t("at.addCustom")}
           >
-            添加
+            {t("at.add")}
           </TFButton>
         </div>
       )}
@@ -630,6 +641,7 @@ function AttributeEditorSheet({
   onDelete: () => void;
 }) {
   const isCustom = attribute.source === "CUSTOM";
+  const { t } = useT();
   const [label, setLabel] = useState(attribute.label);
   const [value, setValue] = useState(attribute.value ?? "");
   const [visibility, setVisibility] = useState<VisibilityTier>(attribute.visibility);
@@ -641,15 +653,15 @@ function AttributeEditorSheet({
     if (isCustom) {
       const trimmedLabel = label.trim();
       if (!trimmedLabel) {
-        setLocalError("标签名称不能为空。");
+        setLocalError(t("at.emptyLabel"));
         return;
       }
       if (codePointLength(trimmedLabel) > LABEL_MAX) {
-        setLocalError(`标签名称最多 ${LABEL_MAX} 个字符。`);
+        setLocalError(t("at.labelTooLong", { max: LABEL_MAX }));
         return;
       }
       if (codePointLength(value.trim()) > VALUE_MAX) {
-        setLocalError(`补充说明最多 ${VALUE_MAX} 个字符。`);
+        setLocalError(t("at.valueTooLong", { max: VALUE_MAX }));
         return;
       }
       if (trimmedLabel !== attribute.label) patch.label = trimmedLabel;
@@ -657,7 +669,7 @@ function AttributeEditorSheet({
     }
     if (visibility !== attribute.visibility) patch.visibility = visibility;
     if (Object.keys(patch).length === 0) {
-      setLocalError("还没有任何修改。");
+      setLocalError(t("at.noChanges"));
       return;
     }
     setLocalError("");
@@ -666,19 +678,17 @@ function AttributeEditorSheet({
 
   return (
     <SheetShell
-      title={isCustom ? "编辑自定义标签" : "编辑系统标签"}
+      title={t(isCustom ? "at.editCustomTitle" : "at.editSystemTitle")}
       description={
-        isCustom
-          ? "名称和补充说明都可以改；名称改动同样会经过服务器归一化判重。"
-          : "系统标签的名称由平台维护，只能调整可见范围和顺序。"
+        t(isCustom ? "at.editCustomDesc" : "at.editSystemDesc")
       }
       onClose={onClose}
     >
       <div className="mt-4 rounded-row bg-surface-sunken px-3 py-2.5">
         <p className="text-ui font-medium text-content">{attributeLabel(attribute)}</p>
         <p className="mt-0.5 text-caption text-content-muted">
-          {attribute.source === "SYSTEM" ? `系统标签 · ${attribute.key ?? ""}` : "自定义标签"}
-          {attribute.definitionActive === false ? " · 已停用" : ""}
+          {attribute.source === "SYSTEM" ? `${t("at.systemTag")} · ${attribute.key ?? ""}` : t("at.customTag")}
+          {attribute.definitionActive === false ? ` · ${t("at.disabled")}` : ""}
         </p>
       </div>
 
@@ -686,7 +696,7 @@ function AttributeEditorSheet({
         <>
           <div className="mt-4">
             <label htmlFor="edit-attr-label" className="mb-1.5 block text-caption font-medium text-content-muted">
-              标签名称（最多 {LABEL_MAX} 字）
+              {t("at.editLabelField", { max: LABEL_MAX })}
             </label>
             {/* `aria-label="标签名称"` / `"补充说明"` are the accessible names the
                 editor's own flow uses; `TFInput` forwards them. */}
@@ -695,31 +705,31 @@ function AttributeEditorSheet({
               value={label}
               onChange={(event) => setLabel(event.target.value)}
               maxLength={LABEL_MAX}
-              aria-label="标签名称"
+              aria-label={t("at.labelAriaEdit")}
             />
           </div>
           <div className="mt-3">
             <label htmlFor="edit-attr-value" className="mb-1.5 block text-caption font-medium text-content-muted">
-              补充说明（可选，最多 {VALUE_MAX} 字）
+              {t("at.editValueField", { max: VALUE_MAX })}
             </label>
             <TFInput
               id="edit-attr-value"
               value={value}
               onChange={(event) => setValue(event.target.value)}
               maxLength={VALUE_MAX}
-              aria-label="补充说明"
+              aria-label={t("at.valueAriaEdit")}
             />
           </div>
         </>
       ) : null}
 
       <div className="mt-4">
-        <p className="mb-1.5 text-caption font-medium text-content-muted">谁能看到这个标签</p>
+        <p className="mb-1.5 text-caption font-medium text-content-muted">{t("at.visibilityLabel")}</p>
         <VisibilitySelect
           value={visibility}
           onChange={setVisibility}
           disabled={busy}
-          label={`${attributeLabel(attribute)} 的可见范围`}
+          label={t("at.visibilityAria", { name: attributeLabel(attribute) })}
         />
       </div>
 
@@ -731,17 +741,17 @@ function AttributeEditorSheet({
 
       <div className="mt-5 flex gap-2">
         <TFButton variant="secondary" className="flex-1" onClick={onClose} disabled={busy}>
-          取消
+          {t("at.cancel")}
         </TFButton>
         <TFButton
           className="flex-[2]"
           onClick={submit}
           disabled={busy}
           loading={busy}
-          loadingLabel="保存中…"
-          aria-label="保存标签"
+          loadingLabel={t("at.saving")}
+          aria-label={t("at.saveTag")}
         >
-          保存
+          {t("at.save")}
         </TFButton>
       </div>
 
@@ -751,7 +761,7 @@ function AttributeEditorSheet({
       <div className="mt-4 border-t border-border pt-3">
         {confirmingDelete ? (
           <div className="rounded-row bg-danger-50 p-3">
-            <p className="text-caption text-danger-700">确定删除「{attributeLabel(attribute)}」？</p>
+            <p className="text-caption text-danger-700">{t("at.confirmDelete", { name: attributeLabel(attribute) })}</p>
             <div className="mt-2 flex gap-2">
               <TFButton
                 variant="secondary"
@@ -759,7 +769,7 @@ function AttributeEditorSheet({
                 onClick={() => setConfirmingDelete(false)}
                 disabled={busy}
               >
-                再想想
+                {t("at.notNow")}
               </TFButton>
               <TFButton
                 variant="danger"
@@ -767,10 +777,10 @@ function AttributeEditorSheet({
                 onClick={onDelete}
                 disabled={busy}
                 loading={busy}
-                loadingLabel="删除中…"
-                aria-label="确认删除标签"
+                loadingLabel={t("at.deleting")}
+                aria-label={t("at.confirmDeleteAria")}
               >
-                确认删除
+                {t("at.delete")}
               </TFButton>
             </div>
           </div>
@@ -781,7 +791,7 @@ function AttributeEditorSheet({
             disabled={busy}
             className="w-full rounded-control px-3 py-2 text-center text-ui text-danger-600 transition-colors duration-instant hover:bg-danger-50 disabled:opacity-50"
           >
-            删除这个标签
+            {t("at.deleteThis")}
           </button>
         )}
       </div>
