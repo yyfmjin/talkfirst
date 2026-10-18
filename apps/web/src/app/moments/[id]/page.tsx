@@ -26,6 +26,7 @@ import { MomentReportDialog } from "@/components/moment-report-dialog";
 import { ApiRequestError, apiFetch } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { formatCount, formatDuration, relativeTime } from "@/lib/moments";
+import { useT } from "@/lib/i18n";
 
 /**
  * PC-2.1 — Post Detail.
@@ -106,6 +107,7 @@ type MomentDetail = {
 };
 
 export default function MomentDetailPage() {
+  const { t } = useT();
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -188,7 +190,7 @@ export default function MomentDetailPage() {
         setErrorCode(requestError.code);
         setError(requestError.message);
       } else {
-        setError(requestError instanceof Error ? requestError.message : "动态加载失败");
+        setError(requestError instanceof Error ? requestError.message : t("md.loadFailed"));
       }
     } finally {
       setLoading(false);
@@ -217,7 +219,7 @@ export default function MomentDetailPage() {
           : current,
       );
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "点赞失败");
+      setError(requestError instanceof Error ? requestError.message : t("md.likeFailed"));
     } finally {
       setLiking(false);
     }
@@ -244,7 +246,7 @@ export default function MomentDetailPage() {
           : current,
       );
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "收藏失败");
+      setError(requestError instanceof Error ? requestError.message : t("md.bookmarkFailed"));
     } finally {
       setBookmarking(false);
     }
@@ -267,7 +269,7 @@ export default function MomentDetailPage() {
       setMoment((current) => (current ? { ...current, commentCount: current.commentCount + 1 } : current));
       setDraft("");
     } catch (requestError) {
-      setCommentsError(requestError instanceof Error ? requestError.message : "评论发送失败");
+      setCommentsError(requestError instanceof Error ? requestError.message : t("md.commentSendFailed"));
     } finally {
       setSending(false);
     }
@@ -312,7 +314,7 @@ export default function MomentDetailPage() {
     } catch (requestError) {
       // The page already on screen is left untouched, so a failed "load more"
       // costs the reader nothing.
-      setCommentsError(requestError instanceof Error ? requestError.message : "评论加载失败");
+      setCommentsError(requestError instanceof Error ? requestError.message : t("md.commentsLoadFailed"));
     } finally {
       setCommentsLoadingMore(false);
     }
@@ -418,10 +420,10 @@ export default function MomentDetailPage() {
     try {
       await apiFetch(`/moments/${moment.id}`, { method: "DELETE" });
       setDeleteOpen(false);
-      toast({ message: "动态已删除" });
+      toast({ message: t("md.deleted") });
       router.replace("/moments");
     } catch (requestError) {
-      setDeleteError(requestError instanceof Error ? requestError.message : "删除失败，请稍后重试");
+      setDeleteError(requestError instanceof Error ? requestError.message : t("md.deleteFailed"));
     } finally {
       setDeleting(false);
     }
@@ -453,12 +455,12 @@ export default function MomentDetailPage() {
       <div className="z-10 grid shrink-0 grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-border bg-surface/95 px-2 py-1 backdrop-blur">
         <Link
           href="/moments"
-          aria-label="返回动态"
+          aria-label={t("md.back")}
           className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-content transition-colors duration-instant hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
         >
           <ArrowLeft size={22} aria-hidden="true" />
         </Link>
-        <p className="min-w-0 truncate text-center text-heading font-semibold text-content">动态详情</p>
+        <p className="min-w-0 truncate text-center text-heading font-semibold text-content">{t("md.title")}</p>
         {/* The menu holds whatever this viewer may do with the moment: the
             owner gets 修改 / 删除, everyone else gets 举报. Which of them appear
             is decided by ownership for layout only — every route re-checks it
@@ -468,7 +470,7 @@ export default function MomentDetailPage() {
             <button
               type="button"
               data-testid="moment-menu"
-              aria-label="动态操作菜单"
+              aria-label={t("md.menu")}
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((open) => !open)}
               className="grid h-11 w-11 place-items-center rounded-full text-content-muted transition-colors duration-instant hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
@@ -488,7 +490,7 @@ export default function MomentDetailPage() {
                       }}
                       className="whitespace-nowrap px-3 py-2.5 text-left text-ui text-content hover:bg-surface-sunken"
                     >
-                      修改这条动态
+                      {t("md.menuEdit")}
                     </button>
                     <button
                       type="button"
@@ -496,7 +498,7 @@ export default function MomentDetailPage() {
                       onClick={askDeleteMoment}
                       className="whitespace-nowrap px-3 py-2.5 text-left text-ui text-danger-600 hover:bg-surface-sunken"
                     >
-                      删除这条动态
+                      {t("md.menuDelete")}
                     </button>
                   </>
                 ) : null}
@@ -510,7 +512,7 @@ export default function MomentDetailPage() {
                   }}
                   className="whitespace-nowrap px-3 py-2.5 text-left text-ui text-content hover:bg-surface-sunken"
                 >
-                  举报这条动态
+                  {t("md.menuReport")}
                 </button>
               </span>
             ) : null}
@@ -522,7 +524,7 @@ export default function MomentDetailPage() {
 
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-4">
         {loading ? (
-          <TFLoadingRegion label="正在加载动态">
+          <TFLoadingRegion label={t("md.loading")}>
             <div className="space-y-3">
               <TFRowSkeleton />
               <TFSkeleton shape="block" className="h-64 w-full" />
@@ -534,23 +536,23 @@ export default function MomentDetailPage() {
             agreed to, so it reads as a neutral notice rather than a failure. */}
         {!loading && locked ? (
           <TFCard tone="quiet" className="text-center">
-            <p className="text-ui font-medium text-content">这条动态暂时无法查看</p>
+            <p className="text-ui font-medium text-content">{t("md.lockedTitle")}</p>
             <p className="mt-1 text-caption leading-5 text-content-muted">
-              对方设置了动态可见范围，成为连接后才能查看。
+              {t("md.lockedBody")}
             </p>
             <TFButton href="/moments" variant="secondary" className="mt-4" fullWidth>
-              回动态广场
+              {t("md.backToFeed")}
             </TFButton>
           </TFCard>
         ) : null}
 
         {!loading && missing ? (
           <TFEmptyState
-            title="这条动态不存在或已被删除"
-            description="它可能已被作者删除，或者链接不完整。"
+            title={t("md.missingTitle")}
+            description={t("md.missingBody")}
             action={
               <TFButton href="/moments" variant="secondary" fullWidth>
-                回动态广场
+                {t("md.backToFeed")}
               </TFButton>
             }
           />
@@ -568,7 +570,7 @@ export default function MomentDetailPage() {
               <button
                 type="button"
                 onClick={() => setPreviewUserId(moment.userId)}
-                aria-label={`查看 ${moment.author.nickname ?? "用户"} 的资料卡`}
+                aria-label={t("md.viewCard", { name: moment.author.nickname ?? t("md.userFallback") })}
                 className="shrink-0"
               >
                 <TFAvatar name={moment.author.nickname} src={moment.author.avatarUrl} size="md" />
@@ -579,15 +581,15 @@ export default function MomentDetailPage() {
                   onClick={() => setPreviewUserId(moment.userId)}
                   className="block max-w-full truncate text-left text-ui font-semibold text-content"
                 >
-                  {moment.author.nickname ?? "TalkFirst 用户"}
+                  {moment.author.nickname ?? t("md.userFallback")}
                 </button>
                 <p className="truncate text-caption text-content-muted">
-                  {moment.author.countryCode ?? "全球"} · {moment.platformName ?? moment.platform} · {relativeTime(moment.createdAt)}
+                  {moment.author.countryCode ?? t("md.countryFallback")} · {moment.platformName ?? moment.platform} · {relativeTime(moment.createdAt)}
                 </p>
               </div>
               {moment.isDemo ? (
-                <TFBadge tone="warning" className="shrink-0" title="示例内容，并非来自该平台的真实同步">
-                  示例
+                <TFBadge tone="warning" className="shrink-0" title={t("md.demoTitle")}>
+                  {t("md.demoTag")}
                 </TFBadge>
               ) : null}
             </header>
@@ -615,13 +617,13 @@ export default function MomentDetailPage() {
                   className="aspect-video max-h-[420px] w-full bg-black"
                 />
                 {moment.durationSec ? (
-                  <p className="px-4 pt-1 text-caption text-content-muted">时长 {formatDuration(moment.durationSec)}</p>
+                  <p className="px-4 pt-1 text-caption text-content-muted">{t("md.duration", { value: formatDuration(moment.durationSec) })}</p>
                 ) : null}
               </div>
             ) : moment.images.length === 1 ? (
               <div className="relative mt-3 aspect-[4/3] overflow-hidden bg-surface-sunken">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={moment.images[0]} alt="动态图片" className="absolute inset-0 h-full w-full object-cover" />
+                <img src={moment.images[0]} alt={t("md.imageAlt")} className="absolute inset-0 h-full w-full object-cover" />
               </div>
             ) : moment.images.length > 1 ? (
               <div className="tf-scroll-x mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1">
@@ -631,7 +633,7 @@ export default function MomentDetailPage() {
                     className="relative aspect-[4/3] w-[76%] shrink-0 snap-center overflow-hidden rounded-card bg-surface-sunken"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={src} alt={`动态图片${index + 1}`} className="absolute inset-0 h-full w-full object-cover" />
+                    <img src={src} alt={t("md.imageAltN", { n: index + 1 })} className="absolute inset-0 h-full w-full object-cover" />
                     <span className="absolute right-2 top-2 rounded-full bg-black/50 px-2 py-0.5 text-overline text-white">
                       {index + 1}/{moment.images.length}
                     </span>
@@ -648,7 +650,7 @@ export default function MomentDetailPage() {
                 type="button"
                 onClick={() => void toggleLike()}
                 disabled={liking}
-                aria-label="点赞"
+                aria-label={t("md.like")}
                 aria-pressed={moment.liked}
                 className={`flex min-h-9 items-center gap-1.5 rounded-full px-2.5 transition-colors duration-instant hover:bg-surface-sunken disabled:opacity-60 ${
                   moment.liked ? "text-danger-500" : ""
@@ -662,7 +664,7 @@ export default function MomentDetailPage() {
                 type="button"
                 onClick={() => void toggleBookmark()}
                 disabled={bookmarking}
-                aria-label="收藏"
+                aria-label={t("md.bookmark")}
                 aria-pressed={moment.bookmarked}
                 className={`ml-auto flex min-h-9 items-center gap-1.5 rounded-full px-2.5 transition-colors duration-instant hover:bg-surface-sunken disabled:opacity-60 ${
                   moment.bookmarked ? "text-brand-600" : ""
@@ -677,7 +679,7 @@ export default function MomentDetailPage() {
               {/* The comment count is a read-out here, not a control — the comment
                   section is directly below it, so making this a button would give
                   two ways to do nothing. */}
-              <span className="flex items-center gap-1.5 px-2.5" aria-label="评论数">
+              <span className="flex items-center gap-1.5 px-2.5" aria-label={t("md.commentCount")}>
                 <MessageCircle size={17} aria-hidden="true" />
                 {formatCount(moment.commentCount)}
               </span>
@@ -699,7 +701,7 @@ export default function MomentDetailPage() {
           <section className="mt-4 rounded-card border border-border bg-surface px-4 py-3">
             <MomentComments
               testId="moment-comments"
-              title="评论"
+              title={t("md.commentsHeading")}
               count={moment.commentCount}
               avatarSize="md"
               comments={comments}
@@ -752,8 +754,8 @@ export default function MomentDetailPage() {
           setDeleteOpen(false);
           setDeleteError("");
         }}
-        title="删除这条动态？"
-        description="删除后无法恢复，评论也会一并消失。"
+        title={t("md.deleteTitle")}
+        description={t("md.deleteBody")}
         footer={
           <>
             <TFButton
@@ -765,24 +767,24 @@ export default function MomentDetailPage() {
                 setDeleteError("");
               }}
             >
-              取消
+              {t("md.cancel")}
             </TFButton>
             <TFButton
               variant="danger"
               className="flex-1"
               loading={deleting}
-              loadingLabel="删除中…"
+              loadingLabel={t("md.deleting")}
               onClick={() => void confirmDeleteMoment()}
               data-testid="moment-delete-confirm"
             >
-              确认删除
+              {t("md.confirmDelete")}
             </TFButton>
           </>
         }
       >
         {moment ? (
           <p className="line-clamp-3 break-words rounded-row bg-surface-sunken px-3.5 py-2.5 text-caption leading-5 text-content-muted">
-            {moment.content.trim() || "（这条动态只有图片）"}
+            {moment.content.trim() || t("md.imagesOnly")}
           </p>
         ) : null}
         {deleteError ? (
@@ -799,7 +801,7 @@ export default function MomentDetailPage() {
           onCancel={() => setReportOpen(false)}
           onSubmitted={() => {
             setReportOpen(false);
-            setReportNotice("举报已提交，我们会尽快审核。");
+            setReportNotice(t("md.reported"));
           }}
         />
       ) : null}
@@ -810,7 +812,7 @@ export default function MomentDetailPage() {
           onCancel={() => setReportCommentId(null)}
           onSubmitted={() => {
             setReportCommentId(null);
-            setReportNotice("举报已提交，我们会尽快审核。");
+            setReportNotice(t("md.reported"));
           }}
         />
       ) : null}
