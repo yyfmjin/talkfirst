@@ -24,8 +24,6 @@ ALLOWED_FILES = {
     "lib/i18n/locales.ts",
     # 接口错误码的 zh/en 两套文案，本身就是词典（Record<Locale, ...>）。
     "lib/errors.ts",
-    # 根布局的 metadata 是**中文站**的标题/描述；`app/en/layout.tsx` 另有一份英文的。
-    "app/layout.tsx",
 }
 ALLOWED_SNIPPETS = [
     '"旅行"', '"美食"', '"音乐"', '"游戏"', '"摄影"', '"电影"', '"学习"', '"运动"',  # HOT_TOPICS：对外展示的话题

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { t } from "@/lib/i18n";
 
 /**
  * English metadata for `/en/*`.
@@ -13,15 +14,15 @@ import type { Metadata } from "next";
  */
 export const metadata: Metadata = {
   title: {
-    default: "TalkFirst — talk first, become friends later",
+    default: t("en", "meta.title"),
     template: "%s · TalkFirst",
   },
   description:
-    "TalkFirst is a language-exchange and cross-cultural social app: get along with a stranger first, then decide whether to become friends. Talk First. Connect Later.",
+    t("en", "meta.description"),
   applicationName: "TalkFirst",
   openGraph: {
-    title: "TalkFirst — talk first, become friends later",
-    description: "Start with a hello. If you click, then decide whether to connect.",
+    title: t("en", "meta.title"),
+    description: t("en", "meta.ogDescription"),
     siteName: "TalkFirst",
   },
 };

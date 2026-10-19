@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { SessionProvider } from "@/lib/session";
 import { TFToastProvider } from "@/components/tf";
+import { t } from "@/lib/i18n";
 
 /**
  * Global metadata.
@@ -14,15 +15,15 @@ import { TFToastProvider } from "@/components/tf";
  */
 export const metadata: Metadata = {
   title: {
-    default: "TalkFirst 先聊 — 先聊聊，再成为朋友",
+    default: t("zh", "meta.title"),
     template: "%s · TalkFirst",
   },
   description:
-    "TalkFirst 是一个语言交换与跨文化社交应用：先和陌生人聊得来，再决定要不要成为朋友。Talk First. Connect Later.",
+    t("zh", "meta.description"),
   applicationName: "TalkFirst",
   openGraph: {
-    title: "TalkFirst 先聊 — 先聊聊，再成为朋友",
-    description: "从一句「你好」开始，聊得来，再决定要不要认识。",
+    title: t("zh", "meta.title"),
+    description: t("zh", "meta.ogDescription"),
     siteName: "TalkFirst",
     locale: "zh_CN",
     type: "website",

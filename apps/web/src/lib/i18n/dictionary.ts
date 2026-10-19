@@ -1559,6 +1559,10 @@ export const zh = {
   "ad.open": "前往管理后台",
   "ad.note": "权限由后端强制校验，仅具备管理员角色的账号可以进入。",
   "brand.slogan": "先聊聊，再成为朋友。",
+  /* 站点 metadata（app/layout.tsx 与 app/en/layout.tsx） */
+  "meta.title": "TalkFirst 先聊 — 先聊聊，再成为朋友",
+  "meta.description": "TalkFirst 是一个语言交换与跨文化社交应用：先和陌生人聊得来，再决定要不要成为朋友。Talk First. Connect Later.",
+  "meta.ogDescription": "从一句「你好」开始，聊得来，再决定要不要认识。",
 } as const;
 
 export type MsgKey = keyof typeof zh;
@@ -3061,6 +3065,9 @@ export const en: Record<MsgKey, string> = {
   "ad.open": "Open the admin console",
   "ad.note": "Access is enforced server-side: only accounts with the admin role can get in.",
   "brand.slogan": "Talk first, then be friends.",
+  "meta.title": "TalkFirst — talk first, become friends later",
+  "meta.description": "TalkFirst is a language-exchange and cross-cultural social app: get along with a stranger first, then decide whether to become friends. Talk First. Connect Later.",
+  "meta.ogDescription": "Start with a hello. If you click, then decide whether to connect.",
 };
 
 const MESSAGES: Record<Locale, Record<MsgKey, string>> = { zh, en };
