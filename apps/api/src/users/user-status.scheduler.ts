@@ -3,6 +3,7 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import { PrismaService } from "../prisma/prisma.service";
 import { AdminService } from "../admin/admin.service";
 import { NotificationService } from "../notifications/notification.service";
+import { msg } from "../common/i18n";
 
 /**
  * Phase A+: releases temporary suspensions when they expire.
@@ -166,8 +167,8 @@ export class UserStatusScheduler {
       await this.notifications.notify({
         userId: user.id,
         type: "USER_STATUS",
-        title: "账号状态已更新",
-        body: "你的临时封禁已到期，账号已恢复。",
+        title: msg("notify.userStatus.title"),
+        body: msg("notify.userStatus.body.ACTIVE"),
         data: { targetType: "USER", targetId: user.id, status: "ACTIVE" },
       });
     }

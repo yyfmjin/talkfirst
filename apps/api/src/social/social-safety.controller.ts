@@ -5,6 +5,7 @@ import {
   Delete,
   ForbiddenException,
   Get,
+  Headers,
   NotFoundException,
   Param,
   Post,
@@ -14,7 +15,7 @@ import {
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { NotificationService } from "../notifications/notification.service";
 import { emitConversationActivity, emitMessageNew } from "../chat/chat-events";
-import { msg } from "../common/i18n";
+import { msg, resolveLocale, t } from "../common/i18n";
 import { PrismaService } from "../prisma/prisma.service";
 import { SafetyService } from "../safety/safety.service";
 import { CurrentUser, type AuthUser } from "../auth/current-user.decorator";
@@ -500,7 +501,12 @@ export class SocialSafetyController {
   }
 
   @Post("messages/safety-scan")
-  async safetyScan(@CurrentUser() user: AuthUser, @Body(new ValidationPipe()) dto: SendMessageDto) {
+  async safetyScan(
+    @CurrentUser() user: AuthUser,
+    @Body(new ValidationPipe()) dto: SendMessageDto,
+    /* 提示语发给**调用方**（还没发出去的那条消息的发送者），所以按他的请求头选语言。 */
+    @Headers("accept-language") acceptLanguage?: string,
+  ) {
     void user;
     const scan = this.safety.scanText(dto.content ?? "");
     return {
@@ -509,9 +515,9 @@ export class SocialSafetyController {
         ...scan,
         links: this.safety.extractLinks(dto.content ?? ""),
         warning: scan.hasExternalLink
-          ? "⚠️ 小心外部链接。TalkFirst 不会向你索要钱款或验证码。"
+          ? t(resolveLocale({ locale: acceptLanguage }), "safety.externalLink")
           : scan.hasContactLeak
-            ? "请通过「交换联系方式」交换账号，不要直接在聊天里发送。"
+            ? t(resolveLocale({ locale: acceptLanguage }), "safety.contactLeak")
             : null,
       },
     };

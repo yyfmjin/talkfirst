@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
-import type { SupportedLocale } from "../common/i18n";
+import { msg, type SupportedLocale } from "../common/i18n";
 import { NotificationService } from "../notifications/notification.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { normalizeUploadUrl } from "../uploads/upload-url";
@@ -338,7 +338,7 @@ export class UsersService {
     await this.notifications.notify({
       userId: receiverId,
       type: "FLOWER_RECEIVED",
-      title: "你收到了一朵花",
+      title: msg("notify.flowerReceived.title"),
       data: { actorId: senderId, targetType: "USER", targetId: senderId },
     });
 
