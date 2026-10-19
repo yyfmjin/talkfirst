@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { t, type MsgKey, type MsgParams } from "./dictionary";
-import { DEFAULT_LOCALE, localeFromPath, type Locale } from "./locales";
+import { localeFromPath, type Locale } from "./locales";
 
 /**
  * 客户端组件怎么知道自己是哪个语言。

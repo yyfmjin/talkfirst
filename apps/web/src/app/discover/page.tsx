@@ -103,7 +103,7 @@ export default function DiscoverPage() {
       setLoading(false);
       setSwitching(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     /**

@@ -25,7 +25,7 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Heart, MessageCircle, Pause, Play, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, Heart, MessageCircle, Play, Volume2, VolumeX } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
 import { TFAvatar } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
@@ -132,7 +132,7 @@ function VideosFeed() {
         setLoading(false);
       }
     },
-    [startId],
+    [startId, t],
   );
 
   // `itemsRef` 让 loadBatch 不必把 items 放进依赖（否则每次加载都重建回调）。

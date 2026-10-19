@@ -50,7 +50,7 @@ export default function PurposesPage() {
       }
     }
     void init();
-  }, []);
+  }, [t]);
 
   function toggle(slug: string) {
     setSelected((current) =>

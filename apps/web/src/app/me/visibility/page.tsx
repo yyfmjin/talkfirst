@@ -51,7 +51,7 @@ export default function ProfileVisibilityPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();

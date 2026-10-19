@@ -108,7 +108,7 @@ export function SentRequestsPanel() {
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : t("mp.loadFailed"));
     }
-  }, [user]);
+  }, [user, t]);
 
   useEffect(() => {
     void load();

@@ -59,7 +59,7 @@ export default function ProfileDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     void load();

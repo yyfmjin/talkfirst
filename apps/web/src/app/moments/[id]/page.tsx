@@ -195,7 +195,7 @@ export default function MomentDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     void load();

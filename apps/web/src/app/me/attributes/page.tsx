@@ -88,7 +88,7 @@ export default function ProfileAttributesPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();

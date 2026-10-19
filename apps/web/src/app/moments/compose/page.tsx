@@ -224,7 +224,7 @@ export default function ComposePage() {
       })();
       inflight.current.set(item.id, promise);
     },
-    [patchItem],
+    [patchItem, t],
   );
 
   // Revoke every object URL when the composer unmounts.

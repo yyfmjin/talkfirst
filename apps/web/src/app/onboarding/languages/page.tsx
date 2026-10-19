@@ -47,7 +47,7 @@ export default function LanguagesPage() {
       }
     }
     void init();
-  }, []);
+  }, [t]);
 
   const filtered = useMemo(() => {
     const keyword = search.trim().toLowerCase();

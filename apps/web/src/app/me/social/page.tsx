@@ -112,7 +112,7 @@ export default function SocialAccountsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -136,7 +136,7 @@ export default function SocialAccountsPage() {
     params.delete("social_error");
     const query = params.toString();
     window.history.replaceState({}, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
-  }, []);
+  }, [t]);
 
   const accountFor = (provider: string) => accounts.find((row) => row.provider === provider);
 

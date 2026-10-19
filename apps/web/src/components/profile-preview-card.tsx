@@ -60,7 +60,7 @@ export function ProfilePreviewCard({
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId, t]);
 
   useEffect(() => {
     if (userId) {

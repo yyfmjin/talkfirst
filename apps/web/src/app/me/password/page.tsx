@@ -96,7 +96,7 @@ export default function ChangePasswordPage() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [t]);
 
   const settingFirstPassword = mode === "set";
 

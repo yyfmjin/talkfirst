@@ -149,7 +149,7 @@ export default function ChatDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [conversationId, setLiveMessages]);
+  }, [conversationId, setLiveMessages, t]);
 
   /**
    * FEATURE (post-audit) — read further back than the newest 50 messages.
@@ -199,7 +199,7 @@ export default function ChatDetailPage() {
     } finally {
       setLoadingOlder(false);
     }
-  }, [conversationId, olderCursor, loadingOlder, setLiveMessages]);
+  }, [conversationId, olderCursor, loadingOlder, setLiveMessages, t]);
 
   useEffect(() => {
     setLoading(true);

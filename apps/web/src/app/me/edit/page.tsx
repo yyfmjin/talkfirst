@@ -95,7 +95,7 @@ export default function EditProfilePage() {
     } finally {
       setPrefilling(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (!user || loadedOnce.current) return;

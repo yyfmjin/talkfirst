@@ -98,7 +98,7 @@ export default function LoginPage() {
     params.delete("oauth_providers");
     const query = params.toString();
     window.history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
-  }, []);
+  }, [locale]);
 
   async function resendVerification() {
     setError("");

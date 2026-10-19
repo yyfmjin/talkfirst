@@ -6,7 +6,6 @@ import { ArrowLeft, Settings2, Sparkles, Trash2 } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
 import { TabBar } from "@/components/tab-bar";
 import {
-  TFAvatar,
   TFButton,
   TFErrorState,
   TFLoadingRegion,
@@ -424,7 +423,6 @@ function SetupForm({
   const [greeting, setGreeting] = useState(initial?.greeting ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const { show: toast } = useToast();
 
   const editing = Boolean(initial);
 

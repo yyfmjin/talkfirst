@@ -59,7 +59,7 @@ export default function ConnectionsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();

@@ -178,7 +178,7 @@ export function useNotificationReader(onMarked: (notification: NotificationRecor
       // A target the app cannot route to leaves the reader on this screen.
       if (href) router.push(href);
     },
-    [onMarked, pendingId, router],
+    [onMarked, pendingId, router, t],
   );
 
   return { activate, pendingId, error };

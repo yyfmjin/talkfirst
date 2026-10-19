@@ -65,7 +65,7 @@ export default function MessagesPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();

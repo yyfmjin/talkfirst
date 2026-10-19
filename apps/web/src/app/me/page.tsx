@@ -146,7 +146,7 @@ export default function MePage() {
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, [router, t]);
 
   useEffect(() => {
     void load();

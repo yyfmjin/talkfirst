@@ -97,7 +97,7 @@ export function NotificationCenter() {
     return () => {
       cancelled = true;
     };
-  }, [fetchPage, filter, reloadKey]);
+  }, [fetchPage, filter, reloadKey, t]);
 
   async function loadMore() {
     if (!nextCursor || loadingMore) return;

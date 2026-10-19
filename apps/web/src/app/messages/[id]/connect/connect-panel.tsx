@@ -92,7 +92,7 @@ export default function ConnectPanel({ conversationId }: { conversationId: strin
       }
     }
     void load();
-  }, [conversationId]);
+  }, [conversationId, t]);
 
   async function refresh() {
     try {

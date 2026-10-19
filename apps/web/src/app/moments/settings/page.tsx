@@ -55,7 +55,7 @@ export default function MomentsSettingsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();

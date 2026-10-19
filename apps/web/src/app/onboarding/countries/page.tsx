@@ -41,7 +41,7 @@ export default function CountriesPage() {
       }
     }
     void init();
-  }, []);
+  }, [t]);
 
   const keyword = search.trim().toLowerCase();
   const filtered = keyword

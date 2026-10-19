@@ -92,7 +92,7 @@ export default function MeInterestsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();

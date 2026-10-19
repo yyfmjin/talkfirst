@@ -107,7 +107,7 @@ export default function FeedbackPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();

@@ -184,7 +184,7 @@ export default function MomentsPage() {
         setLoadingMore(false);
       }
     },
-    [cursor, platform, platforms, tab, topic],
+    [cursor, platform, platforms, tab, topic, t],
   );
 
   useEffect(() => {

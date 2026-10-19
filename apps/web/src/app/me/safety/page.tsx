@@ -47,7 +47,7 @@ export default function SafetyPage() {
       }
     }
     void load();
-  }, []);
+  }, [t]);
 
   async function unblock(userId: string) {
     setActing(userId);

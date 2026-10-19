@@ -85,7 +85,7 @@ export default function UserMomentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [id, platform]);
+  }, [id, platform, t]);
 
   useEffect(() => {
     void load();
