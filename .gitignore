@@ -69,3 +69,4 @@ apps/web/public/apk/
 
 # i18n 扫描的生成物（scripts/i18n-scan.py）
 i18n-leftovers.txt
+api-leftovers.txt
