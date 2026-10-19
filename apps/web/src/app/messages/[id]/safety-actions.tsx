@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { TFButton, TFTextarea } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/cn";
-import { REPORT_REASONS, reportReasonLabel } from "@/lib/report-reasons";
+import { REPORT_REASONS, reportReasonKey } from "@/lib/report-reasons";
+import { useT } from "@/lib/i18n";
 
 /**
  * The block / report menu for one conversation.
@@ -27,6 +28,7 @@ export default function SafetyActions({
   onRetry?: () => void;
 }) {
   const router = useRouter();
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"menu" | "report" | "block">("menu");
   const [reason, setReason] = useState("Harassment");
@@ -43,10 +45,10 @@ export default function SafetyActions({
         method: "POST",
         body: { userId: peerId, reason, description: description.trim() || undefined },
       });
-      setMessage("举报已提交，我们会尽快审核。");
+      setMessage(t("sy.reported"));
       setMode("menu");
     } catch (requestError) {
-      setMessage(requestError instanceof Error ? requestError.message : "举报失败");
+      setMessage(requestError instanceof Error ? requestError.message : t("sy.reportFailed"));
     } finally {
       setBusy(false);
     }
@@ -60,7 +62,7 @@ export default function SafetyActions({
       await apiFetch("/blocks", { method: "POST", body: { userId: peerId } });
       router.push("/messages");
     } catch (requestError) {
-      setMessage(requestError instanceof Error ? requestError.message : "拉黑失败");
+      setMessage(requestError instanceof Error ? requestError.message : t("sy.blockFailed"));
     } finally {
       setBusy(false);
     }
@@ -75,7 +77,7 @@ export default function SafetyActions({
           setMode("menu");
           setMessage("");
         }}
-        aria-label="聊天安全菜单"
+        aria-label={t("sy.menuAria")}
         aria-haspopup="dialog"
         className="grid h-9 w-9 place-items-center rounded-full text-content-muted transition-colors duration-instant hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
       >
@@ -92,27 +94,27 @@ export default function SafetyActions({
           className="absolute inset-0 z-30 flex items-end justify-center bg-surface-scrim"
           role="dialog"
           aria-modal="true"
-          aria-label={`聊天设置 · ${peerName}`}
+          aria-label={t("sy.sheetAria", { name: peerName })}
         >
           <div className="tf-scroll max-h-[85%] w-full overflow-y-auto rounded-t-sheet bg-surface p-6 pb-[calc(2rem+env(safe-area-inset-bottom))]">
             {mode === "menu" ? (
               <>
-                <h2 className="text-heading font-semibold text-content">聊天设置 · {peerName}</h2>
+                <h2 className="text-heading font-semibold text-content">{t("sy.settingsHeading", { name: peerName })}</h2>
                 {peerId ? (
                   <>
                     <div className="mt-4 space-y-2">
                       <TFButton variant="secondary" fullWidth onClick={() => setMode("report")}>
-                        举报用户
+                        {t("sy.reportUser")}
                       </TFButton>
                       <TFButton variant="secondary" fullWidth onClick={() => setMode("block")}>
-                        拉黑
+                        {t("sy.block")}
                       </TFButton>
                       <TFButton variant="ghost" fullWidth onClick={() => setOpen(false)}>
-                        取消
+                        {t("sy.cancel")}
                       </TFButton>
                     </div>
                     <p className="mt-3 text-caption leading-4 text-content-subtle">
-                      举报后进入人工审核；拉黑后双方无法再发消息，未完成的请求会自动取消。
+                      {t("sy.menuNote")}
                     </p>
                   </>
                 ) : (
@@ -121,16 +123,16 @@ export default function SafetyActions({
                      beats the old behaviour of hiding the entry point. */
                   <>
                     <p className="mt-3 text-caption leading-5 text-content-muted">
-                      暂时无法获取对方信息，举报和拉黑现在还不能提交。
+                      {t("sy.peerUnknown")}
                     </p>
                     <div className="mt-4 space-y-2">
                       {onRetry ? (
                         <TFButton variant="secondary" fullWidth onClick={onRetry}>
-                          重新获取
+                          {t("sy.retry")}
                         </TFButton>
                       ) : null}
                       <TFButton variant="ghost" fullWidth onClick={() => setOpen(false)}>
-                        取消
+                        {t("sy.cancel")}
                       </TFButton>
                     </div>
                   </>
@@ -140,7 +142,7 @@ export default function SafetyActions({
 
             {mode === "report" ? (
               <>
-                <h2 className="text-heading font-semibold text-content">举报用户</h2>
+                <h2 className="text-heading font-semibold text-content">{t("sy.reportHeading")}</h2>
                 {/* `data-reason` mirrors the moment report dialog, which the suite
                     selects on (`[data-testid="moment-report-reason"][data-reason=…]`).
                     Same two surfaces, same contract. */}
@@ -160,13 +162,13 @@ export default function SafetyActions({
                           : "border-border bg-surface text-content hover:bg-surface-sunken",
                       )}
                     >
-                      {reportReasonLabel(item)}
+                      {t(reportReasonKey(item))}
                     </button>
                   ))}
                 </div>
                 <div className="mt-3">
                   <label htmlFor="chat-report-description" className="mb-1.5 block text-caption font-medium text-content-muted">
-                    补充说明（可选）
+                    {t("sy.descriptionLabel")}
                   </label>
                   <TFTextarea
                     id="chat-report-description"
@@ -174,47 +176,47 @@ export default function SafetyActions({
                     onChange={(event) => setDescription(event.target.value)}
                     maxLength={1000}
                     rows={3}
-                    placeholder="补充说明（可选）"
+                    placeholder={t("sy.descriptionPlaceholder")}
                   />
                 </div>
                 <div className="mt-4 flex gap-2">
                   <TFButton variant="secondary" className="flex-1" onClick={() => setMode("menu")}>
-                    返回
+                    {t("sy.back")}
                   </TFButton>
                   <TFButton
                     className="flex-[2]"
                     onClick={() => void submitReport()}
                     disabled={!reason}
                     loading={busy}
-                    loadingLabel="提交中…"
+                    loadingLabel={t("sy.submitting")}
                   >
-                    提交举报
+                    {t("sy.submitReport")}
                   </TFButton>
                 </div>
                 {!reason ? (
-                  <p className="mt-2 text-caption text-content-subtle">请先选择一个举报原因</p>
+                  <p className="mt-2 text-caption text-content-subtle">{t("sy.needReason")}</p>
                 ) : null}
               </>
             ) : null}
 
             {mode === "block" ? (
               <>
-                <h2 className="text-heading font-semibold text-content">拉黑</h2>
+                <h2 className="text-heading font-semibold text-content">{t("sy.blockHeading")}</h2>
                 <p className="mt-2 text-ui leading-6 text-content-muted">
-                  拉黑后你们将无法再互相发送消息。
+                  {t("sy.blockNote")}
                 </p>
                 <div className="mt-4 flex gap-2">
                   <TFButton variant="secondary" className="flex-1" onClick={() => setMode("menu")}>
-                    返回
+                    {t("sy.back")}
                   </TFButton>
                   <TFButton
                     variant="danger"
                     className="flex-[2]"
                     onClick={() => void confirmBlock()}
                     loading={busy}
-                    loadingLabel="处理中…"
+                    loadingLabel={t("sy.processing")}
                   >
-                    确认拉黑
+                    {t("sy.confirmBlock")}
                   </TFButton>
                 </div>
               </>

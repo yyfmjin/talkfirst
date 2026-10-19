@@ -21,15 +21,17 @@ export type PeerPresence = { userId: string; online: boolean; lastSeen: string |
 
 export type ConnectionState = "connecting" | "live" | "reconnecting" | "offline";
 
-/** The one place the four connection states are turned into user-facing text. */
-export const CONNECTION_LABELS: Record<ConnectionState, string> = {
-  connecting: "正在连接…",
-  live: "实时连接",
-  reconnecting: "连接断开，正在重连…",
-  offline: "连接失败",
+import type { MsgKey } from "@/lib/i18n";
+
+/** The one place the four connection states are turned into **dictionary keys**. */
+export const CONNECTION_LABELS: Record<ConnectionState, MsgKey> = {
+  connecting: "ck.connecting",
+  live: "ck.live",
+  reconnecting: "ck.reconnecting",
+  offline: "ck.offline",
 };
 
-export function connectionLabel(state: ConnectionState) {
+export function connectionLabel(state: ConnectionState): MsgKey {
   return CONNECTION_LABELS[state];
 }
 

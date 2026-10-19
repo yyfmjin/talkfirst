@@ -21,25 +21,29 @@ export const REPORT_REASONS = [
 
 export type ReportReason = (typeof REPORT_REASONS)[number];
 
-export const REPORT_REASON_LABELS: Record<string, string> = {
-  Harassment: "骚扰",
-  Spam: "垃圾信息",
-  Scam: "欺诈",
-  "Sexual content": "色情内容",
-  "Hate speech": "仇恨言论",
-  "Fake profile": "虚假资料",
-  Other: "其它",
+import type { MsgKey } from "@/lib/i18n";
+
+export const REPORT_REASON_LABELS: Record<string, MsgKey> = {
+  Harassment: "report.reason.Harassment",
+  Spam: "report.reason.Spam",
+  Scam: "report.reason.Scam",
+  "Sexual content": "report.reason.Sexual content",
+  "Hate speech": "report.reason.Hate speech",
+  "Fake profile": "report.reason.Fake profile",
+  Other: "report.reason.Other",
 };
 
 /**
  * Matched case-insensitively: `Report.reason` is free-form, and `SPAM` is a
  * value that genuinely exists in the table (the API itself filters with
- * `mode: "insensitive"`). Falls back to the raw code so an unmapped reason is
- * still readable.
+ * `mode: "insensitive"`).
+ *
+ * Always returns a key: an unmapped reason degrades to 「其它」 rather than to a raw
+ * English code on a Chinese screen.
  */
-export function reportReasonLabel(reason: string): string {
+export function reportReasonKey(reason: string): MsgKey {
   const key = Object.keys(REPORT_REASON_LABELS).find(
     (candidate) => candidate.toLowerCase() === reason.toLowerCase(),
   );
-  return key ? REPORT_REASON_LABELS[key] : reason;
+  return key ? REPORT_REASON_LABELS[key] : "report.reason.Other";
 }

@@ -82,14 +82,25 @@ test("the report reasons match the endpoint that validates them", () => {
 
 test("every report reason has a Chinese label", () => {
   const source = readFileSync(join(appRoot, "src/lib/report-reasons.ts"), "utf8");
-  const block = source.match(/REPORT_REASON_LABELS: Record<string, string> = \{([\s\S]*?)\n\};/);
+  const block = source.match(/REPORT_REASON_LABELS: Record<string, MsgKey> = \{([\s\S]*?)\n\};/);
   assert.ok(block, "REPORT_REASON_LABELS must be a literal map");
 
+  /*
+   * 文案 2026-10-19 搬进了词典（模块级常量表拿不到当前语言，存中文会让英文界面显示中文）。
+   * 这个测试的**意图不变**：每个原因都要有中文。所以它现在查两件事——
+   * 原因能映射到一个词条键，且那个键在 zh 词典里确实有中文。
+   */
+  const dictionary = readFileSync(join(appRoot, "src/lib/i18n/dictionary.ts"), "utf8");
+  const escape = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
   for (const reason of apiReportReasons(repoRoot)) {
+    const entry = block[1].match(new RegExp(`"?${escape(reason)}"?:\\s*"([^"]+)"`));
+    assert.ok(entry, `${reason} must map to a dictionary key`);
+    const key = entry[1];
     assert.match(
-      block[1],
-      new RegExp(`"?${reason.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"?:\\s*"[\\u4e00-\\u9fff]`),
-      `${reason} needs a Chinese label`,
+      dictionary,
+      new RegExp(`"${escape(key)}":\\s*"[\\u4e00-\\u9fff]`),
+      `${reason} → ${key} needs a Chinese label in the dictionary`,
     );
   }
 });

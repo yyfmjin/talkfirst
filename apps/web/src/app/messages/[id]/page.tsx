@@ -331,7 +331,7 @@ export default function ChatDetailPage() {
   }
 
   const peerOnline = peers.length > 0 ? peers.some((presence) => presence.online) : null;
-  const connectionText = connectionLabel(connectionState);
+  const connectionText = t(connectionLabel(connectionState));
 
   return (
     <PhoneShell>
