@@ -66,3 +66,6 @@ talkfirst-*.tar.gz
 # the server, never committed; leaving it untracked would dirty the working tree
 # and block scripts/deploy-pull.sh (same trap as .env.production.local above).
 apps/web/public/apk/
+
+# i18n 扫描的生成物（scripts/i18n-scan.py）
+i18n-leftovers.txt
