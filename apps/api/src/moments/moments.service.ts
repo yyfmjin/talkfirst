@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { NotificationService } from "../notifications/notification.service";
-import { msg } from "../common/i18n";
+import { DEFAULT_LOCALE, msg, t, type MessageKey, type SupportedLocale } from "../common/i18n";
 import { keysetFilterAfter, keysetNextCursor, keysetOrderBy, parseKeysetCursor } from "../common/keyset-cursor";
 import { PrismaService } from "../prisma/prisma.service";
 import { SafetyService, type SafetyScan } from "../safety/safety.service";
@@ -103,8 +103,12 @@ export class MomentsService {
     private readonly notifications: NotificationService,
   ) {}
 
-  platforms() {
-    return [...MOMENT_PLATFORMS];
+  platforms(locale: SupportedLocale = DEFAULT_LOCALE) {
+    return MOMENT_PLATFORMS.map((row) => ({
+      ...row,
+      // `connectedLabel` 直接显示在成员眼前（动态列表旁），按浏览者语言渲染。
+      connectedLabel: t(locale, `platform.connected.${row.id}` as MessageKey),
+    }));
   }
 
   // Single source of truth for "may this viewer see this author's moments?".

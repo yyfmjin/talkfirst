@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Delete,
+  Headers,
   ForbiddenException,
   Get,
   NotFoundException,
@@ -19,6 +20,7 @@ import { CurrentUser, type AuthUser } from "../auth/current-user.decorator";
 import { UuidParamPipe } from "../common/uuid-param.pipe";
 import { ValidationPipe } from "../common/validation.pipe";
 import { MomentsService } from "./moments.service";
+import { resolveLocale } from "../common/i18n";
 
 class BindDto {
   @IsIn(["TALKFIRST", "INSTAGRAM", "X", "TIKTOK", "YOUTUBE", "FACEBOOK"])
@@ -184,8 +186,11 @@ export class MomentsController {
   constructor(private readonly moments: MomentsService) {}
 
   @Get("platforms")
-  platforms() {
-    return { success: true as const, data: this.moments.platforms() };
+  platforms(@Headers("accept-language") acceptLanguage?: string) {
+    return {
+      success: true as const,
+      data: this.moments.platforms(resolveLocale({ locale: acceptLanguage })),
+    };
   }
 
   /**

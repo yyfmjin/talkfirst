@@ -48,6 +48,8 @@ const CODE_MESSAGES: Record<Locale, Record<string, string>> = {
     MOMENT_FORBIDDEN: "只能修改或删除自己发布的动态。",
     EMPTY_CONTENT: "动态内容不能为空，至少保留一张照片或一个视频。",
     CONTENT_BLOCKED: "这段内容包含不被允许的信息，请修改后再试。",
+    COMPANION_NOT_FOUND: "还没有创建 AI 朋友。",
+    CONVERSATION_NOT_FOUND: "AI 会话不存在，请返回后重新进入。",
   },
   en: {
     VALIDATION_ERROR: "Some fields need fixing — check them and try again.",
@@ -73,6 +75,8 @@ const CODE_MESSAGES: Record<Locale, Record<string, string>> = {
     MOMENT_FORBIDDEN: "You can only edit or delete your own moments.",
     EMPTY_CONTENT: "A moment can't be empty — keep at least one photo or video.",
     CONTENT_BLOCKED: "This content contains something we don't allow. Edit it and try again.",
+    COMPANION_NOT_FOUND: "You haven't created an AI friend yet.",
+    CONVERSATION_NOT_FOUND: "This AI conversation no longer exists — go back and open it again.",
   },
 };
 

@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { resolveLocale, t } from "../common/i18n";
 import { SafetyService } from "../safety/safety.service";
 import { AiService, AiUnavailableError } from "./ai.service";
 
@@ -274,7 +275,14 @@ export class AiCompanionService {
       let replyContent = await this.ai.chat(system, history, userText);
       const replyScan = this.safety.scanText(replyContent);
       if (replyScan.blocked) {
-        replyContent = "这个话题我们先跳过吧，聊点别的？";
+        /*
+         * 兜底回复会被**存进会话**（不是发给模型的 prompt），所以它必须跟着用户语言走；
+         * 语言取账号上显式选的界面语言，没选就落到中文兜底。
+         */
+        const replyLocale = resolveLocale({
+          languageCodes: user?.languages?.map((item) => item.languageCode) ?? [],
+        });
+        replyContent = t(replyLocale, "ai.blockedFallback");
       }
 
       const reply = await this.prisma.$transaction(async (tx) => {
