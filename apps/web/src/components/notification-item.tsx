@@ -122,7 +122,7 @@ export function NotificationItem({
           </span>
         ) : null}
         <span className="mt-1 flex items-center gap-1.5 text-overline text-content-subtle">
-          {relativeTime(notification.createdAt)}
+          {relativeTime(notification.createdAt, t)}
           {/* 合并过的行（聊天消息）：把「几条」直接说清楚，比一串同样的行好读。 */}
           {notification.count > 1 ? (
             <span className="rounded-full bg-surface-sunken px-1.5 py-0.5 font-medium text-content-muted">

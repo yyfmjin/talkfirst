@@ -304,7 +304,7 @@ export default function UserMomentsPage() {
                 <article key={item.id} className="bg-surface">
                   <p className="flex items-center gap-2 px-4 pt-4 text-caption text-content-muted">
                     <span>
-                      {item.platformName ?? item.platform} · {relativeTime(item.createdAt)}
+                      {item.platformName ?? item.platform} · {relativeTime(item.createdAt, t)}
                     </span>
                     {item.isDemo ? (
                       <TFBadge tone="warning" title={t("mu.demoTitle")}>

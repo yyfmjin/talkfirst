@@ -66,20 +66,30 @@ export function platformMeta(platforms: MomentPlatform[], id: string): MomentPla
   );
 }
 
-export function timeAgo(iso: string) {
+import type { MsgKey, MsgParams } from "@/lib/i18n";
+
+type Translate = (key: MsgKey, params?: MsgParams) => string;
+
+/**
+ * 相对时间。
+ *
+ * 接受一个 `t`，而不是把中文句子写在这里：这是模块级函数、拿不到当前语言，
+ * 而它被动态列表、详情、评论、通知四处共用 —— 存中文会让英文界面出现「3分钟前」。
+ */
+export function timeAgo(iso: string, t: Translate) {
   const diffMs = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(diffMs / 60000);
-  if (minutes < 1) return "刚刚";
-  if (minutes < 60) return `${minutes}分钟前`;
+  if (minutes < 1) return t("mt.justNow");
+  if (minutes < 60) return t("mt.minutesAgo", { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}小时前`;
+  if (hours < 24) return t("mt.hoursAgo", { count: hours });
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}天前`;
+  if (days < 30) return t("mt.daysAgo", { count: days });
   return new Date(iso).toLocaleDateString();
 }
 
-export function relativeTime(value: string) {
-  return timeAgo(value);
+export function relativeTime(value: string, t: Translate) {
+  return timeAgo(value, t);
 }
 
 export function formatCount(value: number) {

@@ -584,7 +584,7 @@ export default function MomentDetailPage() {
                   {moment.author.nickname ?? t("md.userFallback")}
                 </button>
                 <p className="truncate text-caption text-content-muted">
-                  {moment.author.countryCode ?? t("md.countryFallback")} · {moment.platformName ?? moment.platform} · {relativeTime(moment.createdAt)}
+                  {moment.author.countryCode ?? t("md.countryFallback")} · {moment.platformName ?? moment.platform} · {relativeTime(moment.createdAt, t)}
                 </p>
               </div>
               {moment.isDemo ? (

@@ -1506,6 +1506,24 @@ export const zh = {
   "sy.blockNote": "拉黑后你们将无法再互相发送消息。",
   "sy.processing": "处理中…",
   "sy.confirmBlock": "确认拉黑",
+  /* 相对时间（lib/moments.tsx） */
+  "mt.justNow": "刚刚",
+  "mt.minutesAgo": "{count} 分钟前",
+  "mt.hoursAgo": "{count} 小时前",
+  "mt.daysAgo": "{count} 天前",
+  /* 视频流（app/videos） */
+  "vd.loadFailed": "视频加载失败，请稍后再试。",
+  "vd.back": "返回动态",
+  "vd.unmute": "打开声音",
+  "vd.mute": "静音",
+  "vd.loading": "加载中…",
+  "vd.emptyTitle": "还没有视频",
+  "vd.emptyDesc": "发布一条带视频的动态，它就会出现在这里。",
+  "vd.backToFeed": "回到动态",
+  "vd.itemAria": "第 {n} 条视频，作者 {name}",
+  "vd.swipeHint": "下滑查看",
+  "vd.play": "播放",
+  "vd.userFallback": "用户",
 } as const;
 
 export type MsgKey = keyof typeof zh;
@@ -2960,6 +2978,22 @@ export const en: Record<MsgKey, string> = {
   "sy.blockNote": "Once blocked, neither of you can message the other.",
   "sy.processing": "Working…",
   "sy.confirmBlock": "Block",
+  "mt.justNow": "just now",
+  "mt.minutesAgo": "{count}m ago",
+  "mt.hoursAgo": "{count}h ago",
+  "mt.daysAgo": "{count}d ago",
+  "vd.loadFailed": "Couldn't load videos. Please try again.",
+  "vd.back": "Back to feed",
+  "vd.unmute": "Unmute",
+  "vd.mute": "Mute",
+  "vd.loading": "Loading…",
+  "vd.emptyTitle": "No videos yet",
+  "vd.emptyDesc": "Post a moment with a video and it shows up here.",
+  "vd.backToFeed": "Back to the feed",
+  "vd.itemAria": "Video {n}, by {name}",
+  "vd.swipeHint": "Swipe to browse",
+  "vd.play": "Play",
+  "vd.userFallback": "Member",
 };
 
 const MESSAGES: Record<Locale, Record<MsgKey, string>> = { zh, en };

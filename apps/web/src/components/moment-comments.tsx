@@ -505,7 +505,7 @@ export function MomentComments({
                         <span className="break-words">{comment.content}</span>
                       ) : null}
                       <span className="ml-2 whitespace-nowrap text-overline text-content-subtle">
-                        {relativeTime(comment.createdAt)}
+                        {relativeTime(comment.createdAt, t)}
                       </span>
                       {onReply ? (
                         <>
@@ -550,7 +550,7 @@ export function MomentComments({
                                     <span className="break-words">{reply.content}</span>
                                   ) : null}
                                   <span className="ml-2 whitespace-nowrap text-overline text-content-subtle">
-                                    {relativeTime(reply.createdAt)}
+                                    {relativeTime(reply.createdAt, t)}
                                   </span>
                                   {renderActions(reply, "reply")}
                                 </p>

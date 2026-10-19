@@ -707,7 +707,7 @@ function MomentCard({
         <button type="button" onClick={() => onProfile(moment.userId)} className="min-w-0 flex-1 text-left">
           <p className="truncate text-ui font-semibold text-content">{moment.author.nickname ?? t("common.talkFirstUser")}</p>
           <p className="text-caption text-content-muted">
-            {moment.author.countryCode ?? t("common.global")} · {relativeTime(moment.createdAt)}
+            {moment.author.countryCode ?? t("common.global")} · {relativeTime(moment.createdAt, t)}
           </p>
         </button>
         <TFBadge tone="brand" className="shrink-0">

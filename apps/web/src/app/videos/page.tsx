@@ -30,6 +30,7 @@ import { PhoneShell } from "@/components/phone-shell";
 import { TFAvatar } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { friendlyErrorMessage } from "@/lib/errors";
+import { useT } from "@/lib/i18n";
 
 type VideoFeedItem = {
   id: string;
@@ -68,6 +69,7 @@ function VideosFeed() {
   const router = useRouter();
   const params = useSearchParams();
   const startId = params.get("start");
+  const { t } = useT();
 
   const [items, setItems] = useState<VideoFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -124,7 +126,7 @@ function VideosFeed() {
           if (fresh.length > 0) setItems((prev) => [...prev, ...fresh]);
         }
       } catch (requestError) {
-        setError(friendlyErrorMessage(requestError, "视频加载失败，请稍后再试。"));
+        setError(friendlyErrorMessage(requestError, t("vd.loadFailed")));
       } finally {
         loadingRef.current = false;
         setLoading(false);
@@ -214,7 +216,7 @@ function VideosFeed() {
           <button
             type="button"
             onClick={() => router.push("/moments")}
-            aria-label="返回动态"
+            aria-label={t("vd.back")}
             className="pointer-events-auto grid h-10 w-10 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm transition-colors duration-instant hover:bg-black/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-reduce:transition-none"
           >
             <ArrowLeft size={20} aria-hidden="true" />
@@ -222,7 +224,7 @@ function VideosFeed() {
           <button
             type="button"
             onClick={() => setMuted((value) => !value)}
-            aria-label={muted ? "打开声音" : "静音"}
+            aria-label={muted ? t("vd.unmute") : t("vd.mute")}
             aria-pressed={!muted}
             className="pointer-events-auto grid h-10 w-10 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm transition-colors duration-instant hover:bg-black/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-reduce:transition-none"
           >
@@ -231,20 +233,20 @@ function VideosFeed() {
         </div>
 
         {loading ? (
-          <p className="grid h-full place-items-center text-ui text-white/80">加载中…</p>
+          <p className="grid h-full place-items-center text-ui text-white/80">{t("vd.loading")}</p>
         ) : items.length === 0 ? (
           <div className="grid h-full place-items-center px-8 text-center">
             <div>
-              <p className="text-heading font-semibold text-white">还没有视频</p>
+              <p className="text-heading font-semibold text-white">{t("vd.emptyTitle")}</p>
               <p className="mt-2 text-caption leading-5 text-white/70">
-                发布一条带视频的动态，它就会出现在这里。
+                {t("vd.emptyDesc")}
               </p>
               <button
                 type="button"
                 onClick={() => router.push("/moments")}
                 className="mt-5 rounded-full bg-white/15 px-5 py-2.5 text-ui font-medium text-white transition-colors duration-instant hover:bg-white/25 motion-reduce:transition-none"
               >
-                回到动态
+                {t("vd.backToFeed")}
               </button>
             </div>
           </div>
@@ -260,7 +262,7 @@ function VideosFeed() {
                 data-index={index}
                 /* 每条占满一屏并吸附：这就是「上下滑切换」的全部实现。 */
                 className="relative h-full w-full snap-start snap-always"
-                aria-label={`第 ${index + 1} 条视频，作者 ${item.author.nickname ?? "用户"}`}
+                aria-label={t("vd.itemAria", { n: index + 1, name: item.author.nickname ?? t("vd.userFallback") })}
               >
                 {index === activeIndex || index === activeIndex + 1 ? (
                   <video
@@ -278,7 +280,7 @@ function VideosFeed() {
                 ) : (
                   /* 没轮到的条目不建 <video>：手机上同时解码多路视频会直接卡死。 */
                   <div className="grid h-full place-items-center text-caption text-white/40">
-                    下滑查看
+                    {t("vd.swipeHint")}
                   </div>
                 )}
 
@@ -286,7 +288,7 @@ function VideosFeed() {
                   <button
                     type="button"
                     onClick={() => setPaused(false)}
-                    aria-label="播放"
+                    aria-label={t("vd.play")}
                     className="absolute inset-0 grid place-items-center"
                   >
                     <span className="grid h-16 w-16 place-items-center rounded-full bg-black/50 text-white">
@@ -299,9 +301,9 @@ function VideosFeed() {
                     免得把画面切掉一块。 */}
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
                   <div className="flex items-center gap-2.5">
-                    <TFAvatar src={item.author.avatarUrl} name={item.author.nickname ?? "用户"} size="sm" />
+                    <TFAvatar src={item.author.avatarUrl} name={item.author.nickname ?? t("vd.userFallback")} size="sm" />
                     <span className="text-ui font-medium text-white">
-                      {item.author.nickname ?? "用户"}
+                      {item.author.nickname ?? t("vd.userFallback")}
                     </span>
                   </div>
                   {item.content ? (
