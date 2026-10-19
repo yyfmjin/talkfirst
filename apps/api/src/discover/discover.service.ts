@@ -7,6 +7,7 @@ import {
   type ViewerContext,
 } from "../users/profile-visibility.constants";
 import { isProfileComplete } from "../users/profile-completion";
+import { t, type SupportedLocale } from "../common/i18n";
 
 const DAILY_VIEW_LIMIT = 20;
 const LANGUAGE_SCORE = 30;
@@ -37,11 +38,11 @@ const COMPLETENESS_SCORE = 5;
  * That also means the migration needs no data seeding, which matters because a seed would
  * have to invent a keywords list and would silently change behaviour on deploy.
  */
-const BUILT_IN_CATEGORIES: ReadonlyArray<{ slug: string; label: string; keywords: readonly string[] }> = [
-  { slug: "language", label: "语言交换", keywords: ["language-exchange"] },
+const BUILT_IN_CATEGORIES: ReadonlyArray<{ slug: string; labelKey: "discover.category.language" | "discover.category.gaming"; keywords: readonly string[] }> = [
+  { slug: "language", labelKey: "discover.category.language", keywords: ["language-exchange"] },
   {
     slug: "gaming",
-    label: "游戏搭子",
+    labelKey: "discover.category.gaming",
     keywords: ["minecraft", "valorant", "gta", "steam", "nintendo", "gaming"],
   },
 ];
@@ -108,7 +109,7 @@ export class DiscoverService {
    * `all` is always first and is not a row: it is the absence of a filter, and storing it
    * would let an administrator deactivate the unfiltered view.
    */
-  async listCategories() {
+  async listCategories(locale: SupportedLocale = "zh") {
     const rows = await this.prisma.discoverCategory
       .findMany({
         where: { isActive: true },
@@ -121,16 +122,16 @@ export class DiscoverService {
       rows.length > 0
         ? rows.map((row) => ({
             id: row.slug,
-            label: row.labelZh ?? row.label,
+            label: locale === "zh" ? row.labelZh ?? row.label : row.label,
             keywords: parseCategoryKeywords(row.keywords),
           }))
         : BUILT_IN_CATEGORIES.map((row) => ({
             id: row.slug,
-            label: row.label,
+            label: t(locale, row.labelKey),
             keywords: [...row.keywords],
           }));
 
-    return [{ id: "all", label: "🌎 全部", keywords: [] as string[] }, ...items];
+    return [{ id: "all", label: t(locale, "discover.all"), keywords: [] as string[] }, ...items];
   }
 
   /**
@@ -162,7 +163,12 @@ export class DiscoverService {
     return { slug: "all", keywords: [] };
   }
 
-  async getRecommendations(userId: string, requestedLimit = 20, filterRaw?: string) {
+  async getRecommendations(
+    userId: string,
+    requestedLimit = 20,
+    filterRaw?: string,
+    locale: SupportedLocale = "zh",
+  ) {
     const limit = Math.min(Math.max(requestedLimit, 1), DAILY_VIEW_LIMIT);
     const { slug: normalizedFilter, keywords: filterKeywords } = await this.keywordsForFilter(
       filterRaw ?? "all",
@@ -215,10 +221,15 @@ export class DiscoverService {
     const ranked = candidates
       .filter((candidate) => !blockedIds.has(candidate.id))
       .map((candidate) =>
-        this.scoreCandidate(current, candidate, {
-          isSelf: candidate.id === userId,
-          isConnected: connectedIds.has(candidate.id),
-        }),
+        this.scoreCandidate(
+          current,
+          candidate,
+          {
+            isSelf: candidate.id === userId,
+            isConnected: connectedIds.has(candidate.id),
+          },
+          locale,
+        ),
       )
       // Filtering runs on the projected card rather than the raw row on purpose:
       // if a hidden `interests`/`purposes` list were consulted here, merely
@@ -401,6 +412,7 @@ export class DiscoverService {
     current: NonNullable<UserWithRelations>,
     candidate: NonNullable<UserWithRelations>,
     viewer: ViewerContext,
+    locale: SupportedLocale,
   ) {
     // Discovery reads the `User` row directly, so without this every governed
     // field reached the card regardless of `ProfileFieldVisibility` — a
@@ -456,18 +468,19 @@ export class DiscoverService {
     // A reason may only be shown when the field it is derived from is visible to
     // this viewer: "共同兴趣：摄影" would otherwise hand over a hidden interest.
     // The `score` above is computed from the raw rows and does not change.
-    if (canSee("languages") && languageScore) reasons.push("语言互补");
-    if (canSee("interests") && sharedInterests.length) reasons.push(`共同兴趣：${sharedInterests.slice(0, 2).join("、")}`);
-    if (canSee("purposes") && purposeScore) reasons.push("交友目的相近");
-    if (canSee("countryCode") && countryScore) reasons.push("符合国家偏好");
+    if (canSee("languages") && languageScore) reasons.push(t(locale, "discover.reason.languages"));
+    if (canSee("interests") && sharedInterests.length)
+      reasons.push(t(locale, "discover.reason.interests", { names: sharedInterests.slice(0, 2) }));
+    if (canSee("purposes") && purposeScore) reasons.push(t(locale, "discover.reason.purposes"));
+    if (canSee("countryCode") && countryScore) reasons.push(t(locale, "discover.reason.country"));
     // Activity is not a governed field (`lastActiveAt` is not on the whitelist).
-    if (activityScore >= 8) reasons.push("近期活跃");
+    if (activityScore >= 8) reasons.push(t(locale, "discover.reason.active"));
     /**
      * 完整度同样不是被治理的字段，所以不需要 `canSee` 闸门 —— 但这条理由
      * **绝不能说出缺的是哪些字段**。「资料较完整」就到此为止：告诉浏览者对方缺什么，
      * 等于泄露对方选择隐藏的内容，而这正是上面那组闸门存在的原因。
      */
-    if (completenessScore) reasons.push("资料较完整");
+    if (completenessScore) reasons.push(t(locale, "discover.reason.complete"));
 
     // Hidden scalars become null and hidden lists become [], so the response
     // shape is stable and the card simply omits the row.
