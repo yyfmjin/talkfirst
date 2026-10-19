@@ -7,6 +7,7 @@ import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { friendlyErrorMessage } from "@/lib/errors";
 import { useT } from "@/lib/i18n/use-locale";
+import { currentLocale, t } from "@/lib/i18n";
 
 /**
  * 修改已发布的动态。
@@ -106,7 +107,7 @@ function fileToDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(new Error("读取文件失败"));
+    reader.onerror = () => reject(new Error(t(currentLocale(), "rd.readFileFailed")));
     reader.readAsDataURL(file);
   });
 }

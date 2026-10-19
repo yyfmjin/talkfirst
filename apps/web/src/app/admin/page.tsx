@@ -2,6 +2,7 @@ import { PhoneShell } from "@/components/phone-shell";
 import { ScreenHeader } from "@/components/screen-header";
 import { TabBar } from "@/components/tab-bar";
 import { TFCard } from "@/components/tf";
+import { currentLocale, t } from "@/lib/i18n";
 
 const ADMIN_CONSOLE_URL =
   process.env.NEXT_PUBLIC_ADMIN_URL ?? "http://localhost:3001";
@@ -18,7 +19,7 @@ const ADMIN_CONSOLE_URL =
 export default function AdminRedirectPage() {
   return (
     <PhoneShell>
-      <ScreenHeader title="管理后台" backHref="/me" />
+      <ScreenHeader title={t(currentLocale(), "ad.title")} backHref="/me" />
       <div className="px-5 pt-6">
         <TFCard>
           <p className="text-body font-semibold text-content">后台已独立部署</p>

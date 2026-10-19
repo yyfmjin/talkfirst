@@ -6,6 +6,7 @@ import { TFButton, TFDialog, TFSheet, TFAvatar } from "@/components/tf";
 import { apiFetch, ApiRequestError } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { useT } from "@/lib/i18n/use-locale";
+import { currentLocale, t } from "@/lib/i18n";
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_BYTES = 5 * 1024 * 1024; // 5MB
@@ -14,7 +15,7 @@ function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(new Error("文件读取失败"));
+    reader.onerror = () => reject(new Error(t(currentLocale(), "rd.readFileFailed")));
     reader.readAsDataURL(file);
   });
 }

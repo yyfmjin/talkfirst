@@ -1540,6 +1540,15 @@ export const zh = {
   "api.networkError": "无法连接服务器，请检查网络后重试。",
   "ck.liveFailed": "实时连接失败",
   "ss.sessionCheckFailed": "登录状态检查失败，请重新登录。",
+  /* 扫尾：读文件异常/管理入口/下载/注册成功 */
+  "rd.readFileFailed": "读取文件失败",
+  "ad.title": "管理后台",
+  "dl.noApk": "还没有可下载的 Android 安装包。",
+  "rs.title": "注册成功",
+  "rs.intro": "欢迎加入 TalkFirst。接下来用一分钟完善你的个人名片，别人看到你时会更愿意打招呼。",
+  "rs.step1": "设置头像和昵称",
+  "rs.step2": "选择母语和正在学习的语言",
+  "rs.step3": "写下你的兴趣和交友目的",
 } as const;
 
 export type MsgKey = keyof typeof zh;
@@ -3025,6 +3034,14 @@ export const en: Record<MsgKey, string> = {
   "api.networkError": "Can't reach the server. Check your connection and try again.",
   "ck.liveFailed": "Live connection failed",
   "ss.sessionCheckFailed": "Couldn't verify your session. Please sign in again.",
+  "rd.readFileFailed": "Couldn't read that file",
+  "ad.title": "Admin console",
+  "dl.noApk": "No Android build is available for download yet.",
+  "rs.title": "You're in",
+  "rs.intro": "Welcome to TalkFirst. Take a minute to finish your card — people are more likely to say hello when they can see who you are.",
+  "rs.step1": "Add a photo and a nickname",
+  "rs.step2": "Pick your native language and what you're learning",
+  "rs.step3": "Write your interests and what you're looking for",
 };
 
 const MESSAGES: Record<Locale, Record<MsgKey, string>> = { zh, en };

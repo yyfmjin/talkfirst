@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ANDROID_APK_URL } from "@/lib/downloads";
+import { currentLocale, t } from "@/lib/i18n";
 
 /**
  * 固定下载入口：`/download/android` → 当前最新版的 APK。
@@ -30,7 +31,7 @@ export const dynamic = "force-dynamic";
 export function GET() {
   if (!ANDROID_APK_URL) {
     return NextResponse.json(
-      { error: "还没有可下载的 Android 安装包。" },
+      { error: t(currentLocale(), "dl.noApk") },
       { status: 503 },
     );
   }

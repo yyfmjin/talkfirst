@@ -91,6 +91,7 @@ type MediaItem = {
 type VisibilityValue = "everyone" | "connections" | "private";
 
 import { useT, type MsgKey } from "@/lib/i18n";
+import { currentLocale, t } from "@/lib/i18n";
 
 const VISIBILITY_OPTIONS: Array<{ value: VisibilityValue; labelKey: MsgKey; hintKey: MsgKey; icon: typeof Globe }> = [
   { value: "everyone", labelKey: "cm.vPublic", hintKey: "cm.vPublicHint", icon: Globe },
@@ -114,7 +115,7 @@ function fileToDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(new Error("读取文件失败"));
+    reader.onerror = () => reject(new Error(t(currentLocale(), "rd.readFileFailed")));
     reader.readAsDataURL(file);
   });
 }

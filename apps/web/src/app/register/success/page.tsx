@@ -1,6 +1,7 @@
 import { PhoneShell } from "@/components/phone-shell";
 import { LogoMark } from "@/components/brand";
 import { TFButton } from "@/components/tf";
+import { currentLocale, t } from "@/lib/i18n";
 
 /**
  * Account created.
@@ -22,15 +23,15 @@ export default function RegisterSuccessPage() {
       <div className="tf-scroll flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-6 py-8 text-center">
         <LogoMark size={80} />
 
-        <h1 className="mt-7 text-title font-semibold text-content">注册成功</h1>
+        <h1 className="mt-7 text-title font-semibold text-content">{t(currentLocale(), "rs.title")}</h1>
         <p className="mt-2 max-w-[280px] text-ui leading-6 text-content-muted">
-          欢迎加入 TalkFirst。接下来用一分钟完善你的个人名片，别人看到你时会更愿意打招呼。
+          {t(currentLocale(), "rs.intro")}
         </p>
 
         {/* One step at a time: a three-item checklist would turn a celebration into
             a chore. The next screen handles the rest of onboarding. */}
         <ul className="mt-6 w-full max-w-[280px] space-y-2 text-left">
-          {["设置头像和昵称", "选择母语和正在学习的语言", "写下你的兴趣和交友目的"].map((item, index) => (
+          {[t(currentLocale(), "rs.step1"), t(currentLocale(), "rs.step2"), t(currentLocale(), "rs.step3")].map((item, index) => (
             <li key={item} className="flex items-start gap-2.5 text-ui text-content-muted">
               <span
                 aria-hidden="true"
