@@ -22,9 +22,9 @@ export default function AdminRedirectPage() {
       <ScreenHeader title={t(currentLocale(), "ad.title")} backHref="/me" />
       <div className="px-5 pt-6">
         <TFCard>
-          <p className="text-body font-semibold text-content">后台已独立部署</p>
+          <p className="text-body font-semibold text-content">{t(currentLocale(), "ad.deployed")}</p>
           <p className="mt-2 text-ui leading-6 text-content-muted">
-            管理后台已迁移到独立应用，不再在用户端内提供。请使用独立后台地址登录：
+            {t(currentLocale(), "ad.moved")}
           </p>
           {/* The URL is shown so it can be copied; `select-all` makes one tap
               select the whole thing on mobile. */}
@@ -44,10 +44,10 @@ export default function AdminRedirectPage() {
             rel="noopener noreferrer"
             className="mt-4 flex h-12 w-full items-center justify-center rounded-control bg-brand-500 text-body font-semibold text-white shadow-brand transition-colors duration-instant hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 focus-visible:ring-offset-2"
           >
-            前往管理后台
+            {t(currentLocale(), "ad.open")}
           </a>
           <p className="mt-3 text-overline leading-5 text-content-muted">
-            权限由后端强制校验，仅具备管理员角色的账号可以进入。
+            {t(currentLocale(), "ad.note")}
           </p>
         </TFCard>
       </div>

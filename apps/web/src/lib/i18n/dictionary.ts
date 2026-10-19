@@ -1549,6 +1549,16 @@ export const zh = {
   "rs.step1": "设置头像和昵称",
   "rs.step2": "选择母语和正在学习的语言",
   "rs.step3": "写下你的兴趣和交友目的",
+  /* 扫尾第三批：品牌口号/视频加载更多/消息面板取消/属性徽章/注册成功/管理入口 */
+  "vd.loadMore": "继续下滑加载更多",
+  "mp.cancel": "取消",
+  "at.customTagBadge": "自定义",
+  "rs.cta": "去创建名片",
+  "ad.deployed": "后台已独立部署",
+  "ad.moved": "管理后台已迁移到独立应用，不再在用户端内提供。请使用独立后台地址登录：",
+  "ad.open": "前往管理后台",
+  "ad.note": "权限由后端强制校验，仅具备管理员角色的账号可以进入。",
+  "brand.slogan": "先聊聊，再成为朋友。",
 } as const;
 
 export type MsgKey = keyof typeof zh;
@@ -3042,6 +3052,15 @@ export const en: Record<MsgKey, string> = {
   "rs.step1": "Add a photo and a nickname",
   "rs.step2": "Pick your native language and what you're learning",
   "rs.step3": "Write your interests and what you're looking for",
+  "vd.loadMore": "Scroll for more",
+  "mp.cancel": "Cancel",
+  "at.customTagBadge": "Custom",
+  "rs.cta": "Create your card",
+  "ad.deployed": "The admin console runs separately",
+  "ad.moved": "The admin console has its own app now and is no longer part of the member app. Sign in at:",
+  "ad.open": "Open the admin console",
+  "ad.note": "Access is enforced server-side: only accounts with the admin role can get in.",
+  "brand.slogan": "Talk first, then be friends.",
 };
 
 const MESSAGES: Record<Locale, Record<MsgKey, string>> = { zh, en };

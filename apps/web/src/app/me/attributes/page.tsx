@@ -350,10 +350,10 @@ function AttributeSection({
                 <span className="flex flex-wrap items-center gap-1 text-ui">
                   <span className="min-w-0 break-words">{attributeLabel(attribute)}</span>
                   {attribute.source === "CUSTOM" ? (
-                    <TFBadge tone="neutral">自定义</TFBadge>
+                    <TFBadge tone="neutral">{t("at.customTagBadge")}</TFBadge>
                   ) : null}
                   {attribute.definitionActive === false ? (
-                    <TFBadge tone="warning">已停用</TFBadge>
+                    <TFBadge tone="warning">{t("at.disabled")}</TFBadge>
                   ) : null}
                 </span>
                 <span className="mt-0.5 block break-words text-overline text-content-muted">

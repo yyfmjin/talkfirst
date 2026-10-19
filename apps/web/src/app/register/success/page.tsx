@@ -46,7 +46,7 @@ export default function RegisterSuccessPage() {
 
         <div className="mt-9 w-full max-w-[280px]">
           <TFButton href="/onboarding/avatar" size="lg" fullWidth>
-            去创建名片
+            {t(currentLocale(), "rs.cta")}
           </TFButton>
         </div>
       </div>

@@ -331,7 +331,7 @@ function VideosFeed() {
                 onClick={() => void loadBatch(false)}
                 className="h-full w-full snap-start text-caption text-white/50"
               >
-                继续下滑加载更多
+                {t("vd.loadMore")}
               </button>
             ) : null}
           </div>

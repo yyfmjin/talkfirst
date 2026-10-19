@@ -1,3 +1,4 @@
+import { useT } from "@/lib/i18n";
 /**
  * Brand marks.
  *
@@ -50,6 +51,7 @@ export const Wordmark = () => (
  * one-line explanation and it needs to be readable at body size, not shrunk into
  * a logo caption. The launch screen and the empty states both want it.
  */
-export const Slogan = ({ className }: { className?: string }) => (
-  <p className={className}>先聊聊，再成为朋友。</p>
-);
+export const Slogan = ({ className }: { className?: string }) => {
+  const { t } = useT();
+  return <p className={className}>{t("brand.slogan")}</p>;
+};

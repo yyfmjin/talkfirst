@@ -147,7 +147,7 @@ export function SentRequestsPanel() {
               loading={acting === item.id}
               loadingLabel="…"
             >
-              取消
+              {t("mp.cancel")}
             </TFButton>
           </div>
         ))}
