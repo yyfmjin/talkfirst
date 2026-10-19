@@ -11,7 +11,7 @@ import { friendlyErrorMessage } from "@/lib/errors";
 import { useT, type MsgKey } from "@/lib/i18n";
 // P0-03: `category` → section heading. Shared so the picker here and any future
 // read-only grouping cannot disagree about which categories fold into 我的兴趣.
-import { groupByAttributeSection } from "@/lib/attribute-sections";
+import { groupByAttributeSection, attributeSectionTitleKey } from "@/lib/attribute-sections";
 import {
   attributeLabel,
   VISIBILITY_LABELS,
@@ -543,8 +543,10 @@ function PickerSheet({
               {t("at.allUsed")}
             </p>
           ) : (
-            groupByAttributeSection(available).map((section) => (
-              <div key={section.title} className="mb-4">
+            groupByAttributeSection(available).map((section) => {
+              const titleKey = attributeSectionTitleKey(section.id);
+              return (
+              <div key={section.id} className="mb-4">
                 {/*
                   P0-03: the heading is the SECTION the member thinks in
                   (我的性格 / 我的兴趣 / 交流方式), not the database's `category`
@@ -553,7 +555,7 @@ function PickerSheet({
                   directly — otherwise 我的兴趣 would appear up to five times, once
                   per filing.
                 */}
-                <p className="mb-2 text-caption font-medium text-content-muted">{section.title}</p>
+                <p className="mb-2 text-caption font-medium text-content-muted">{titleKey ? t(titleKey) : section.id}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {section.entries.map((definition) => (
                       <TFChip
@@ -566,7 +568,8 @@ function PickerSheet({
                     ))}
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       ) : (

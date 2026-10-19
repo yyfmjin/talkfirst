@@ -90,35 +90,31 @@ export type NotificationPage = {
 };
 
 /**
- * The single type → label / icon table.
+ * The single type → icon table.
  *
- * `label` names the *event* ("评论收到回复"), not the stored `title`, which the
- * writer already words for the reader. It therefore drives the filter control
- * and the accessible name, and stands in for the title only on a row that
- * somehow carries none.
+ * There used to be a `label` beside each icon. It was never rendered: the row
+ * takes its wording from `notificationTypeLabelKey` (a dictionary key), and
+ * `meta.label` survived as dead Chinese text that would never have been
+ * reachable in English. Removed rather than translated.
  */
-const META: Record<NotificationType, { label: string; icon: LucideIcon }> = {
-  NEW_MESSAGE: { label: "新消息", icon: MessageCircle },
-  SAY_HELLO: { label: "有人向你打招呼", icon: Hand },
-  REQUEST_ACCEPTED: { label: "连接已接受", icon: UserCheck },
-  EXCHANGE_REQUEST: { label: "交换请求", icon: Repeat },
-  EXCHANGE_ACCEPTED: { label: "交换已接受", icon: CheckCircle2 },
-  MOMENT_LIKE: { label: "动态收到赞", icon: Heart },
-  MOMENT_COMMENT: { label: "动态收到评论", icon: MessageSquare },
-  MOMENT_REPLY: { label: "评论收到回复", icon: CornerDownRight },
-  REPORT_REVIEW: { label: "举报处理结果", icon: ShieldCheck },
-  USER_STATUS: { label: "账号状态更新", icon: UserCog },
-  FLOWER_RECEIVED: { label: "收到一朵花", icon: Flower2 },
+const META: Record<NotificationType, { icon: LucideIcon }> = {
+  NEW_MESSAGE: { icon: MessageCircle },
+  SAY_HELLO: { icon: Hand },
+  REQUEST_ACCEPTED: { icon: UserCheck },
+  EXCHANGE_REQUEST: { icon: Repeat },
+  EXCHANGE_ACCEPTED: { icon: CheckCircle2 },
+  MOMENT_LIKE: { icon: Heart },
+  MOMENT_COMMENT: { icon: MessageSquare },
+  MOMENT_REPLY: { icon: CornerDownRight },
+  REPORT_REVIEW: { icon: ShieldCheck },
+  USER_STATUS: { icon: UserCog },
+  FLOWER_RECEIVED: { icon: Flower2 },
 };
 
-const UNKNOWN_META = { label: "通知", icon: Bell };
+const UNKNOWN_META = { icon: Bell };
 
-export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = Object.fromEntries(
-  NOTIFICATION_TYPES.map((type) => [type, META[type].label]),
-) as Record<NotificationType, string>;
-
-export function notificationTypeMeta(type: string): { label: string; icon: LucideIcon } {
-  return (META as Record<string, { label: string; icon: LucideIcon }>)[type] ?? UNKNOWN_META;
+export function notificationTypeMeta(type: string): { icon: LucideIcon } {
+  return (META as Record<string, { icon: LucideIcon }>)[type] ?? UNKNOWN_META;
 }
 
 /** A decoded envelope. Fields are read through the helpers below, never trusted. */

@@ -24,47 +24,72 @@
  * It keeps its own raw name as a heading. A category added in the database shows up under
  * its own name instead of silently disappearing, which is the failure mode worth avoiding.
  */
-export const ATTRIBUTE_SECTION_TITLES: Record<string, string> = {
-  Personality: "我的性格",
-  Hobby: "我的兴趣",
-  Music: "我的兴趣",
-  Lifestyle: "我的兴趣",
-  Culture: "我的兴趣",
-  Gaming: "我的兴趣",
-  Travel: "我的兴趣",
-  Communication: "交流方式",
+import type { MsgKey } from "@/lib/i18n";
+
+/**
+ * 分区 id（不是文案）。文案在词典里，由消费方 `t()` 渲染 ——
+ * 模块级常量表拿不到当前语言，存中文句子会让英文界面直接显示出中文。
+ */
+export type AttributeSectionId = "personality" | "interests" | "communication";
+
+export const ATTRIBUTE_SECTION_KEYS: Record<AttributeSectionId, MsgKey> = {
+  personality: "as.personality",
+  interests: "as.interests",
+  communication: "as.communication",
+};
+
+const SECTION_BY_CATEGORY: Record<string, AttributeSectionId> = {
+  Personality: "personality",
+  Hobby: "interests",
+  Music: "interests",
+  Lifestyle: "interests",
+  Culture: "interests",
+  Gaming: "interests",
+  Travel: "interests",
+  Communication: "communication",
 };
 
 /** The brief's order. Anything unrecognised sorts after these, by name. */
-const SECTION_ORDER = ["我的性格", "我的兴趣", "交流方式"];
+const SECTION_ORDER = ["personality", "interests", "communication"];
 
-export function attributeSectionTitle(category: string): string {
-  return ATTRIBUTE_SECTION_TITLES[category] ?? category;
+/**
+ * `category` → 分区 id。
+ *
+ * 沜不认识的 category **不被丢掉**：它自己当作 id 返回（消费方原样展示 category 名），
+ * 这样数据库里新加的分类会以自己的名字出现，而不是默默消失。
+ */
+export function attributeSectionId(category: string): string {
+  return SECTION_BY_CATEGORY[category] ?? category;
+}
+
+/** 分区的词条键；不认识的 category 返回 `null`，由调用方决定怎么展示。 */
+export function attributeSectionTitleKey(id: string): MsgKey | null {
+  return id in ATTRIBUTE_SECTION_KEYS ? ATTRIBUTE_SECTION_KEYS[id as AttributeSectionId] : null;
 }
 
 /**
- * Groups items by section title, in the brief's order.
+ * Groups items by section id, in the brief's order.
  *
  * `items` must each carry a `category`; the return value keeps the input order within a
  * section, so a caller that already sorted by `sortOrder` does not lose that.
  */
 export function groupByAttributeSection<T extends { category: string }>(
   items: T[],
-): Array<{ title: string; entries: T[] }> {
+): Array<{ id: string; entries: T[] }> {
   const groups = new Map<string, T[]>();
   for (const item of items) {
-    const title = attributeSectionTitle(item.category);
-    const bucket = groups.get(title);
+    const id = attributeSectionId(item.category);
+    const bucket = groups.get(id);
     if (bucket) bucket.push(item);
-    else groups.set(title, [item]);
+    else groups.set(id, [item]);
   }
   return [...groups.entries()]
-    .map(([title, entries]) => ({ title, entries }))
+    .map(([id, entries]) => ({ id, entries }))
     .sort((a, b) => {
-      const rank = (title: string) => {
-        const index = SECTION_ORDER.indexOf(title);
+      const rank = (id: string) => {
+        const index = SECTION_ORDER.indexOf(id);
         return index === -1 ? SECTION_ORDER.length : index;
       };
-      return rank(a.title) - rank(b.title) || a.title.localeCompare(b.title, "zh");
+      return rank(a.id) - rank(b.id) || a.id.localeCompare(b.id, "zh");
     });
 }

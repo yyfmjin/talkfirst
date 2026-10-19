@@ -1474,6 +1474,10 @@ export const zh = {
   "sf.statusResolved": "已处理",
   "sf.statusDismissed": "已驳回",
   "sf.statusActionTaken": "已处理",
+  /* 交友属性分区标题（lib/attribute-sections.ts） */
+  "as.personality": "我的性格",
+  "as.interests": "我的兴趣",
+  "as.communication": "交流方式",
 } as const;
 
 export type MsgKey = keyof typeof zh;
@@ -2898,6 +2902,9 @@ export const en: Record<MsgKey, string> = {
   "sf.statusResolved": "Resolved",
   "sf.statusDismissed": "Dismissed",
   "sf.statusActionTaken": "Action taken",
+  "as.personality": "Personality",
+  "as.interests": "Interests",
+  "as.communication": "Communication style",
 };
 
 const MESSAGES: Record<Locale, Record<MsgKey, string>> = { zh, en };
