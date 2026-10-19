@@ -1524,6 +1524,22 @@ export const zh = {
   "vd.swipeHint": "下滑查看",
   "vd.play": "播放",
   "vd.userFallback": "用户",
+  /* 扫尾：属性排序/消息面板/资料预览/引导/网络与会话 */
+  "at.moveUp": "把 {name} 上移",
+  "at.moveDown": "把 {name} 下移",
+  "mp.notifications": "通知",
+  "mp.notificationsWithUnread": "通知（{count} 未读）",
+  "mp.markAllRead": "全部已读",
+  "mp.loadFailed": "加载失败",
+  "mp.cancelFailed": "取消失败",
+  "mp.peer": "对方",
+  "mp.sentHeading": "我发出的请求（{count}）",
+  "mp.sentNote": "等待对方接受 · 可随时取消",
+  "pp.nativeLevel": "母语 · 母语级",
+  "ob.chooseImage": "选择图片",
+  "api.networkError": "无法连接服务器，请检查网络后重试。",
+  "ck.liveFailed": "实时连接失败",
+  "ss.sessionCheckFailed": "登录状态检查失败，请重新登录。",
 } as const;
 
 export type MsgKey = keyof typeof zh;
@@ -2994,6 +3010,21 @@ export const en: Record<MsgKey, string> = {
   "vd.swipeHint": "Swipe to browse",
   "vd.play": "Play",
   "vd.userFallback": "Member",
+  "at.moveUp": "Move {name} up",
+  "at.moveDown": "Move {name} down",
+  "mp.notifications": "Notifications",
+  "mp.notificationsWithUnread": "Notifications ({count} unread)",
+  "mp.markAllRead": "Mark all read",
+  "mp.loadFailed": "Couldn't load",
+  "mp.cancelFailed": "Couldn't cancel",
+  "mp.peer": "them",
+  "mp.sentHeading": "Requests I sent ({count})",
+  "mp.sentNote": "Waiting for them to accept · you can cancel any time",
+  "pp.nativeLevel": "Native · native level",
+  "ob.chooseImage": "Choose a photo",
+  "api.networkError": "Can't reach the server. Check your connection and try again.",
+  "ck.liveFailed": "Live connection failed",
+  "ss.sessionCheckFailed": "Couldn't verify your session. Please sign in again.",
 };
 
 const MESSAGES: Record<Locale, Record<MsgKey, string>> = { zh, en };

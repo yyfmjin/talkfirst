@@ -109,7 +109,7 @@ export default function AvatarPage() {
       <div className="tf-scroll flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-5 pb-6 pt-8">
         {/* The preview doubles as the picker: the camera badge is inside the
             circle, so the whole avatar is one tap target instead of a separate
-            "选择图片" row underneath it. */}
+            t("ob.chooseImage") row underneath it. */}
         <label className="relative block cursor-pointer">
           <span className="grid h-32 w-32 place-items-center overflow-hidden rounded-full bg-brand-100 text-display font-semibold text-brand-600 ring-1 ring-black/5">
             {preview ? (

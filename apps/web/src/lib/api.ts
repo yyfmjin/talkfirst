@@ -1,3 +1,5 @@
+import { currentLocale, t } from "@/lib/i18n";
+
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000/api/v1";
 
@@ -125,7 +127,7 @@ async function doFetch<T>(path: string, options: RequestOptions): Promise<T> {
     throw new ApiRequestError(
       envelope?.error ?? {
         code: "NETWORK_ERROR",
-        message: "无法连接服务器，请检查网络后重试。",
+        message: t(currentLocale(), "api.networkError"),
       },
     );
   }

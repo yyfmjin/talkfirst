@@ -6,6 +6,7 @@ import { TFButton } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { type NotificationPage, type NotificationRecord } from "@/lib/notifications";
 import { useSession } from "@/lib/session";
+import { useT } from "@/lib/i18n";
 
 type SentRequest = {
   id: string;
@@ -21,6 +22,7 @@ type SentRequest = {
  * taps through to the Notification Center.
  */
 export function NotificationsPanel({ onRead }: { onRead: () => void }) {
+  const { t } = useT();
   const [items, setItems] = useState<NotificationRecord[]>([]);
   const [unread, setUnread] = useState(0);
 
@@ -64,7 +66,7 @@ export function NotificationsPanel({ onRead }: { onRead: () => void }) {
     <section className="mt-4 rounded-card bg-surface-sunken p-4">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-ui font-semibold text-content">
-          通知{unread > 0 ? `（${unread} 未读）` : ""}
+          {unread > 0 ? t("mp.notificationsWithUnread", { count: unread }) : t("mp.notifications")}
         </h2>
         {unread > 0 ? (
           <button
@@ -72,7 +74,7 @@ export function NotificationsPanel({ onRead }: { onRead: () => void }) {
             onClick={() => void markRead()}
             className="rounded-control px-1.5 py-1 text-caption font-medium text-brand-600 underline decoration-dotted"
           >
-            全部已读
+            {t("mp.markAllRead")}
           </button>
         ) : null}
       </div>
@@ -93,6 +95,7 @@ export function NotificationsPanel({ onRead }: { onRead: () => void }) {
 
 export function SentRequestsPanel() {
   const { user } = useSession();
+  const { t } = useT();
   const [items, setItems] = useState<SentRequest[]>([]);
   const [acting, setActing] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -103,7 +106,7 @@ export function SentRequestsPanel() {
       const data = await apiFetch<SentRequest[]>("/connections/requests/sent");
       setItems(data.filter((item) => item.status === "PENDING").slice(0, 5));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "加载失败");
+      setError(requestError instanceof Error ? requestError.message : t("mp.loadFailed"));
     }
   }, [user]);
 
@@ -118,7 +121,7 @@ export function SentRequestsPanel() {
       await apiFetch(`/connections/requests/${id}`, { method: "DELETE" });
       setItems((current) => current.filter((item) => item.id !== id));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "取消失败");
+      setError(requestError instanceof Error ? requestError.message : t("mp.cancelFailed"));
     } finally {
       setActing(null);
     }
@@ -128,13 +131,13 @@ export function SentRequestsPanel() {
 
   return (
     <section className="mt-6">
-      <h2 className="text-ui font-semibold text-content">我发出的请求（{items.length}）</h2>
+      <h2 className="text-ui font-semibold text-content">{t("mp.sentHeading", { count: items.length })}</h2>
       <div className="mt-3 divide-y divide-border overflow-hidden rounded-card border border-border">
         {items.map((item) => (
           <div key={item.id} className="flex items-center justify-between gap-3 bg-surface px-4 py-3">
             <div className="min-w-0">
-              <p className="truncate text-ui font-medium text-content">{item.receiver?.nickname ?? "对方"}</p>
-              <p className="text-caption text-content-muted">等待对方接受 · 可随时取消</p>
+              <p className="truncate text-ui font-medium text-content">{item.receiver?.nickname ?? t("mp.peer")}</p>
+              <p className="text-caption text-content-muted">{t("mp.sentNote")}</p>
             </div>
             <TFButton
               variant="secondary"

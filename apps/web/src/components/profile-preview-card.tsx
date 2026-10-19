@@ -196,7 +196,7 @@ export function ProfilePreviewCard({
 
                           The level is only shown for a language being LEARNED: for a
                           native language the type already says it, and
-                          "母语 · 母语级" is noise.
+                          t("pp.nativeLevel") is noise.
 
                           The four labels live inline because this is the only place
                           that renders them. If a second one appears (a level picker on

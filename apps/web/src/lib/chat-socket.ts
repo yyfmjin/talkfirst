@@ -21,7 +21,7 @@ export type PeerPresence = { userId: string; online: boolean; lastSeen: string |
 
 export type ConnectionState = "connecting" | "live" | "reconnecting" | "offline";
 
-import type { MsgKey } from "@/lib/i18n";
+import { currentLocale, t, type MsgKey } from "@/lib/i18n";
 
 /** The one place the four connection states are turned into **dictionary keys**. */
 export const CONNECTION_LABELS: Record<ConnectionState, MsgKey> = {
@@ -178,7 +178,7 @@ export function useChatSocket(conversationId: string | undefined) {
 
     next.on("error", (payload: { code?: string; message?: string }) => {
       if (disposed || stopped) return;
-      setSocketError(payload?.message ?? "实时连接失败");
+      setSocketError(payload?.message ?? t(currentLocale(), "ck.liveFailed"));
       if (payload?.code === "USER_BANNED" || payload?.code === "USER_DISABLED") {
         stop();
         return;

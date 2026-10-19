@@ -366,7 +366,7 @@ function AttributeSection({
                   type="button"
                   onClick={() => onMove(index, -1)}
                   disabled={index === 0 || busy}
-                  aria-label={`把 ${attributeLabel(attribute)} 上移`}
+                  aria-label={t("at.moveUp", { name: attributeLabel(attribute) })}
                   className="grid h-6 w-7 place-items-center rounded-control bg-surface text-overline text-content-muted transition-colors duration-instant hover:bg-surface-sunken disabled:opacity-40"
                 >
                   ▲
@@ -375,7 +375,7 @@ function AttributeSection({
                   type="button"
                   onClick={() => onMove(index, 1)}
                   disabled={index === attributes.length - 1 || busy}
-                  aria-label={`把 ${attributeLabel(attribute)} 下移`}
+                  aria-label={t("at.moveDown", { name: attributeLabel(attribute) })}
                   className="grid h-6 w-7 place-items-center rounded-control bg-surface text-overline text-content-muted transition-colors duration-instant hover:bg-surface-sunken disabled:opacity-40"
                 >
                   ▼
