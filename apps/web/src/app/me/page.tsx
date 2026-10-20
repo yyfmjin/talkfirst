@@ -81,23 +81,23 @@ const ENTRY_GROUPS: Array<{
   {
     titleKey: "me.groupContent",
     entries: [
-      { href: "/me/edit", labelKey: "me.editBasic", icon: UserRound },
-      { href: "/me/interests", labelKey: "me.interestLanguages", icon: Languages },
-      { href: "/me/attributes", labelKey: "me.attributes", hintKey: "me.attributesHint", icon: Sparkles },
+      { href: "/me/edit", labelKey: "me.editBasic", icon: UserRound, localized: true },
+      { href: "/me/interests", labelKey: "me.interestLanguages", icon: Languages, localized: true },
+      { href: "/me/attributes", labelKey: "me.attributes", hintKey: "me.attributesHint", icon: Sparkles, localized: true },
     ],
   },
   {
     titleKey: "me.groupRelations",
     entries: [
       { href: "/connections", labelKey: "me.connections", hintKey: "me.connectionsHint", icon: Users, localized: true },
-      { href: "/me/social", labelKey: "me.social", icon: Globe2 },
+      { href: "/me/social", labelKey: "me.social", icon: Globe2, localized: true },
     ],
   },
   {
     titleKey: "me.groupPrivacy",
     entries: [
-      { href: "/me/visibility", labelKey: "me.visibility", icon: Eye },
-      { href: "/me/safety", labelKey: "me.safety", hintKey: "me.safetyHint", icon: ShieldCheck },
+      { href: "/me/visibility", labelKey: "me.visibility", icon: Eye, localized: true },
+      { href: "/me/safety", labelKey: "me.safety", hintKey: "me.safetyHint", icon: ShieldCheck, localized: true },
     ],
   },
   {
@@ -111,7 +111,7 @@ const ENTRY_GROUPS: Array<{
      */
     titleKey: "me.groupHelp",
     entries: [
-      { href: "/me/feedback", labelKey: "me.feedback", hintKey: "me.feedbackHint", icon: MessageSquare },
+      { href: "/me/feedback", labelKey: "me.feedback", hintKey: "me.feedbackHint", icon: MessageSquare, localized: true },
     ],
   },
 ];
@@ -139,14 +139,14 @@ export default function MePage() {
       setProfile(data);
     } catch (requestError) {
       if (requestError instanceof Error && requestError.message.includes("Unauthorized")) {
-        router.replace("/login");
+        router.replace(localePath(locale, "/login"));
         return;
       }
       setError(friendlyErrorMessage(requestError, t("me.loadFailed")));
     } finally {
       setLoading(false);
     }
-  }, [router, t]);
+  }, [router, t, locale]);
 
   useEffect(() => {
     void load();
@@ -172,7 +172,7 @@ export default function MePage() {
     } finally {
       setUser(null);
       setLoggingOut(false);
-      router.replace("/login");
+      router.replace(localePath(locale, "/login"));
     }
   }
 
@@ -195,7 +195,7 @@ export default function MePage() {
       // The account no longer exists, so the cached user is cleared before
       // leaving: the landing page must not render as a signed-in visitor.
       setUser(null);
-      router.replace("/");
+      router.replace(localePath(locale, "/"));
     } catch (requestError) {
       // The dialog stays open with its text intact so the user can retry
       // without retyping the phrase.
@@ -328,7 +328,7 @@ export default function MePage() {
               subtitle={profile ? `@${profile.username}` : t("me.reading")}
             />
             <div className="border-t border-border">
-              <TFListRow icon={<KeyRound size={17} />} title={t("me.changePassword")} href="/me/password" />
+              <TFListRow icon={<KeyRound size={17} />} title={t("me.changePassword")} href={localePath(locale, "/me/password")} />
             </div>
             {profile?.isAdmin ? (
               <div className="border-t border-border">

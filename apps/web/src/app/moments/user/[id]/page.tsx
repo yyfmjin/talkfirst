@@ -22,7 +22,7 @@ import {
 import { ProfilePreviewCard } from "@/components/profile-preview-card";
 import { apiFetch } from "@/lib/api";
 import { formatCount, relativeTime } from "@/lib/moments";
-import { useT } from "@/lib/i18n";
+import { localePath, useT } from "@/lib/i18n";
 
 type Comment = {
   id: string;
@@ -71,7 +71,7 @@ export default function UserMomentsPage() {
   const [draft, setDraft] = useState("");
   const [sharing, setSharing] = useState(false);
   const [previewUserId, setPreviewUserId] = useState<string | null>(null);
-  const { t } = useT();
+  const { locale, t } = useT();
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -176,7 +176,7 @@ export default function UserMomentsPage() {
     <PhoneShell>
       <div className="z-10 grid shrink-0 grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-border bg-surface/95 px-2 py-1 backdrop-blur">
         <Link
-          href="/moments"
+          href={localePath(locale, "/moments")}
           aria-label={t("mu.back")}
           className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-content transition-colors duration-instant hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
         >
@@ -291,7 +291,7 @@ export default function UserMomentsPage() {
               <TFCard tone="quiet" className="mt-4 text-center">
                 <p className="text-ui font-medium text-content">{t("mu.lockedTitle")}</p>
                 <p className="mt-1 text-caption leading-5 text-content-muted">{t("mu.lockedBody")}</p>
-                <TFButton href="/discover" variant="secondary" className="mt-4" fullWidth>
+                <TFButton href={localePath(locale, "/discover")} variant="secondary" className="mt-4" fullWidth>
                   {t("mu.goDiscover")}
                 </TFButton>
               </TFCard>
@@ -422,7 +422,7 @@ export default function UserMomentsPage() {
               />
             ) : null}
 
-            <TFButton href="/moments" variant="secondary" fullWidth className="mt-6">
+            <TFButton href={localePath(locale, "/moments")} variant="secondary" fullWidth className="mt-6">
               {t("mu.backToFeed")}
             </TFButton>
           </>

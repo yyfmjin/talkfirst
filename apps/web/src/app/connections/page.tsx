@@ -155,7 +155,7 @@ export default function ConnectionsPage() {
                   </span>
                   {item.conversationId ? (
                     <a
-                      href={`/messages/${item.conversationId}/connect`}
+                      href={localePath(locale, `/messages/${item.conversationId}/connect`)}
                       className="shrink-0 font-medium text-brand-600 underline decoration-dotted"
                     >
                       {t("connections.viewExchange")}

@@ -222,7 +222,7 @@ export default function MessagesPage() {
                   {humanChats.map((conversation) => (
                     <Link
                       key={conversation.id}
-                      href={`/messages/${conversation.id}`}
+                      href={localePath(locale, `/messages/${conversation.id}`)}
                       className="flex items-center gap-3 bg-surface px-4 py-3.5 transition-colors duration-instant hover:bg-surface-sunken active:bg-surface-sunken"
                     >
                       <TFAvatar name={conversation.peer?.nickname} size="md" />

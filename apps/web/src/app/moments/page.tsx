@@ -72,7 +72,7 @@ type TabId = (typeof tabItems)[number][0];
 type Topic = { tag: string; count: number };
 
 export default function MomentsPage() {
-  const { t } = useT();
+  const { locale, t } = useT();
   const [tab, setTab] = useState<TabId>("recommend");
   const [platform, setPlatform] = useState("");
   const [platforms, setPlatforms] = useState<Platform[]>([]);
@@ -387,14 +387,14 @@ export default function MomentsPage() {
           </div>
           <div className="flex gap-1.5">
             <Link
-              href="/moments/settings"
+              href={localePath(locale, "/moments/settings")}
               aria-label={t("moments.settings")}
               className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-surface text-content-muted transition-colors duration-instant hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
             >
               <SlidersHorizontal size={17} />
             </Link>
             <Link
-              href="/moments/compose"
+              href={localePath(locale, "/moments/compose")}
               aria-label={t("moments.compose")}
               className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-500 text-white shadow-brand transition-transform duration-instant active:scale-95 motion-reduce:transition-none"
             >
@@ -680,7 +680,7 @@ function MomentCard({
   platformColor: string;
   platformLabel: string;
 }) {
-  const { t } = useT();
+  const { locale, t } = useT();
   return (
     /*
      * A post is a ROW, not a card.
@@ -728,7 +728,7 @@ function MomentCard({
       </div>
 
       <Link
-        href={`/moments/${moment.id}`}
+        href={localePath(locale, `/moments/${moment.id}`)}
         aria-label={t("moments.viewDetail", { name: moment.author.nickname ?? t("common.user") })}
         className="block"
       >
@@ -759,7 +759,7 @@ function MomentCard({
               自动播则会变成看一屏就消耗一屏的流量。
             */}
             <Link
-              href={`/videos?start=${moment.id}`}
+              href={localePath(locale, `/videos?start=${moment.id}`)}
               aria-label={t("moments.playVideo")}
               className="group relative block w-full"
             >
@@ -947,7 +947,7 @@ function EmptyFeed({ tab }: { tab: string }) {
       title={mine ? t("moments.emptyMineTitle") : tab === "following" ? t("moments.emptyFollowingTitle") : t("moments.emptyDefaultTitle")}
       description={mine ? t("moments.emptyMineBody") : t("moments.emptyFeedBody")}
       action={
-        <TFButton href={mine ? "/moments/compose" : localePath(locale, "/discover")} size="md">
+        <TFButton href={localePath(locale, mine ? "/moments/compose" : "/discover")} size="md">
           {mine ? t("moments.goCompose") : t("moments.goDiscover")}
         </TFButton>
       }

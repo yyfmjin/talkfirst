@@ -115,7 +115,7 @@ export function TabBar({ active }: { active?: string }) {
         {/* Slot 3 — the primary action, deliberately not a destination. */}
         <div className="flex justify-center">
           <Link
-            href="/moments/compose"
+            href={localePath(locale, "/moments/compose")}
             aria-label={t("nav.compose")}
             aria-current={composeActive ? "page" : undefined}
             className={cn(

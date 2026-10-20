@@ -13,7 +13,7 @@ import {
 } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { friendlyErrorMessage } from "@/lib/errors";
-import { useT } from "@/lib/i18n";
+import { localePath, useT } from "@/lib/i18n";
 import {
   FIELD_VISIBILITY_LABELS,
   VISIBILITY_LABELS,
@@ -33,7 +33,7 @@ import {
  * neither is touched here.
  */
 export default function ProfileVisibilityPage() {
-  const { t } = useT();
+  const { locale, t } = useT();
   const [rows, setRows] = useState<FieldVisibilityRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -140,7 +140,7 @@ export default function ProfileVisibilityPage() {
         ) : null}
 
         <div className="mt-6">
-          <TFButton variant="secondary" fullWidth href="/me">
+          <TFButton variant="secondary" fullWidth href={localePath(locale, "/me")}>
             {t("pv.back")}
           </TFButton>
         </div>

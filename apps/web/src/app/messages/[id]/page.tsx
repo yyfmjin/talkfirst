@@ -9,7 +9,7 @@ import { TFErrorState, TFLoadingRegion, TFSkeleton } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { connectionLabel, useChatSocket } from "@/lib/chat-socket";
 import { useSession } from "@/lib/session";
-import { useT } from "@/lib/i18n";
+import { localePath, useT } from "@/lib/i18n";
 import SafetyActions from "./safety-actions";
 import { cn } from "@/lib/cn";
 
@@ -387,7 +387,7 @@ export default function ChatDetailPage() {
           ) : null}
           {conversationId ? (
             <a
-              href={`/messages/${conversationId}/connect`}
+              href={localePath(locale, `/messages/${conversationId}/connect`)}
               className="rounded-full bg-brand-50 px-2.5 py-1 text-brand-600"
             >
               🔗 {t("mc.exchangeCta")}

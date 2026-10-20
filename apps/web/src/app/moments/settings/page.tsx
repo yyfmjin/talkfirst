@@ -7,7 +7,7 @@ import { PhoneShell } from "@/components/phone-shell";
 import { ScreenHeader } from "@/components/screen-header";
 import { TFBadge, TFButton, TFDialog, TFInput, TFLoadingRegion, TFSkeleton } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
-import { useT, type MsgKey } from "@/lib/i18n";
+import { localePath, useT, type MsgKey } from "@/lib/i18n";
 
 type Platform = { id: string; label: string; icon: string; color: string; connectedLabel: string };
 type Binding = { platform: string; handle: string; displayName: string | null; syncEnabled: boolean };
@@ -25,7 +25,7 @@ type Setting = {
 type ToggleKey = "syncEnabled" | "filterSensitive" | "showPhotos" | "showVideos" | "showTexts" | "showReels" | "showLives";
 
 export default function MomentsSettingsPage() {
-  const { t } = useT();
+  const { locale, t } = useT();
   const router = useRouter();
   const [platforms, setPlatforms] = useState<Platform[]>([]);
   const [bindings, setBindings] = useState<Binding[]>([]);
@@ -352,7 +352,7 @@ export default function MomentsSettingsPage() {
           </>
         )}
 
-        <TFButton variant="secondary" fullWidth className="mt-6" onClick={() => router.push("/moments")}>
+        <TFButton variant="secondary" fullWidth className="mt-6" onClick={() => router.push(localePath(locale, "/moments"))}>
           {t("ms.done")}
         </TFButton>
       </div>

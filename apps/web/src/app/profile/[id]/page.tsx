@@ -18,7 +18,7 @@ import {
 import { apiFetch } from "@/lib/api";
 import { friendlyErrorMessage } from "@/lib/errors";
 import { type PublicProfile } from "@/lib/profile";
-import { useT } from "@/lib/i18n";
+import { localePath, useT } from "@/lib/i18n";
 
 /**
  * PC-1.4 §16-§18: the full profile page.
@@ -32,7 +32,7 @@ export default function ProfileDetailPage() {
   const params = useParams<{ id: string }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const router = useRouter();
-  const { t } = useT();
+  const { locale, t } = useT();
 
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -289,7 +289,7 @@ export default function ProfileDetailPage() {
                 <div className="mt-6 flex gap-2">
                   <TFButton
                     variant="secondary"
-                    href={`/moments/user/${profile.id}`}
+                    href={localePath(locale, `/moments/user/${profile.id}`)}
                     className="flex-1"
                   >
                     {t("pf.viewMoments")}
@@ -333,13 +333,13 @@ export default function ProfileDetailPage() {
               </>
             ) : (
               <div className="mt-6 space-y-2">
-                <TFButton size="lg" fullWidth onClick={() => router.push("/me/edit")}>
+                <TFButton size="lg" fullWidth onClick={() => router.push(localePath(locale, "/me/edit"))}>
                   {t("pf.editMine")}
                 </TFButton>
-                <TFButton variant="secondary" fullWidth onClick={() => router.push("/me/attributes")}>
+                <TFButton variant="secondary" fullWidth onClick={() => router.push(localePath(locale, "/me/attributes"))}>
                   {t("pf.manageAttributes")}
                 </TFButton>
-                <TFButton variant="secondary" fullWidth onClick={() => router.push("/me/visibility")}>
+                <TFButton variant="secondary" fullWidth onClick={() => router.push(localePath(locale, "/me/visibility"))}>
                   {t("pf.visibility")}
                 </TFButton>
               </div>

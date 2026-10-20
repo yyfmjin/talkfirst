@@ -26,7 +26,7 @@ import { MomentReportDialog } from "@/components/moment-report-dialog";
 import { ApiRequestError, apiFetch } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { formatCount, formatDuration, relativeTime } from "@/lib/moments";
-import { useT } from "@/lib/i18n";
+import { localePath, useT } from "@/lib/i18n";
 
 /**
  * PC-2.1 — Post Detail.
@@ -107,7 +107,7 @@ type MomentDetail = {
 };
 
 export default function MomentDetailPage() {
-  const { t } = useT();
+  const { locale, t } = useT();
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -421,7 +421,7 @@ export default function MomentDetailPage() {
       await apiFetch(`/moments/${moment.id}`, { method: "DELETE" });
       setDeleteOpen(false);
       toast({ message: t("md.deleted") });
-      router.replace("/moments");
+      router.replace(localePath(locale, "/moments"));
     } catch (requestError) {
       setDeleteError(requestError instanceof Error ? requestError.message : t("md.deleteFailed"));
     } finally {
@@ -454,7 +454,7 @@ export default function MomentDetailPage() {
       */}
       <div className="z-10 grid shrink-0 grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-border bg-surface/95 px-2 py-1 backdrop-blur">
         <Link
-          href="/moments"
+          href={localePath(locale, "/moments")}
           aria-label={t("md.back")}
           className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-content transition-colors duration-instant hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
         >
@@ -540,7 +540,7 @@ export default function MomentDetailPage() {
             <p className="mt-1 text-caption leading-5 text-content-muted">
               {t("md.lockedBody")}
             </p>
-            <TFButton href="/moments" variant="secondary" className="mt-4" fullWidth>
+            <TFButton href={localePath(locale, "/moments")} variant="secondary" className="mt-4" fullWidth>
               {t("md.backToFeed")}
             </TFButton>
           </TFCard>
@@ -551,7 +551,7 @@ export default function MomentDetailPage() {
             title={t("md.missingTitle")}
             description={t("md.missingBody")}
             action={
-              <TFButton href="/moments" variant="secondary" fullWidth>
+              <TFButton href={localePath(locale, "/moments")} variant="secondary" fullWidth>
                 {t("md.backToFeed")}
               </TFButton>
             }

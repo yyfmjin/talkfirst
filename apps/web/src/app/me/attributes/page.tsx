@@ -8,7 +8,7 @@ import { TFBadge, TFButton, TFChip, TFErrorState, TFInput, TFLoadingRegion, TFSk
 import { cn } from "@/lib/cn";
 import { apiFetch } from "@/lib/api";
 import { friendlyErrorMessage } from "@/lib/errors";
-import { useT, type MsgKey } from "@/lib/i18n";
+import { localePath, useT, type MsgKey } from "@/lib/i18n";
 // P0-03: `category` → section heading. Shared so the picker here and any future
 // read-only grouping cannot disagree about which categories fold into 我的兴趣.
 import { groupByAttributeSection, attributeSectionTitleKey } from "@/lib/attribute-sections";
@@ -63,7 +63,7 @@ function codePointLength(value: string): number {
 }
 
 export default function ProfileAttributesPage() {
-  const { t } = useT();
+  const { locale, t } = useT();
   const [groups, setGroups] = useState<AttributeGroups>(EMPTY_GROUPS);
   const [definitions, setDefinitions] = useState<AttributeDefinition[]>([]);
   const [loading, setLoading] = useState(true);
@@ -258,7 +258,7 @@ export default function ProfileAttributesPage() {
         ) : null}
 
         <div className="mt-6">
-          <TFButton variant="secondary" fullWidth href="/me">
+          <TFButton variant="secondary" fullWidth href={localePath(locale, "/me")}>
             {t("at.back")}
           </TFButton>
         </div>

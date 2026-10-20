@@ -130,7 +130,7 @@ export default function LoginPage() {
       const profile = await apiFetch<SessionUser>("/users/me");
       if (profile.emailVerified) {
         setUser(profile);
-        router.push("/discover");
+        router.push(localePath(locale, "/discover"));
         return;
       }
     } catch {
@@ -167,7 +167,7 @@ export default function LoginPage() {
         body: { identifier: trimmed, password },
       });
       setUser(user);
-      router.push("/discover");
+      router.push(localePath(locale, "/discover"));
     } catch (requestError) {
       if (requestError instanceof ApiRequestError && requestError.code === "EMAIL_NOT_VERIFIED") {
         setNeedsVerification(true);

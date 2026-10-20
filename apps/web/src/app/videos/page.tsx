@@ -30,7 +30,7 @@ import { PhoneShell } from "@/components/phone-shell";
 import { TFAvatar } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { friendlyErrorMessage } from "@/lib/errors";
-import { useT } from "@/lib/i18n";
+import { localePath, useT } from "@/lib/i18n";
 
 type VideoFeedItem = {
   id: string;
@@ -69,7 +69,7 @@ function VideosFeed() {
   const router = useRouter();
   const params = useSearchParams();
   const startId = params.get("start");
-  const { t } = useT();
+  const { locale, t } = useT();
 
   const [items, setItems] = useState<VideoFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -198,7 +198,7 @@ function VideosFeed() {
         event.preventDefault();
         goTo(activeIndex - 1);
       } else if (event.key === "Escape") {
-        router.push("/moments");
+        router.push(localePath(locale, "/moments"));
       } else if (event.key === " ") {
         event.preventDefault();
         setPaused((value) => !value);
@@ -206,7 +206,7 @@ function VideosFeed() {
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [activeIndex, goTo, router]);
+  }, [activeIndex, goTo, router, locale]);
 
   return (
     <PhoneShell>
@@ -215,7 +215,7 @@ function VideosFeed() {
         <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center justify-between p-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
           <button
             type="button"
-            onClick={() => router.push("/moments")}
+            onClick={() => router.push(localePath(locale, "/moments"))}
             aria-label={t("vd.back")}
             className="pointer-events-auto grid h-10 w-10 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm transition-colors duration-instant hover:bg-black/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white motion-reduce:transition-none"
           >
@@ -243,7 +243,7 @@ function VideosFeed() {
               </p>
               <button
                 type="button"
-                onClick={() => router.push("/moments")}
+                onClick={() => router.push(localePath(locale, "/moments"))}
                 className="mt-5 rounded-full bg-white/15 px-5 py-2.5 text-ui font-medium text-white transition-colors duration-instant hover:bg-white/25 motion-reduce:transition-none"
               >
                 {t("vd.backToFeed")}

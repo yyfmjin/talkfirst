@@ -90,7 +90,7 @@ type MediaItem = {
 
 type VisibilityValue = "everyone" | "connections" | "private";
 
-import { useT, type MsgKey } from "@/lib/i18n";
+import { localePath, useT, type MsgKey } from "@/lib/i18n";
 import { currentLocale, t } from "@/lib/i18n";
 
 const VISIBILITY_OPTIONS: Array<{ value: VisibilityValue; labelKey: MsgKey; hintKey: MsgKey; icon: typeof Globe }> = [
@@ -125,7 +125,7 @@ function formatBytes(bytes: number) {
 }
 
 export default function ComposePage() {
-  const { t } = useT();
+  const { locale, t } = useT();
   const router = useRouter();
   const { user } = useSession();
 
@@ -463,7 +463,7 @@ export default function ComposePage() {
         return;
       }
 
-      router.push("/moments");
+      router.push(localePath(locale, "/moments"));
     } catch (requestError) {
       setError(friendlyErrorMessage(requestError, t("cm.publishFailed")));
       setPublishing(false);
@@ -475,7 +475,7 @@ export default function ComposePage() {
       setLeaveOpen(true);
       return;
     }
-    router.push("/moments");
+    router.push(localePath(locale, "/moments"));
   }
 
   useEffect(() => {
@@ -497,7 +497,7 @@ export default function ComposePage() {
 
   return (
     <PhoneShell>
-      <ScreenHeader title={t("cm.title")} backHref="/moments" onBack={handleBack} />
+      <ScreenHeader title={t("cm.title")} backHref={localePath(locale, "/moments")} onBack={handleBack} />
 
       <div className="relative flex min-h-0 flex-1 flex-col">
         <div className="tf-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6 pt-3">
@@ -764,7 +764,7 @@ export default function ComposePage() {
               <button
                 type="button"
                 data-testid="moment-pending-leave"
-                onClick={() => router.push("/moments")}
+                onClick={() => router.push(localePath(locale, "/moments"))}
                 className="mt-2 text-[12px] font-medium text-brand-600 underline"
               >
                 {t("cm.pendingLeave")}
@@ -870,7 +870,7 @@ export default function ComposePage() {
                   data-testid="moment-leave-confirm"
                   onClick={() => {
                     setLeaveOpen(false);
-                    router.push("/moments");
+                    router.push(localePath(locale, "/moments"));
                   }}
                   className="h-10 min-w-0 flex-1 rounded-full bg-[#6572D8] text-[13px] text-white"
                 >

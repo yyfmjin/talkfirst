@@ -14,7 +14,7 @@ import {
   TFLoadingRegion,
 } from "@/components/tf";
 import { ApiRequestError, apiFetch } from "@/lib/api";
-import { useT, type MsgKey } from "@/lib/i18n";
+import { localePath, useT, type MsgKey } from "@/lib/i18n";
 
 /**
  * 「社交账号」 — connect external accounts and sync recent posts.
@@ -74,7 +74,7 @@ type SharedBinding = { platform: string; handle: string; displayName: string | n
 const SYNC_LIMITS = [1, 2, 3];
 
 export default function SocialAccountsPage() {
-  const { t } = useT();
+  const { locale, t } = useT();
   /* 不可用原因属于「当前语言的一句话」，所以做成函数而不是模块级常量表。 */
   const availabilityHint = (availability: ProviderAvailability): string =>
     availability === "REQUIRES_APPROVAL"
@@ -407,7 +407,7 @@ export default function SocialAccountsPage() {
                     {t("sc.sharedNote")}
                   </p>
                   <div className="mt-2">
-                    <TFButton size="sm" variant="ghost" href="/moments/settings" trailingIcon={<ArrowRight size={14} />}>
+                    <TFButton size="sm" variant="ghost" href={localePath(locale, "/moments/settings")} trailingIcon={<ArrowRight size={14} />}>
                       {t("sc.manage")}
                     </TFButton>
                   </div>

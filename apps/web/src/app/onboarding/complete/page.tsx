@@ -77,8 +77,7 @@ export default function CompletePage() {
             {t("onboarding.complete.goDiscover")}
           </TFButton>
           <TFButton
-            /* 不挂 /en 前缀：`/me/edit` 还没双语化，挂上去就是 404（同 locales.ts 的约定）。 */
-            href="/me/edit"
+            href={localePath(locale, "/me/edit")}
             variant="ghost"
             size="md"
             fullWidth

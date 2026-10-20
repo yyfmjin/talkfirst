@@ -312,7 +312,7 @@ export function ProfilePreviewCard({
                   className="flex-1"
                   onClick={() => {
                     onClose();
-                    router.push("/me/edit");
+                    router.push(localePath(locale, "/me/edit"));
                   }}
                 >
                   {t("profileCard.editProfile")}
@@ -322,7 +322,7 @@ export function ProfilePreviewCard({
                   className="flex-1"
                   onClick={() => {
                     onClose();
-                    router.push("/me/attributes");
+                    router.push(localePath(locale, "/me/attributes"));
                   }}
                 >
                   {t("profileCard.manageTags")}

@@ -12,7 +12,7 @@ import {
 } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { friendlyErrorMessage } from "@/lib/errors";
-import { useT } from "@/lib/i18n";
+import { localePath, useT } from "@/lib/i18n";
 
 /**
  * PC-1.4 §5: everyday editing of the fields that used to be onboarding-only.
@@ -48,7 +48,7 @@ type SectionId = "languages" | "interests" | "purposes" | "countries";
 
 
 export default function MeInterestsPage() {
-  const { t } = useT();
+  const { locale, t } = useT();
   const [languages, setLanguages] = useState<Language[]>([]);
   const [interests, setInterests] = useState<Interest[]>([]);
   const [purposes, setPurposes] = useState<Purpose[]>([]);
@@ -492,7 +492,7 @@ export default function MeInterestsPage() {
         ) : null}
 
         <div className="mt-6">
-          <TFButton variant="secondary" fullWidth href="/me">
+          <TFButton variant="secondary" fullWidth href={localePath(locale, "/me")}>
             {t("it.back")}
           </TFButton>
         </div>

@@ -6,7 +6,7 @@ import { TFButton, TFTextarea } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { REPORT_REASONS, reportReasonKey } from "@/lib/report-reasons";
-import { useT } from "@/lib/i18n";
+import { localePath, useT } from "@/lib/i18n";
 
 /**
  * The block / report menu for one conversation.
@@ -28,7 +28,7 @@ export default function SafetyActions({
   onRetry?: () => void;
 }) {
   const router = useRouter();
-  const { t } = useT();
+  const { locale, t } = useT();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"menu" | "report" | "block">("menu");
   const [reason, setReason] = useState("Harassment");
@@ -60,7 +60,7 @@ export default function SafetyActions({
     setMessage("");
     try {
       await apiFetch("/blocks", { method: "POST", body: { userId: peerId } });
-      router.push("/messages");
+      router.push(localePath(locale, "/messages"));
     } catch (requestError) {
       setMessage(requestError instanceof Error ? requestError.message : t("sy.blockFailed"));
     } finally {

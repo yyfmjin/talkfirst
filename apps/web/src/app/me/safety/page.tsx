@@ -5,7 +5,7 @@ import { PhoneShell } from "@/components/phone-shell";
 import { ScreenHeader } from "@/components/screen-header";
 import { TFButton, TFLoadingRegion, TFSkeleton } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
-import { useT, type MsgKey } from "@/lib/i18n";
+import { localePath, useT, type MsgKey } from "@/lib/i18n";
 
 type BlockItem = {
   blockedId: string;
@@ -22,7 +22,7 @@ type ReportItem = {
 };
 
 export default function SafetyPage() {
-  const { t } = useT();
+  const { locale, t } = useT();
   const [blocks, setBlocks] = useState<BlockItem[]>([]);
   const [reports, setReports] = useState<ReportItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,7 +147,7 @@ export default function SafetyPage() {
           </p>
         ) : null}
 
-        <TFButton variant="secondary" fullWidth className="mt-6" href="/me/social">
+        <TFButton variant="secondary" fullWidth className="mt-6" href={localePath(locale, "/me/social")}>
           {t("sf.manageSocial")}
         </TFButton>
       </div>
