@@ -1,2 +1,3 @@
-DONE: failed -> build web | build admin at 2026-10-02T12:13:08.840Z
-
+RUNNING: unit tests: api jest plus web and admin smoke
+$ npm run test:static
+since 2026-10-20T02:18:33.489Z

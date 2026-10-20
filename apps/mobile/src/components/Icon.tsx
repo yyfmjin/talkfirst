@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import type { ComponentProps } from "react";
 
 type IconName = ComponentProps<typeof Ionicons>["name"];
@@ -25,6 +25,14 @@ type IconName = ComponentProps<typeof Ionicons>["name"];
  *
  * 注意这里是**判断能不能当组件用**，不是"包一层 try/catch 把错误藏起来"：
  * 如果图标解析不出来，界面上确实会少几个图标 —— 那是看得见的、可解释的降级。
+ *
+ * ## 2026-10-20：入口换成具体文件
+ *
+ * 上面那个“undefined”又回来了。包根入口是 `IconsLazy`，它的具名导出在这套
+ * workspaces + CJS/ESM 混装下会变回 undefined。改成逐字路径
+ * `@expo/vector-icons/Ionicons` 不经过懒加载，拿到的就是 `createIconSet` 造好的
+ * 组件；字体在 `App.tsx` 里用同一个 ttf 显式注册。这层兜底因此只在真拿不到时
+ * 生效，而不是天天生效。
  */
 export function Icon({ name, size, color }: { name: IconName; size: number; color: string }) {
   if (!isRenderable(Ionicons)) return null;

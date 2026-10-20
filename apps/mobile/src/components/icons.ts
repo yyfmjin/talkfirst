@@ -39,6 +39,15 @@ type IconProps = {
 type IoniconsComponent = ComponentType<IconProps> & {
   /** 仅用于 `keyof typeof Ionicons.glyphMap` 这类取名字类型的写法。 */
   glyphMap: Record<string, number>;
+  /** 图标字体（`{ Ionicons: <ttf 资源> }`），由 `createIconSet` 挂在组件上。 */
+  font?: Record<string, unknown>;
 };
 
 export const Ionicons = IoniconsRaw as unknown as IoniconsComponent;
+
+/**
+ * 默认导出同样给出去：运行时改走 `@expo/vector-icons/Ionicons` 这个**具体入口**
+ * （原因见 `Icon.tsx` 的说明），而 `tsconfig.json` 把该路径也映射到这个文件，
+ * 两边的类型仍然是同一份，不会退回 React 19 的 JSX 类型。
+ */
+export default Ionicons;

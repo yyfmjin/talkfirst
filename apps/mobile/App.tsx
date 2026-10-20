@@ -10,7 +10,7 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFonts } from "expo-font";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { Icon } from "./src/components/Icon";
 import { AuthProvider, useAuth } from "./src/lib/auth-context";
 import { ErrorBoundary } from "./src/components/error-boundary";
@@ -24,6 +24,17 @@ import { MessagesScreen } from "./src/screens/MessagesScreen";
 import { MomentsScreen } from "./src/screens/MomentsScreen";
 import { OnboardingScreen } from "./src/screens/OnboardingScreen";
 import { colors } from "./src/theme";
+
+/**
+ * 图标字体资源（**直接 require 一个具体 ttf**）。
+ *
+ * 不取 `Ionicons.font`：那个静态字段在本仓库的依赖布局下可能是 undefined，
+ * 而 undefined 一旦传进 `useFonts({})`，字体会从来不被加载 —— 图标就成了
+ * “画不出来的空位”，再叠加 Metro 没把 ttf 打进包，真机上永远看不到字形。
+ * 直接 require 后：打包器必定包含该资源，`useFonts` 用 `Ionicons` 这个族名注册，
+ * 正好等于 `createIconSet` 取字形时用的名字。
+ */
+const IONICONS_TTF = require("@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf");
 
 /**
  * 底部导航。
@@ -261,11 +272,19 @@ export default function App() {
    * 和「发布按钮只有蓝底没有加号」的背后真因。
    *
    * 所以：**先判断拿没拿到**。拿不到就不加载字体，界面照常渲染（图标由 Icon 兜底不画）。
-   * 注意 `useFonts` 必须**无条件调用**（不能写成 `if (font) useFonts(...)` —— 那是条件 Hook），
-   * 没字体时传空对象即可。
-   */
-  const ioniconFont = (Ionicons as { font?: Record<string, string> } | undefined)?.font;
-  useFonts(ioniconFont ? { ...ioniconFont } : {});
+   * 注意 `useFonts` 必须**无条件调用**（不能写成 `if (font) useFonts(...)` —— 那是条件 Hook）。
+   *
+   * 2026-10-20（运营方第二次反馈「按钮只有颜色、里面什么都没有」，同时 AI 发送键点不到）：
+   *
+   *   1. 运行时入口改成 `@expo/vector-icons/Ionicons`（**具体文件**）。包根入口是
+   *      `IconsLazy`，它的具名导出在这套 workspaces + CJS/ESM 混装下又会变回
+   *      undefined —— 那正是上面 10-09 的事。逐字路径不经过懒加载，稳。
+   *   2. 字体不再从 `Ionicons.font` 取，而是**直接 require 那个 .ttf**。`.font` 缺失时
+   *      以前会传空对象（什么都不加载），而 10-09 查真机包时里面确实一个 .ttf 都没有：
+   *      图标因此一直是“画不出来的空位”。直接 require 后 Metro 一定会把资源打进包，
+   *      族名必须是 `Ionicons` —— `createIconSet` 就是按这个名字取字形。
+  */
+  useFonts({ Ionicons: IONICONS_TTF });
 
   return (
     // I18nProvider 在最外层：未登录时的 AuthScreen 也要能翻译。

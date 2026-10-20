@@ -13,7 +13,9 @@
      */
     "baseUrl": ".",
     "paths": {
-      "@expo/vector-icons": ["./src/components/icons.ts"]
+      "@expo/vector-icons": ["./src/components/icons.ts"],
+      /* 2026-10-20：运行时改走逐字入口（见 Icon.tsx），类型也指向同一个门面。 */
+      "@expo/vector-icons/Ionicons": ["./src/components/icons.ts"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]

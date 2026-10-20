@@ -409,7 +409,11 @@ export function AiScreen({ onBack }: { onBack: () => void }) {
           {sending ? (
             <ActivityIndicator color={colors.white} size="small" />
           ) : (
-            <Icon name="arrow-up" size={18} color={colors.white} />
+            <>
+              <Icon name="arrow-up" size={16} color={colors.white} />
+              {/* 文字一定在：图标字体没就位时，这枚按钮也不该只剩一个色块。 */}
+              <Text style={styles.sendLabel}>{t("ai.send")}</Text>
+            </>
           )}
         </Pressable>
       </View>
@@ -598,13 +602,18 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   sendButton: {
-    width: 40,
+    /* 不再做成 40x40 的纯图标圆点：图标画不出来时，按钮就只是个色块。 */
+    minWidth: 72,
     height: 40,
+    paddingHorizontal: 14,
     borderRadius: 20,
+    flexDirection: "row",
+    gap: 6,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.primary,
   },
+  sendLabel: { color: colors.white, fontSize: 14, fontWeight: "600" },
   sendDisabled: { opacity: 0.45 },
   form: { padding: 16, gap: 6, paddingBottom: 40 },
   formHint: { fontSize: 13, color: colors.muted, lineHeight: 20, marginBottom: 6 },
