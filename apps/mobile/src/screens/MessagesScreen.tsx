@@ -606,7 +606,7 @@ function previewText(item: ConversationItem, t: TranslateFn): string {
  * 负载（动态点赞之类）。拿不到就返回 null，让调用方只标已读 ——
  * 解析失败绝不能把「点通知」变成一次崩溃。
  */
-function conversationIdFromNotification(data: string | null): string | null {
+export function conversationIdFromNotification(data: string | null): string | null {
   if (!data) return null;
   try {
     const parsed = JSON.parse(data) as { conversationId?: unknown };
