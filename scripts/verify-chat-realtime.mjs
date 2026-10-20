@@ -75,10 +75,22 @@ async function signIn(email) {
   return { token: payload.accessToken, userId: payload.data.id };
 }
 
-/** 确保 A、B 之间有一条会话；返回 conversationId。 */
+/**
+ * 确保 A、B 之间有一条**人类**会话；返回 conversationId。
+ *
+ * 必须按类型挑：`GET /conversations` 会把 A 的 AI 朋友会话一并返回（`type: "AI"`），
+ * 而它通常就排在第一条 —— 直接取 `data[0]` 会拿到 AI 会话，然后用 REST 往里发消息
+ * 得到 404（AI 会话只走 `/ai-companion/messages`）。2026-10-20 跑这个脚本时就是这么
+ * 失败的：socket 两条都连上了，消息却全 404，看着像实时坏了，其实是挑错了会话。
+ */
+function humanConversationOf(list, peerId) {
+  const rows = list.payload?.data ?? [];
+  return rows.find((row) => row.type !== "AI" && (!peerId || row.peer?.id === peerId)) ?? null;
+}
+
 async function ensureConversation(a, b) {
   const list = await call("/conversations", { token: a.token });
-  const existing = (list.payload?.data ?? [])[0];
+  const existing = humanConversationOf(list, b.userId) ?? humanConversationOf(list, null);
   if (existing) return existing.id;
 
   const created = await call("/connections/requests", {
@@ -98,8 +110,8 @@ async function ensureConversation(a, b) {
     throw new Error(`接受失败（${accepted.status}）：${JSON.stringify(accepted.payload)?.slice(0, 160)}`);
   }
   const after = await call("/conversations", { token: a.token });
-  const conversation = (after.payload?.data ?? [])[0];
-  if (!conversation) throw new Error("接受后仍没有会话");
+  const conversation = humanConversationOf(after, b.userId) ?? humanConversationOf(after, null);
+  if (!conversation) throw new Error("接受后仍没有人类会话");
   return conversation.id;
 }
 
