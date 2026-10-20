@@ -195,6 +195,9 @@ export function MessagesScreen() {
    * 而会话内容是打开时才拉的。
    */
   const wasLive = useRef(true);
+  /** 会话列表的最新快照（给回调读，不进依赖数组）。 */
+  const conversationsRef = useRef<ConversationItem[]>([]);
+  conversationsRef.current = conversations;
   useEffect(() => {
     if (liveState !== "live") {
       wasLive.current = false;
@@ -218,6 +221,15 @@ export function MessagesScreen() {
   useBackHandler(openId !== null && exchange, () => setExchange(false));
 
   const openConversation = useCallback(async (id: string) => {
+    /*
+     * AI 会话不在这一层打开：它的消息只能走 `/ai-companion`，普通会话接口对它一律
+     * 404 CONVERSATION_NOT_FOUND。用 ref 读列表而不是把 conversations 放进依赖 ——
+     * 后者会让这个回调每次拉完列表就变一个，挂着它的 effect 跟着重跑。
+     */
+    if (conversationsRef.current.find((item) => item.id === id)?.type === "AI") {
+      setAi(true);
+      return;
+    }
     setOpenId(id);
     setExchange(false);
     setPeerTyping(false);
@@ -324,6 +336,7 @@ export function MessagesScreen() {
             void openConversation(conversationId);
             return true;
           }}
+          onBack={() => setSegment("conversations")}
         />
       </View>
     );
@@ -466,6 +479,15 @@ export function MessagesScreen() {
     );
   }
 
+  /*
+   * AI 会话不进这个列表。
+   *
+   * 它与真人会话长得很像，但发消息走的是 `/ai-companion`；走普通会话接口会被服务端
+   * 以 404 CONVERSATION_NOT_FOUND 拒掉（2026-10-21 线上反馈：点列表里的 AI 会话
+   * 发消息就报这个）。web 端一直把 AI 单独拆出来指向 `/ai`，App 之前没拆。
+   */
+  const { ai: aiChat, humans: humanChats } = splitConversations(conversations);
+
   return (
     <View style={styles.root}>
       <View style={styles.header}>
@@ -474,7 +496,7 @@ export function MessagesScreen() {
       <Segments value={segment} onChange={setSegment} />
       {liveBanner}
       <FlatList
-        data={conversations}
+        data={humanChats}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         /*
@@ -543,13 +565,21 @@ export function MessagesScreen() {
               </View>
               <View style={styles.rowText}>
                 <Text style={styles.peerName} numberOfLines={1}>
-                  {t("ai.title")}
+                  {aiChat?.aiCompanionName ?? t("ai.title")}
                 </Text>
                 <Text style={styles.preview} numberOfLines={1}>
-                  {t("ai.entryHint")}
+                  {aiChat?.lastMessage?.content ?? t("ai.entryHint")}
                 </Text>
               </View>
-              <Icon name="chevron-forward" size={18} color={colors.muted} />
+              {aiChat?.unreadCount && aiChat.unreadCount > 0 ? (
+                <View style={styles.unreadBadge}>
+                  <Text style={styles.unreadText}>
+                    {aiChat.unreadCount > 99 ? "99+" : aiChat.unreadCount}
+                  </Text>
+                </View>
+              ) : (
+                <Icon name="chevron-forward" size={18} color={colors.muted} />
+              )}
             </Pressable>
           </View>
         }
@@ -597,6 +627,24 @@ export function MessagesScreen() {
 function previewText(item: ConversationItem, t: TranslateFn): string {
   if (!item.lastMessage) return t("messages.startChat");
   return item.lastMessage.type === "IMAGE" ? t("messages.imagePreview") : item.lastMessage.content;
+}
+
+/**
+ * 把人机会话分开。
+ *
+ * AI 会话和真人会话在列表里长得一样，但消息走的是两套接口：AI 只能走
+ * `/ai-companion`，走 `/conversations/:id/messages` 会被服务端 404
+ * `CONVERSATION_NOT_FOUND`（2026-10-21 线上反馈）。web 端一直是分开的
+ * （`aiChat` → `/ai`，`humanChats` → 列表），App 这里对齐。
+ */
+export function splitConversations(items: ConversationItem[]): {
+  ai: ConversationItem | null;
+  humans: ConversationItem[];
+} {
+  return {
+    ai: items.find((item) => item.type === "AI") ?? null,
+    humans: items.filter((item) => item.type !== "AI"),
+  };
 }
 
 /**

@@ -1,4 +1,4 @@
-import { conversationIdFromNotification } from "./MessagesScreen";
+import { conversationIdFromNotification, splitConversations } from "./MessagesScreen";
 
 /**
  * 通知 → 会话的跳转靠这段解析。
@@ -31,5 +31,36 @@ describe("conversationIdFromNotification", () => {
 
   it("空字符串的会话 id 视为没有", () => {
     expect(conversationIdFromNotification(JSON.stringify({ conversationId: "" }))).toBeNull();
+  });
+});
+
+/**
+ * AI 会话不能出现在真人会话列表里。
+ *
+ * 它和真人会话长得一样，但消息只能走 `/ai-companion`；在列表里点开会走
+ * `/conversations/:id/messages`，服务端对它一律 404 CONVERSATION_NOT_FOUND
+ * （2026-10-21 线上反馈：AI 聊天发不出去就报这个）。
+ */
+describe("splitConversations", () => {
+  const human = { id: "c-human", type: "DIRECT" } as never;
+  const ai = { id: "c-ai", type: "AI", aiCompanionName: "小夏" } as never;
+
+  it("AI 会话从列表里抽走，不当作普通会话", () => {
+    const { ai: aiChat, humans } = splitConversations([human, ai]);
+    expect(aiChat).toBe(ai);
+    expect(humans).toEqual([human]);
+  });
+
+  it("没有 AI 会话时 ai 为 null，人会话不变", () => {
+    const { ai: aiChat, humans } = splitConversations([human]);
+    expect(aiChat).toBeNull();
+    expect(humans).toEqual([human]);
+  });
+
+  it("老响应没有 type 字段时按真人处理", () => {
+    const legacy = { id: "c-legacy" } as never;
+    const { ai: aiChat, humans } = splitConversations([legacy]);
+    expect(aiChat).toBeNull();
+    expect(humans).toEqual([legacy]);
   });
 });

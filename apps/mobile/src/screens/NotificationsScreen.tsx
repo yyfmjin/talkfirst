@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import { apiFetch } from "../lib/api";
+import { useBackHandler } from "../lib/back-stack";
 import { useI18n } from "../lib/i18n-context";
 import type { MsgKey } from "../lib/messages";
 import type { NotificationPage, NotificationRecord } from "../lib/types";
@@ -51,6 +52,7 @@ function formatTime(iso: string): string {
 
 export function NotificationsScreen({
   onOpen,
+  onBack,
 }: {
   /**
    * 点一条通知时要不要「跳过去」。
@@ -60,7 +62,10 @@ export function NotificationsScreen({
    * 当前这一层），所以这里只回调，返回 true 表示已经处理了。
    */
   onOpen?: (item: NotificationRecord) => boolean;
+  /** 系统返回键：回到会话分段（不接管就退出 App）。 */
+  onBack?: () => void;
 } = {}) {
+  useBackHandler(true, () => onBack?.());
   const { t } = useI18n();
   const [items, setItems] = useState<NotificationRecord[]>([]);
   const [unread, setUnread] = useState(0);

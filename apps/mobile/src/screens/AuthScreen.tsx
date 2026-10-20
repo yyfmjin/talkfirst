@@ -142,6 +142,7 @@ export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {})
     return (
       <VerifyScreen
         email={verifyEmail}
+        onBack={() => setVerifyEmail(null)}
         onVerified={() => {
           setVerifyEmail(null);
           onRegistered?.();

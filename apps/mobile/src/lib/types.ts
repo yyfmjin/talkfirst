@@ -365,6 +365,15 @@ export type ReportItem = {
 
 export type ConversationItem = {
   id: string;
+  /**
+   * 会话种类：`DIRECT`（真人，默认）或 `AI`（与 AI 朋友）。
+   *
+   * `AI` 的会话不能当普通会话用：它的消息只走 `/ai-companion`，
+   * 走 `/conversations/:id/messages` 会被服务端 404 CONVERSATION_NOT_FOUND。
+   */
+  type?: string;
+  /** AI 会话里那个朋友的名字（列表顶部拿它当标题）。 */
+  aiCompanionName?: string | null;
   connectionId: string | null;
   updatedAt: string;
   unreadCount?: number;

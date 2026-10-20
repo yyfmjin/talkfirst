@@ -6,6 +6,7 @@ import { KeyboardAware } from "../components/KeyboardAware";
 import { Logo } from "../components/Logo";
 import { apiFetch } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
+import { useBackHandler } from "../lib/back-stack";
 import { useI18n } from "../lib/i18n-context";
 import type { SessionUser } from "../lib/types";
 import { colors } from "../theme";
@@ -37,13 +38,25 @@ export function VerifyScreen({
   email,
   onVerified,
   onSkip,
+  onBack,
 }: {
   email: string;
   onVerified: () => void;
   onSkip?: () => void;
+  onBack?: () => void;
 }) {
   const { setUser } = useAuth();
   const { t } = useI18n();
+  /**
+   * 系统返回键必须接管。
+   *
+   * 这一屏在全屏接管状态下，没有任何父级能接：不注册就意味着按返回
+   * **直接退出 App 回桌面**（2026-10-21 运营方反馈的正是这个）。
+   * 优先回到注册/登录表单；「我的」进入的场景用 `onSkip` 回上一下。
+   */
+  useBackHandler(true, () => {
+    (onBack ?? onSkip)?.();
+  });
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");

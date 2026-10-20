@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
 import { KeyboardAware } from "../components/KeyboardAware";
 import { Logo } from "../components/Logo";
 import { ApiRequestError, apiFetch } from "../lib/api";
+import { useBackHandler } from "../lib/back-stack";
 import { useI18n } from "../lib/i18n-context";
 import { colors } from "../theme";
 
@@ -37,6 +38,16 @@ export function ResetPasswordScreen({ initialEmail = "", onBack }: { initialEmai
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+
+  /* 全屏子屏，必须自己接管返回键：不注册就会退出 App 回桌面。 */
+  useBackHandler(true, onBack);
+
+  /* 重发冷却每秒减一 —— 以前只赋值不递减，按钮会永久禁用。 */
+  useEffect(() => {
+    if (cooldown <= 0) return undefined;
+    const timer = setTimeout(() => setCooldown((value) => value - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
 
   const normalized = email.trim().toLowerCase();
   const emailLooksValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized);

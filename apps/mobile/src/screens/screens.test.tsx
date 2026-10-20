@@ -12,6 +12,9 @@ import App from "../../App";
 import { AttributesScreen } from "./AttributesScreen";
 import { ComposeScreen } from "./ComposeScreen";
 import { ConnectionsScreen } from "./ConnectionsScreen";
+import { ResetPasswordScreen } from "./ResetPasswordScreen";
+import { VerifyScreen } from "./VerifyScreen";
+import { handleHardwareBack, resetBackHandlers } from "../lib/back-stack";
 import { DeleteAccountScreen } from "./DeleteAccountScreen";
 import { DiscoverScreen } from "./DiscoverScreen";
 import { EditProfileScreen } from "./EditProfileScreen";
@@ -1125,5 +1128,40 @@ describe("条款与隐私（Play 上架要求）", () => {
     const paths = api.apiFetchEnvelope.mock.calls.map(([path]) => String(path));
     expect(paths).toContain("/auth/register");
     tree.unmount();
+  });
+});
+
+/**
+ * 全屏子屏必须自己接管系统返回键。
+ *
+ * 2026-10-21 运营方反馈「一返回就退出 App 回桌面」：这两屏是全屏接管的，
+ * 没有任何父级能接返回键；`handleHardwareBack()` 在没人注册时返回 false，
+ * 系统就当成「退出 App」。这两个用例钉住「注册后验证」与「找回密码」两条路。
+ */
+describe("全屏子屏接管系统返回键", () => {
+  it("验证屏：返回回到上一步，而不是退出 App", async () => {
+    resetBackHandlers();
+    const onBack = jest.fn();
+    const tree = await renderInProviders(
+      <VerifyScreen email="a@b.c" onVerified={() => undefined} onBack={onBack} />,
+    );
+
+    expect(handleHardwareBack()).toBe(true);
+    expect(onBack).toHaveBeenCalledTimes(1);
+
+    tree.unmount();
+    resetBackHandlers();
+  });
+
+  it("找回密码屏：返回回到登录", async () => {
+    resetBackHandlers();
+    const onBack = jest.fn();
+    const tree = await renderInProviders(<ResetPasswordScreen onBack={onBack} />);
+
+    expect(handleHardwareBack()).toBe(true);
+    expect(onBack).toHaveBeenCalledTimes(1);
+
+    tree.unmount();
+    resetBackHandlers();
   });
 });
