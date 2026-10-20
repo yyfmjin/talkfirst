@@ -21,7 +21,7 @@ import { NotificationsScreen } from "./NotificationsScreen";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
 import type { MsgKey } from "../lib/messages";
 import { colors } from "../theme";
-import type { ChatMessage, ConversationItem, MessagePage } from "../lib/types";
+import type { ChatMessage, ConversationItem, IncomingRequest, MessagePage } from "../lib/types";
 
 /**
  * 消息（2026-10-07；实时 2026-10-16）—— 会话列表 + 会话内对话。
@@ -48,8 +48,14 @@ import type { ChatMessage, ConversationItem, MessagePage } from "../lib/types";
  */
 export function MessagesScreen() {
   const { user } = useAuth();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
+  /** 收到的连接申请（对齐 web `/messages` 顶部那一块）。 */
+  const [incoming, setIncoming] = useState<IncomingRequest[]>([]);
+  const [actingId, setActingId] = useState<string | null>(null);
+  /** 已翻译的消息：messageId → 译文。 */
+  const [translations, setTranslations] = useState<Record<string, string>>({});
+  const [translatingId, setTranslatingId] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   /** 会话里的「交换联系方式」全屏子页（对齐 web 的 `/messages/[id]/connect`）。 */
   const [exchange, setExchange] = useState(false);
@@ -75,14 +81,55 @@ export function MessagesScreen() {
   const loadConversations = useCallback(async () => {
     setError("");
     try {
-      const data = await apiFetch<ConversationItem[]>("/conversations");
-      setConversations(data);
+      /*
+       * 申请与会话一起拉：两个都在同一屏，分两次串行只会多一次白屏。
+       * 申请接口单独失败时降级为空列表 —— 没弹申请不应该连带把会话也变成错误页。
+       */
+      const [chats, requests] = await Promise.all([
+        apiFetch<ConversationItem[]>("/conversations"),
+        apiFetch<IncomingRequest[]>("/connections/requests/incoming").catch(() => []),
+      ]);
+      setConversations(chats);
+      setIncoming(requests);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : t("messages.errorList"));
     } finally {
       setLoading(false);
     }
   }, [t]);
+
+  /** 接受 / 拒绝一条申请。服务端动作完成后重新拉一遍：会话可能刚建出来。 */
+  async function respondRequest(id: string, action: "accept" | "reject") {
+    setActingId(id);
+    try {
+      await apiFetch(`/connections/requests/${id}/respond`, {
+        method: "POST",
+        body: { action },
+      });
+      await loadConversations();
+    } catch {
+      setError(t("messages.requestActionFailed"));
+    } finally {
+      setActingId(null);
+    }
+  }
+
+  /** 翻译一条消息（服务端 LibreTranslate；与网页同一个接口）。 */
+  async function translateMessage(messageId: string) {
+    if (translatingId) return;
+    setTranslatingId(messageId);
+    try {
+      const result = await apiFetch<{ text: string }>(`/messages/${messageId}/translate`, {
+        method: "POST",
+        body: { targetLang: locale },
+      });
+      setTranslations((current) => ({ ...current, [messageId]: result.text }));
+    } catch {
+      setTranslations((current) => ({ ...current, [messageId]: "" }));
+    } finally {
+      setTranslatingId(null);
+    }
+  }
 
   useEffect(() => {
     void loadConversations();
@@ -264,7 +311,20 @@ export function MessagesScreen() {
           <Text style={styles.headerTitle}>{t("messages.title")}</Text>
         </View>
         <Segments value={segment} onChange={setSegment} />
-        <NotificationsScreen />
+        <NotificationsScreen
+          onOpen={(item) => {
+            /*
+             * 通知里只带得动「会话」这一层（`data` 里有 conversationId）：
+             * 动态类型的通知要去「动态」tab，跨 tab 的跳转不在这一屏的权限里，
+             * 这里诚实返回 false（只标已读），不假装跳成功了。
+             */
+            const conversationId = conversationIdFromNotification(item.data);
+            if (!conversationId) return false;
+            setSegment("conversations");
+            void openConversation(conversationId);
+            return true;
+          }}
+        />
       </View>
     );
   }
@@ -335,6 +395,29 @@ export function MessagesScreen() {
               <View style={[styles.bubbleRow, mine ? styles.bubbleRowMine : null]}>
                 <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
                   <Text style={mine ? styles.bubbleTextMine : styles.bubbleTextTheirs}>{item.content}</Text>
+                  {/*
+                   * 翻译（与网页同接口 POST /messages/:id/translate）。
+                   * 只给「别人发的、已经落库的」消息加：自己发的不需要翻，
+                   * 以 `local-`/`pending-` 开头的是本地乐观条目，服务端没有这条 id。
+                   */}
+                  {!mine && !item.id.startsWith("local-") && !item.id.startsWith("pending-") ? (
+                    translations[item.id] ? (
+                      <Text style={styles.translationText}>{translations[item.id]}</Text>
+                    ) : (
+                      <Pressable
+                        onPress={() => void translateMessage(item.id)}
+                        disabled={translatingId === item.id}
+                        accessibilityRole="button"
+                        accessibilityLabel={t("messages.translate")}
+                        hitSlop={8}
+                        style={styles.translateLink}
+                      >
+                        <Text style={styles.translateText}>
+                          {translatingId === item.id ? t("messages.translating") : t("messages.translate")}
+                        </Text>
+                      </Pressable>
+                    )
+                  ) : null}
                 </View>
               </View>
             );
@@ -371,7 +454,11 @@ export function MessagesScreen() {
             {sending ? (
               <ActivityIndicator color={colors.white} size="small" />
             ) : (
-              <Icon name="arrow-up" size={18} color={colors.white} />
+              <>
+                <Icon name="arrow-up" size={16} color={colors.white} />
+                {/* 文字一定在：图标字体没就位时，这枚按钮也不该只剩一个色块。 */}
+                <Text style={styles.sendLabel}>{t("messages.send")}</Text>
+              </>
             )}
           </Pressable>
         </View>
@@ -396,25 +483,75 @@ export function MessagesScreen() {
          * 混进数据会让「没有会话」时的空状态失效。
          */
         ListHeaderComponent={
-          <Pressable
-            onPress={() => setAi(true)}
-            accessibilityRole="button"
-            accessibilityLabel={t("ai.title")}
-            style={styles.aiEntry}
-          >
-            <View style={styles.aiIcon}>
-              <Icon name="sparkles-outline" size={20} color={colors.primaryDark} />
-            </View>
-            <View style={styles.rowText}>
-              <Text style={styles.peerName} numberOfLines={1}>
-                {t("ai.title")}
-              </Text>
-              <Text style={styles.preview} numberOfLines={1}>
-                {t("ai.entryHint")}
-              </Text>
-            </View>
-            <Icon name="chevron-forward" size={18} color={colors.muted} />
-          </Pressable>
+          <View>
+            {/*
+             * 收到的连接申请。
+             *
+             * web 一直在消息页顶部列这一块，App 之前只有「向别人打招呼」，没有接收端 ——
+             * 结果是两个 App 用户之间永远开不了会话（服务端要 PENDING → 接受 才建会话）。
+             */}
+            {incoming.length > 0 ? (
+              <View style={styles.requests}>
+                <Text style={styles.requestsTitle}>{t("messages.requestsTitle")}</Text>
+                {incoming.map((request) => (
+                  <View key={request.id} style={styles.requestRow}>
+                    <Avatar
+                      uri={request.sender?.avatarUrl ?? null}
+                      nickname={request.sender?.nickname ?? null}
+                      size={40}
+                    />
+                    <View style={styles.rowText}>
+                      <Text style={styles.peerName} numberOfLines={1}>
+                        {request.sender?.nickname ?? t("common.talkfirstUser")}
+                      </Text>
+                      <Text style={styles.preview} numberOfLines={2}>
+                        {request.message?.trim() || t("messages.requestNoMessage")}
+                      </Text>
+                    </View>
+                    <View style={styles.requestActions}>
+                      <Pressable
+                        onPress={() => void respondRequest(request.id, "accept")}
+                        disabled={actingId === request.id}
+                        accessibilityRole="button"
+                        accessibilityLabel={t("messages.requestAccept")}
+                        style={styles.acceptButton}
+                      >
+                        <Text style={styles.acceptText}>{t("messages.requestAccept")}</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => void respondRequest(request.id, "reject")}
+                        disabled={actingId === request.id}
+                        accessibilityRole="button"
+                        accessibilityLabel={t("messages.requestReject")}
+                        style={styles.rejectButton}
+                      >
+                        <Text style={styles.rejectText}>{t("messages.requestReject")}</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+            <Pressable
+              onPress={() => setAi(true)}
+              accessibilityRole="button"
+              accessibilityLabel={t("ai.title")}
+              style={styles.aiEntry}
+            >
+              <View style={styles.aiIcon}>
+                <Icon name="sparkles-outline" size={20} color={colors.primaryDark} />
+              </View>
+              <View style={styles.rowText}>
+                <Text style={styles.peerName} numberOfLines={1}>
+                  {t("ai.title")}
+                </Text>
+                <Text style={styles.preview} numberOfLines={1}>
+                  {t("ai.entryHint")}
+                </Text>
+              </View>
+              <Icon name="chevron-forward" size={18} color={colors.muted} />
+            </Pressable>
+          </View>
         }
         ListEmptyComponent={
           <View style={styles.center}>
@@ -460,6 +597,25 @@ export function MessagesScreen() {
 function previewText(item: ConversationItem, t: TranslateFn): string {
   if (!item.lastMessage) return t("messages.startChat");
   return item.lastMessage.type === "IMAGE" ? t("messages.imagePreview") : item.lastMessage.content;
+}
+
+/**
+ * 通知的 `data` 是一段 JSON 字符串（服务端存的负载），从中拿会话 id。
+ *
+ * `parse` 包在 try 里：老通知的 `data` 可能为 null、也可能是不带会话的
+ * 负载（动态点赞之类）。拿不到就返回 null，让调用方只标已读 ——
+ * 解析失败绝不能把「点通知」变成一次崩溃。
+ */
+function conversationIdFromNotification(data: string | null): string | null {
+  if (!data) return null;
+  try {
+    const parsed = JSON.parse(data) as { conversationId?: unknown };
+    return typeof parsed.conversationId === "string" && parsed.conversationId.length > 0
+      ? parsed.conversationId
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 /** 会话列表右侧那个时间：与 `MomentsScreen.relativeTime` 同形状，`t` 由调用方传入。 */
@@ -599,13 +755,50 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   sendButton: {
-    width: 40,
+    /* 同 AI 页：不再做成纯图标圆点，图标缺字形时按钮仍可读。 */
+    minWidth: 72,
     height: 40,
+    paddingHorizontal: 14,
     borderRadius: 20,
+    flexDirection: "row",
+    gap: 6,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.primary,
   },
+  sendLabel: { color: colors.white, fontSize: 14, fontWeight: "600" },
+  translateLink: { marginTop: 6 },
+  translateText: { fontSize: 12, color: colors.primaryDark, fontWeight: "600" },
+  translationText: { marginTop: 6, fontSize: 13, lineHeight: 19, color: colors.muted },
+  requests: { marginBottom: 12 },
+  requestsTitle: { fontSize: 12, fontWeight: "600", color: colors.muted, marginBottom: 6, paddingHorizontal: 4 },
+  requestRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 10,
+    marginBottom: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.white,
+  },
+  requestActions: { gap: 6 },
+  acceptButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+  },
+  acceptText: { color: colors.white, fontSize: 12, fontWeight: "600" },
+  rejectButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  rejectText: { color: colors.muted, fontSize: 12, fontWeight: "600" },
   sendDisabled: { opacity: 0.45 },
   emptyText: { fontSize: 14, color: colors.muted, textAlign: "center", lineHeight: 21 },
   error: { position: "absolute", left: 16, right: 16, bottom: 96, fontSize: 13, color: colors.danger, textAlign: "center" },

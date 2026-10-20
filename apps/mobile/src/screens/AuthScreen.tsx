@@ -15,6 +15,8 @@ import { ApiRequestError } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { useI18n } from "../lib/i18n-context";
 import { legalUrl } from "../lib/legal";
+import { ResetPasswordScreen } from "./ResetPasswordScreen";
+import { VerifyScreen } from "./VerifyScreen";
 import { colors } from "../theme";
 
 /**
@@ -46,6 +48,9 @@ export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {})
   const { signIn, signUp } = useAuth();
   const { t, locale } = useI18n();
   const [mode, setMode] = useState<"login" | "register">("login");
+  /** 需要验证邮箱的地址；非 null 时整屏交给 `VerifyScreen`。 */
+  const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
+  const [resetting, setResetting] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -87,11 +92,22 @@ export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {})
       if (mode === "login") await signIn(trimmed, password);
       else {
         await signUp(trimmed, password);
-        /* 注册成功 → 走一遍引导（对齐 web 的 /register/success → /onboarding/avatar）。
-           登录不走这里：老用户不该每次登录都被拉进向导。 */
-        onRegistered?.();
+        /*
+         * 注册后**必须**先验证邮箱，不能直接进引导。
+         *
+         * 线上开着 `ENFORCE_EMAIL_VERIFICATION`，未验证的账号除了 `/users/me`
+         * 和几个 auth 接口，其它一律 403 —— 直接放进主界面的话，用户看到的是
+         * 「每个页面都报错」，而屏幕上没有任何地方能补验证码。
+         */
+        setVerifyEmail(trimmed);
       }
     } catch (requestError) {
+      if (requestError instanceof ApiRequestError && requestError.code === "EMAIL_NOT_VERIFIED") {
+        // 老账号（在网页注册但没验证，或者验证状态丢失）：直接推验证屏。
+        setVerifyEmail(trimmed);
+        setError(t("auth.errorEmailNotVerified"));
+        return;
+      }
       const key =
         requestError instanceof ApiRequestError
           ? AUTH_ERROR_KEYS[requestError.code as keyof typeof AUTH_ERROR_KEYS]
@@ -111,6 +127,27 @@ export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {})
   function toggleMode() {
     setMode(mode === "login" ? "register" : "login");
     setError("");
+  }
+
+  if (resetting) {
+    return (
+      <ResetPasswordScreen
+        initialEmail={email.trim().toLowerCase()}
+        onBack={() => setResetting(false)}
+      />
+    );
+  }
+
+  if (verifyEmail) {
+    return (
+      <VerifyScreen
+        email={verifyEmail}
+        onVerified={() => {
+          setVerifyEmail(null);
+          onRegistered?.();
+        }}
+      />
+    );
   }
 
   return (
@@ -143,6 +180,17 @@ export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {})
             secureTextEntry
             maxLength={PASSWORD_MAX_LENGTH}
           />
+          {mode === "login" ? (
+            <Pressable
+              onPress={() => setResetting(true)}
+              accessibilityRole="button"
+              accessibilityLabel={t("reset.forgot")}
+              hitSlop={10}
+              style={styles.forgot}
+            >
+              <Text style={styles.forgotText}>{t("reset.forgot")}</Text>
+            </Pressable>
+          ) : null}
           {error ? (
             // Failure arrives after an await, so nothing on screen changes focus
             // or is focused: without a live region screen readers announce
@@ -241,4 +289,6 @@ const styles = StyleSheet.create({
   consentText: { flex: 1, fontSize: 12, color: colors.muted, lineHeight: 17 },
   consentLinks: { flexDirection: "row", gap: 14, marginTop: 6, marginLeft: 28 },
   consentLink: { color: colors.primary, fontSize: 12, fontWeight: "600" },
+  forgot: { alignSelf: "flex-end", marginTop: -4, marginBottom: 12 },
+  forgotText: { color: colors.primary, fontSize: 12, fontWeight: "600" },
 });

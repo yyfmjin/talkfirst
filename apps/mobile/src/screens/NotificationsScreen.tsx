@@ -49,7 +49,18 @@ function formatTime(iso: string): string {
   return `${month}-${day}`;
 }
 
-export function NotificationsScreen() {
+export function NotificationsScreen({
+  onOpen,
+}: {
+  /**
+   * 点一条通知时要不要「跳过去」。
+   *
+   * 之前这个屏只把通知标成已读 —— 看到「小明给你发消息」点下去没反应，用户只能
+   * 自己去会话列表里找。真正去哪里由调用方决定（它才知道对应的会话/动态在不在
+   * 当前这一层），所以这里只回调，返回 true 表示已经处理了。
+   */
+  onOpen?: (item: NotificationRecord) => boolean;
+} = {}) {
   const { t } = useI18n();
   const [items, setItems] = useState<NotificationRecord[]>([]);
   const [unread, setUnread] = useState(0);
@@ -203,7 +214,14 @@ export function NotificationsScreen() {
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
-          <NotificationRow item={item} onPress={() => void markRead(item.id)} />
+          <NotificationRow
+            item={item}
+            onPress={() => {
+              void markRead(item.id);
+              // 跳转失败不影响已读标记：已读是用户点过的事实，不该因为路由不到就回滚。
+              onOpen?.(item);
+            }}
+          />
         )}
         ListFooterComponent={
           nextCursor ? (

@@ -38,6 +38,10 @@ export function ProfilePreview({
   const [error, setError] = useState("");
   const [helloSending, setHelloSending] = useState(false);
   const [helloDone, setHelloDone] = useState(false);
+  /* 送花：与 web 同一个 toggle 接口，朵数以**响应**为准（同一对只有一条花）。 */
+  const [flowerSent, setFlowerSent] = useState(false);
+  const [flowerCount, setFlowerCount] = useState(0);
+  const [flowerSending, setFlowerSending] = useState(false);
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -47,6 +51,8 @@ export function ProfilePreview({
     try {
       const data = await apiFetch<PublicProfile>(`/users/${userId}`);
       setProfile(data);
+      setFlowerSent(data.flowerFromViewer ?? false);
+      setFlowerCount(data.flowerCount ?? 0);
     } catch (requestError) {
       setProfile(null);
       setError(requestError instanceof Error ? requestError.message : t("profile.errorLoading"));
@@ -76,6 +82,24 @@ export function ProfilePreview({
       setError(requestError instanceof Error ? requestError.message : t("profile.errorSend"));
     } finally {
       setHelloSending(false);
+    }
+  }
+
+  async function toggleFlower() {
+    if (!profile || flowerSending) return;
+    setFlowerSending(true);
+    setError("");
+    try {
+      const result = await apiFetch<{ sent: boolean; flowerCount: number }>(
+        `/users/${profile.id}/flowers`,
+        { method: "POST" },
+      );
+      setFlowerSent(result.sent);
+      setFlowerCount(result.flowerCount);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : t("profile.flowerFailed"));
+    } finally {
+      setFlowerSending(false);
     }
   }
 
@@ -178,6 +202,16 @@ export function ProfilePreview({
                       disabled={helloDone}
                     />
                   )}
+                  <Button
+                    label={
+                      flowerSent
+                        ? `${t("profile.flowerSent")}${flowerCount > 0 ? ` · ${t("profile.flowersCount", { n: flowerCount })}` : ""}`
+                        : `${t("profile.flower")}${flowerCount > 0 ? ` · ${t("profile.flowersCount", { n: flowerCount })}` : ""}`
+                    }
+                    variant="ghost"
+                    onPress={() => void toggleFlower()}
+                    loading={flowerSending}
+                  />
                 </View>
               ) : null}
             </ScrollView>

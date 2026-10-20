@@ -30,6 +30,7 @@ import { AttributesScreen } from "./AttributesScreen";
 import { PasswordScreen } from "./PasswordScreen";
 import { DeleteAccountScreen } from "./DeleteAccountScreen";
 import { OnboardingScreen } from "./OnboardingScreen";
+import { VerifyScreen } from "./VerifyScreen";
 import { MomentsSettingsScreen } from "./MomentsSettingsScreen";
 import { EditProfileScreen } from "./EditProfileScreen";
 import { LegalScreen } from "./LegalScreen";
@@ -123,6 +124,8 @@ export function MeScreen() {
   const { user, signOut, setUser } = useAuth();
   const { t, preference, setPreference } = useI18n();
   const [open, setOpen] = useState<MeEntry["key"] | null>(null);
+  /** 未验证邮箱时的验证屏（自己从「我的」能找得到，不依赖登录页）。 */
+  const [verifying, setVerifying] = useState(false);
   /* 引导不放在 `open` 里：它不是「我的」的一个子页，而是一个会盖住底部导航的
      独立流程（与「注册后马上走一遍」是同一个组件）。 */
   const [onboarding, setOnboarding] = useState(false);
@@ -131,6 +134,7 @@ export function MeScreen() {
 
   /* 系统返回键：引导 → 子页 → （没有任何子页时退出 app，交由系统默认）。 */
   useBackHandler(open !== null, () => setOpen(null));
+  useBackHandler(verifying, () => setVerifying(false));
   useBackHandler(onboarding, () => setOnboarding(false));
 
   /**
@@ -165,6 +169,21 @@ export function MeScreen() {
   }
 
   if (!user) return null;
+
+  /*
+   * 未验证邮箱的会话（例如注册到一半把 App 杀了）不能只靠登录页兜底：
+   * 服务端对未验证账号是 deny-by-default，除了 /users/me 与几个 auth 接口
+   * 其余一律 403，界面上每个页面都会报错。这里给一个自己找得到的入口。
+   */
+  if (verifying) {
+    return (
+      <VerifyScreen
+        email={user.email}
+        onVerified={() => setVerifying(false)}
+        onSkip={() => setVerifying(false)}
+      />
+    );
+  }
 
   if (onboarding) {
     return (
@@ -238,6 +257,20 @@ export function MeScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>{t("me.title")}</Text>
       </View>
+
+      {!user.emailVerified ? (
+        <View style={styles.group}>
+          <Pressable
+            onPress={() => setVerifying(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t("me.verifyEmailCta")}
+            style={styles.ctaRow}
+          >
+            <Icon name="mail-unread-outline" size={18} color={colors.primary} />
+            <Text style={styles.ctaLabel}>{t("me.verifyEmailTitle")}</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       <View style={styles.card}>
         <Avatar uri={user.avatarUrl} nickname={user.nickname} size={72} />

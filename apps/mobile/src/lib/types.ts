@@ -41,6 +41,9 @@ export type PublicProfile = {
   interests: Array<{ slug: string; name: string; nameZh: string | null }>;
   purposes: Array<{ slug: string; name: string; nameZh: string | null }>;
   relationship: { isSelf: boolean; isConnected: boolean };
+  /** 我给他送过花没有；以及他收到的花总数（与 web 同一份服务端字段）。 */
+  flowerFromViewer?: boolean;
+  flowerCount?: number;
 };
 
 export type Recommendation = {
@@ -222,6 +225,20 @@ export type ConnectionItem = {
     lastActiveAt: string | null;
     interests: Array<{ slug: string; name: string; nameZh: string | null }>;
   };
+};
+
+/** `GET /connections/requests/incoming` 的一项（有人给你打了招呼，等你接受）。 */
+export type IncomingRequest = {
+  id: string;
+  message: string | null;
+  status: string;
+  createdAt: string;
+  sender: {
+    id: string;
+    nickname: string | null;
+    avatarUrl: string | null;
+    countryCode: string | null;
+  } | null;
 };
 
 /** `GET /social-sync/providers` 的一项。 */
