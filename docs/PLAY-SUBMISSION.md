@@ -153,3 +153,16 @@ grep -n "signingConfig" app/build.gradle
 - **首次提交可能需要多轮**：Play 对社交类应用的审核偏严，尤其「举报/拉黑是否真的可达」
   与「审核账号能否走通主流程」。第一次被驳回是常态，按驳回理由改就行。
 - **iOS**：本次完全没做（`app.json` 里 iOS 只有 bundleIdentifier）。要上 App Store 是另一条线。
+
+---
+
+## 附录 C：2026-10-22 复核
+
+| 项 | 状态 |
+|---|---|
+| **账号删除的公开页** | ✅ 已上线 `https://talkfirst.ccwu.cc/delete-account`（英文 `/en/delete-account`）。Data safety 表单里「删除账号」那一栏填这个地址 —— 它**不需要登录**，忘密码的用户也能看到三条路径（App 内 / 网页内 / 发邮件） |
+| **AAB** | ✅ 已出：`D:\Android\talkfirst-play.aab`（39 MB，含 arm64-v8a / armeabi-v7a / x86_64） |
+| **出 AAB 的坑** | 必须带 `EXPO_NO_METRO_WORKSPACE_ROOT=1`，否则 Metro 把工作区根当 server root，报 `Unable to resolve module ./index.ts`（本地 APK 脚本里一直设着，手动跑 gradle 容易忘） |
+| **第三方登录** | 代码已就绪（Google/Facebook 按钮 + App 原生一次性码交换），但线上 `OAUTH_PROVIDERS` 为空 → 按钮不显示。**不影响上架**；配好凭据后自动出现 |
+| **商店截图** | ❌ 仍缺。`docs/play-assets/` 里只有图标与横幅；Play 要求 ≥2 张手机截图 |
+| **16 KB 页大小** | ❌ 仍未达标（SDK 52 的预编译库是 4 KB 对齐），截止 2027-02-01 |
