@@ -53,6 +53,13 @@ export type OAuthSignInResult = {
   refreshToken: string;
   /** True when this sign-in created the account for the first time. */
   isNewAccount: boolean;
+  /**
+   * 本次登录由 App 发起（`?client=native`）。
+   *
+   * 为 true 时回调不写会话 cookie，而是签发一次性码并 302 到
+   * `talkfirst://oauth?code=…` —— App 读不到浏览器 cookie，只能走交换。
+   */
+  native: boolean;
 };
 
 /** Extra data the controller needs when a refusal is reported to the user. */
@@ -93,7 +100,7 @@ export class OAuthService {
   begin(
     provider: string,
     config: OAuthProviderConfig,
-    options: { redirectTo?: string | null; appUrl: string },
+    options: { redirectTo?: string | null; appUrl: string; native?: boolean },
   ): { authorizationUrl: string; stateToken: string; flowState: OAuthFlowState } {
     const state = newStateValue();
     const nonce = newNonceValue();
@@ -105,6 +112,7 @@ export class OAuthService {
       codeVerifier,
       nonce,
       redirectTo: safeRedirectTarget(options.redirectTo, options.appUrl),
+      native: options.native === true,
     };
 
     const stateToken = this.jwtService.sign(
@@ -185,6 +193,8 @@ export class OAuthService {
       // is not guaranteed to equal `createdAt` on insert, so it would have been a
       // flag that is sometimes wrong — worse than no flag.
       isNewAccount: resolution.isNewAccount,
+      /** 回调要据此决定是写 cookie 还是发一次性码给 App。 */
+      native: flowState.native === true,
     };
   }
 

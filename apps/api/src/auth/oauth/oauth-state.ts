@@ -45,6 +45,14 @@ export type OAuthFlowState = {
    * could craft the link that the provider bounces the user back with.
    */
   redirectTo: string;
+  /**
+   * 本次登录是不是给 App 用的（`?client=native`）。
+   *
+   * App 读不到浏览器的 cookie，所以回调不写会话 cookie，而是签发一个
+   * 一次性码、重定向到 `talkfirst://oauth?code=…`，由 App 调 `/exchange` 换 token。
+   * 存放在这里（而不是回调参数里）同样是为了防篡改。
+   */
+  native?: boolean;
 };
 
 /** Cookie name is per-provider so two sign-ins in two tabs cannot collide. */

@@ -8,6 +8,7 @@ import {
   Query,
   Req,
   Res,
+  UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
@@ -30,6 +31,7 @@ import {
 } from "./oauth-state";
 import { OAuthService, isAccountExistsError } from "./oauth.service";
 import { OAuthError } from "./oauth.types";
+import { consumeExchangeCode, issueExchangeCode } from "./native-exchange";
 import { ValidationPipe } from "../../common/validation.pipe";
 import { IsOptional, IsString, MaxLength } from "class-validator";
 
@@ -66,6 +68,28 @@ class BeginQueryDto {
   @IsString()
   @MaxLength(512)
   redirectTo?: string;
+
+  /**
+   * `native` = 这次登录是 App 发起的。
+   *
+   * App 读不到浏览器的 cookie，所以回调改成：签发一个一次性码，
+   * 302 到 `talkfirst://oauth?code=…`，App 再调 `/exchange` 换 token。
+   * 不传就是网页那条老路（写 cookie + 跳回站内）。
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(16)
+  client?: string;
+}
+
+/** App 登录完成后回跳的深链（`app.json` 里的 `scheme` 就是 `talkfirst`）。 */
+const NATIVE_REDIRECT = "talkfirst://oauth";
+
+/** App 拿到 `?code=` 后调 `/exchange` 的请求体。 */
+class ExchangeDto {
+  @IsString()
+  @MaxLength(256)
+  code!: string;
 }
 
 @Controller("auth/oauth")
@@ -110,6 +134,8 @@ export class OAuthController {
       const { authorizationUrl, stateToken, flowState } = this.oauth.begin(provider, config, {
         redirectTo: query.redirectTo,
         appUrl,
+        // `?client=native` 由 App 发起；网页不传，走原来的 cookie 路径。
+        native: query.client === "native",
       });
 
       response.cookie(oauthStateCookieName(provider), stateToken, stateCookieOptions());
@@ -298,6 +324,22 @@ export class OAuthController {
         providerError,
       });
 
+      /**
+       * App 发起的登录：不写 cookie（App 读不到浏览器的 cookie），
+       * 改发一个 120 秒内有效的一次性码，302 到 `talkfirst://oauth?code=…`，
+       * App 用 POST /auth/oauth/:provider/exchange 换 token。
+       */
+      if (result.native) {
+        const code = issueExchangeCode(provider, {
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+          user: result.user,
+        });
+        response.clearCookie(stateCookie, stateCookieOptions());
+        response.redirect(`${NATIVE_REDIRECT}?code=${encodeURIComponent(code)}`);
+        return;
+      }
+
       this.attachSession(response, result.accessToken, result.refreshToken);
       // The state is spent: clearing it here (and in the failure path) is what
       // makes it single-use, so a replayed callback finds no flow to complete.
@@ -333,15 +375,29 @@ export class OAuthController {
    * on instead of a silent 404.
    */
   @Post(":provider/exchange")
-  @HttpCode(501)
+  @HttpCode(200)
   @Throttle({ default: { limit: 20, ttl: 60000 } })
-  exchange() {
+  exchange(@Req() request: Request, @Body(new ValidationPipe()) body: ExchangeDto) {
+    const provider = providerFrom(request);
+    const session = consumeExchangeCode(provider, body.code);
+    if (!session) {
+      throw new UnauthorizedException({
+        success: false,
+        error: {
+          code: "OAUTH_CODE_INVALID",
+          message: "The sign-in code is invalid or has expired",
+        },
+      });
+    }
+    /*
+     * 与 `/auth/login` 同一个信封：token 在顶层、user 在 `data`。
+     * App 的 `applySession` 直接吃这个形状，不用为 OAuth 单写一套。
+     */
     return {
-      success: false as const,
-      error: {
-        code: "NOT_IMPLEMENTED",
-        message: "The native exchange flow is not implemented yet; use the web redirect flow",
-      },
+      success: true as const,
+      accessToken: session.accessToken,
+      refreshToken: session.refreshToken,
+      data: session.user,
     };
   }
 

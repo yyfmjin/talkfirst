@@ -9,6 +9,8 @@ type AuthState = {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
+  /** OAuth（Google/Facebook）交换回来的会话直接生效。 */
+  signInWithSession: (session: AuthSession) => Promise<void>;
   signOut: () => Promise<void>;
   setUser: (user: SessionUser | null) => void;
 };
@@ -18,6 +20,7 @@ const AuthContext = createContext<AuthState>({
   loading: true,
   signIn: async () => undefined,
   signUp: async () => undefined,
+  signInWithSession: async () => undefined,
   signOut: async () => undefined,
   setUser: () => undefined,
 });
@@ -113,9 +116,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  /**
+   * 直接拿一份会话登录（OAuth 交换回来的那份）。
+   *
+   * 与邮箱登录共用 `applySession`：写 token、设 user，一步不少。
+   * OAuth 的 token 已经是服务端签发好的，客户端没有密码可提交。
+   */
+  const signInWithSession = useCallback(
+    async (session: AuthSession) => {
+      await applySession(session);
+    },
+    [applySession],
+  );
+
   const value = useMemo(
-    () => ({ user, loading, signIn, signUp, signOut, setUser }),
-    [user, loading, signIn, signUp, signOut],
+    () => ({ user, loading, signIn, signUp, signInWithSession, signOut, setUser }),
+    [user, loading, signIn, signUp, signInWithSession, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Linking,
   Pressable,
@@ -15,6 +15,7 @@ import { ApiRequestError } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { useI18n } from "../lib/i18n-context";
 import { legalUrl } from "../lib/legal";
+import { fetchOAuthProviders, startOAuth } from "../lib/oauth";
 import { ResetPasswordScreen } from "./ResetPasswordScreen";
 import { VerifyScreen } from "./VerifyScreen";
 import { colors } from "../theme";
@@ -45,9 +46,13 @@ const AUTH_ERROR_KEYS = {
 } as const;
 
 export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {}) {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, signInWithSession } = useAuth();
   const { t, locale } = useI18n();
   const [mode, setMode] = useState<"login" | "register">("login");
+  /** 这个部署支持哪些第三方登录（没配的后端不会返回，界面也就不显示）。 */
+  const [providers, setProviders] = useState<string[]>([]);
+  const [oauthBusy, setOauthBusy] = useState<string | null>(null);
+  const [oauthError, setOauthError] = useState("");
   /** 需要验证邮箱的地址；非 null 时整屏交给 `VerifyScreen`。 */
   const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
@@ -58,6 +63,42 @@ export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {})
   /* 注册专用的同意勾选。登录不参与：老账号注册时的那次同意已经发生过，
      再拦一次只会让已经同意过的人重新勾一遍。 */
   const [consent, setConsent] = useState(false);
+
+  /* 第三方登录：后端配了什么就显示什么（与网页同一条规则）。 */
+  useEffect(() => {
+    let alive = true;
+    void fetchOAuthProviders().then((list) => {
+      if (alive) setProviders(list);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  /**
+   * 走一遍 Google / Facebook 登录。
+   *
+   * 浏览器里点取消、或者三分钟没回来，`startOAuth` 返回 null —— 那不算错误，
+   * 不提示（用户自己知道点了取消）。只有交换失败（拿到了码却换不出 token）才提示。
+   */
+  async function signInWithProvider(provider: "google" | "facebook") {
+    if (oauthBusy) return;
+    setOauthError("");
+    setOauthBusy(provider);
+    try {
+      const session = await startOAuth(provider);
+      if (!session) return;
+      await signInWithSession(session);
+      // 新账号与邮箱注册同一条路：资料没填完就进引导。
+      if (!session.data.profileCompleted) onRegistered?.();
+    } catch (requestError) {
+      setOauthError(
+        requestError instanceof Error ? requestError.message : t("auth.oauthFailed"),
+      );
+    } finally {
+      setOauthBusy(null);
+    }
+  }
 
   function openLegal(path: string) {
     Linking.openURL(legalUrl(locale, path)).catch(() => setError(t("legal.openFailed")));
@@ -163,6 +204,52 @@ export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {})
             {mode === "login" ? t("auth.loginSubtitle") : t("auth.registerSubtitle")}
           </Text>
         </View>
+
+        {/*
+         * 第三方登录排在邮箱表单上面：用户最想点的是「一键登录」，
+         * 邮箱是兵家必争的退路。后端没配的 provider 不会出现在 `providers` 里，
+         * 所以不会出现「看着能点、点下去报错」的按钮。
+         */}
+        {providers.length > 0 ? (
+          <View style={styles.social}>
+            {providers.includes("google") ? (
+              <Pressable
+                onPress={() => void signInWithProvider("google")}
+                disabled={oauthBusy !== null}
+                accessibilityRole="button"
+                accessibilityLabel={t("auth.continueGoogle")}
+                style={styles.socialButton}
+              >
+                <Text style={styles.googleGlyph}>G</Text>
+                <Text style={styles.socialLabel}>{t("auth.continueGoogle")}</Text>
+              </Pressable>
+            ) : null}
+            {providers.includes("facebook") ? (
+              <Pressable
+                onPress={() => void signInWithProvider("facebook")}
+                disabled={oauthBusy !== null}
+                accessibilityRole="button"
+                accessibilityLabel={t("auth.continueFacebook")}
+                style={styles.socialButton}
+              >
+                <View style={styles.facebookBadge}>
+                  <Text style={styles.facebookGlyph}>f</Text>
+                </View>
+                <Text style={styles.socialLabel}>{t("auth.continueFacebook")}</Text>
+              </Pressable>
+            ) : null}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>{t("auth.orDivider")}</Text>
+              <View style={styles.dividerLine} />
+            </View>
+            {oauthError ? (
+              <Text style={styles.error} accessibilityLiveRegion="polite" accessibilityRole="alert">
+                {oauthError}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
 
         <View style={styles.form}>
           <Input
@@ -290,6 +377,32 @@ const styles = StyleSheet.create({
   consentText: { flex: 1, fontSize: 12, color: colors.muted, lineHeight: 17 },
   consentLinks: { flexDirection: "row", gap: 14, marginTop: 6, marginLeft: 28 },
   consentLink: { color: colors.primary, fontSize: 12, fontWeight: "600" },
+  social: { gap: 10, marginBottom: 20 },
+  socialButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.white,
+  },
+  socialLabel: { fontSize: 15, fontWeight: "600", color: colors.ink },
+  googleGlyph: { fontSize: 17, fontWeight: "700", color: "#4285F4" },
+  facebookBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#1877F2",
+  },
+  facebookGlyph: { color: colors.white, fontSize: 13, fontWeight: "700" },
+  divider: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 6 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.line },
+  dividerText: { fontSize: 12, color: colors.muted },
   forgot: { alignSelf: "flex-end", marginTop: -4, marginBottom: 12 },
   forgotText: { color: colors.primary, fontSize: 12, fontWeight: "600" },
 });
