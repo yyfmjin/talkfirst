@@ -27,6 +27,7 @@ import { ValidationPipe } from "../common/validation.pipe";
 import { Throttle } from "@nestjs/throttler";
 import { IsBoolean, IsOptional, IsString, IsUUID, MaxLength } from "class-validator";
 import { MomentsService } from "../moments/moments.service";
+import { AiCompanionService } from "../ai-companion/ai-companion.service";
 
 class SendMessageDto {
   @IsString()
@@ -105,6 +106,8 @@ export class SocialSafetyController {
      * a `notifications()` method declared on this class.
      */
     private readonly notificationService: NotificationService,
+    /** AI 会话的消息交给 AI 管线（见 `sendMessage` 里那条早退）。 */
+    private readonly aiCompanion: AiCompanionService,
   ) {}
 
   @Get("conversations")
@@ -311,6 +314,30 @@ export class SocialSafetyController {
     @Param("id", UuidParamPipe) id: string,
     @Body(new ValidationPipe()) dto: SendMessageDto,
   ) {
+    /*
+     * AI 会话走普通会话接口时交给 AI 管线。
+     *
+     * AI 会话只有一个成员、也没有 connection，`assertCanSendInConversation` 对它
+     * 必然 404 —— 2026-10-21 线上：老版本 App 把 AI 会话当普通会话打开发消息，
+     * 连返 404，用户看到的就是 conversation not found。
+     *
+     * 这里早退回 AI 服务：用户消息与 AI 回复都按原逻辑落库，返回的仍是这条用户消息，
+     * 普通客户端拿到的形状不变。新版本 App 已经不会走这条路（列表里 AI 会话被拆到
+     * AI 屏），但旧包、通知跳转、以及以后任何新入口都会走这里 ——
+     * 服务端不应该对自己的数据返回 404。
+     */
+    const target = await this.prisma.conversation.findUnique({
+      where: { id },
+      select: {
+        type: true,
+        members: { where: { userId: user.id }, select: { userId: true } },
+      },
+    });
+    if (target?.type === "AI" && target.members.length > 0) {
+      const result = await this.aiCompanion.sendMessage(user.id, dto.content);
+      return { success: true as const, data: result.data.message };
+    }
+
     // P002/P003/P0-2: membership + live account status + ACTIVE connection +
     // no block in either direction. All three rules live in one place so the
     // text path cannot drift from the image path.

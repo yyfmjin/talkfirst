@@ -9,6 +9,6 @@ import { AiService } from "./ai.service";
   imports: [PrismaModule, SafetyModule],
   controllers: [AiCompanionController],
   providers: [AiCompanionService, AiService],
-  exports: [AiService],
+  exports: [AiService, AiCompanionService],
 })
 export class AiCompanionModule {}

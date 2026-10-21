@@ -8,6 +8,7 @@ import { NotificationService } from "../notifications/notification.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { SafetyService } from "../safety/safety.service";
 import { SocialSafetyController } from "./social-safety.controller";
+import { AiCompanionService } from "../ai-companion/ai-companion.service";
 
 /**
  * C3 — 未读数与已读，按**客户端看到的样子**测（真路由 + 真控制器 + 真 DTO）。
@@ -131,6 +132,7 @@ describe("SocialSafetyController — 未读数与已读（C3）", () => {
           },
         },
         { provide: MomentsService, useValue: {} },
+        { provide: AiCompanionService, useValue: { sendMessage: jest.fn() } },
       ],
     }).compile();
 

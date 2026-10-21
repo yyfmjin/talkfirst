@@ -10,6 +10,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { SafetyService } from "../safety/safety.service";
 import { NotificationService } from "../notifications/notification.service";
 import { SocialSafetyController } from "./social-safety.controller";
+import { AiCompanionService } from "../ai-companion/ai-companion.service";
 
 /**
  * PC-2.5.2 — the unauthenticated branch of `POST /reports`.
@@ -46,6 +47,7 @@ describe("SocialSafetyController — POST /reports without a session", () => {
         { provide: SafetyService, useValue: {} },
         { provide: NotificationService, useValue: { notify: jest.fn() } },
         { provide: MomentsService, useValue: { resolveMomentAccess: jest.fn() } },
+        { provide: AiCompanionService, useValue: { sendMessage: jest.fn() } },
       ],
     }).compile();
 

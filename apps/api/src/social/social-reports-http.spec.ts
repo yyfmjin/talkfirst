@@ -8,6 +8,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { SafetyService } from "../safety/safety.service";
 import { NotificationService } from "../notifications/notification.service";
 import { SocialSafetyController } from "./social-safety.controller";
+import { AiCompanionService } from "../ai-companion/ai-companion.service";
 
 /**
  * PC-2.5.2 — the report contract as the *client* sees it.
@@ -95,6 +96,7 @@ describe("SocialSafetyController — report HTTP contract", () => {
         { provide: SafetyService, useValue: {} },
         { provide: NotificationService, useValue: { notify: jest.fn() } },
         { provide: MomentsService, useValue: moments },
+        { provide: AiCompanionService, useValue: { sendMessage: jest.fn() } },
       ],
     }).compile();
 
