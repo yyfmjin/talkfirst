@@ -1563,6 +1563,19 @@ export const zh = {
   "meta.title": "TalkFirst 先聊 — 先聊聊，再成为朋友",
   "meta.description": "TalkFirst 是一个语言交换与跨文化社交应用：先和陌生人聊得来，再决定要不要成为朋友。Talk First. Connect Later.",
   "meta.ogDescription": "从一句「你好」开始，聊得来，再决定要不要认识。",
+
+  /* 删除账号（公开页，供 Play 数据删除表单使用） */
+  "da.title": "删除账号",
+  "da.intro": "你可以随时删除 TalkFirst 账号，不需要任何理由。删除是不可恢复的。",
+  "da.howTitle": "三种方式",
+  "da.stepApp": "在 App 里：我的 → 注销账号。",
+  "da.stepWeb": "在网页端：登录后进入「我的」→ 注销账号。",
+  "da.stepEmail": "登不进去时：用注册邮箱给我们发邮件，我们会在 7 个工作日内处理。",
+  "da.scopeTitle": "会删除什么",
+  "da.scope": "资料与头像、动态与评论、会话与消息、与 AI 朋友的聊天记录。删除后无法恢复。",
+  "da.emailCta": "发邮件申请删除",
+  "da.note": "安全与反滥用日志会保留一段有限时间，详见",
+  "da.privacyLink": "《隐私政策》",
 } as const;
 
 export type MsgKey = keyof typeof zh;
@@ -3068,6 +3081,22 @@ export const en: Record<MsgKey, string> = {
   "meta.title": "TalkFirst — talk first, become friends later",
   "meta.description": "TalkFirst is a language-exchange and cross-cultural social app: get along with a stranger first, then decide whether to become friends. Talk First. Connect Later.",
   "meta.ogDescription": "Start with a hello. If you click, then decide whether to connect.",
+
+  /* 删除账号（公开页，供 Play 数据删除表单使用） */
+  "da.title": "Delete your account",
+  "da.intro":
+    "You can delete your TalkFirst account at any time, without asking anyone. Deleting is permanent.",
+  "da.howTitle": "Three ways to do it",
+  "da.stepApp": "In the app: Me → Delete account.",
+  "da.stepWeb": "On the web: sign in, then Me → Delete account.",
+  "da.stepEmail":
+    "If you can't sign in: email us from the address you registered with and we'll delete the account within 7 business days.",
+  "da.scopeTitle": "What gets deleted",
+  "da.scope":
+    "Your profile and photos, your moments and comments, your conversations and messages, and your chats with the AI friend. This cannot be undone.",
+  "da.emailCta": "Email us to delete",
+  "da.note": "Security and anti-abuse logs are kept for a limited period, as described in our",
+  "da.privacyLink": "Privacy Policy",
 };
 
 const MESSAGES: Record<Locale, Record<MsgKey, string>> = { zh, en };
