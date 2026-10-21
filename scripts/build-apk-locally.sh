@@ -87,6 +87,31 @@ if ! grep -q "UPDATES_CONFIGURATION_REQUEST_HEADERS_KEY" "$MANIFEST"; then
   exit 1
 fi
 
+# ── 3.6 关闭预测性返回（让 JS 的 BackHandler 重新收到事件）────────────────────
+#
+# targetSdk 36（Android 15+）默认把 `enableOnBackInvokedCallback` 当 true，系统改走
+# OnBackInvokedCallback；而 RN 0.76 默认不注册它 —— JS 里的 BackHandler 一次都收不到，
+# 用户在任何一层按返回，系统直接 finish 掉 Activity，看起来就是「返回直接回桌面」。
+# 2026-10-21 线上反馈（我的 → 小模块 → 返回回桌面）就是这条。
+#
+# app.json 里已经加了 config plugin（新 prebuild 会写进去）；这里再补一刀，
+# 因为本地 android/ 工程是**复用**的，prebuild 不会重跑，插件碰不到已生成的清单。
+if ! grep -q "enableOnBackInvokedCallback" "$MANIFEST"; then
+  log "关闭预测性返回…"
+  python - "$MANIFEST" <<'PY'
+import io, sys
+path = sys.argv[1]
+html = io.open(path, encoding='utf-8').read()
+if 'enableOnBackInvokedCallback' not in html:
+    html = html.replace('<application ', '<application android:enableOnBackInvokedCallback="false" ', 1)
+io.open(path, 'w', encoding='utf-8').write(html)
+PY
+fi
+if ! grep -q "enableOnBackInvokedCallback" "$MANIFEST"; then
+  log "错误：预测性返回没关掉，停止（否则返回键依然不工作）"
+  exit 1
+fi
+
 # ── 4. 让 release 用我们的密钥签名 ───────────────────────────────────────────
 #
 # 2026-10-11 踩过的坑：expo prebuild 生成的模板里，release 构建类型指向的是
