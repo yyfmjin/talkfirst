@@ -7,6 +7,7 @@ import {
 import { PrismaService } from "../prisma/prisma.service";
 import { resolveLocale, t } from "../common/i18n";
 import { SafetyService } from "../safety/safety.service";
+import { emitConversationActivity, emitMessageNew } from "../chat/chat-events";
 import { AiService, AiUnavailableError } from "./ai.service";
 
 /** 会话历史里带进 LLM 的条数上限（也限制上下文体积）。 */
@@ -143,6 +144,7 @@ export class AiCompanionService {
     });
 
     const reply = await this.generateReply(userId, ctx.conversation.id, ctx.companion, message.id);
+    if (reply) this.broadcastReply(userId, ctx.conversation.id, reply);
     return {
       success: true as const,
       data: { message: this.toClientMessage(message), reply: reply ? this.toClientMessage(reply) : null },
@@ -160,10 +162,49 @@ export class AiCompanionService {
       throw new NotFoundException({ success: false, error: { code: "NOTHING_TO_RETRY" } });
     }
     const reply = await this.generateReply(userId, ctx.conversation.id, ctx.companion, last.id);
+    if (reply) this.broadcastReply(userId, ctx.conversation.id, reply);
     return {
       success: true as const,
       data: { message: this.toClientMessage(last), reply: reply ? this.toClientMessage(reply) : null },
     };
+  }
+
+  /**
+   * 把 AI 回复实时推给正在看这个会话的人。
+   *
+   * 2026-10-21 线上：旧版 App 把 AI 会话当普通会话打开，发完只拿到「自己那条」，
+   * 回复要退出重进才出现。服务端把回复广播到会话房间后，任何已经打开该会话的
+   * 客户端（包括旧包）都会像收真人消息一样把它追加进来 —— 不必逼所有人重装。
+   *
+   * 广播是尽力而为：单元测试里没有 socket 层，`emit` 会静默跳过（注释见
+   * `chat-events.ts` 文件头）。
+   */
+  private broadcastReply(
+    userId: string,
+    conversationId: string,
+    reply: { id: string; content: string; type: string; createdAt: Date },
+  ) {
+    emitMessageNew({
+      conversationId,
+      message: {
+        id: reply.id,
+        conversationId,
+        // AI 消息没有发送者（`Message.senderId` 可空），客户端据此判「对方」。
+        senderId: null,
+        content: reply.content,
+        type: reply.type,
+        createdAt: reply.createdAt.toISOString(),
+      },
+    });
+    emitConversationActivity({
+      recipientId: userId,
+      conversationId,
+      messageId: reply.id,
+      senderId: null,
+      type: reply.type,
+      preview: reply.content.slice(0, 120),
+      createdAt: reply.createdAt,
+    });
   }
 
   /** 会话读到位（打开 AI 聊天页时顺手消未读）。 */
