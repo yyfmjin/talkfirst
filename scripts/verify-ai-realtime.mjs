@@ -109,10 +109,15 @@ async function main() {
   });
   check("发送成功（普通会话接口对 AI 会话也放行）", sent.status === 201, `status=${sent.status}`);
 
+  /*
+   * 两条事件都等：`message.new` 先发、`conversation.activity` 紧随其后，
+   * 前者一到就断言后者会踩空（第一次跑就是这么误报的）。
+   */
   const deadline = Date.now() + WAIT_MS;
   while (Date.now() < deadline) {
-    const reply = received.messages.find((row) => row?.senderId === null);
-    if (reply) break;
+    const gotReply = received.messages.some((row) => row?.senderId === null);
+    const gotActivity = received.activities.some((row) => row?.conversationId === ai.id);
+    if (gotReply && gotActivity) break;
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
 
