@@ -36,7 +36,15 @@ import type { Moment, MomentPage } from "../lib/types";
  * 之前是「只显示封面图」，因为 expo-video 要加原生依赖、重新出包 ——
  * 阶段③已把依赖接上并重新出过包，这里就把播放器接回来。
  */
-export function MomentsScreen() {
+export function MomentsScreen({
+  focusMomentId,
+  onFocusHandled,
+}: {
+  /** 通知里点进来那条动态的 id（外部跳转，见 `lib/nav-intent.ts`）。 */
+  focusMomentId?: string | null;
+  /** 打开完通知外部把 id 清掉。 */
+  onFocusHandled?: () => void;
+} = {}) {
   const { t } = useI18n();
   const { user } = useAuth();
   const [items, setItems] = useState<Moment[]>([]);
@@ -59,6 +67,32 @@ export function MomentsScreen() {
   useBackHandler(detail !== null, () => setDetail(null));
   useBackHandler(watching, () => setWatching(false));
   useBackHandler(settings, () => setSettings(false));
+
+  /*
+   * 从通知点进一条动态。
+   *
+   * 通知屏属于「消息」tab，而详情页在这一屏（没有路由库，两屏互不相识）——
+   * 所以由 `App.tsx` 收下信号、把 id 传进来。打开后回调清掉：不清的话用户
+   * 手动返回时间线时，这个 effect 又会把他弹回详情页。
+   */
+  useEffect(() => {
+    if (!focusMomentId) return undefined;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const moment = await apiFetch<Moment>(`/moments/${focusMomentId}`);
+        if (!cancelled) setDetail(moment);
+      } catch {
+        // 已删除或不再可见：安静地留在时间线，不弹错误（用户只是点了一条通知）。
+      } finally {
+        if (!cancelled) onFocusHandled?.();
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // `onFocusHandled` 每次渲染都是新函数，放进依赖会让这个 effect 反复跑。
+  }, [focusMomentId]);
 
   const load = useCallback(async (mode: "initial" | "refresh" | "more") => {
     if (mode === "more" && !cursor) return;

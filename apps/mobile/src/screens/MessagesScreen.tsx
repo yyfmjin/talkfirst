@@ -19,6 +19,7 @@ import { AiScreen } from "./AiScreen";
 import { ExchangeScreen } from "./ExchangeScreen";
 import { NotificationsScreen } from "./NotificationsScreen";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
+import { navigateTo } from "../lib/nav-intent";
 import type { MsgKey } from "../lib/messages";
 import { colors } from "../theme";
 import type { ChatMessage, ConversationItem, IncomingRequest, MessagePage } from "../lib/types";
@@ -326,15 +327,23 @@ export function MessagesScreen() {
         <NotificationsScreen
           onOpen={(item) => {
             /*
-             * 通知里只带得动「会话」这一层（`data` 里有 conversationId）：
-             * 动态类型的通知要去「动态」tab，跨 tab 的跳转不在这一屏的权限里，
-             * 这里诚实返回 false（只标已读），不假装跳成功了。
+             * 会话类通知：直接打开那个会话。
+             *
+             * 动态类通知（点赞/评论/收到花）：这一屏够不着「动态」tab，
+             * 所以发一条跳转信号给 `App.tsx`（见 `lib/nav-intent.ts`）。
              */
             const conversationId = conversationIdFromNotification(item.data);
-            if (!conversationId) return false;
-            setSegment("conversations");
-            void openConversation(conversationId);
-            return true;
+            if (conversationId) {
+              setSegment("conversations");
+              void openConversation(conversationId);
+              return true;
+            }
+            const momentId = momentIdFromNotification(item.data);
+            if (momentId) {
+              navigateTo({ tab: "moments", momentId });
+              return true;
+            }
+            return false;
           }}
           onBack={() => setSegment("conversations")}
         />
@@ -660,6 +669,25 @@ export function conversationIdFromNotification(data: string | null): string | nu
     const parsed = JSON.parse(data) as { conversationId?: unknown };
     return typeof parsed.conversationId === "string" && parsed.conversationId.length > 0
       ? parsed.conversationId
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 动态类通知的 `data`（`{ targetType: "MOMENT", targetId }`）里取出动态 id。
+ *
+ * 与 `conversationIdFromNotification` 同一个套路：解析失败一律 null，
+ * 让调用方只标已读 —— 点一条通知不能把 App 点崩。
+ */
+export function momentIdFromNotification(data: string | null): string | null {
+  if (!data) return null;
+  try {
+    const parsed = JSON.parse(data) as { targetType?: unknown; targetId?: unknown };
+    if (parsed.targetType !== "MOMENT") return null;
+    return typeof parsed.targetId === "string" && parsed.targetId.length > 0
+      ? parsed.targetId
       : null;
   } catch {
     return null;

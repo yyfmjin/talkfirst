@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -383,13 +383,47 @@ export function MeScreen() {
   );
 }
 
-/** 意见反馈：`POST /feedback`（与 web 的 `/me/feedback` 同一个接口）。 */
+/** 一条已提交的反馈（`GET /feedback/mine`）。 */
+type FeedbackItem = {
+  id: string;
+  kind: string;
+  body: string;
+  status: string;
+  replyBody: string | null;
+  repliedAt: string | null;
+  createdAt: string;
+};
+
+/**
+ * 意见反馈：提交走 `POST /feedback`，历史走 `GET /feedback/mine`
+ * （与 web 的 `/me/feedback` 同一套接口）。
+ *
+ * 2026-10-21：App 之前只能提交、看不到自己提过什么 —— 用户不知道有没有人处理、
+ * 官方回了什么，而服务端一直有 `mine` 这个接口。
+ */
 function FeedbackScreen({ onDone }: { onDone: () => void }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [content, setContent] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
+  const [history, setHistory] = useState<FeedbackItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+
+  const loadHistory = useCallback(async () => {
+    try {
+      const data = await apiFetch<{ items: FeedbackItem[] }>("/feedback/mine?pageSize=20");
+      setHistory(data.items);
+    } catch {
+      // 历史拉不到不影响提交：保持为空，不拿一个错误盖住输入框。
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadHistory();
+  }, [loadHistory]);
 
   async function submit() {
     const trimmed = content.trim();
@@ -400,6 +434,8 @@ function FeedbackScreen({ onDone }: { onDone: () => void }) {
       await apiFetch("/feedback", { method: "POST", body: { content: trimmed } });
       setSent(true);
       setContent("");
+      // 刚提交的那条要立刻出现在下面，不能让用户以为没发出去。
+      void loadHistory();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : t("me.loadingFailed"));
     } finally {
@@ -430,6 +466,31 @@ function FeedbackScreen({ onDone }: { onDone: () => void }) {
             <Button label={t("me.feedbackSubmit")} onPress={() => void submit()} />
           )}
         </View>
+
+        {/* 历史：提过什么、处理到哪一步、官方回了什么。 */}
+        <Text style={styles.groupTitle}>{t("me.feedbackHistory")}</Text>
+        {historyLoading ? (
+          <ActivityIndicator color={colors.primary} />
+        ) : history.length === 0 ? (
+          <Text style={styles.historyEmpty}>{t("me.feedbackEmpty")}</Text>
+        ) : (
+          history.map((item) => (
+            <View key={item.id} style={styles.historyItem}>
+              <Text style={styles.historyBody}>{item.body}</Text>
+              <Text style={styles.historyMeta}>
+                {new Date(item.createdAt).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US")}
+                {" · "}
+                {item.replyBody ? t("me.feedbackReplied") : t("me.feedbackHandling")}
+              </Text>
+              {item.replyBody ? (
+                <View style={styles.historyReply}>
+                  <Text style={styles.historyReplyLabel}>{t("me.feedbackOfficialReply")}</Text>
+                  <Text style={styles.historyBody}>{item.replyBody}</Text>
+                </View>
+              ) : null}
+            </View>
+          ))
+        )}
       </ScrollView>
     </View>
   );
@@ -519,4 +580,21 @@ const styles = StyleSheet.create({
   },
   errorText: { fontSize: 13, color: colors.danger },
   okText: { fontSize: 13, color: colors.primary },
+  historyEmpty: { fontSize: 13, color: colors.muted },
+  historyItem: {
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+    paddingTop: 12,
+    gap: 6,
+  },
+  historyBody: { fontSize: 14, lineHeight: 21, color: colors.ink },
+  historyMeta: { fontSize: 12, color: colors.muted },
+  historyReply: {
+    marginTop: 4,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: colors.bgTint,
+    gap: 4,
+  },
+  historyReplyLabel: { fontSize: 12, fontWeight: "600", color: colors.primaryDark },
 });

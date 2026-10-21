@@ -15,6 +15,7 @@ import { Icon } from "./src/components/Icon";
 import { AuthProvider, useAuth } from "./src/lib/auth-context";
 import { ErrorBoundary } from "./src/components/error-boundary";
 import { handleHardwareBack } from "./src/lib/back-stack";
+import { onNavigate } from "./src/lib/nav-intent";
 import { I18nProvider, useI18n } from "./src/lib/i18n-context";
 import type { MsgKey } from "./src/lib/messages";
 import { AuthScreen } from "./src/screens/AuthScreen";
@@ -164,6 +165,21 @@ function Root() {
     return () => subscription.remove();
   }, []);
 
+  /*
+   * 跨 tab 跳转：通知里点一条动态时，通知屏（消息 tab）够不着动态详情（动态 tab）。
+   * 这里接住 `navigateTo()` 的信号：切 tab + 把 momentId 交给 MomentsScreen，
+   * 它打开完再回调清掉，避免用户手动返回后被重新弹开。
+   */
+  const [focusMomentId, setFocusMomentId] = useState<string | null>(null);
+  useEffect(
+    () =>
+      onNavigate((intent) => {
+        setTab(intent.tab);
+        if (intent.momentId) setFocusMomentId(intent.momentId);
+      }),
+    [],
+  );
+
   if (loading) {
     return <Loading />;
   }
@@ -225,7 +241,10 @@ function Root() {
           ) : null}
           {tab === "moments" ? (
             <ErrorBoundary>
-              <MomentsScreen />
+              <MomentsScreen
+                focusMomentId={focusMomentId}
+                onFocusHandled={() => setFocusMomentId(null)}
+              />
             </ErrorBoundary>
           ) : null}
           {tab === "messages" ? (
