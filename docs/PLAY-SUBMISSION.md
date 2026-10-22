@@ -164,5 +164,5 @@ grep -n "signingConfig" app/build.gradle
 | **AAB** | ✅ 已出：`D:\Android\talkfirst-play.aab`（39 MB，含 arm64-v8a / armeabi-v7a / x86_64） |
 | **出 AAB 的坑** | 必须带 `EXPO_NO_METRO_WORKSPACE_ROOT=1`，否则 Metro 把工作区根当 server root，报 `Unable to resolve module ./index.ts`（本地 APK 脚本里一直设着，手动跑 gradle 容易忘） |
 | **第三方登录** | 代码已就绪（Google/Facebook 按钮 + App 原生一次性码交换），但线上 `OAUTH_PROVIDERS` 为空 → 按钮不显示。**不影响上架**；配好凭据后自动出现 |
-| **商店截图** | ❌ 仍缺。`docs/play-assets/` 里只有图标与横幅；Play 要求 ≥2 张手机截图 |
+| **商店截图** | ✅ 6 张（登录/动态/发现/消息/聊天/AI），1170×2532，见 `docs/play-assets/`；由 `scripts/play-screenshots.mjs` 在演示账号上抓取 |
 | **16 KB 页大小** | ❌ 仍未达标（SDK 52 的预编译库是 4 KB 对齐），截止 2027-02-01 |
