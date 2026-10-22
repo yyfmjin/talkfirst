@@ -199,6 +199,9 @@ export function MessagesScreen() {
   /** 会话列表的最新快照（给回调读，不进依赖数组）。 */
   const conversationsRef = useRef<ConversationItem[]>([]);
   conversationsRef.current = conversations;
+  /** 当前打开的会话 id（异步逻辑里判断「用户还在不在这个会话」）。 */
+  const openIdRef = useRef<string | null>(null);
+  openIdRef.current = openId;
   useEffect(() => {
     if (liveState !== "live") {
       wasLive.current = false;
@@ -265,6 +268,21 @@ export function MessagesScreen() {
     }
   }
 
+  /**
+   * AI 会话的回复兑底刷新。
+   *
+   * 回复是模型生成的，比 HTTP 响应晚一两秒落库；旧版 App 常驻在会话里时只能靠
+   * socket 广播拿到它，网络/重连一抖动就变成「必须退出再进才看得到」。
+   * 这里发几次刷新，合并结果幂等，多刷几次无害；用户切走了就停。
+   */
+  async function pollForAiReply(conversationId: string) {
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 1500 + attempt * 800));
+      if (openIdRef.current !== conversationId) return;
+      await refreshOpenConversation(conversationId);
+    }
+  }
+
   async function send() {
     const content = draft.trim();
     if (!openId || !content || sending) return;
@@ -281,6 +299,9 @@ export function MessagesScreen() {
       setDraft("");
       setTyping(false);
       void loadConversations();
+      if (conversationsRef.current.find((item) => item.id === openId)?.type === "AI") {
+        void pollForAiReply(openId);
+      }
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : t("messages.errorSend"));
     } finally {

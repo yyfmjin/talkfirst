@@ -192,6 +192,10 @@ export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {})
     );
   }
 
+  /* 三个入口哪些真的可用：后端 `providers` 里有才算开通。 */
+  const googleReady = providers.includes("google");
+  const facebookReady = providers.includes("facebook");
+
   return (
     <KeyboardAware style={styles.root}>
       <View style={styles.inner}>
@@ -206,50 +210,53 @@ export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {})
         </View>
 
         {/*
-         * 第三方登录排在邮箱表单上面：用户最想点的是「一键登录」，
-         * 邮箱是兵家必争的退路。后端没配的 provider 不会出现在 `providers` 里，
-         * 所以不会出现「看着能点、点下去报错」的按钮。
+         * 三种登录方式：Google / Facebook / 邮箱。
+         *
+         * 第三方按钮**始终显示**（这是产品要的「三选一」布局），但只要这个部署还没配
+         * 凭据，就是**明确禁用** + 「开通中」小字：`disabled` 让触摸与读屏都不触发，
+         * 视觉上也是灰的 —— 不是那种看着能点、点下去报错的假按钮。
          */}
-        {providers.length > 0 ? (
-          <View style={styles.social}>
-            {providers.includes("google") ? (
-              <Pressable
-                onPress={() => void signInWithProvider("google")}
-                disabled={oauthBusy !== null}
-                accessibilityRole="button"
-                accessibilityLabel={t("auth.continueGoogle")}
-                style={styles.socialButton}
-              >
-                <Text style={styles.googleGlyph}>G</Text>
-                <Text style={styles.socialLabel}>{t("auth.continueGoogle")}</Text>
-              </Pressable>
-            ) : null}
-            {providers.includes("facebook") ? (
-              <Pressable
-                onPress={() => void signInWithProvider("facebook")}
-                disabled={oauthBusy !== null}
-                accessibilityRole="button"
-                accessibilityLabel={t("auth.continueFacebook")}
-                style={styles.socialButton}
-              >
-                <View style={styles.facebookBadge}>
-                  <Text style={styles.facebookGlyph}>f</Text>
-                </View>
-                <Text style={styles.socialLabel}>{t("auth.continueFacebook")}</Text>
-              </Pressable>
-            ) : null}
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>{t("auth.orDivider")}</Text>
-              <View style={styles.dividerLine} />
+        <View style={styles.social}>
+          <Pressable
+            onPress={() => void signInWithProvider("google")}
+            disabled={!googleReady || oauthBusy !== null}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !googleReady || oauthBusy !== null }}
+            accessibilityLabel={t("auth.continueGoogle")}
+            style={[styles.socialButton, !googleReady ? styles.socialDisabled : null]}
+          >
+            <Text style={styles.googleGlyph}>G</Text>
+            <Text style={styles.socialLabel}>{t("auth.continueGoogle")}</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => void signInWithProvider("facebook")}
+            disabled={!facebookReady || oauthBusy !== null}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !facebookReady || oauthBusy !== null }}
+            accessibilityLabel={t("auth.continueFacebook")}
+            style={[styles.socialButton, !facebookReady ? styles.socialDisabled : null]}
+          >
+            <View style={styles.facebookBadge}>
+              <Text style={styles.facebookGlyph}>f</Text>
             </View>
-            {oauthError ? (
-              <Text style={styles.error} accessibilityLiveRegion="polite" accessibilityRole="alert">
-                {oauthError}
-              </Text>
-            ) : null}
+            <Text style={styles.socialLabel}>{t("auth.continueFacebook")}</Text>
+          </Pressable>
+          {!googleReady || !facebookReady ? (
+            <Text style={styles.socialHint}>{t("auth.oauthPending")}</Text>
+          ) : null}
+
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>{t("auth.orDivider")}</Text>
+            <View style={styles.dividerLine} />
           </View>
-        ) : null}
+
+          {oauthError ? (
+            <Text style={styles.error} accessibilityLiveRegion="polite" accessibilityRole="alert">
+              {oauthError}
+            </Text>
+          ) : null}
+        </View>
 
         <View style={styles.form}>
           <Input
@@ -378,6 +385,8 @@ const styles = StyleSheet.create({
   consentLinks: { flexDirection: "row", gap: 14, marginTop: 6, marginLeft: 28 },
   consentLink: { color: colors.primary, fontSize: 12, fontWeight: "600" },
   social: { gap: 10, marginBottom: 20 },
+  socialDisabled: { opacity: 0.45 },
+  socialHint: { fontSize: 11, color: colors.muted, textAlign: "center" },
   socialButton: {
     flexDirection: "row",
     alignItems: "center",
