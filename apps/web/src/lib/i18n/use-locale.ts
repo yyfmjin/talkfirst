@@ -1,7 +1,8 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { t, type MsgKey, type MsgParams } from "./dictionary";
+import { useCallback } from "react";
+import { t as translate, type MsgKey, type MsgParams } from "./dictionary";
 import { localeFromPath, type Locale } from "./locales";
 
 /**
@@ -34,20 +35,23 @@ export function useLocale(): Locale {
  * 组件里用这个拿文案。返回的 `t` 已经绑定当前语言，调用点和中文页面写法一样：
  * `t("auth.toRegister")`。
  *
- * ## ⚠️ 不要把 `t` 放进 useEffect / useCallback 的依赖数组
+ * ## `t` 的身份是稳定的（只随语言变）
  *
- * 这里的 `t` **每次渲染都是新的函数**。放进去会让 depend on 它的 effect 每轮重跑
- * —— 取数的 effect 就是无限请求。（lint 会提示 `exhaustive-deps` 缺 `t`，那 4 处
- * 提醒是故意的，不是因为没看见。）
+ * 早先这里每次渲染都返回一个新函数，并立了一条「`t` 不许进依赖数组」的规矩。
+ * 规矩守不住：聊天页把它放进了 `loadHistory` 的依赖，而 `loadHistory` 又被
+ * `useEffect([loadHistory])` 拉着跑 —— 每次渲染重新取消息、再 setState、再渲染，
+ * 成了无限请求循环（React 报 `Maximum update depth exceeded`，断网时最明显）。
  *
- * 代价要说清楚：文案随语言变化而重新取数的 effect 不会自动重跑。目前没这个需求
- * —— 数据与语言无关，界面对文案的重渲染本来就会发生。哪天需要了，正确做法是
- * 把 `t` 用 `useCallback([locale])` 稳定下来，再统一把 `t` 加回依赖。
+ * 治根不治症状：`t` 用 `useCallback([locale])` 固定身份。于是
+ *  - `t` 可以正常出现在依赖数组里，`exhaustive-deps` 不再需要豁免；
+ *  - 切语言时依赖 `t` 的 effect 会重跑一次（这正是想要的）；
+ *  - 同一语言下重渲染不改变 `t`，取数 effect 只跑一次。
  */
 export function useT(): { locale: Locale; t: (key: MsgKey, params?: MsgParams) => string } {
   const locale = useLocale();
-  return {
-    locale,
-    t: (key: MsgKey, params?: MsgParams) => t(locale, key, params),
-  };
+  const t = useCallback(
+    (key: MsgKey, params?: MsgParams) => translate(locale, key, params),
+    [locale],
+  );
+  return { locale, t };
 }
