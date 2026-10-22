@@ -202,6 +202,15 @@ export function MessagesScreen() {
   /** 当前打开的会话 id（异步逻辑里判断「用户还在不在这个会话」）。 */
   const openIdRef = useRef<string | null>(null);
   openIdRef.current = openId;
+  /** 消息列表本体：打开会话、来新消息时用它滚到最新一条。 */
+  const threadListRef = useRef<FlatList<ChatMessage>>(null);
+  /**
+   * 是否「贴着底部」。
+   *
+   * 用户往上翻旧消息时不拽他；打开会话、或本来就停在底部时才跟。
+   * 用 ref 而不是 state：滚动事件每帧都来，state 会把整屏重渲染几十次。
+   */
+  const stickToBottom = useRef(true);
   useEffect(() => {
     if (liveState !== "live") {
       wasLive.current = false;
@@ -244,6 +253,12 @@ export function MessagesScreen() {
       const data = await apiFetch<MessagePage>(`/conversations/${id}/messages?limit=30`);
       setMessages(data.items);
       setCursor(data.nextCursor);
+      /*
+       * 打开会话就停在最新一条（以前停在最上面，看到的是很早以前的对话）。
+       * 等这一帧渲染完再滚：此刻 `contentSize` 才是新会话的高度。
+       */
+      stickToBottom.current = true;
+      requestAnimationFrame(() => threadListRef.current?.scrollToEnd({ animated: false }));
       // 已读：写 lastReadAt，并清掉这条会话的未读消息通知。
       await apiFetch(`/conversations/${id}/read`, { method: "POST" });
       setConversations((previous) =>
@@ -420,11 +435,27 @@ export function MessagesScreen() {
         {liveBanner}
 
         <FlatList
+          ref={threadListRef}
           data={messages}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.threadList}
           onStartReached={loadOlder}
           onStartReachedThreshold={0.3}
+          /*
+           * 停在最新一条：打开会话、来新消息、自己发出一条时都滚到底。
+           * 只有用户明确往上翻（离底部超过 80px）才停止跟随 —— 否则读旧消息会被拽回去。
+           */
+          onContentSizeChange={() => {
+            if (stickToBottom.current) threadListRef.current?.scrollToEnd({ animated: false });
+          }}
+          onScroll={(event) => {
+            const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+            const distanceToBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
+            stickToBottom.current = distanceToBottom < 80;
+          }}
+          scrollEventThrottle={100}
+          /* 往上加载更早的消息时保持可见位置，不跳。 */
+          maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
           ListHeaderComponent={
             cursor ? (
               <Pressable onPress={() => void loadOlder()} style={styles.loadOlder}>
