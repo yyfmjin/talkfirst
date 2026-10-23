@@ -25,7 +25,7 @@
 | 账号删除：应用内 + 网页 | 应用内「我的 → 账号 → 注销账号」；网页 `https://talkfirst.ccwu.cc/delete-account` | `DELETE /users/me` 硬删除（`prisma.user.delete`） |
 | UGC 治理（举报 + 拉黑） | 会话页/动态详情页可举报、可拉黑；「我的 → 隐私与安全」可管理 | `SafetyScreen`、`POST /reports`、`DELETE /blocks/:userId` |
 | 条款与社区规则 | `/legal/terms`、`/legal/rules`，注册后强制勾选同意 | `/legal` 同意门 |
-| 18+ 声明 | 隐私政策 §8 + 注册页提示「仅限 18 岁以上使用」 | 词典 `auth.termsHint` |
+| 18+ 声明 | 隐私政策 §8；注册时的**强制勾选**「我已年满 18 岁」（web + 移动端） | 未勾选时提交按钮 disabled；词典 `auth.adultConfirm` / `auth.consent` |
 | 无广告、无第三方统计 SDK | 依赖里没有 Sentry/Firebase/Amplitude 等 | `package.json` |
 | 数据传输加密 | 全站 HTTPS（含 API、WebSocket） | 线上证书 + HSTS |
 
@@ -267,8 +267,9 @@ Contact: support@talkfirst.ccwu.cc
    「应用访问权限 → 提供登录信息」，并在备注里写清三条路径：AI 陪练在哪、怎么发动态、怎么举报/拉黑。
 3. **封闭测试的 12 名测试者** —— 这条最花时间，建议**现在就开一个封闭轨道**把人凑齐，
    代码这边不影响（后续版本可以继续更新同一个轨道）。
-4. **应用内 18+ 显式确认（建议）** —— 现在是「仅限 18 岁以上使用」的提示文案 + 注册后的条款勾选门；
-   如果审核员较真，会要求可核查的年龄确认。要的话我加一个注册时的强制勾选（成本很小）。
+4. ✅ **18+ 显式确认（已完成）** —— web 注册页已有强制勾选「我已年满 18 岁」（未勾选时提交按钮 disabled，
+   `handleSubmit` 再拦一次）；移动端 `auth.consent` 勾选框本来就是这个语义。
+   未勾选时无法创建账号，属于可核查的年龄确认。
 5. **平板截图**（可选）—— 只有在声明支持平板时才需要。
 6. **Android 16 边到边（edge-to-edge）真机验收** —— targetSdk 36 下系统会强制边到边，
    RN 0.76 对这块的支持不完整，可能出现状态栏/导航栏遮住内容。**提审前必须在 Android 15/16 真机上
