@@ -143,7 +143,10 @@ fi
 
 AAB=$(ls -1 "$DEST"/apps/mobile/android/app/build/outputs/bundle/release/*.aab 2>/dev/null | head -1)
 [ -n "$AAB" ] || { log "没找到产物"; exit 1; }
-VER=$(python -c "import json,re,io;s=io.open('$DEST/apps/mobile/app.json',encoding='utf-8').read();s=re.sub(r'/\*.*?\*/','',s,flags=re.S);print(json.loads(s)['expo']['version'])")
+# 版本号用 node 读（app.json 带注释，JSON.parse 不行，用 @expo/config 的 json5）；
+# 不写 python：Windows 上的 python 读不了 MSYS 的 /d/... 路径，会静默得到空字符串。
+VER=$(cd "$DEST/apps/mobile" && node -e "const j=require('@expo/config').getConfig(process.cwd()).exp.version;console.log(j)" 2>/dev/null)
+[ -n "$VER" ] || VER=$(grep -m1 '"version"' "$DEST/apps/mobile/app.json" | sed -E 's/.*"version": *"([^"]+)".*/\1/')
 cp "$AAB" "$OUT_DIR/talkfirst-$VER.aab"
 log "出包成功：$OUT_DIR/talkfirst-$VER.aab（$(( $(stat -c %s "$AAB") / 1048576 ))MB）"
 
