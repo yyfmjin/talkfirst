@@ -67,6 +67,12 @@ export default function RegisterPage() {
    */
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  /*
+   * 18 岁以上必须是**用户主动勾的**，不能只有一行说明文字。
+   * Play 对含用户生成内容、且目标受众标为 18+ 的应用，会看注册流程里
+   * 有没有可核查的年龄确认；移动端一开始就是勾选框，web 端这里补齐。
+   */
+  const [adult, setAdult] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -80,6 +86,10 @@ export default function RegisterPage() {
     }
     if (password.length < 8) {
       setError(t("auth.errorPasswordMin8"));
+      return;
+    }
+    if (!adult) {
+      setError(t("auth.adultRequired"));
       return;
     }
     const trimmedUsername = username.trim();
@@ -190,6 +200,18 @@ export default function RegisterPage() {
           {/* The hint doubles as the error target, so the 18+ / terms statement is
               announced to assistive tech when the field is focused rather than
               only being visible. */}
+          <label className="flex cursor-pointer items-start gap-2 text-caption leading-5 text-content-muted">
+            <input
+              type="checkbox"
+              checked={adult}
+              onChange={(event) => {
+                setAdult(event.target.checked);
+                if (event.target.checked) setError("");
+              }}
+              className="mt-0.5 size-4 shrink-0 accent-brand-600"
+            />
+            <span>{t("auth.adultConfirm")}</span>
+          </label>
           <p id="register-hint" className="text-caption leading-4 text-content-subtle">
             {t("auth.termsHint")}
             <Link href={localePath(locale, "/legal/rules")} className="font-medium text-brand-600">
@@ -203,7 +225,7 @@ export default function RegisterPage() {
             </p>
           ) : null}
 
-          <TFButton type="submit" size="lg" fullWidth loading={loading} loadingLabel={t("auth.registering")} className="mt-1">
+          <TFButton type="submit" size="lg" fullWidth loading={loading} loadingLabel={t("auth.registering")} disabled={!adult} className="mt-1">
             {t("auth.register")}
           </TFButton>
         </form>
