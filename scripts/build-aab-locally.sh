@@ -14,7 +14,7 @@ set -uo pipefail
 SRC="D:/文件/网站/TalkFirst"
 DEST=/d/talkfirst
 KS_DIR=/d/Android/keystores
-KS="$KS_DIR/talkfirst-upload.keystore"
+KS="$KS_DIR/talkfirst-play-upload.keystore"
 OUT_DIR=/d/Android/play
 
 export ANDROID_HOME='D:\Android\sdk'
@@ -35,17 +35,14 @@ git fetch -q "$SRC" master || { log "fetch 失败"; exit 1; }
 git reset -q --hard FETCH_HEAD || exit 1
 log "代码：$(git log --oneline -1)"
 
-# ── 2. 备份上传密钥（prebuild --clean 会删掉 android/）──────────────────────
+# ── 2. 检查上传密钥（prebuild --clean 会删掉 android/，密钥必须放在仓库外）───
 mkdir -p "$KS_DIR" "$OUT_DIR"
 if [ ! -f "$KS" ]; then
-  OLD="$DEST/apps/mobile/android/app/talkfirst-local.keystore"
-  if [ -f "$OLD" ]; then
-    cp "$OLD" "$KS"
-    log "已把现有签名密钥复制到 $KS（这是 Play 的 upload key，务必备份）"
-  else
-    log "错误：找不到现有密钥，也没有 $KS —— 先跑一次 build-apk-locally.sh"
-    exit 1
-  fi
+  # 不再自动回退到旧的 talkfirst-local.keystore：那把口令是弱口令，
+  # 只适合侧载调试，拿它当 Play 上传密钥等于把发版权限交出去。
+  log "错误：找不到 Play 上传密钥 $KS"
+  log "先跑：bash scripts/new-upload-key.sh"
+  exit 1
 fi
 if [ ! -f "$KS_DIR/keystore.properties" ]; then
   cat > "$KS_DIR/keystore.properties" <<'PROPS'

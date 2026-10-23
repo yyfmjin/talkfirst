@@ -34,14 +34,21 @@
 | 东西 | 路径 |
 |---|---|
 | AAB（交给 Play 的文件） | `D:\Android\play\talkfirst-0.1.3.aab`（46MB，versionCode 3，targetSdk 36） |
-| 上传密钥（upload key） | `D:\Android\keystores\talkfirst-upload.keystore`（别名 `talkfirst`） |
-| 上传密钥证书指纹 | SHA-256 `E6:E3:E1:7C:7A:F9:CC:68:E8:0A:ED:B8:45:65:3D:84:86:17:01:D3:5C:DA:97:08:78:B5:D8:99:34:C4:FC:A6`（在 Play Console 登记上传证书时对得上） |
-| 密钥口令 | `D:\Android\keystores\keystore.properties`（chmod 600，**别提交进仓库**） |
+| 上传密钥（upload key） | `D:\Android\keystores\talkfirst-play-upload.keystore`（别名 `talkfirst`，RSA 4096，30 年） |
+| 上传密钥证书指纹 | SHA-256 `71:83:AE:DB:E1:47:26:4E:21:89:5C:2F:45:2C:36:8C:7E:DA:A7:A5:41:3C:06:C0:5B:EC:5F:D6:88:8A:F1:2E`（在 Play Console 登记上传证书时对得上） |
+| 密钥口令与备份说明 | `D:\Android\keystores\UPLOAD-KEY-README.txt`（chmod 600） |
+| gradle 读的口令文件 | `D:\Android\keystores\keystore.properties`（chmod 600，**别提交进仓库**） |
 | 商店图标 512×512 | `store/play/icon-512.png` |
 | Feature Graphic 1024×500 | `store/play/feature-graphic-1024x500.png` |
 
-> ⚠️ **上传密钥必须备份**：丢了就得找 Google 重置上传密钥（要走申诉流程），期间无法发版。
-> 建议把 `talkfirst-upload.keystore` + 口令一起放进密码管理器，别只留在本机。
+> ⚠️ **上传密钥必须备份**：丢了就得找 Google 重置上传密钥（要走申诉流程，几天内发不了版）。
+> 备份三份：密码管理器（口令 + 指纹）、离线介质（.keystore 本体）、云盘私密目录。
+> 重新生成：`bash scripts/new-upload-key.sh`（已存在则拒绝覆盖，防止误换线上密钥）。
+>
+> **为什么单独立一把新钥匙**：旧的 `talkfirst-local.keystore` 口令是 `talkfirst-local`，
+> 只适合自签名侧载包；拿它当 Play 上传密钥等于把发版权限交给弱口令。
+> 新钥匙是随机 32 位口令 + RSA 4096。旧钥匙保留仅用于给老装机用户出同签名更新包，
+> 与 Play 无关（Play 侧的应用签名密钥由 Google 保管，侧载安装本来就要换装 Play 版本）。
 
 ### A.3 以后每次发版怎么出包
 
