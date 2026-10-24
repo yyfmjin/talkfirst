@@ -56,7 +56,7 @@ def main() -> int:
     skipped = 0
 
     with zipfile.ZipFile(path) as zf:
-        names = [n for n in zf.namelist() if n.endswith(".so") and "/lib/" in n]
+        names = [n for n in zf.namelist() if n.endswith(".so") and ("/lib/" in n or n.startswith("lib/"))]
         for name in names:
             aligns = load_aligns(zf.read(name))
             if not aligns:
@@ -65,7 +65,7 @@ def main() -> int:
             if all(a >= PAGE_16K for a in aligns):
                 ok += 1
             else:
-                bad.append((name.split("/lib/")[-1], aligns))
+                bad.append((name.split("lib/")[-1], aligns))
 
     print(f"扫描 {len(names)} 个 .so：16 KB 合规 {ok}，4 KB 对齐 {len(bad)}，跳过 {skipped}")
     for name, aligns in bad[:20]:
