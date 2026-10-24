@@ -2,7 +2,7 @@
   "expo": {
     "name": "TalkFirst",
     "slug": "talkfirst",
-    "version": "0.1.3",
+    "version": "0.1.4",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "scheme": "talkfirst",
@@ -19,16 +19,19 @@
     },
     "android": {
       "package": "com.talkfirst.app",
-      /* Play 上架的 versionCode：与 versionName（0.1.3）分开 —— 只抬版本号不动
-         `version`，现有装机用户的热更新通道（runtimeVersion = appVersion）不会断。 */
-      "versionCode": 3,
+      /* Play 上架的 versionCode：与 versionName（0.1.4）分开 —— 只抬 versionCode 不动
+         `version`，现有装机用户的热更新通道（runtimeVersion = appVersion）不会断。
+         SDK 54 升级换了原生库，必须重新出包，所以这次两者一起抬。 */
+      "versionCode": 4,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#3B82F6"
       },
       /* 这些权限是依赖的库自己声明的，但 TalkFirst 一个都用不到：发动态只从相册
          选图/选视频（不用相机）、不录音、不画悬浮窗、不做指纹登录、不写外部存储。
-         留着它们会触发 Play 审核的敏感权限追问，也白拿用户信任。 */
+         留着它们会触发 Play 审核的敏感权限追问，也白拿用户信任。
+         选图/选视频走系统 Photo Picker，所以 READ_EXTERNAL_STORAGE 也不需要 ——
+         留着它会被归到「照片和视频权限」单独审查一轮。 */
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.SYSTEM_ALERT_WINDOW",
@@ -36,16 +39,15 @@
         "android.permission.USE_BIOMETRIC",
         "android.permission.USE_FINGERPRINT",
         "android.permission.WRITE_EXTERNAL_STORAGE",
-        /* 选图/选视频走系统选择器（Photo Picker），不需要读外部存储。留着它在
-           Play 上会被归到「照片和视频权限」单独审查一轮，而我们根本没有用到。 */
         "android.permission.READ_EXTERNAL_STORAGE"
       ]
     },
     "plugins": [
       "expo-secure-store",
       "expo-video",
-      /* targetSdk 36 默认开启预测性返回，而 RN 0.76 没注册 OnBackInvokedCallback，
-         会让 JS 的 BackHandler 收不到事件（按下返回直接回桌面）。见插件文件头。 */
+      /* targetSdk 36 默认开启预测性返回。RN 0.76 没注册 OnBackInvokedCallback，
+         JS 的 BackHandler 收不到事件（按下返回直接回桌面），所以先关掉。
+         RN 0.81（SDK 54）已支持预测性返回，想恢复这个手势时可以删掉这个插件。 */
       "./plugins/with-disable-predictive-back.js",
       [
         "expo-build-properties",
@@ -56,7 +58,9 @@
             "buildToolsVersion": "36.0.0"
           }
         }
-      ]
+      ],
+      "expo-asset",
+      "expo-font"
     ],
     "runtimeVersion": {
       "policy": "appVersion"

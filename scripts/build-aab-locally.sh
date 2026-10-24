@@ -31,8 +31,12 @@ if [ ! -d "$DEST/.git" ]; then
   git clone "$SRC" "$DEST" || exit 1
 fi
 cd "$DEST" || exit 1
-git fetch -q "$SRC" master || { log "fetch 失败"; exit 1; }
+# REF 默认 master；在分支上试升级时用 `REF=feat/xxx bash scripts/build-aab-locally.sh`，
+# 否则会把待验证的改动当成 master 构建（曾经踩过）。
+REF="${REF:-master}"
+git fetch -q "$SRC" "$REF" || { log "fetch 失败（$REF）"; exit 1; }
 git reset -q --hard FETCH_HEAD || exit 1
+log "构建分支：$REF"
 log "代码：$(git log --oneline -1)"
 
 # ── 2. 检查上传密钥（prebuild --clean 会删掉 android/，密钥必须放在仓库外）───

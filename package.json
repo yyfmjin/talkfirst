@@ -33,6 +33,7 @@
     "docker:reset": "docker compose --env-file .env.docker down -v"
   },
   "devDependencies": {
+    "expo": "~54.0.38",
     "prisma": "^6.6.0",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2"
