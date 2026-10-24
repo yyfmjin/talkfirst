@@ -63,9 +63,15 @@ PROPS
 fi
 
 # ── 3. 依赖 ──────────────────────────────────────────────────────────────────
-if [ ! -d "$DEST/node_modules" ]; then
-  log "npm ci（约 2-4 分钟）…"
-  npm ci --legacy-peer-deps >/tmp/aab-npmci.log 2>&1 || { tail -20 /tmp/aab-npmci.log; exit 1; }
+# 不能只看「node_modules 存不存在」：升级 SDK 后 lockfile 变了，而克隆目录里的旧
+# node_modules 依然存在 —— 结果 prebuild 用了新配置，gradle 编的却是旧版 RN
+# （实测：SDK 54 的代码却链着 react-android 0.76.7，16 KB 检查直接不过）。
+# 用 lockfile 与 npm 自己的标记文件比时间，依赖变更才重装。
+LOCK="$DEST/package-lock.json"
+MARK="$DEST/node_modules/.package-lock.json"
+if [ ! -d "$DEST/node_modules" ] || [ ! -f "$MARK" ] || [ "$LOCK" -nt "$MARK" ]; then
+  log "依赖有变更（package-lock 比安装标记新），npm ci（约 3-5 分钟）…"
+  ( cd "$DEST" && npm ci --legacy-peer-deps >/tmp/aab-npmci.log 2>&1 ) || { tail -20 /tmp/aab-npmci.log; exit 1; }
 fi
 
 # ── 4. 重新生成 android/ 工程 ────────────────────────────────────────────────
@@ -150,6 +156,16 @@ VER=$(cd "$DEST/apps/mobile" && node -e "const j=require('@expo/config').getConf
 [ -n "$VER" ] || VER=$(grep -m1 '"version"' "$DEST/apps/mobile/app.json" | sed -E 's/.*"version": *"([^"]+)".*/\1/')
 cp "$AAB" "$OUT_DIR/talkfirst-$VER.aab"
 log "出包成功：$OUT_DIR/talkfirst-$VER.aab（$(( $(stat -c %s "$AAB") / 1048576 ))MB）"
+
+# ── 7.5 16 KB 页对齐闸门 ────────────────────────────────────────────────────
+# Play 对面向 Android 15+ 的应用要求 64 位原生库按 16 KB 对齐。不过就直接失败：
+# 这种问题到了上架阶段才被驳，代价是一整轮审核。确需跳过时 SKIP_16KB=1。
+if [ "${SKIP_16KB:-0}" != "1" ]; then
+  python "$SRC/scripts/check-16kb.py" "$AAB" || {
+    log "16 KB 对齐未通过 —— 通常是依赖没重装（旧版 RN 的预编译库）"
+    exit 1
+  }
+fi
 
 # ── 8. 用合并后的清单自检（版本号 / 权限 / targetSdk）───────────────────────
 MERGED=$(find "$DEST/apps/mobile/android/app/build/intermediates/merged_manifests" -name AndroidManifest.xml | head -1)
