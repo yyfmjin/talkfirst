@@ -29,7 +29,7 @@ AAPT=/d/Android/sdk/build-tools/36.0.0/aapt2.exe
 - [ ] 完整说明 ≤4000 字符，且**只写已经能用的功能**
 - [ ] 图标 512×512：`store/play/icon-512.png`
 - [ ] Feature Graphic 1024×500：`store/play/feature-graphic-1024x500.png`
-- [ ] 手机截图 ≥2 张（建议 6 张）：`store/play/screenshots/`
+- [ ] 手机截图 ≥2 张（现有 6 张）：`docs/play-assets/screenshot-*.png`
 
 ## C. 政策表单（6 条）
 

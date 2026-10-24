@@ -1,8 +1,8 @@
 # Google Play 上架清单（TalkFirst · Android）
 
-> 结论先说：**代码侧的门槛已经过了**（target API 36、权限最小化、应用内可达的隐私政策、
-> 注册同意闸门、账号可删除），**控制台侧还得你操作**（数据安全表单、内容分级、审核账号…），
-> 另有一条**有截止日期、目前未达标**的项：**16 KB 页大小**（见第二节）。
+> 结论先说：**代码侧的门槛全部过了**（target API 36、权限最小化、应用内可达的隐私政策、
+> 注册同意闸门、账号可删除、6 张商店截图、**16 KB 页大小**），**控制台侧还得你操作**
+> （数据安全表单、内容分级、审核账号、**12 人 × 14 天的封闭测试**）。
 
 本文只写**核对过的事实**：每条要么有 Play 官方原文，要么有本机实测输出。没核实的会明确标成「待确认」。
 
@@ -13,13 +13,13 @@
 | # | Play 的要求 | 我们的现状 | 证据 |
 |---|---|---|---|
 | 1 | 2026-08-31 起，**新应用与更新必须 target Android 16（API 36）** | `compileSdk = targetSdk = 36`，buildTools 36.0.0 | `apps/mobile/app.json` 的 `expo-build-properties`；出包后查合并清单得 `targetSdkVersion 36` |
-| 2 | 上传格式必须是 **AAB** | `gradlew bundleRelease` 出 `.aab` | `D:\Android\talkfirst-play.aab` |
+| 2 | 上传格式必须是 **AAB** | `gradlew bundleRelease` 出 `.aab` | `D:\Android\play\talkfirst-0.1.4.aab`（47 MB） |
 | 3 | **权限最小化**（敏感权限会被追问） | 清单里原有 13 条，砍掉 6 条一个都没用到的：`RECORD_AUDIO`、`SYSTEM_ALERT_WINDOW`、`CAMERA`、`USE_BIOMETRIC`、`USE_FINGERPRINT`、`WRITE_EXTERNAL_STORAGE` | `apps/mobile/app.json` 的 `android.blockedPermissions`；合并清单复核 |
 | 4 | 隐私政策必须**在应用内可达**（不只是商店页） | 「我的 → 关于 → 条款与隐私」：用户协议 / 隐私政策 / 社区规则 / 联系我们 | `apps/mobile/src/screens/LegalScreen.tsx`、`src/lib/legal.ts` |
 | 5 | **用户生成内容（UGC）**类应用：注册前必须让用户明确同意条款 | 注册页有同意勾选框 + 可点开的《用户协议》《隐私政策》，**没勾就不发注册请求** | `apps/mobile/src/screens/AuthScreen.tsx`；用例「注册页没勾同意就不发注册请求」 |
 | 6 | UGC 类应用：必须能**举报**与**拉黑** | 「我的 → 安全中心」：拉黑列表 / 解除 / 我的举报 | `apps/mobile/src/screens/SafetyScreen.tsx` |
 | 7 | 提供**账号与数据删除**（应用内 + 网页入口） | 应用内「我的 → 注销账号」；网页端同功能 | `DeleteAccountScreen.tsx`；`docs/SECURITY-FOLLOWUPS.md` 有相关记录 |
-| 8 | `versionCode` 唯一且只增 | 置为 `2`（`versionName` 仍 0.1.2，现有装机用户的热更新通道不断） | `apps/mobile/app.json` |
+| 8 | `versionCode` 唯一且只增 | 当前 `4`（`versionName` `0.1.4`） | `apps/mobile/app.json` |
 
 ### 为什么「只在界面上写一行条款」不够
 
@@ -29,33 +29,31 @@ Play 对 UGC 应用的要求是**注册之前**明确同意；界面上写一行
 
 ---
 
-## 二、未达标：16 KB 页大小（Play 提示截止 2027-02-01）
+## 二、已达标：16 KB 页大小（2026-10-24 修复）
 
-**要求**：Play 对 16 KB 内存页大小的支持要求（官方页 <https://developer.android.com/guide/practices/page-sizes>），
-控制台横幅写的是「app updates must support 16 KB memory page sizes by **February 1, 2027**」。
+**要求**：Play 对 16 KB 内存页大小的支持要求（官方页 <https://developer.android.com/guide/practices/page-sizes>）。
 
-**我们的现状（本机实测，非推测）**：把当前 APK 里的 `lib/arm64-v8a/*.so` 逐个用 NDK 的
-`llvm-readelf -l` 看 LOAD 段对齐 —— 15 个库全是 `0x1000`（4 KB），**没有一个达标**：
+**修复方式**：升到 **Expo SDK 54（RN 0.81.5 / React 19.1）**，预编译库自带 16 KB 对齐。
+修复后实测（`scripts/check-16kb.py`，已接进构建脚本做闸门）：
 
 ```
-libappmodules.so        0x1000
-libexpo-modules-core.so 0x1000
-libhermes.so            0x1000
-libreactnative.so       0x1000
-…（共 15 个 arm64 库，全部 0x1000）
+$ python scripts/check-16kb.py D:/Android/play/talkfirst-0.1.4.aab
+扫描 56 个 .so：16 KB 合规 28，4 KB 对齐 0，跳过 28
+结论：通过。
 ```
 
-**为什么不能只改一个开关**：ELF 段对齐是**编译期**决定的（`-Wl,-z,max-page-size=16384`）。
-`libhermes.so` / `libreactnative.so` 来自 react-native 的预编译产物，Expo SDK 52（RN 0.76）
-那批预编译库就是 4 KB。要达标只有两条路：
+（跳过的是 32 位 `armeabi-v7a` 库 —— ELF32，Play 的 16 KB 要求只针对 64 位。）
 
-1. **升到 Expo SDK 53/54**（RN 0.79 / 0.81，官方预编译库已按 16 KB 对齐）——顺带把 targetSdk
-   变成 36，不用再靠 `expo-build-properties` 顶；
-2. 自己用 NDK r27+ 从源码重编 RN 与 Hermes（工作量大得多，不推荐）。
+**当时为什么必须升 SDK**：对齐是**编译期**决定的（`-Wl,-z,max-page-size=16384`），
+`libhermes.so` / `libreactnative.so` 来自 react-native 的预编译产物，SDK 52 那批就是 4 KB，
+改配置救不回来。旧包里 60 个 `.so` 有 28 个是 `0x1000`。
 
-**建议的排期**：这是一次大版本迁移（RN 0.76→0.81、React 18.3→19，`expo-*` 全家升），
-要单独一批做，做完必须重新出包 + 跑一遍真机回归。**在 2027-02-01 之前完成即可**，
-它不挡现在的首次上架。
+**升级踩到的三个坑（都已修在仓库里）**：
+
+1. `babel-preset-expo` 停在 12.x（内置 RN 0.76 的 preset），解析 RN 0.81 的 Flow 语法直接 SyntaxError；
+2. `@expo/config-plugins` 被 hoist 拆到两处 node_modules，`prebuild` 找不到插件；
+3. gradle 调的 `expo export:embed` 必须带 `EXPO_NO_METRO_WORKSPACE_ROOT=1`，
+   否则 Metro 把工作区根当项目根，报 `Unable to resolve module ./index.ts`。
 
 ---
 
@@ -149,7 +147,7 @@ grep -n "signingConfig" app/build.gradle
 
 ## 附录 B：还差的、我知道的坑
 
-- **16 KB 页大小**（第二节）—— 有截止日期，需要 SDK 升级。
+- ~~16 KB 页大小~~ —— **已解决**（2026-10-24，见第二节）。
 - **首次提交可能需要多轮**：Play 对社交类应用的审核偏严，尤其「举报/拉黑是否真的可达」
   与「审核账号能否走通主流程」。第一次被驳回是常态，按驳回理由改就行。
 - **iOS**：本次完全没做（`app.json` 里 iOS 只有 bundleIdentifier）。要上 App Store 是另一条线。
@@ -165,4 +163,4 @@ grep -n "signingConfig" app/build.gradle
 | **出 AAB 的坑** | 必须带 `EXPO_NO_METRO_WORKSPACE_ROOT=1`，否则 Metro 把工作区根当 server root，报 `Unable to resolve module ./index.ts`（本地 APK 脚本里一直设着，手动跑 gradle 容易忘） |
 | **第三方登录** | 代码已就绪（Google/Facebook 按钮 + App 原生一次性码交换），但线上 `OAUTH_PROVIDERS` 为空 → 按钮不显示。**不影响上架**；配好凭据后自动出现 |
 | **商店截图** | ✅ 6 张（登录/动态/发现/消息/聊天/AI），1170×2532，见 `docs/play-assets/`；由 `scripts/play-screenshots.mjs` 在演示账号上抓取 |
-| **16 KB 页大小** | ❌ 仍未达标（SDK 52 的预编译库是 4 KB 对齐），截止 2027-02-01 |
+| **16 KB 页大小** | ✅ 已达标（2026-10-24 升到 SDK 54，`check-16kb.py` 实测 0 个 4 KB 对齐） |

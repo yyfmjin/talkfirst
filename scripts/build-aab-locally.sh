@@ -21,6 +21,11 @@ export ANDROID_HOME='D:\Android\sdk'
 export ANDROID_SDK_ROOT='D:\Android\sdk'
 export JAVA_HOME='D:\Android\jdk17'
 export PATH="/d/Android/jdk17/bin:/d/Android/sdk/platform-tools:$PATH"
+/*
+ * SDK 54 起，Metro 默认把 workspace 根当作项目根：gradle 调的 `expo export:embed`
+ * 会去 D:\talkfirst\. 找 index.ts 而报“Unable to resolve module ./index.ts”。
+ * 关掉后按 apps/mobile 解析（实测同一命令加了这个变量就能打出 702 个模块）。
+ */
 export EXPO_NO_METRO_WORKSPACE_ROOT=1
 
 log() { echo "[$(date +%H:%M:%S)] $*"; }

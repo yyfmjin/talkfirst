@@ -18,8 +18,10 @@
 |---|---|---|
 | targetSdk 36（2026 年新应用门槛） | `compileSdk/targetSdk = 36` | `app.json` 的 expo-build-properties；合并清单里 `targetSdkVersion="36"` |
 | 包名稳定 | `com.talkfirst.app` | `app.json → android.package` |
-| versionCode 单调递增 | 当前 `3`（versionName `0.1.3`） | `app.json`；每次发版必须比上一次大 |
-| 权限最小化 | 运行时只有 `INTERNET`、`VIBRATE`（+ 库自带的 `ACCESS_NETWORK_STATE`、`FOREGROUND_SERVICE_MEDIA_PLAYBACK`） | 见 A.4 的 `aapt2 dump badging` 输出 |
+| versionCode 单调递增 | 当前 `4`（versionName `0.1.4`） | `app.json`；每次发版必须比上一次大 |
+| 权限最小化 | 运行时只有 `INTERNET`、`VIBRATE`、`ACCESS_NETWORK_STATE` | 合并清单实测（见 A.4） |
+| **16 KB 页大小**（64 位库必须 16 KB 对齐） | ✅ SDK 54 后全部达标：56 个 `.so` 中 28 个 64 位全部 `0x4000`，0 个 4 KB | `python scripts/check-16kb.py <aab>`；已接进构建脚本做闸门 |
+| 运行时版本 | Expo SDK 54 / RN 0.81.5 / React 19.1 | `apps/mobile/package.json` |
 | 无敏感权限（相机/录音/悬浮窗/存储） | 已在 `blockedPermissions` 里移除，prebuild 生成 `tools:node="remove"` | `android/app/src/main/AndroidManifest.xml` |
 | 隐私政策：公网可访问、双语 | `https://talkfirst.ccwu.cc/legal/privacy`（英文 `/en/legal/privacy`） | 200；正文 9 节，含第三方、保存期限、18+、权利 |
 | 账号删除：应用内 + 网页 | 应用内「我的 → 账号 → 注销账号」；网页 `https://talkfirst.ccwu.cc/delete-account` | `DELETE /users/me` 硬删除（`prisma.user.delete`） |
@@ -33,13 +35,14 @@
 
 | 东西 | 路径 |
 |---|---|
-| AAB（交给 Play 的文件） | `D:\Android\play\talkfirst-0.1.3.aab`（46MB，versionCode 3，targetSdk 36） |
+| AAB（交给 Play 的文件） | `D:\Android\play\talkfirst-0.1.4.aab`（47MB，versionCode 4，targetSdk 36） |
 | 上传密钥（upload key） | `D:\Android\keystores\talkfirst-play-upload.keystore`（别名 `talkfirst`，RSA 4096，30 年） |
 | 上传密钥证书指纹 | SHA-256 `71:83:AE:DB:E1:47:26:4E:21:89:5C:2F:45:2C:36:8C:7E:DA:A7:A5:41:3C:06:C0:5B:EC:5F:D6:88:8A:F1:2E`（在 Play Console 登记上传证书时对得上） |
 | 密钥口令与备份说明 | `D:\Android\keystores\UPLOAD-KEY-README.txt`（chmod 600） |
 | gradle 读的口令文件 | `D:\Android\keystores\keystore.properties`（chmod 600，**别提交进仓库**） |
-| 商店图标 512×512 | `store/play/icon-512.png` |
+| 商店图标 512×512 | `store/play/icon-512.png`（同 `docs/play-assets/`） |
 | Feature Graphic 1024×500 | `store/play/feature-graphic-1024x500.png` |
+| 手机截图 6 张（1170×2532） | `docs/play-assets/screenshot-*.png` |
 
 > ⚠️ **上传密钥必须备份**：丢了就得找 Google 重置上传密钥（要走申诉流程，几天内发不了版）。
 > 备份三份：密码管理器（口令 + 指纹）、离线介质（.keystore 本体）、云盘私密目录。
