@@ -21,11 +21,9 @@ export ANDROID_HOME='D:\Android\sdk'
 export ANDROID_SDK_ROOT='D:\Android\sdk'
 export JAVA_HOME='D:\Android\jdk17'
 export PATH="/d/Android/jdk17/bin:/d/Android/sdk/platform-tools:$PATH"
-/*
- * SDK 54 起，Metro 默认把 workspace 根当作项目根：gradle 调的 `expo export:embed`
- * 会去 D:\talkfirst\. 找 index.ts 而报“Unable to resolve module ./index.ts”。
- * 关掉后按 apps/mobile 解析（实测同一命令加了这个变量就能打出 702 个模块）。
- */
+# SDK 54 起，Metro 默认把 workspace 根当作项目根：gradle 调的 `expo export:embed`
+# 会去 D:\talkfirst\. 找 index.ts 而报 “Unable to resolve module ./index.ts”。
+# 关掉后按 apps/mobile 解析（实测同一命令加了这个变量就能打出 702 个模块）。
 export EXPO_NO_METRO_WORKSPACE_ROOT=1
 
 log() { echo "[$(date +%H:%M:%S)] $*"; }
@@ -109,8 +107,13 @@ GNAME=$(grep 'uses-permission' "$MANIFEST" | grep -v 'tools:node="remove"' \
   | grep -o 'android.permission.[A-Z_]*' | sort -u | tr '\n' ' ')
 log "清单里保留的权限：$GNAME"
 case "$GNAME" in
-  *RECORD_AUDIO*|*SYSTEM_ALERT_WINDOW*|*CAMERA*|*READ_EXTERNAL_STORAGE*)
+  *SYSTEM_ALERT_WINDOW*|*CAMERA*|*READ_EXTERNAL_STORAGE*|*WRITE_EXTERNAL_STORAGE*)
     log "错误：blockedPermissions 没生效，清单里仍有敏感权限，停止"; exit 1;;
+esac
+# 语音动态（2026-10-24）需要录音权限：没了说明 expo-audio 的权限声明丢了。
+case "$GNAME" in
+  *RECORD_AUDIO*) ;;
+  *) log "警告：清单里没有 RECORD_AUDIO，语音动态会录不了" ;;
 esac
 
 # ── 5. 签名：release 指向 keystore.properties 里的 upload key ────────────────
@@ -160,7 +163,7 @@ fi
 # ── 7. 出 AAB ────────────────────────────────────────────────────────────────
 cd "$DEST/apps/mobile/android" || exit 1
 log "gradle bundleRelease（首次 10-25 分钟）…"
-./gradlew bundleRelease --no-daemon >/tmp/aab-gradle.log 2>&1
+./gradlew bundleRelease --no-daemon -PreactNativeArchitectures="${ARCHS:-arm64-v8a,armeabi-v7a}" >/tmp/aab-gradle.log 2>&1
 STATUS=$?
 if [ $STATUS -ne 0 ]; then
   log "gradle 失败（exit $STATUS），最后 40 行："
