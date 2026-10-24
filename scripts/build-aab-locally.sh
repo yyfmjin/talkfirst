@@ -71,7 +71,22 @@ LOCK="$DEST/package-lock.json"
 MARK="$DEST/node_modules/.package-lock.json"
 if [ ! -d "$DEST/node_modules" ] || [ ! -f "$MARK" ] || [ "$LOCK" -nt "$MARK" ]; then
   log "依赖有变更（package-lock 比安装标记新），npm ci（约 3-5 分钟）…"
-  ( cd "$DEST" && npm ci --legacy-peer-deps >/tmp/aab-npmci.log 2>&1 ) || { tail -20 /tmp/aab-npmci.log; exit 1; }
+  # 上一次构建的 gradle 守护进程会往 node_modules/@react-native/gradle-plugin/.gradle
+  # 里写锁文件，npm ci 删目录时报 EBUSY: resource busy or locked。先停 daemon 再删。
+  if [ -x "$DEST/apps/mobile/android/gradlew" ]; then
+    ( cd "$DEST/apps/mobile/android" && ./gradlew --stop >/dev/null 2>&1 )
+  fi
+  rm -rf "$DEST/node_modules/@react-native/gradle-plugin/.gradle" 2>/dev/null
+  ( cd "$DEST" && npm ci --legacy-peer-deps >/tmp/aab-npmci.log 2>&1 ) || {
+    if grep -q EBUSY /tmp/aab-npmci.log; then
+      log "仍被占用，删掉 node_modules 后重试…"
+      sleep 5
+      rm -rf "$DEST/node_modules" 2>/dev/null
+      ( cd "$DEST" && npm ci --legacy-peer-deps >/tmp/aab-npmci.log 2>&1 ) || { tail -20 /tmp/aab-npmci.log; exit 1; }
+    else
+      tail -20 /tmp/aab-npmci.log; exit 1
+    fi
+  }
 fi
 
 # ── 4. 重新生成 android/ 工程 ────────────────────────────────────────────────
