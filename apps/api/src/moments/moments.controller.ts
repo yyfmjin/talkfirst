@@ -119,6 +119,12 @@ class ComposeDto {
   @MaxLength(2000)
   videoUrl?: string;
 
+  /** 语音动态（2026-10-24）：与 videoUrl 并列，最多一段录音。 */
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  audioUrl?: string;
+
   // Mirrors the service's `.slice(0, 10)`.
   @IsOptional()
   @IsArray()
@@ -157,6 +163,12 @@ class UpdateMomentDto {
   @IsString()
   @MaxLength(2000)
   videoUrl?: string;
+
+  /** 空字符串 = 删掉录音；不传 = 不改（与 videoUrl 同一约定）。 */
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  audioUrl?: string;
 
   @IsOptional()
   @IsArray()
@@ -509,6 +521,7 @@ export class MomentsController {
         content: dto.content,
         images: dto.images,
         videoUrl: dto.videoUrl,
+        audioUrl: dto.audioUrl,
         tags: dto.tags,
       });
       return { success: true as const, data };

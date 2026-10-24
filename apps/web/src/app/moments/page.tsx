@@ -37,6 +37,8 @@ type Moment = {
   content: string;
   images: string[];
   videoUrl: string | null;
+  /** 语音动态（2026-10-24）：与 videoUrl 并列，最多一段录音。 */
+  audioUrl: string | null;
   durationSec: number | null;
   tags: string[];
   likeCount: number;
@@ -806,6 +808,16 @@ function MomentCard({
           </div>
         ) : null}
       </Link>
+
+      {/*
+        语音动态（2026-10-24）：放在 Link 外面。
+        放进卡片链接里会让「点播放」和「进详情」抢同一次点击，原生控件也点不动。
+      */}
+      {moment.audioUrl ? (
+        <div className="px-5 pt-2">
+          <audio controls src={moment.audioUrl} preload="metadata" className="w-full" />
+        </div>
+      ) : null}
 
       {/* The action row. `aria-pressed` on the like button is new: it is a toggle,
           and a screen reader had no way to know whether it was already on. */}

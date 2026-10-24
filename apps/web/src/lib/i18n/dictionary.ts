@@ -267,7 +267,7 @@ export const zh = {
   /* 下面这一节的行内 <strong>/<code> 很多，每个拆点都落在强调/代码元素的两侧；
      两边语言各自读起来都是完整的一句话。前缀 a/b/c… 只表示位置，不表示句子。 */
   "legal.privacy.s1.a": "你直接提供的：",
-  "legal.privacy.s1.b": "邮箱地址、密码（以不可逆的哈希形式存储，我们无法读回原文）、昵称、头像、出生日期、国家与城市、性别、个人介绍、语言、兴趣与交友目的。",
+  "legal.privacy.s1.b": "邮箱地址、密码（以不可逆的哈希形式存储，我们无法读回原文）、昵称、头像、出生日期、国家与城市、性别、个人介绍、语言、兴趣与交友目的；你发布动态时附带的照片、视频，以及语音动态里你录下的话。",
   "legal.privacy.s1.c": "你使用时产生的：",
   "legal.privacy.s1.d": "你发布的动态与评论、点赞、连接与聊天消息、举报与屏蔽记录。",
   "legal.privacy.s1.e": "为安全与稳定所必需的技术记录：",
@@ -1815,7 +1815,7 @@ export const en: Record<MsgKey, string> = {
   "legal.privacy.intro": "TalkFirst helps you talk first and decide only afterwards whether to become friends. This policy explains what information we collect, why we collect it, how we use it, and how you can see, correct or delete it.",
   "legal.privacy.s1.title": "1. What we collect",
   "legal.privacy.s1.a": "Information you give us:",
-  "legal.privacy.s1.b": "your e-mail address and password (stored as an irreversible hash — we can never read the original), nickname, photo, date of birth, country and city, gender, profile text, languages, interests and what you are here for.",
+  "legal.privacy.s1.b": "your e-mail address and password (stored as an irreversible hash — we can never read the original), nickname, photo, date of birth, country and city, gender, profile text, languages, interests and what you are here for; the photos and videos you attach to a moment, and the voice you record in a voice moment.",
   "legal.privacy.s1.c": "Information created as you use the product:",
   "legal.privacy.s1.d": "the posts and comments you publish, your likes, your connections and chat messages, and your report and block records.",
   "legal.privacy.s1.e": "Technical records needed for safety and reliability:",

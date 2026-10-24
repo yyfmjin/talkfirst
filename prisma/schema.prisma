@@ -988,6 +988,9 @@ model Moment {
   content      String          @db.VarChar(2000)
   images       String[]        @default([])
   videoUrl     String?         @db.VarChar(2000)
+  // 语音动态（2026-10-24）：与 videoUrl 并列，一条动态最多一段录音。
+  // 没有画面，所以 `durationSec` 也用来给播放器显示时长。
+  audioUrl     String?         @db.VarChar(2000)
   durationSec  Int?
   tags         String[]        @default([])
   likeCount    Int             @default(0)

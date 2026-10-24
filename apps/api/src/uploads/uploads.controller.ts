@@ -156,11 +156,21 @@ export class UploadsController {
       const url = this.uploads.saveLocal("moments", video.buffer, video.ext);
       return { success: true as const, data: { url, mime: video.mime, kind: "video" as const } };
     }
+    /*
+     * 语音动态（2026-10-24）。走同一张路由：录音也能塞进 JSON（上游 7MB 上限
+     * 对应 4MB 原始音频，约 10 分钟 AAC）。单独开路由只会多一份重复的校验。
+     */
+    const audio = this.uploads.parseAudioDataUrl(dto.media);
+    if (audio) {
+      const url = this.uploads.saveLocal("moments", audio.buffer, audio.ext);
+      return { success: true as const, data: { url, mime: audio.mime, kind: "audio" as const } };
+    }
     throw new ForbiddenException({
       success: false,
       error: {
         code: "INVALID_MEDIA",
-        message: "Media must be a jpeg/png/webp image or an mp4/webm/mov video data URL",
+        message:
+          "Media must be a jpeg/png/webp image, an mp4/webm/mov video or an m4a/aac/mp3/ogg audio data URL",
       },
     });
   }

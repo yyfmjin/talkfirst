@@ -226,6 +226,7 @@ export function AttributesScreen({ onBack }: { onBack: () => void }) {
         definitions={definitions}
         usedDefinitionIds={usedDefinitionIds}
         busy={busy}
+        error={error}
         onBack={() => setPickerKind(null)}
         onPickSystem={createSystem}
         onPickCustom={(label, value) => createCustom(pickerKind, label, value)}
@@ -372,6 +373,7 @@ function AttributePicker({
   definitions,
   usedDefinitionIds,
   busy,
+  error,
   onBack,
   onPickSystem,
   onPickCustom,
@@ -380,6 +382,12 @@ function AttributePicker({
   definitions: AttributeDefinition[];
   usedDefinitionIds: Set<string>;
   busy: boolean;
+  /*
+   * 写入失败的提示（2026-10-24 用户反馈「有的标签点了没反应」）。
+   * 失败时原来只把错误写到上层页面，而这一页是全屏接管的 —— 用户看到的就是
+   * 「按了没反应」。现在把错误直接显示在 chip 上方。
+   */
+  error: string;
   onBack: () => void;
   onPickSystem: (definition: AttributeDefinition) => void;
   onPickCustom: (label: string, value: string) => void;
@@ -420,6 +428,7 @@ function AttributePicker({
       <SubHeader title={t("me.attributesAdd")} onBack={onBack} />
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <Text style={styles.intro}>{t("me.attributesPickHint")}</Text>
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         <View style={styles.segmented}>
           {([
@@ -454,7 +463,8 @@ function AttributePicker({
                   onPress={() => onPickSystem(definition)}
                   disabled={busy}
                   accessibilityRole="button"
-                  style={styles.chip}
+                  accessibilityState={{ disabled: busy }}
+                  style={[styles.chip, busy ? styles.chipBusy : null]}
                 >
                   <Text style={styles.chipLabel}>{definitionLabel(definition)}</Text>
                 </Pressable>
@@ -741,6 +751,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   moveBtnDisabled: { opacity: 0.35 },
+  chipBusy: { opacity: 0.5 },
   addRow: { marginTop: 12 },
 
   segmented: {

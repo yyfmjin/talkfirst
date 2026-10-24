@@ -18,6 +18,7 @@ import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { MomentOwnerActions } from "../components/MomentOwnerActions";
 import { SubHeader } from "../components/SubHeader";
+import { VoiceNote } from "../components/VoiceNote";
 import { useAuth } from "../lib/auth-context";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
 import type { MsgKey } from "../lib/messages";
@@ -700,6 +701,11 @@ function MomentCard({
             <Image key={uri} source={{ uri }} style={styles.image} resizeMode="cover" />
           ))}
         </View>
+      ) : null}
+
+      {/* 语音动态（2026-10-24）：与视频/图片并行，最多一段录音。 */}
+      {moment.audioUrl ? (
+        <VoiceNote uri={moment.audioUrl} durationSec={moment.durationSec} />
       ) : null}
 
       <View style={styles.actions}>

@@ -30,3 +30,36 @@ jest.mock("expo-font", () => {
     useFonts: () => [true, null],
   };
 });
+
+/**
+ * expo-audio 的桩（2026-10-24，语音动态上线后）。
+ *
+ * 语音动态让 `MomentsScreen` 间接依赖 `expo-audio`，而它的原生模块在 jsdom 里
+ * 加载即崩：整个 `screens.test.tsx` 套件变成 "Cannot read properties of undefined
+ * (reading 'prototype')"，79 个用例一条都没跑。
+ *
+ * 屏幕冒烟测试要验的是「界面能渲染」，不是真录一段音；所以这里给一套最小可用的
+ * 假实现：播放器有 play/pause/seekTo，状态恒为未播放，录音器返回 granted 权限。
+ * 真要验录音逻辑，得在真机/模拟器上跑，不是这一层能覆盖的。
+ */
+jest.mock("expo-audio", () => ({
+  RecordingPresets: { HIGH_QUALITY: {} },
+  useAudioPlayer: () => ({
+    play: jest.fn(),
+    pause: jest.fn(),
+    seekTo: jest.fn(async () => undefined),
+  }),
+  useAudioPlayerStatus: () => ({
+    playing: false,
+    currentTime: 0,
+    duration: 0,
+    didJustFinish: false,
+  }),
+  useAudioRecorder: () => ({
+    prepareToRecordAsync: jest.fn(async () => undefined),
+    record: jest.fn(),
+    stop: jest.fn(async () => undefined),
+    uri: null,
+  }),
+  requestRecordingPermissionsAsync: jest.fn(async () => ({ granted: true })),
+}));

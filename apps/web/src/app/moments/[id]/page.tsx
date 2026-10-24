@@ -93,6 +93,8 @@ type MomentDetail = {
   content: string;
   images: string[];
   videoUrl: string | null;
+  /** 语音动态（2026-10-24）：与 videoUrl 并列，最多一段录音。 */
+  audioUrl: string | null;
   durationSec: number | null;
   tags: string[];
   likeCount: number;
@@ -639,6 +641,13 @@ export default function MomentDetailPage() {
                     </span>
                   </div>
                 ))}
+              </div>
+            ) : null}
+
+            {/* 语音动态（2026-10-24）：详情页这里整行放播放器，不嵌在链接里。 */}
+            {moment.audioUrl ? (
+              <div className="mt-3 px-4">
+                <audio controls src={moment.audioUrl} preload="metadata" className="w-full" />
               </div>
             ) : null}
 

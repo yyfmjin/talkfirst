@@ -2,7 +2,7 @@
   "expo": {
     "name": "TalkFirst",
     "slug": "talkfirst",
-    "version": "0.1.4",
+    "version": "0.1.5",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "scheme": "talkfirst",
@@ -19,21 +19,17 @@
     },
     "android": {
       "package": "com.talkfirst.app",
-      /* Play 上架的 versionCode：与 versionName（0.1.4）分开 —— 只抬 versionCode 不动
-         `version`，现有装机用户的热更新通道（runtimeVersion = appVersion）不会断。
-         SDK 54 升级换了原生库，必须重新出包，所以这次两者一起抬。 */
-      "versionCode": 4,
+      "versionCode": 5,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#3B82F6"
       },
-      /* 这些权限是依赖的库自己声明的，但 TalkFirst 一个都用不到：发动态只从相册
-         选图/选视频（不用相机）、不录音、不画悬浮窗、不做指纹登录、不写外部存储。
-         留着它们会触发 Play 审核的敏感权限追问，也白拿用户信任。
-         选图/选视频走系统 Photo Picker，所以 READ_EXTERNAL_STORAGE 也不需要 ——
-         留着它会被归到「照片和视频权限」单独审查一轮。 */
       "blockedPermissions": [
-        "android.permission.RECORD_AUDIO",
+        /*
+         * RECORD_AUDIO 从 2026-10-24 起不再封：语音动态需要录音。
+         * 代价（已接受的）：Play 会因此要求在数据安全表单里声明「语音」类数据，
+         * 并在隐私政策里写到「录音」——两处都已同步。相机/悬浮窗等仍然封着。
+         */
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.CAMERA",
         "android.permission.USE_BIOMETRIC",
@@ -45,9 +41,6 @@
     "plugins": [
       "expo-secure-store",
       "expo-video",
-      /* targetSdk 36 默认开启预测性返回。RN 0.76 没注册 OnBackInvokedCallback，
-         JS 的 BackHandler 收不到事件（按下返回直接回桌面），所以先关掉。
-         RN 0.81（SDK 54）已支持预测性返回，想恢复这个手势时可以删掉这个插件。 */
       "./plugins/with-disable-predictive-back.js",
       [
         "expo-build-properties",
@@ -60,7 +53,8 @@
         }
       ],
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      "expo-audio"
     ],
     "runtimeVersion": {
       "policy": "appVersion"

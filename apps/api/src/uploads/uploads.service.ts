@@ -27,6 +27,26 @@ const ALLOWED_VIDEO_MIME = new Map([
 const DATA_URL_PATTERN = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/;
 const VIDEO_DATA_URL_PATTERN = /^data:(video\/(?:mp4|webm|quicktime));base64,([A-Za-z0-9+/=]+)$/;
 
+/**
+ * 语音动态（2026-10-24）。
+ *
+ * 录音由 App 端录完直接转 data URL 上传 —— 一段 60 秒的 AAC/m4a 大约 500KB–1MB，
+ * base64 膨胀 4/3 后仍在 `express.json({ limit: "8mb" })` 之内，所以不需要像视频那样
+ * 另开一趟 multipart。客户端按 6MB 原始大小先拦一次，服务端这里是权威。
+ */
+const ALLOWED_AUDIO_MIME = new Map([
+  ["audio/mp4", "m4a"],
+  ["audio/m4a", "m4a"],
+  ["audio/x-m4a", "m4a"],
+  ["audio/aac", "aac"],
+  ["audio/mpeg", "mp3"],
+  ["audio/ogg", "ogg"],
+  ["audio/webm", "weba"],
+]);
+
+const AUDIO_DATA_URL_PATTERN = /^data:(audio\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/=]+)$/;
+const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
+
 /** Where a locally stored file may live; one directory per use case. */
 export type UploadKind = "avatars" | "messages" | "moments";
 
@@ -77,6 +97,32 @@ export class UploadsService {
     const buffer = Buffer.from(match[2], "base64");
     if (buffer.length === 0 || buffer.length > this.maxVideoBytes()) return null;
     if (!this.sniffVideo(buffer)) return null;
+    return { mime, ext, buffer };
+  }
+
+  maxAudioBytes() {
+    return MAX_AUDIO_BYTES;
+  }
+
+  allowedAudioMime() {
+    return [...ALLOWED_AUDIO_MIME.keys()];
+  }
+
+  /**
+   * 语音动态的 data URL → 文件。
+   *
+   * 与图片/视频同一套规矩：mime 白名单 + 魔数校验，两者都过才落盘。
+   * 只靠 mime 不够：客户端可以把任意文件标成 `audio/mpeg`。
+   */
+  parseAudioDataUrl(input: string) {
+    const match = AUDIO_DATA_URL_PATTERN.exec(input ?? "");
+    if (!match) return null;
+    const mime = match[1];
+    const ext = ALLOWED_AUDIO_MIME.get(mime);
+    if (!ext) return null;
+    const buffer = Buffer.from(match[2], "base64");
+    if (buffer.length === 0 || buffer.length > this.maxAudioBytes()) return null;
+    if (!this.sniffAudio(buffer)) return null;
     return { mime, ext, buffer };
   }
 
@@ -176,6 +222,22 @@ export class UploadsService {
   private sniffVideo(buffer: Buffer) {
     if (buffer.length < 12) return false;
     if (buffer.subarray(4, 8).toString("latin1") === "ftyp") return true;
+    return buffer[0] === 0x1a && buffer[1] === 0x45 && buffer[2] === 0xdf && buffer[3] === 0xa3;
+  }
+
+  /**
+   * 音频魔数：
+   *   m4a/aac(mp4 容器)  ISO-BMFF，偏移 4 处是 `ftyp`（与 mp4/mov 同容器）
+   *   mp3               `ID3` 标签头，或直接以帧同步字 0xFF 0xEx/0xFx 开头
+   *   ogg               `OggS`
+   *   webm              EBML 魔数 1A 45 DF A3
+   */
+  private sniffAudio(buffer: Buffer) {
+    if (buffer.length < 12) return false;
+    if (buffer.subarray(4, 8).toString("latin1") === "ftyp") return true;
+    if (buffer.subarray(0, 3).toString("latin1") === "ID3") return true;
+    if (buffer[0] === 0xff && (buffer[1] & 0xe0) === 0xe0) return true;
+    if (buffer.subarray(0, 4).toString("latin1") === "OggS") return true;
     return buffer[0] === 0x1a && buffer[1] === 0x45 && buffer[2] === 0xdf && buffer[3] === 0xa3;
   }
 

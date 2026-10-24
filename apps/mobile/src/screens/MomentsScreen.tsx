@@ -11,6 +11,7 @@ import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { MomentOwnerActions } from "../components/MomentOwnerActions";
+import { VoiceNote } from "../components/VoiceNote";
 import { useAuth } from "../lib/auth-context";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
 import { colors } from "../theme";
@@ -217,7 +218,7 @@ export function MomentsScreen({
             accessibilityLabel={t("momentsSettings.title")}
             style={styles.iconButton}
           >
-            <Icon name="options-outline" size={18} color={colors.muted} />
+            <Icon name="options-outline" size={18} color={colors.ink} />
           </Pressable>
           <Pressable
             onPress={() => setComposing(true)}
@@ -271,6 +272,11 @@ export function MomentsScreen({
                   <Image key={uri} source={{ uri }} style={styles.image} resizeMode="cover" />
                 ))}
               </View>
+            ) : null}
+
+            {/* 语音动态（2026-10-24）：与视频互斥，最多一条。 */}
+            {item.audioUrl ? (
+              <VoiceNote uri={item.audioUrl} durationSec={item.durationSec} />
             ) : null}
 
             <View style={styles.actions}>

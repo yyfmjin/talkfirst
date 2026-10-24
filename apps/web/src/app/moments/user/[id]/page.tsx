@@ -43,6 +43,8 @@ type Detail = {
     content: string;
     images: string[];
     videoUrl: string | null;
+    /** 语音动态（2026-10-24）：与 videoUrl 并列，最多一段录音。 */
+    audioUrl: string | null;
     durationSec: number | null;
     tags: string[];
     likeCount: number;

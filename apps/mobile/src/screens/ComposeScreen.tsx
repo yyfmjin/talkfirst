@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  Modal,
   Pressable,
   StyleSheet,
   Text,
@@ -9,6 +10,13 @@ import {
   View,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system/legacy";
+import {
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  useAudioRecorder,
+} from "expo-audio";
+import { VoiceNote } from "../components/VoiceNote";
 import type { ManageableMoment } from "../components/MomentOwnerActions";
 import { ApiRequestError, apiFetch, apiUploadMultipart } from "../lib/api";
 import { useI18n } from "../lib/i18n-context";
@@ -45,6 +53,10 @@ const MAX_IMAGES = 9;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 /** 服务端 multipart 上限 90MB（apps/api/src/uploads/video-upload.config.ts）。 */
 const MAX_VIDEO_UPLOAD_BYTES = 90 * 1024 * 1024;
+/** 语音：服务端 4MB 原始上限（apps/api/src/uploads/uploads.service.ts 的 MAX_AUDIO_BYTES）。 */
+const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
+/** 一条语音最长 3 分钟：再长就不是「动态」而是播客，且 3 分钟 AAC 约 1.5MB，离上限还远。 */
+const MAX_AUDIO_SECONDS = 180;
 /** 服务端白名单（同 config 的 ALLOWED_VIDEO_MIME）与扩展名。 */
 const ALLOWED_VIDEO_MIME: Record<string, string> = {
   "video/mp4": "mp4",
@@ -68,6 +80,14 @@ type PendingVideo = {
   localUri: string;
   name: string;
   durationMs: number | null;
+  remoteUrl: string | null;
+  uploading: boolean;
+  failed: boolean;
+};
+
+/** 语音动态：录完立即上传，发布时带服务端返回的 url。 */
+type PendingAudio = {
+  uri: string;
   remoteUrl: string | null;
   uploading: boolean;
   failed: boolean;
@@ -117,11 +137,95 @@ export function ComposeScreen({
   );
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState("");
+  /** 看大图：点缩略图打开，null 表示关闭。 */
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+
+  /**
+   * 语音动态（2026-10-24）。
+   * 录音只用于「发动态」：录完立即转 base64 上传，发布时只带服务端返回的 url。
+   * 上限 3 分钟、4MB —— 与服务端 MAX_AUDIO_BYTES 对齐。
+   */
+  const [audio, setAudio] = useState<PendingAudio | null>(null);
+  const [recording, setRecording] = useState(false);
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
   const trimmed = content.trim();
   const allImagesReady = images.every((img) => img.remoteUrl && !img.uploading && !img.failed);
   const videoReady = video === null || (video.remoteUrl != null && !video.uploading && !video.failed);
-  const canPublish = trimmed.length > 0 && !publishing && allImagesReady && videoReady;
+  const audioReady =
+    audio === null || (audio.remoteUrl !== null && !audio.uploading && !audio.failed);
+  const canPublish =
+    (trimmed.length > 0 || images.length > 0 || video !== null || audio !== null) &&
+    !publishing &&
+    allImagesReady &&
+    videoReady &&
+    audioReady;
+
+  async function startRecording() {
+    if (recording || audio || publishing) return;
+    setError("");
+    const permission = await requestRecordingPermissionsAsync();
+    if (!permission.granted) {
+      setError(t("compose.micDenied"));
+      return;
+    }
+    try {
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+      setRecording(true);
+      // 到点自动停，避免忘关麦把整段会话录进去
+      setTimeout(() => {
+        void stopRecording();
+      }, MAX_AUDIO_SECONDS * 1000);
+    } catch {
+      setError(t("compose.recordFailed"));
+    }
+  }
+
+  async function stopRecording() {
+    if (!recording) return;
+    setRecording(false);
+    try {
+      await recorder.stop();
+    } catch {
+      // 停不下来也不应该卡住界面：下面按 uri 是否可读决定后续
+    }
+    const uri = recorder.uri;
+    if (!uri) return;
+    setAudio({ uri, remoteUrl: null, uploading: true, failed: false });
+    void uploadAudio(uri);
+  }
+
+  async function uploadAudio(uri: string) {
+    try {
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      if (base64.length * 0.75 > MAX_AUDIO_BYTES) {
+        throw new Error("AUDIO_TOO_LARGE");
+      }
+      const uploaded = await apiFetch<{ url: string }>("/uploads/moment-media", {
+        method: "POST",
+        body: { media: `data:audio/m4a;base64,${base64}` },
+      });
+      setAudio((previous) =>
+        previous && previous.uri === uri
+          ? { ...previous, remoteUrl: uploaded.url, uploading: false }
+          : previous,
+      );
+    } catch (uploadError) {
+      setAudio((previous) =>
+        previous && previous.uri === uri
+          ? { ...previous, uploading: false, failed: true }
+          : previous,
+      );
+      setError(
+        uploadError instanceof Error && uploadError.message === "AUDIO_TOO_LARGE"
+          ? t("compose.audioTooLarge")
+          : t("compose.audioUploadError"),
+      );
+    }
+  }
 
   /** 选一张 → 立刻转 data URL 上传。一次选一张：多选 + base64 在旧 Android 上不可靠。 */
   async function pickImage() {
@@ -251,10 +355,11 @@ export function ComposeScreen({
            * 新建时不传空字段，与原来的行为一致。
            */
           ...(editing
-            ? { videoUrl: video?.remoteUrl ?? "" }
-            : video?.remoteUrl
-              ? { videoUrl: video.remoteUrl }
-              : {}),
+            ? { videoUrl: video?.remoteUrl ?? "", audioUrl: audio?.remoteUrl ?? "" }
+            : {
+                ...(video?.remoteUrl ? { videoUrl: video.remoteUrl } : {}),
+                ...(audio?.remoteUrl ? { audioUrl: audio.remoteUrl } : {}),
+              }),
         },
       });
       onPublished();
@@ -318,7 +423,14 @@ export function ComposeScreen({
         <View style={styles.imageGrid}>
           {images.map((img, index) => (
             <View key={img.id} style={styles.imageTile}>
-              <Image source={{ uri: img.localUri }} style={styles.imageThumb} />
+              <Pressable
+                onPress={() => setPreviewIndex(index)}
+                accessibilityRole="imagebutton"
+                accessibilityLabel={t("compose.imagePreviewLabel", { n: index + 1 })}
+                style={StyleSheet.absoluteFill}
+              >
+                <Image source={{ uri: img.localUri }} style={styles.imageThumb} />
+              </Pressable>
               {img.uploading ? (
                 <View style={styles.imageOverlay}>
                   <ActivityIndicator color={colors.white} size="small" />
@@ -397,6 +509,49 @@ export function ComposeScreen({
             </Pressable>
           )}
         </View>
+
+        {/* 语音动态：最多一条，录完立即上传。 */}
+        <View style={styles.audioRow}>
+          {audio ? (
+            <View style={styles.audioBox}>
+              <VoiceNote uri={audio.remoteUrl ?? audio.uri} />
+              {audio.uploading ? (
+                <Text style={styles.audioHint}>{t("compose.audioUploading")}</Text>
+              ) : null}
+              {audio.failed ? (
+                <Text style={styles.audioError}>{t("compose.audioUploadError")}</Text>
+              ) : null}
+              <Pressable
+                onPress={() => setAudio(null)}
+                accessibilityRole="button"
+                accessibilityLabel={t("compose.audioRemove")}
+                style={styles.audioRemove}
+              >
+                <Text style={styles.audioRemoveMark}>✕</Text>
+              </Pressable>
+            </View>
+          ) : recording ? (
+            <Pressable
+              onPress={() => void stopRecording()}
+              accessibilityRole="button"
+              accessibilityLabel={t("compose.audioStop")}
+              style={styles.recordStop}
+            >
+              <View style={styles.recordDot} />
+              <Text style={styles.recordStopText}>{t("compose.audioStop")}</Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={() => void startRecording()}
+              accessibilityRole="button"
+              accessibilityLabel={t("compose.addAudio")}
+              style={styles.addTile}
+            >
+              <Icon name="mic" size={22} color={colors.primary} />
+              <Text style={styles.addTileLabel}>{t("compose.addAudio")}</Text>
+            </Pressable>
+          )}
+        </View>
       </View>
 
       <View style={styles.footer}>
@@ -409,6 +564,72 @@ export function ComposeScreen({
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      {/*
+       * 点缩略图看大图（2026-10-24 用户反馈「点图片没反应」）。
+       * 只做三件事：看、设为第一张（封面）、删除 —— 裁剪/滤镜属于另一条产品线，
+       * 放到这里会变成一个半成品编辑器。
+       */}
+      <Modal
+        visible={previewIndex !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPreviewIndex(null)}
+      >
+        <View style={styles.previewBackdrop}>
+          <Pressable
+            onPress={() => setPreviewIndex(null)}
+            accessibilityRole="button"
+            accessibilityLabel={t("compose.imagePreviewClose")}
+            style={styles.previewCloseButton}
+          >
+            <Text style={styles.previewCloseMark}>✕</Text>
+          </Pressable>
+
+          {previewIndex !== null && images[previewIndex] ? (
+            <Image
+              source={{ uri: images[previewIndex].localUri }}
+              style={styles.previewImage}
+              resizeMode="contain"
+            />
+          ) : null}
+
+          <View style={styles.previewBar}>
+            <Pressable
+              onPress={() => {
+                if (previewIndex === null) return;
+                setImages((previous) => {
+                  if (previewIndex === 0) return previous;
+                  const next = [...previous];
+                  const [picked] = next.splice(previewIndex, 1);
+                  next.unshift(picked);
+                  return next;
+                });
+                setPreviewIndex(0);
+              }}
+              accessibilityRole="button"
+              style={[styles.previewAction, previewIndex === 0 ? styles.previewActionDisabled : null]}
+              disabled={previewIndex === 0}
+            >
+              <Text style={styles.previewActionText}>{t("compose.imageMakeCover")}</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => {
+                if (previewIndex === null) return;
+                removeImage(images[previewIndex].id);
+                setPreviewIndex(null);
+              }}
+              accessibilityRole="button"
+              style={styles.previewAction}
+            >
+              <Text style={[styles.previewActionText, styles.previewDanger]}>
+                {t("compose.imageRemove")}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAware>
   );
 }
@@ -533,4 +754,69 @@ const styles = StyleSheet.create({
     color: colors.danger,
     textAlign: "center",
   },
+  audioRow: { paddingHorizontal: 18, paddingBottom: 12 },
+  audioBox: { position: "relative" },
+  audioHint: { marginTop: 6, fontSize: 12, color: colors.muted },
+  audioError: { marginTop: 6, fontSize: 12, color: colors.danger },
+  audioRemove: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.ink,
+  },
+  audioRemoveMark: { fontSize: 12, color: colors.white },
+  recordStop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 999,
+    backgroundColor: "#FDE8E8",
+  },
+  recordDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.danger },
+  recordStopText: { fontSize: 14, fontWeight: "600", color: colors.danger },
+  previewBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(12, 14, 24, 0.94)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  previewImage: { width: "100%", height: "78%" },
+  previewCloseButton: {
+    position: "absolute",
+    top: 48,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.14)",
+    zIndex: 2,
+  },
+  previewCloseMark: { fontSize: 18, color: colors.white },
+  previewBar: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 40,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 12,
+  },
+  previewAction: {
+    paddingHorizontal: 20,
+    paddingVertical: 11,
+    borderRadius: 999,
+    backgroundColor: "rgba(255, 255, 255, 0.14)",
+  },
+  previewActionDisabled: { opacity: 0.4 },
+  previewActionText: { fontSize: 14, fontWeight: "600", color: colors.white },
+  previewDanger: { color: "#FF8A8A" },
 });

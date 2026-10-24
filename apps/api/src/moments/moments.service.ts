@@ -386,6 +386,7 @@ export class MomentsService {
       content: string;
       images: string[];
       videoUrl: string | null;
+      audioUrl: string | null;
       durationSec: number | null;
       tags: string[];
       source: string;
@@ -417,6 +418,7 @@ export class MomentsService {
       content: this.filterContent(moment.content, viewerSetting?.filterSensitive ?? true),
       images: this.filterMedia(moment.images, moment.platform, viewerSetting),
       videoUrl: this.filterVideo(moment.videoUrl, viewerSetting),
+      audioUrl: this.filterVideo(moment.audioUrl, viewerSetting),
       durationSec: moment.durationSec,
       tags: moment.tags,
       likeCount: this.reportedLikeCount(moment),
@@ -558,6 +560,7 @@ export class MomentsService {
       content: this.filterContent(moment.content, setting?.filterSensitive ?? true),
       images: this.filterMedia(moment.images, moment.platform, setting),
       videoUrl: this.filterVideo(moment.videoUrl, setting),
+      audioUrl: this.filterVideo(moment.audioUrl, setting),
       durationSec: moment.durationSec,
       tags: moment.tags,
       likeCount: this.reportedLikeCount(moment),
@@ -635,6 +638,7 @@ export class MomentsService {
       content: this.filterContent(moment.content, viewerSetting?.filterSensitive ?? true),
       images: this.filterMedia(moment.images, moment.platform, viewerSetting),
       videoUrl: this.filterVideo(moment.videoUrl, viewerSetting),
+      audioUrl: this.filterVideo(moment.audioUrl, viewerSetting),
       durationSec: moment.durationSec,
       tags: moment.tags,
       likeCount: this.reportedLikeCount(moment),
@@ -862,6 +866,7 @@ export class MomentsService {
         content: this.filterContent(moment.content, viewerSetting?.filterSensitive ?? true),
         images: this.filterMedia(moment.images, moment.platform, viewerSetting),
         videoUrl: this.filterVideo(moment.videoUrl, viewerSetting),
+      audioUrl: this.filterVideo(moment.audioUrl, viewerSetting),
         durationSec: moment.durationSec,
         tags: moment.tags,
         likeCount: this.reportedLikeCount(moment),
@@ -1151,7 +1156,13 @@ export class MomentsService {
 
   async publish(
     userId: string,
-    input: { content: string; images?: string[]; videoUrl?: string; tags?: string[] },
+    input: {
+      content: string;
+      images?: string[];
+      videoUrl?: string;
+      audioUrl?: string;
+      tags?: string[];
+    },
   ) {
     const content = input.content.trim().slice(0, 2000);
     // PC-3.6 — the composer treats a photo or a clip as content of its own, so
@@ -1161,7 +1172,10 @@ export class MomentsService {
       : [];
     const videoUrl =
       typeof input.videoUrl === "string" && /^https?:\/\/\S{4,2000}$/.test(input.videoUrl) ? input.videoUrl : null;
-    if (!content && images.length === 0 && !videoUrl) {
+    /* 语音动态：与视频同一条「媒体也算内容」的规则，所以空文字 + 只有录音也能发。 */
+    const audioUrl =
+      typeof input.audioUrl === "string" && /^https?:\/\/\S{4,2000}$/.test(input.audioUrl) ? input.audioUrl : null;
+    if (!content && images.length === 0 && !videoUrl && !audioUrl) {
       const error = new Error("EMPTY_CONTENT") as Error & { code?: string };
       error.code = "EMPTY_CONTENT";
       throw error;
@@ -1224,6 +1238,7 @@ export class MomentsService {
         content,
         images,
         videoUrl,
+        audioUrl,
         tags,
         // Published by the user in-app — genuine content, not demo filler.
         source: "USER",
@@ -1240,6 +1255,7 @@ export class MomentsService {
       content: created.content,
       images: created.images,
       videoUrl: created.videoUrl,
+      audioUrl: created.audioUrl,
       tags: created.tags,
       likeCount: 0,
       commentCount: 0,
@@ -1259,7 +1275,13 @@ export class MomentsService {
   async updateMoment(
     userId: string,
     momentId: string,
-    input: { content?: string; images?: string[]; videoUrl?: string; tags?: string[] },
+    input: {
+      content?: string;
+      images?: string[];
+      videoUrl?: string;
+      audioUrl?: string;
+      tags?: string[];
+    },
   ) {
     const moment = await this.prisma.moment.findUnique({ where: { id: momentId } });
     if (!moment) return null;
@@ -1298,7 +1320,17 @@ export class MomentsService {
             : null
         : moment.videoUrl;
 
-    if (!nextContent && (!nextImages || nextImages.length === 0) && !nextVideoUrl) {
+    /* 语音：与 videoUrl 同一约定 —— 不传 = 不改，空字符串 = 删掉。 */
+    const nextAudioUrl =
+      input.audioUrl !== undefined
+        ? input.audioUrl.trim() === ""
+          ? null
+          : /^https?:\/\/\S{4,2000}$/.test(input.audioUrl)
+            ? input.audioUrl
+            : null
+        : moment.audioUrl;
+
+    if (!nextContent && (!nextImages || nextImages.length === 0) && !nextVideoUrl && !nextAudioUrl) {
       const error = new Error("EMPTY_CONTENT") as Error & { code?: string };
       error.code = "EMPTY_CONTENT";
       throw error;
@@ -1335,6 +1367,7 @@ export class MomentsService {
         content: nextContent,
         images: nextImages,
         videoUrl: nextVideoUrl,
+        audioUrl: nextAudioUrl,
         tags: nextTags,
       },
     });
@@ -1347,6 +1380,7 @@ export class MomentsService {
       content: updated.content,
       images: updated.images,
       videoUrl: updated.videoUrl,
+      audioUrl: updated.audioUrl,
       tags: updated.tags,
       likeCount: this.reportedLikeCount(updated),
       commentCount: updated.commentCount,
