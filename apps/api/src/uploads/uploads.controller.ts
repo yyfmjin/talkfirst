@@ -22,6 +22,7 @@ import {
 } from "./video-upload.interceptor";
 import { VideoCompressionService, VideoProcessingError } from "./video-compression.service";
 import { TARGET_VIDEO_BYTES } from "./video-upload.config";
+import { readImageSize } from "./image-size";
 
 class PresignDto {
   @IsIn(["image/jpeg", "image/png", "image/webp"])
@@ -108,9 +109,19 @@ export class UploadsController {
         error: { code: "INVALID_IMAGE", message: "Image must be an image URL or base64 data URL" },
       });
     }
+    /*
+     * 顺手记下头像尺寸（2026-10-25）。猜猜看用它卡「合格真人头像」的清晰度门槛：
+     * 缩略图、截图、表情包通常过不了 400×400。只存数字，不存图片本身。
+     * 外部 URL 拿不到原始字节时保持 null，那个账号就暂不进题库（重新上传即可）。
+     */
+    const size = parsed ? readImageSize(parsed.buffer) : null;
     const updated = await this.prisma.user.update({
       where: { id: user.id },
-      data: { avatarUrl: normalized },
+      data: {
+        avatarUrl: normalized,
+        avatarWidth: size?.width ?? null,
+        avatarHeight: size?.height ?? null,
+      },
     });
     return { success: true as const, data: { avatarUrl: updated.avatarUrl } };
   }
