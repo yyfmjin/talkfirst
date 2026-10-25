@@ -13,14 +13,21 @@
  *   node --env-file=.env scripts/backfill-avatar-size.mjs
  */
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { PrismaClient } from "@prisma/client";
 
 // 复用 API 编译产物里的解析器，避免两份实现走偏。
 const { readImageSize } = await import("../apps/api/dist/uploads/image-size.js");
 
+/*
+ * 目录解析必须和 API 一致：API 的 `uploadRoot()` 用 `process.cwd()`，而 pm2 是以
+ * `apps/api` 为 cwd 起服务的 —— 所以文件在 `apps/api/.local-data/uploads`，
+ * 不是仓库根的 `.local-data`（第一次跑就是踩了这个坑）。
+ */
+const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const uploadRoot =
-  process.env.UPLOAD_DIR?.trim() || join(process.cwd(), ".local-data", "uploads");
+  process.env.UPLOAD_DIR?.trim() || join(repoRoot, "apps", "api", ".local-data", "uploads");
 
 const prisma = new PrismaClient();
 
