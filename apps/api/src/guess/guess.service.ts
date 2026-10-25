@@ -262,8 +262,12 @@ export class GuessService {
   private async excludedTargetIds(viewerId: string) {
     const since = new Date(Date.now() - REPEAT_WINDOW_MS);
     const [recent, blocks, requests, connections] = await Promise.all([
+      /*
+       * 只排除「已经答过」的目标（2026-10-25 修正）：跳过不扣次数，也就不该
+       * 把对方锁 7 天，否则连点几次「换一个」就能把整个题库锁空。
+       */
       this.prisma.countryGuess.findMany({
-        where: { viewerId, createdAt: { gte: since } },
+        where: { viewerId, createdAt: { gte: since }, guessedCode: { not: null } },
         select: { targetId: true },
       }),
       this.prisma.block.findMany({
