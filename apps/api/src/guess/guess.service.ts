@@ -160,27 +160,56 @@ export class GuessService {
     return this.buildAnswer(viewerId, round.targetId, correct, round.correctCode, countryCode);
   }
 
-  /** 设置：是否参与 + 自报「头像不是真人照片」。两者都为真时立即出池。 */
-  async updateSettings(viewerId: string, input: { optOut?: boolean; avatarIsRealPhoto?: boolean }) {
-    const data: { guessOptOut?: boolean; avatarGuessExcluded?: boolean } = {};
-    if (typeof input.optOut === "boolean") data.guessOptOut = input.optOut;
+  /**
+   * 接受 / 拒绝邀请（2026-10-25 邀请制）。
+   *
+   * 接受 → `guessOptIn = true`，进题库；拒绝 → 记录时间，**不出题**，也不会再被同一批
+   * 邀请打扰（脚本按 `guessInvitedAt` 过滤，已邀请过的不重复推）。
+   */
+  async respondToInvite(viewerId: string, accept: boolean) {
+    const now = new Date();
+    const user = await this.prisma.user.update({
+      where: { id: viewerId },
+      data: accept
+        ? { guessOptIn: true, guessInviteAcceptedAt: now, guessInviteDeclinedAt: null }
+        : { guessOptIn: false, guessInviteDeclinedAt: now, guessInviteAcceptedAt: null },
+      select: { guessOptIn: true, guessInvitedAt: true },
+    });
+    return { optIn: user.guessOptIn, invitedAt: user.guessInvitedAt };
+  }
+
+  /** 随时退出 / 重新加入（不需要再等邀请）。 */
+  async updateSettings(viewerId: string, input: { optIn?: boolean; avatarIsRealPhoto?: boolean }) {
+    const data: { guessOptIn?: boolean; avatarGuessExcluded?: boolean } = {};
+    if (typeof input.optIn === "boolean") data.guessOptIn = input.optIn;
     if (typeof input.avatarIsRealPhoto === "boolean") data.avatarGuessExcluded = !input.avatarIsRealPhoto;
     const user = await this.prisma.user.update({
       where: { id: viewerId },
       data,
-      select: { guessOptOut: true, avatarGuessExcluded: true },
+      select: { guessOptIn: true, avatarGuessExcluded: true },
     });
-    return { optOut: user.guessOptOut, avatarIsRealPhoto: !user.avatarGuessExcluded };
+    return { optIn: user.guessOptIn, avatarIsRealPhoto: !user.avatarGuessExcluded };
   }
 
   async settings(viewerId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: viewerId },
-      select: { guessOptOut: true, avatarGuessExcluded: true, guessTotal: true, guessCorrect: true },
+      select: {
+        guessOptIn: true,
+        guessInvitedAt: true,
+        guessInviteAcceptedAt: true,
+        guessInviteDeclinedAt: true,
+        avatarGuessExcluded: true,
+        guessTotal: true,
+        guessCorrect: true,
+      },
     });
     if (!user) throw new NotFoundException({ success: false, error: { code: "USER_NOT_FOUND", message: "User not found" } });
     return {
-      optOut: user.guessOptOut,
+      optIn: user.guessOptIn,
+      invitedAt: user.guessInvitedAt,
+      acceptedAt: user.guessInviteAcceptedAt,
+      declinedAt: user.guessInviteDeclinedAt,
       avatarIsRealPhoto: !user.avatarGuessExcluded,
       // 「被猜中 N%」只在本人这里返回，不进入任何他人可见的接口。
       stats: user.guessTotal < MIN_STAT_SAMPLE
@@ -199,7 +228,7 @@ export class GuessService {
         status: "ACTIVE",
         avatarUrl: { not: null },
         countryCode: { not: null },
-        guessOptOut: false,
+        guessOptIn: true,
         avatarGuessExcluded: false,
       },
       select: {

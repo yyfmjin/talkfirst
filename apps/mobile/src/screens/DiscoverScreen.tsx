@@ -40,8 +40,49 @@ export function DiscoverScreen() {
   const [previewUserId, setPreviewUserId] = useState<string | null>(null);
   /* 「查看动态」开在资料卡之上：先把资料卡关掉再开它（不叠两层 Modal）。 */
   const [momentsUserId, setMomentsUserId] = useState<string | null>(null);
+  /**
+   * 猜猜看邀请（2026-10-25 邀请制）。
+   *
+   * 默认不参与，我们先发邀请；这里只在「已受邀、还没决定」时显示一条横幅。
+   * 接受后 `optIn` 为真，横幅消失，人进题库。
+   */
+  const [invite, setInvite] = useState<{ optIn: boolean; invitedAt: string | null; declinedAt: string | null } | null>(null);
+  const [inviteBusy, setInviteBusy] = useState(false);
   /* 猜猜看（2026-10-25）：与发现页共用同一天额度，关掉时把余额写回顶部。 */
   const [guessOpen, setGuessOpen] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void apiFetch<{ optIn: boolean; invitedAt: string | null; declinedAt: string | null }>("/discover/guess/settings")
+      .then((data) => {
+        if (!cancelled) setInvite(data);
+      })
+      .catch(() => {
+        /* 拿不到设置就不显示横幅：这个功能不该挡住发现页。 */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const respondInvite = useCallback(
+    async (accept: boolean) => {
+      if (inviteBusy) return;
+      setInviteBusy(true);
+      try {
+        const data = await apiFetch<{ optIn: boolean }>("/discover/guess/invite", {
+          method: "POST",
+          body: { accept },
+        });
+        setInvite((current) => (current ? { ...current, optIn: data.optIn, declinedAt: accept ? null : new Date().toISOString() } : current));
+      } catch {
+        /* 失败就保持原样，用户可再点一次。 */
+      } finally {
+        setInviteBusy(false);
+      }
+    },
+    [inviteBusy],
+  );
 
   const loadRecommendations = useCallback(async (nextFilter: FilterId, initial = false) => {
     if (initial) setLoading(true);
@@ -154,6 +195,31 @@ export function DiscoverScreen() {
         ))}
       </View>
 
+      {invite && !invite.optIn && invite.invitedAt && !invite.declinedAt ? (
+        <View style={styles.inviteCard}>
+          <Text style={styles.inviteTitle}>{t("guess.inviteTitle")}</Text>
+          <Text style={styles.inviteBody}>{t("guess.inviteBody")}</Text>
+          <View style={styles.inviteActions}>
+            <Pressable
+              onPress={() => void respondInvite(true)}
+              disabled={inviteBusy}
+              accessibilityRole="button"
+              style={styles.inviteAccept}
+            >
+              <Text style={styles.inviteAcceptLabel}>{t("guess.inviteAccept")}</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => void respondInvite(false)}
+              disabled={inviteBusy}
+              accessibilityRole="button"
+              style={styles.inviteDecline}
+            >
+              <Text style={styles.inviteDeclineLabel}>{t("guess.inviteDecline")}</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+
       {switching ? (
         <View style={styles.switching}>
           <ActivityIndicator color={colors.primary} />
@@ -218,6 +284,34 @@ function Bubble({ item, onPress }: { item: Recommendation; onPress: () => void }
 }
 
 const styles = StyleSheet.create({
+  inviteCard: {
+    marginHorizontal: 20,
+    marginBottom: 10,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: "#F1F2FF",
+    borderWidth: 1,
+    borderColor: "#DCE0FF",
+  },
+  inviteTitle: { fontSize: 15, fontWeight: "600", color: colors.ink },
+  inviteBody: { marginTop: 4, fontSize: 13, lineHeight: 19, color: colors.muted },
+  inviteActions: { flexDirection: "row", gap: 8, marginTop: 12 },
+  inviteAccept: {
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: colors.primary,
+  },
+  inviteAcceptLabel: { fontSize: 13, fontWeight: "600", color: colors.white },
+  inviteDecline: {
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#DCE0FF",
+    backgroundColor: colors.white,
+  },
+  inviteDeclineLabel: { fontSize: 13, fontWeight: "500", color: colors.muted },
   root: { flex: 1, backgroundColor: colors.bg, paddingTop: 8 },
   headerActions: { alignItems: "flex-end", gap: 8 },
   guessButton: {

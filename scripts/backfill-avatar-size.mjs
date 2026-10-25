@@ -62,7 +62,7 @@ for (const user of users) {
 }
 
 const over400 = await prisma.user.count({
-  where: { avatarWidth: { gte: 400 }, avatarHeight: { gte: 400 }, guessOptOut: false, avatarGuessExcluded: false },
+  where: { avatarWidth: { gte: 400 }, avatarHeight: { gte: 400 }, guessOptIn: true, avatarGuessExcluded: false },
 });
 
 console.log(`扫描 ${users.length} 个头像，回填 ${filled}，跳过 ${skipped.length}`);

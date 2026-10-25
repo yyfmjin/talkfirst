@@ -614,8 +614,12 @@ model User {
   avatarWidth         Int?
   avatarHeight        Int?
   avatarGuessExcluded Boolean @default(false)
-  // 默认参与（已定 2026-10-25）：optOut 为 true 时永不出题。
-  guessOptOut         Boolean @default(false)
+  // 邀请制（2026-10-25 改）：默认**不参与**。我们挑合适的用户推送邀请，接受后才进题库
+  // —— 用真人照片做题目，"同意"比"识别"更重要，所以自动人脸检测不做了。
+  guessOptIn            Boolean   @default(false)
+  guessInvitedAt        DateTime?
+  guessInviteAcceptedAt DateTime?
+  guessInviteDeclinedAt DateTime?
   // 被猜统计：只累加在被猜者身上，且同一对（猜的人、被猜的人）只计一次。
   guessTotal          Int     @default(0)
   guessCorrect        Int     @default(0)

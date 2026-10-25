@@ -17,9 +17,10 @@ class AnswerDto {
 }
 
 class SettingsDto {
+  /** 随时退出 / 重新加入（不需要再等一次邀请）。 */
   @IsOptional()
   @IsBoolean()
-  optOut?: boolean;
+  optIn?: boolean;
 
   /**
    * 本人自报「我的头像不是真人照片」。入参用正向表述（是不是真人），
@@ -29,6 +30,11 @@ class SettingsDto {
   @IsOptional()
   @IsBoolean()
   avatarIsRealPhoto?: boolean;
+}
+
+class InviteDto {
+  @IsBoolean()
+  accept!: boolean;
 }
 
 /**
@@ -59,8 +65,19 @@ export class GuessController {
   async updateSettings(@CurrentUser() user: AuthUser, @Body(new ValidationPipe()) dto: SettingsDto) {
     return {
       success: true as const,
-      data: await this.guess.updateSettings(user.id, { optOut: dto.optOut, avatarIsRealPhoto: dto.avatarIsRealPhoto }),
+      data: await this.guess.updateSettings(user.id, { optIn: dto.optIn, avatarIsRealPhoto: dto.avatarIsRealPhoto }),
     };
+  }
+
+  /**
+   * 回应邀请（2026-10-25 邀请制）。
+   *
+   * 接受 = 进题库；拒绝 = 不出题，且同一批邀请不会再来打扰。
+   * 两个方向都要显式调用 —— 默认不动作就等于「还没决定」，仍然不出题。
+   */
+  @Post("invite")
+  async respondToInvite(@CurrentUser() user: AuthUser, @Body(new ValidationPipe()) dto: InviteDto) {
+    return { success: true as const, data: await this.guess.respondToInvite(user.id, dto.accept) };
   }
 
   /**

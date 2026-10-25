@@ -61,7 +61,7 @@ for (const [index, person] of people.entries()) {
     avatarHeight: source.avatarHeight,
     emailVerified: true,
     status: "ACTIVE",
-    guessOptOut: false,
+    guessOptIn: true, // 测试号直接视为已接受邀请
     avatarGuessExcluded: false,
   };
 
@@ -85,7 +85,7 @@ const pool = await prisma.user.count({
     countryCode: { not: null },
     avatarWidth: { gte: 400 },
     avatarHeight: { gte: 400 },
-    guessOptOut: false,
+    guessOptIn: true, // 测试号直接视为已接受邀请
     avatarGuessExcluded: false,
   },
 });
