@@ -50,7 +50,21 @@ const nextConfig: NextConfig = {
   output: process.env.NEXT_OUTPUT_STANDALONE === "1" ? "standalone" : undefined,
   outputFileTracingRoot: process.env.NEXT_OUTPUT_STANDALONE === "1" ? "../../" : undefined,
   async headers() {
-    return [{ source: "/(.*)", headers: SECURITY_HEADERS }];
+    return [
+      { source: "/(.*)", headers: SECURITY_HEADERS },
+      /*
+       * 安装包必须短缓存（2026-10-25）。
+       *
+       * `/apk/talkfirst.apk` 是官网固定下载入口，内容会随每次发版被覆盖。
+       * 默认的 `max-age=14400` 会让浏览器四小时内不回来问，用户装到的还是旧版
+       * （0.1.2 就是这么被发出去了两轮）。300 秒 + must-revalidate：既省带宽，
+       * 又保证发版后最多五分钟所有人拿到的都是新包。
+       */
+      {
+        source: "/apk/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=300, must-revalidate" }],
+      },
+    ];
   },
 };
 
