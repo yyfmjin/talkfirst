@@ -26,6 +26,33 @@ model DiscoverView {
   @@index([userId, viewDate])
 }
 
+/**
+ * 一轮「猜猜看」（2026-10-25）。
+ *
+ * 正确答案只存在这一行里，永不下发 —— 客户端只拿 `options`（三个候选，已打乱），
+ * 否则抓包一次这个玩法就废了。
+ *
+ * 为什么不复用 `DiscoverView`：浏览是一次性的，猜有「答没答」「答了什么」两个状态；
+ * 塞进 views 表会让配额统计和猜题统计互相污染。
+ */
+model CountryGuess {
+  id          String   @id @default(uuid()) @db.Uuid
+  viewerId    String   @db.Uuid
+  viewer      User     @relation("GuessViewer", fields: [viewerId], references: [id], onDelete: Cascade)
+  targetId    String   @db.Uuid
+  target      User     @relation("GuessTarget", fields: [targetId], references: [id], onDelete: Cascade)
+  correctCode String   @db.Char(2)
+  options     String[] @default([])
+  guessedCode String?  @db.Char(2)
+  correct     Boolean?
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  @@index([viewerId, targetId, createdAt])
+  @@index([targetId])
+  @@index([viewerId, expiresAt])
+}
+
 enum UserStatus {
   ACTIVE
   DISABLED
@@ -582,6 +609,18 @@ model User {
 
   nickname    String?
   avatarUrl   String?
+  // 猜猜看（2026-10-25）：头像尺寸用来卡「合格真人头像」的清晰度门槛；
+  // 被举报「不是真人照片」或本人自报后 `avatarGuessExcluded` 置真，立即出池。
+  avatarWidth         Int?
+  avatarHeight        Int?
+  avatarGuessExcluded Boolean @default(false)
+  // 默认参与（已定 2026-10-25）：optOut 为 true 时永不出题。
+  guessOptOut         Boolean @default(false)
+  // 被猜统计：只累加在被猜者身上，且同一对（猜的人、被猜的人）只计一次。
+  guessTotal          Int     @default(0)
+  guessCorrect        Int     @default(0)
+  guessesSent         CountryGuess[] @relation("GuessViewer")
+  guessesReceived     CountryGuess[] @relation("GuessTarget")
   birthDate   DateTime? @db.Date
   countryCode String?   @db.Char(2)
   city        String?

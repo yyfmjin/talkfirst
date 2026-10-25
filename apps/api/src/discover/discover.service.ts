@@ -9,7 +9,8 @@ import {
 import { isProfileComplete } from "../users/profile-completion";
 import { t, type SupportedLocale } from "../common/i18n";
 
-const DAILY_VIEW_LIMIT = 20;
+/** 发现页每日额度；猜猜看共用同一个数字（见 GuessService）。 */
+export const DAILY_VIEW_LIMIT = 20;
 const LANGUAGE_SCORE = 30;
 const INTEREST_SCORE = 25;
 const PURPOSE_SCORE = 20;

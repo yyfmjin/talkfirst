@@ -11,6 +11,7 @@ import { AuthModule } from "./auth/auth.module";
 import { UsersModule } from "./users/users.module";
 import { MetaModule } from "./meta/meta.module";
 import { DiscoverModule } from "./discover/discover.module";
+import { GuessModule } from "./guess/guess.module";
 import { ConnectionsModule } from "./connections/connections.module";
 import { SocialModule } from "./social/social.module";
 import { ChatModule } from "./chat/chat.module";
@@ -44,6 +45,7 @@ import { AiCompanionModule } from "./ai-companion/ai-companion.module";
     UsersModule,
     MetaModule,
     DiscoverModule,
+    GuessModule,
     ConnectionsModule,
     SocialModule,
     ChatModule,

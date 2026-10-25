@@ -9,6 +9,8 @@ import {
 } from "react-native";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
+import { GuessSheet } from "../components/GuessSheet";
+import { Icon } from "../components/Icon";
 import { apiFetch } from "../lib/api";
 import { useI18n } from "../lib/i18n-context";
 import type { MsgKey } from "../lib/messages";
@@ -38,6 +40,8 @@ export function DiscoverScreen() {
   const [previewUserId, setPreviewUserId] = useState<string | null>(null);
   /* 「查看动态」开在资料卡之上：先把资料卡关掉再开它（不叠两层 Modal）。 */
   const [momentsUserId, setMomentsUserId] = useState<string | null>(null);
+  /* 猜猜看（2026-10-25）：与发现页共用同一天额度，关掉时把余额写回顶部。 */
+  const [guessOpen, setGuessOpen] = useState(false);
 
   const loadRecommendations = useCallback(async (nextFilter: FilterId, initial = false) => {
     if (initial) setLoading(true);
@@ -117,8 +121,19 @@ export function DiscoverScreen() {
           <Text style={styles.title}>{t("discover.title")}</Text>
           <Text style={styles.subtitle}>{t("discover.subtitle")}</Text>
         </View>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{t("discover.remaining", { n: remaining })}</Text>
+        <View style={styles.headerActions}>
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{t("discover.remaining", { n: remaining })}</Text>
+          </View>
+          <Pressable
+            onPress={() => setGuessOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t("discover.guessEntry")}
+            style={styles.guessButton}
+          >
+            <Icon name="dice-outline" size={16} color={colors.primary} />
+            <Text style={styles.guessLabel}>{t("discover.guessEntry")}</Text>
+          </Pressable>
         </View>
       </View>
 
@@ -166,6 +181,12 @@ export function DiscoverScreen() {
         }}
       />
       <UserMomentsScreen userId={momentsUserId} onClose={() => setMomentsUserId(null)} />
+      {/* 猜猜看：作答才扣次数，扣完把余额回写给顶部那个数字 */}
+      <GuessSheet
+        visible={guessOpen}
+        onClose={() => setGuessOpen(false)}
+        onQuotaChange={setRemaining}
+      />
     </View>
   );
 }
@@ -198,6 +219,19 @@ function Bubble({ item, onPress }: { item: Recommendation; onPress: () => void }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg, paddingTop: 8 },
+  headerActions: { alignItems: "flex-end", gap: 8 },
+  guessButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#DCE0FF",
+    backgroundColor: "#F1F2FF",
+  },
+  guessLabel: { fontSize: 13, fontWeight: "600", color: colors.primary },
   center: { flex: 1, backgroundColor: colors.bg, alignItems: "center", justifyContent: "center", padding: 28 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", paddingHorizontal: 20 },
   title: { fontSize: 22, fontWeight: "600", color: colors.ink },

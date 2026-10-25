@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline' 'self'; script-src 'unsafe-inline' 'self'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'none'; frame-src 'none'; object-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="kun-component-prototype" content="1">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>猜猜看 · TalkFirst</title>
+<style>
+  :root {
+    --brand: #6B7CFF;
+    --brand-ink: #4C5BE0;
+    --ink: #1B1B2F;
+    --muted: #8A8FA3;
+    --line: #ECEEF5;
+    --bg: #F6F7FB;
+    --card: #FFFFFF;
+    --ok: #16A34A;
+    --ok-bg: #ECFDF3;
+    --warn-bg: #FFF7ED;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: #E9EBF2;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: var(--ink);
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .phone {
+    width: 390px; height: 844px; background: var(--bg);
+    border-radius: 34px; overflow: hidden; position: relative;
+    box-shadow: 0 24px 60px rgba(27,27,47,.18), 0 2px 6px rgba(27,27,47,.06);
+    display: flex; flex-direction: column;
+  }
+
+  /* ── 顶部：今日剩余 + 猜猜看 ───────────────────────────── */
+  .topbar { padding: 18px 18px 10px; }
+  .topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .quota { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .quota b { color: var(--ink); font-size: 15px; font-variant-numeric: tabular-nums; }
+  .guess-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px 8px 11px; border-radius: 999px;
+    border: 1px solid #DCE0FF; background: #F1F2FF; color: var(--brand-ink);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: transform .12s ease, background .12s ease;
+  }
+  .guess-btn:hover { background: #E7E9FF; }
+  .guess-btn:active { transform: scale(.97); }
+  .guess-btn svg { width: 15px; height: 15px; }
+  .guess-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+  .feed { flex: 1; overflow: hidden; padding: 6px 18px 18px; display: flex; flex-direction: column; gap: 12px; }
+  .feed-card { background: var(--card); border-radius: 16px; padding: 14px; display: flex; gap: 12px; align-items: center; }
+  .feed-avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg,#E7E9F5,#D7DBEC); flex: none; }
+  .feed-lines { flex: 1; display: flex; flex-direction: column; gap: 7px; }
+  .feed-line { height: 9px; border-radius: 5px; background: #F0F2F8; }
+  .feed-line.w60 { width: 60%; }
+  .feed-line.w85 { width: 85%; }
+
+  /* ── 底部弹层 ─────────────────────────────────────────── */
+  .scrim {
+    position: absolute; inset: 0; background: rgba(20,22,40,.42);
+    opacity: 0; pointer-events: none; transition: opacity .18s ease;
+  }
+  .scrim.on { opacity: 1; pointer-events: auto; }
+  .sheet {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    background: var(--card); border-radius: 22px 22px 0 0;
+    padding: 10px 18px 22px; transform: translateY(102%);
+    transition: transform .22s cubic-bezier(.22,.61,.36,1);
+    box-shadow: 0 -12px 40px rgba(27,27,47,.18);
+  }
+  .sheet.on { transform: translateY(0); }
+  .grabber { width: 38px; height: 4px; border-radius: 2px; background: var(--line); margin: 0 auto 12px; }
+
+  .photo-wrap { position: relative; border-radius: 18px; overflow: hidden; background: #E7E9F5; aspect-ratio: 4 / 5; }
+  .photo-wrap svg { width: 100%; height: 100%; display: block; }
+  .photo-tag {
+    position: absolute; left: 10px; bottom: 10px;
+    background: rgba(27,27,47,.55); color: #fff; font-size: 11px;
+    padding: 4px 8px; border-radius: 999px; backdrop-filter: blur(4px);
+  }
+  .photo-flag {
+    position: absolute; right: 10px; top: 10px; width: 34px; height: 26px;
+    display: grid; place-items: center; font-size: 18px;
+    background: rgba(255,255,255,.86); border-radius: 8px;
+    opacity: 0; transform: scale(.9); transition: opacity .18s ease, transform .18s ease;
+  }
+  .photo-flag.on { opacity: 1; transform: scale(1); }
+
+  h2.prompt { font-size: 17px; line-height: 24px; margin: 14px 0 4px; letter-spacing: -.01em; }
+  p.sub { font-size: 13px; line-height: 20px; color: var(--muted); margin: 0 0 12px; }
+
+  .options { display: flex; flex-direction: column; gap: 8px; }
+  .opt {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 13px 14px; border-radius: 14px; cursor: pointer;
+    border: 1px solid var(--line); background: #fff;
+    font-size: 15px; color: var(--ink); text-align: left;
+    transition: border-color .12s ease, background .12s ease, transform .1s ease;
+  }
+  .opt:hover:not(:disabled) { border-color: #C9CDF5; background: #FAFAFF; }
+  .opt:active:not(:disabled) { transform: scale(.995); }
+  .opt:disabled { cursor: default; }
+  .opt .flag { font-size: 20px; line-height: 1; }
+  .opt .name { flex: 1; font-weight: 500; }
+  .opt .mark { font-size: 13px; font-weight: 600; }
+  .opt.correct { border-color: #B7E6C6; background: var(--ok-bg); }
+  .opt.correct .mark { color: var(--ok); }
+  .opt.wrong { border-color: #F3C9C9; background: #FEF2F2; }
+  .opt.wrong .mark { color: #DC2626; }
+
+  .foot-row { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+  .ghost-btn {
+    border: 0; background: transparent; color: var(--muted);
+    font-size: 13px; cursor: pointer; padding: 8px 4px;
+  }
+  .ghost-btn:hover { color: var(--ink); }
+
+  /* 结果区 */
+  .result { display: none; }
+  .result.on { display: block; }
+  .verdict { display: flex; align-items: center; gap: 8px; margin: 14px 0 2px; font-size: 17px; font-weight: 650; }
+  .verdict .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .verdict.ok .dot { background: var(--ok); }
+  .verdict.no .dot { background: #DC2626; }
+  .answer-line { font-size: 15px; color: var(--ink); margin: 2px 0 0; }
+  .answer-line b { font-weight: 650; }
+  .stat {
+    display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
+    background: #F5F6FC; color: var(--muted); font-size: 12px;
+    padding: 6px 10px; border-radius: 999px;
+  }
+  .stat b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .cta { display: flex; gap: 8px; margin-top: 16px; }
+  .btn-primary {
+    flex: 1; border: 0; border-radius: 14px; padding: 14px;
+    background: var(--brand); color: #fff; font-size: 15px; font-weight: 650;
+    cursor: pointer; transition: background .12s ease, transform .1s ease;
+  }
+  .btn-primary:hover { background: #5A6BF5; }
+  .btn-primary:active { transform: scale(.99); }
+  .btn-secondary {
+    border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px;
+    background: #fff; color: var(--ink); font-size: 15px; font-weight: 550; cursor: pointer;
+  }
+  .btn-secondary:hover { background: #FAFAFF; }
+  .btn-primary.sent { background: var(--ok); }
+
+  .exhausted { display: none; text-align: center; padding: 18px 6px 6px; }
+  .exhausted.on { display: block; }
+  .exhausted h3 { font-size: 16px; margin: 14px 0 6px; }
+  .exhausted p { font-size: 13px; color: var(--muted); margin: 0 0 16px; line-height: 20px; }
+
+  .toast {
+    position: absolute; left: 50%; bottom: 28px; transform: translate(-50%, 12px);
+    background: rgba(27,27,47,.92); color: #fff; font-size: 13px;
+    padding: 10px 16px; border-radius: 999px; opacity: 0; pointer-events: none;
+    transition: opacity .18s ease, transform .18s ease; white-space: nowrap;
+  }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body data-kun-component-root>
+<div class="phone">
+  <!-- 顶部：今日剩余 + 猜猜看 -->
+  <div class="topbar">
+    <div class="topline">
+      <div class="quota">今日剩余 <b id="quota">20</b> 次</div>
+      <button class="guess-btn" id="openBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="8.5" cy="8.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1.3" fill="currentColor" stroke="none"/>
+        </svg>
+        猜猜看
+      </button>
+    </div>
+  </div>
+
+  <!-- 发现页占位内容，给入口一个上下文 -->
+  <div class="feed" aria-hidden="true">
+    <div class="feed-card"><div class="feed-avatar"></div><div class="feed-lines"><div class="feed-line w60"></div><div class="feed-line w85"></div></div></div>
+    <div class="feed-card"><div class="feed-avatar"></div><div class="feed-lines"><div class="feed-line w85"></div><div class="feed-line w60"></div></div></div>
+    <div class="feed-card"><div class="feed-avatar"></div><div class="feed-lines"><div class="feed-line w60"></div><div class="feed-line w85"></div></div></div>
+  </div>
+
+  <div class="scrim" id="scrim"></div>
+
+  <!-- 底部弹层 -->
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="grabber"></div>
+
+    <!-- 出题态 -->
+    <div id="questionState">
+      <div class="photo-wrap">
+        <!-- 示意肖像：真实产品这里是 target.avatarUrl -->
+        <svg viewBox="0 0 320 400" role="img" aria-label="用户照片（示意图）">
+          <defs>
+            <linearGradient id="bgg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#DDE1F2"/><stop offset="1" stop-color="#C9CFE8"/>
+            </linearGradient>
+            <linearGradient id="fig" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#8E96B8"/><stop offset="1" stop-color="#6E769B"/>
+            </linearGradient>
+          </defs>
+          <rect width="320" height="400" fill="url(#bgg)"/>
+          <circle cx="160" cy="150" r="58" fill="url(#fig)"/>
+          <path d="M46 400c0-66 51-112 114-112s114 46 114 112z" fill="url(#fig)"/>
+          <rect y="330" width="320" height="70" fill="#fff" opacity=".08"/>
+        </svg>
+        <span class="photo-tag" id="photoTag">Mia · 杭州</span>
+        <span class="photo-flag" id="photoFlag">🇯🇵</span>
+      </div>
+
+      <h2 class="prompt" id="sheetTitle">TA 从哪来？</h2>
+      <p class="sub">猜一次消耗 1 次今日机会 · 答对答错都能打招呼</p>
+
+      <div class="options" id="options">
+        <button class="opt" data-code="JP"><span class="flag">🇯🇵</span><span class="name">日本</span><span class="mark"></span></button>
+        <button class="opt" data-code="KR"><span class="flag">🇰🇷</span><span class="name">韩国</span><span class="mark"></span></button>
+        <button class="opt" data-code="TH"><span class="flag">🇹🇭</span><span class="name">泰国</span><span class="mark"></span></button>
+      </div>
+
+      <div class="foot-row">
+        <button class="ghost-btn" id="skipBtn">换一个</button>
+        <button class="ghost-btn" id="closeBtn1">先不玩</button>
+      </div>
+    </div>
+
+    <!-- 结果态 -->
+    <div class="result" id="resultState">
+      <div class="photo-wrap" style="aspect-ratio: 16 / 9;">
+        <svg viewBox="0 0 320 180" role="img" aria-label="用户照片（示意图）">
+          <rect width="320" height="180" fill="url(#bgg)"/>
+          <circle cx="160" cy="58" r="30" fill="url(#fig)"/>
+          <path d="M100 180c0-33 27-56 60-56s60 23 60 56z" fill="url(#fig)"/>
+        </svg>
+        <span class="photo-flag on" id="photoFlag2">🇯🇵</span>
+      </div>
+
+      <div class="verdict ok" id="verdict"><span class="dot"></span><span id="verdictText">猜得准</span></div>
+      <p class="answer-line">TA 来自 <b id="answerName">日本</b></p>
+      <span class="stat" id="statLine">已经被猜中 <b id="statNum">62%</b> · 43 次</span>
+
+      <div class="cta">
+        <button class="btn-primary" id="helloBtn">打招呼</button>
+        <button class="btn-secondary" id="nextBtn">再来一局</button>
+      </div>
+      <div class="foot-row">
+        <button class="ghost-btn" id="closeBtn2">先不玩</button>
+        <button class="ghost-btn" id="reportBtn">举报这张照片</button>
+      </div>
+    </div>
+
+    <!-- 次数用完 -->
+    <div class="exhausted" id="exhaustedState">
+      <h3>今天的 20 次用完了</h3>
+      <p>明天 0 点重置。也可以直接去发现页，打招呼不占次数。</p>
+      <button class="btn-primary" id="goDiscover" style="width:100%">去发现页</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">已发送打招呼请求</div>
+</div>
+
+<script>
+  const state = { remaining: 20, answered: false, sent: false };
+  const $ = (id) => document.getElementById(id);
+  const scrim = $("scrim"), sheet = $("sheet");
+
+  function openSheet() {
+    if (state.remaining <= 0) { showExhausted(); }
+    else { showQuestion(); }
+    scrim.classList.add("on");
+    sheet.classList.add("on");
+  }
+  function closeSheet() {
+    scrim.classList.remove("on");
+    sheet.classList.remove("on");
+    setTimeout(resetRound, 220);
+  }
+  function resetRound() {
+    state.answered = false; state.sent = false;
+    $("questionState").style.display = "block";
+    $("resultState").classList.remove("on");
+    $("exhaustedState").classList.remove("on");
+    $("photoFlag").classList.remove("on");
+    document.querySelectorAll(".opt").forEach((b) => {
+      b.disabled = false; b.classList.remove("correct", "wrong");
+      b.querySelector(".mark").textContent = "";
+    });
+    $("helloBtn").classList.remove("sent");
+    $("helloBtn").textContent = "打招呼";
+  }
+  function showQuestion() { resetRound(); }
+  function showExhausted() {
+    $("questionState").style.display = "none";
+    $("resultState").classList.remove("on");
+    $("exhaustedState").classList.add("on");
+    $("openBtn").disabled = true;
+  }
+
+  const ANSWER = "JP";
+  document.querySelectorAll(".opt").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (state.answered) return;
+      state.answered = true;
+      const picked = btn.dataset.code;
+      const ok = picked === ANSWER;
+
+      document.querySelectorAll(".opt").forEach((b) => {
+        b.disabled = true;
+        if (b.dataset.code === ANSWER) { b.classList.add("correct"); b.querySelector(".mark").textContent = "正确答案"; }
+        if (b.dataset.code === picked && !ok) { b.classList.add("wrong"); b.querySelector(".mark").textContent = "你的选择"; }
+      });
+
+      // 结算
+      state.remaining = Math.max(0, state.remaining - 1);
+      $("quota").textContent = String(state.remaining);
+
+      $("questionState").style.display = "none";
+      const res = $("resultState");
+      res.classList.add("on");
+      $("photoFlag2").textContent = "🇯🇵";
+      $("answerName").textContent = "日本";
+      $("verdict").className = "verdict " + (ok ? "ok" : "no");
+      $("verdictText").textContent = ok ? "猜得准" : "这次没中";
+      $("statLine").style.display = "inline-flex";
+    });
+  });
+
+  $("helloBtn").addEventListener("click", () => {
+    if (state.sent) return;
+    state.sent = true;
+    $("helloBtn").classList.add("sent");
+    $("helloBtn").textContent = "已打招呼";
+    toast("已发送打招呼请求，等 TA 接受");
+  });
+
+  $("nextBtn").addEventListener("click", () => {
+    if (state.remaining <= 0) { showExhausted(); return; }
+    showQuestion();
+  });
+
+  $("skipBtn").addEventListener("click", () => { showQuestion(); });
+  $("closeBtn1").addEventListener("click", closeSheet);
+  $("closeBtn2").addEventListener("click", closeSheet);
+  $("reportBtn").addEventListener("click", () => toast("已打开举报（复用现有举报流程）"));
+  $("goDiscover").addEventListener("click", closeSheet);
+  $("openBtn").addEventListener("click", openSheet);
+  scrim.addEventListener("click", closeSheet);
+  $("helloBtn").focus?.();
+
+  let toastTimer;
+  function toast(msg) {
+    const el = $("toast");
+    el.textContent = msg;
+    el.classList.add("on");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove("on"), 2200);
+  }
+</script>
+</body>
+</html>
