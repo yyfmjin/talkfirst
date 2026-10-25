@@ -8,7 +8,7 @@
 ## A. 产物（5 条）
 
 - [ ] AAB 存在且是**最新一次构建**：`D:\Android\play\talkfirst-<version>.aab`
-- [ ] `versionCode` 比上一次上传的大（当前 `4`，versionName `0.1.4`）
+- [ ] `versionCode` 比上一次上传的大（当前 `6`，versionName `0.1.6`）
 - [ ] 签名用的是 Play 上传密钥（证书 SHA-256 以 `71:83:AE:` 开头）
 - [ ] 权限里**没有**相机/录音/悬浮窗/存储：
       `aapt2 dump badging` 只应出现 `INTERNET`、`VIBRATE`、`ACCESS_NETWORK_STATE`、
