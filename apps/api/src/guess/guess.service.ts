@@ -270,8 +270,15 @@ export class GuessService {
         where: { OR: [{ blockerId: viewerId }, { blockedId: viewerId }] },
         select: { blockerId: true, blockedId: true },
       }),
+      /*
+       * 只排除「被拒绝」的关系（2026-10-25 修正）。
+       *
+       * 第一版把「有任何请求记录」的人全排除了，结果题库只有三个人时，
+       * 打过一次招呼就把候选清空 —— 猜一个已经跟你打过招呼的人完全没问题。
+       * 已接受的关系由下面的 connections 负责，这里只管明确被拒的。
+       */
       this.prisma.connectionRequest.findMany({
-        where: { OR: [{ senderId: viewerId }, { receiverId: viewerId }] },
+        where: { status: "REJECTED", OR: [{ senderId: viewerId }, { receiverId: viewerId }] },
         select: { senderId: true, receiverId: true },
       }),
       this.prisma.connection.findMany({
