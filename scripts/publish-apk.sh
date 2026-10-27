@@ -56,14 +56,22 @@ if [ -n "$APK" ]; then
   $SSH "export PATH=/home/ubuntu/.nvm/versions/node/v22.23.3/bin:\$PATH; pm2 restart talkfirst-web >/dev/null 2>&1" || exit 1
   sleep 6
 
-  REMOTE_SHA=$(curl -s -m 300 -L "$BASE/download/android" | sha256sum | cut -d' ' -f1)
-  echo "本地 sha256: $SHA"
-  echo "线上 sha256: $REMOTE_SHA"
-  if [ "$SHA" = "$REMOTE_SHA" ]; then
+  # 以**源站**为准：Cloudflare 对 /apk/* 有缓存（最长 5 分钟），拿公网地址比对
+  # 会在发版后几分钟内读到旧副本，把一次正确的发布判成失败（2026-10-25 踩过）。
+  ORIGIN_SHA=$($SSH "curl -s -m 300 -H 'Host: talkfirst.ccwu.cc' -k https://127.0.0.1/apk/talkfirst.apk | sha256sum | cut -d' ' -f1")
+  echo "本地 sha256:   $SHA"
+  echo "源站 sha256:   $ORIGIN_SHA"
+  if [ "$SHA" != "$ORIGIN_SHA" ]; then
+    echo "❌ 源站内容与本地不一致，检查 public/apk 目录"
+    exit 1
+  fi
+
+  # 公网这一趟只作参考：带一个随机参数绕开缓存，顺便告诉用户真实生效时间。
+  PUBLIC_SHA=$(curl -s -m 300 -L "$BASE/download/android?t=$(date +%s)" | sha256sum | cut -d' ' -f1)
+  if [ "$SHA" = "$PUBLIC_SHA" ]; then
     echo "✅ $BASE/download/android 已指向 $VER"
   else
-    echo "❌ 线上内容与本地不一致，检查 nginx / public 目录"
-    exit 1
+    echo "⚠️  源站已是 $VER，但公网仍拿到旧副本（Cloudflare 缓存），最多 5 分钟后一致"
   fi
 fi
 
