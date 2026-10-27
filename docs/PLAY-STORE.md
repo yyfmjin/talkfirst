@@ -35,7 +35,7 @@
 
 | 东西 | 路径 |
 |---|---|
-| AAB（交给 Play 的文件） | `D:\Android\play\talkfirst-0.1.9.aab`（28MB，versionCode 9，targetSdk 36） |
+| AAB（交给 Play 的文件） | `D:\Android\play\talkfirst-0.1.10.aab`（28MB，versionCode 10，targetSdk 36） |
 | 上传密钥（upload key） | `D:\Android\keystores\talkfirst-play-upload.keystore`（别名 `talkfirst`，RSA 4096，30 年） |
 | 上传密钥证书指纹 | SHA-256 `71:83:AE:DB:E1:47:26:4E:21:89:5C:2F:45:2C:36:8C:7E:DA:A7:A5:41:3C:06:C0:5B:EC:5F:D6:88:8A:F1:2E`（在 Play Console 登记上传证书时对得上） |
 | 密钥口令与备份说明 | `D:\Android\keystores\UPLOAD-KEY-README.txt`（chmod 600） |
