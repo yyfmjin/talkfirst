@@ -78,7 +78,21 @@ export class GuessService {
 
     const target = await this.pickTarget(viewerId);
     if (!target) {
-      throw new ConflictException({ success: false, error: { code: "NO_CANDIDATE", message: "No candidate available" } });
+      /*
+       * 两种「没人可猜」要分开（2026-10-25）：
+       *   NO_CANDIDATE       池子本身是空的 —— 这时候说「晚点再来」是敷衍，
+       *                      该引导用户去邀请朋友 / 报名当题目；
+       *   NO_CANDIDATE_LEFT  池子里有人，但你 7 天内都猜过了 —— 明天再来。
+       */
+      const poolSize = await this.prisma.user.count({ where: this.poolWhere() });
+      const code = poolSize === 0 ? "NO_CANDIDATE" : "NO_CANDIDATE_LEFT";
+      throw new ConflictException({
+        success: false,
+        error: {
+          code,
+          message: poolSize === 0 ? "The pool is empty" : "You have guessed everyone available",
+        },
+      });
     }
 
     const countries = await this.countryTable();
@@ -220,16 +234,28 @@ export class GuessService {
 
   // ── 内部 ────────────────────────────────────────────────────────────────
 
+  /**
+   * 题库的公共条件（不含「这个人对你是否已猜过」）。
+   *
+   * 出题和「池子是不是空的」必须用同一套判据，否则会出现
+   * 「提示说没人可猜，其实池子里有人」这种自相矛盾。
+   */
+  private poolWhere() {
+    return {
+      status: "ACTIVE" as const,
+      avatarUrl: { not: null },
+      countryCode: { not: null },
+      guessOptIn: true,
+      avatarGuessExcluded: false,
+    };
+  }
+
   private async pickTarget(viewerId: string) {
     const excluded = await this.excludedTargetIds(viewerId);
     const rows = await this.prisma.user.findMany({
       where: {
         id: { not: viewerId, ...(excluded.length ? { notIn: excluded } : {}) },
-        status: "ACTIVE",
-        avatarUrl: { not: null },
-        countryCode: { not: null },
-        guessOptIn: true,
-        avatarGuessExcluded: false,
+        ...this.poolWhere(),
       },
       select: {
         id: true,

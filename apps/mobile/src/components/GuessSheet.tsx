@@ -5,6 +5,7 @@ import {
   Modal,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -65,6 +66,12 @@ export function GuessSheet({
   const [loading, setLoading] = useState(false);
   const [answering, setAnswering] = useState(false);
   const [exhausted, setExhausted] = useState(false);
+  /**
+   * 两种「没人可猜」（2026-10-25 服务端区分）：
+   *   "pool"    池子是空的 —— 引导去邀请朋友，而不是甩一句「晚点再来」；
+   *   "guessed" 池子里有人，但你 7 天内都猜过了 —— 明天再来。
+   */
+  const [emptyState, setEmptyState] = useState<"pool" | "guessed" | null>(null);
   const [error, setError] = useState("");
   const [sendingHello, setSendingHello] = useState(false);
 
@@ -74,6 +81,7 @@ export function GuessSheet({
     setAnswer(null);
     setPicked(null);
     setExhausted(false);
+    setEmptyState(null);
     try {
       const data = await apiFetch<GuessRound>("/discover/guess");
       setRound(data);
@@ -83,7 +91,9 @@ export function GuessSheet({
       if (code === "NO_QUOTA") {
         setExhausted(true);
       } else if (code === "NO_CANDIDATE") {
-        setError(t("guess.noCandidate"));
+        setEmptyState("pool");
+      } else if (code === "NO_CANDIDATE_LEFT") {
+        setEmptyState("guessed");
       } else {
         setError(requestError instanceof Error ? requestError.message : t("guess.loadFailed"));
       }
@@ -154,6 +164,31 @@ export function GuessSheet({
             <Text style={styles.emptyBody}>{t("guess.exhaustedBody")}</Text>
             <Pressable onPress={onClose} style={styles.primary} accessibilityRole="button">
               <Text style={styles.primaryLabel}>{t("guess.exhaustedCta")}</Text>
+            </Pressable>
+          </View>
+        ) : emptyState === "pool" ? (
+          <View style={styles.center}>
+            <Text style={styles.emptyTitle}>{t("guess.poolEmptyTitle")}</Text>
+            <Text style={styles.emptyBody}>{t("guess.poolEmptyBody")}</Text>
+            <Pressable
+              onPress={() =>
+                void Share.share({ message: t("guess.shareText") }).catch(() => undefined)
+              }
+              style={styles.primary}
+              accessibilityRole="button"
+            >
+              <Text style={styles.primaryLabel}>{t("guess.poolEmptyInvite")}</Text>
+            </Pressable>
+            <Pressable onPress={onClose} style={styles.secondary} accessibilityRole="button">
+              <Text style={styles.secondaryLabel}>{t("guess.poolEmptyLater")}</Text>
+            </Pressable>
+          </View>
+        ) : emptyState === "guessed" ? (
+          <View style={styles.center}>
+            <Text style={styles.emptyTitle}>{t("guess.allGuessedTitle")}</Text>
+            <Text style={styles.emptyBody}>{t("guess.allGuessedBody")}</Text>
+            <Pressable onPress={onClose} style={styles.primary} accessibilityRole="button">
+              <Text style={styles.primaryLabel}>{t("guess.allGuessedOk")}</Text>
             </Pressable>
           </View>
         ) : round ? (
