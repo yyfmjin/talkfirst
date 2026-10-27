@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- TalkFirst app icon, final version. Brand blue: #0B7FFF. -->
+  <rect width="1024" height="1024" fill="#0B7FFF"/>
+  <!-- White ring, three 30-degree gaps centered at 0/120/240 degrees -->
+    <path d="M 927.3 623.3 A 430 430 0 0 1 400.7 927.3 L 425.3 835.6 A 335 335 0 0 0 835.6 598.7 Z" fill="#FFFFFF"/>
+    <path d="M 207.9 816.1 A 430 430 0 0 1 207.9 207.9 L 275.1 275.1 A 335 335 0 0 0 275.1 748.9 Z" fill="#FFFFFF"/>
+    <path d="M 400.7 96.7 A 430 430 0 0 1 927.3 400.7 L 835.6 425.3 A 335 335 0 0 0 425.3 188.4 Z" fill="#FFFFFF"/>
+    <!-- Face: dot eyes + smile -->
+  <circle cx="407" cy="457" r="26" fill="#FFFFFF"/>
+  <circle cx="617" cy="457" r="26" fill="#FFFFFF"/>
+  <path d="M 596.6 582.8 A 90 90 0 0 1 427.4 582.8" fill="none" stroke="#FFFFFF" stroke-width="26" stroke-linecap="round"/>
+</svg>

@@ -18,8 +18,8 @@ SRC_ICON = ROOT / "apps/mobile/assets/icon.png"
 OUT = ROOT / "store/play"
 
 # 品牌色（与 app.json 的 splash/adaptiveIcon 背景色一致）
-BRAND = (59, 130, 246)
-BRAND_DEEP = (30, 64, 175)
+BRAND = (11, 127, 255)
+BRAND_DEEP = (9, 92, 200)
 INK = (255, 255, 255)
 
 CJK_FONTS = [
@@ -59,8 +59,8 @@ def make_feature() -> None:
     # 右侧两团柔光，给纯色背景一点层次（不抢文字）
     glow = Image.new("RGB", (w, h), BRAND)
     gd = ImageDraw.Draw(glow)
-    gd.ellipse([w - 420, -180, w + 120, 360], fill=(96, 165, 250))
-    gd.ellipse([w - 260, 200, w + 200, 660], fill=(37, 99, 235))
+    gd.ellipse([w - 420, -180, w + 120, 360], fill=(60, 150, 255))
+    gd.ellipse([w - 260, 200, w + 200, 660], fill=(6, 78, 190))
     glow = glow.filter(__import__("PIL.ImageFilter", fromlist=["GaussianBlur"]).GaussianBlur(90))
     img = Image.blend(img, glow, 0.35)
     draw = ImageDraw.Draw(img)

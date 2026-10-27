@@ -2,36 +2,33 @@ import { useT } from "@/lib/i18n";
 /**
  * Brand marks.
  *
- * ## Phase B
+ * ## 2026-10-28：换成正式标志
  *
- * The mark is still a speech bubble — it is the one shape the product's meaning
- * is built on ("talk first") — but it now sits on the brand token colour and its
- * corner radius comes from the radius scale (`rounded-control`, 18px) instead of
- * an arbitrary 22px. The two dots inside take the brand colour rather than the
- * old accent purple, so the mark and the primary CTA are visibly the same
- * material.
+ * 之前是对话气泡（「先说话」的隐喻）。现在有了设计交付的正式图标：
+ * 三段弧环 + 笑脸（弧环的缺口正好在 0/120/240 度），品牌蓝 #0B7FFF。
  *
- * `Wordmark` is a pure visual lockup: it no longer renders an `<h1>`. It was the
- * only heading on the launch screen, which meant the page's accessible name was
- * "TalkFirst / 先聊聊，再成为朋友。 Talk First. Connect Later." in three different
- * type sizes. The launch screen now owns its own `<h1>` and pulls the taglines
- * into it; this stays a decorative lockup with `aria-hidden`, so a screen reader
- * hears the headline once, not twice.
+ * 这个组件与 `apps/mobile/assets/icon.png`、`store/brand/talkfirst-icon.svg`
+ * 是同一套图形，改一处要一起改 —— 所以这里直接内联 SVG，而不是引用位图：
+ * 位图在 20px 的导航栏里会糊。
+ *
+ * 颜色写死 `#0B7FFF` 而不是 `bg-brand-500`：brand-500 仍是界面主色 #3B82F6，
+ * 两者不同（标志比界面更深、更饱和）。等界面主色也迁到新蓝时再看要不要合并。
  */
 export const LogoMark = ({ size = 56 }: { size?: number }) => {
   return (
     <div
-      className="grid place-items-center rounded-control bg-brand-500 shadow-brand"
-      style={{ width: size, height: size }}
+      className="grid place-items-center rounded-control shadow-brand"
+      style={{ width: size, height: size, backgroundColor: "#0B7FFF" }}
       aria-hidden="true"
     >
-      <svg width={size * 0.58} height={size * 0.58} viewBox="0 0 48 48" fill="none">
-        <path
-          d="M10 18c0-5.5 6.3-9 14-9s14 3.5 14 9-6.3 9-14 9c-1.4 0-2.7-.1-4-.4L14 32l1.6-5.2C11.8 24.8 10 21.6 10 18Z"
-          fill="white"
-        />
-        <circle cx="20" cy="18" r="2" fill="#3B82F6" />
-        <circle cx="28" cy="18" r="2" fill="#3B82F6" />
+      {/* viewBox 裁到图案的包围盒（148..876），否则 1024 画布里会有大量留白 */}
+      <svg width={size * 0.78} height={size * 0.78} viewBox="148 148 728 728" fill="none">
+        <path d="M 927.3 623.3 A 430 430 0 0 1 400.7 927.3 L 425.3 835.6 A 335 335 0 0 0 835.6 598.7 Z" fill="white" />
+        <path d="M 207.9 816.1 A 430 430 0 0 1 207.9 207.9 L 275.1 275.1 A 335 335 0 0 0 275.1 748.9 Z" fill="white" />
+        <path d="M 400.7 96.7 A 430 430 0 0 1 927.3 400.7 L 835.6 425.3 A 335 335 0 0 0 425.3 188.4 Z" fill="white" />
+        <circle cx="407" cy="457" r="26" fill="white" />
+        <circle cx="617" cy="457" r="26" fill="white" />
+        <path d="M 596.6 582.8 A 90 90 0 0 1 427.4 582.8" fill="none" stroke="white" strokeWidth="26" strokeLinecap="round" />
       </svg>
     </div>
   );
