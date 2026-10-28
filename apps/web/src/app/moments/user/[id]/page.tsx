@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, BadgeCheck, Heart, MessageCircle, Share2 } from "lucide-react";
 import { PhoneShell } from "@/components/phone-shell";
+import { VoiceNote } from "@/components/voice-note";
 import { TabBar } from "@/components/tab-bar";
 import {
   TFAvatar,
@@ -342,6 +343,15 @@ export default function UserMomentsPage() {
                           </span>
                         </div>
                       ))}
+                    </div>
+                  ) : null}
+                  {/**
+                   * 语音动态：之前这一页只画了视频和图片，纯语音的动态在这里是一张空白卡片。
+                   * 与信息流 / 详情页同一个语音条组件。
+                   */}
+                  {item.audioUrl ? (
+                    <div className="px-4 pt-3">
+                      <VoiceNote src={item.audioUrl} durationSec={item.durationSec} />
                     </div>
                   ) : null}
                   <div className="flex items-center gap-1 px-3 py-2 text-caption text-content-muted">

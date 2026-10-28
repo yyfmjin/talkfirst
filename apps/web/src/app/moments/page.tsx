@@ -21,6 +21,7 @@ import {
   TFTabs,
   useToast,
 } from "@/components/tf";
+import { VoiceNote } from "@/components/voice-note";
 import { apiFetch } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { formatCount, formatDuration, relativeTime } from "@/lib/moments";
@@ -811,11 +812,12 @@ function MomentCard({
 
       {/*
         语音动态（2026-10-24）：放在 Link 外面。
-        放进卡片链接里会让「点播放」和「进详情」抢同一次点击，原生控件也点不动。
+        放进卡片链接里会让「点播放」和「进详情」抢同一次点击 —— 换成语音条后
+        这条约束没变，只是那个抢点击的从原生控件变成了我们自己的 button。
       */}
       {moment.audioUrl ? (
         <div className="px-5 pt-2">
-          <audio controls src={moment.audioUrl} preload="metadata" className="w-full" />
+          <VoiceNote src={moment.audioUrl} durationSec={moment.durationSec} />
         </div>
       ) : null}
 

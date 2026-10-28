@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -16,7 +16,7 @@ import {
   requestRecordingPermissionsAsync,
   useAudioRecorder,
 } from "expo-audio";
-import { VoiceNote } from "../components/VoiceNote";
+import { VoiceNote, formatVoiceDuration } from "../components/VoiceNote";
 import type { ManageableMoment } from "../components/MomentOwnerActions";
 import { ApiRequestError, apiFetch, apiUploadMultipart } from "../lib/api";
 import { useI18n } from "../lib/i18n-context";
@@ -91,6 +91,11 @@ type PendingAudio = {
   remoteUrl: string | null;
   uploading: boolean;
   failed: boolean;
+  /**
+   * 录音时长（秒）。上传完、甚至进编辑页之后都要靠它算语音条宽度 ——
+   * 本地文件在离开这一屏之前就没了，服务端也不存时长。
+   */
+  durationSec: number;
 };
 
 let nextImageId = 1;
@@ -147,7 +152,18 @@ export function ComposeScreen({
    */
   const [audio, setAudio] = useState<PendingAudio | null>(null);
   const [recording, setRecording] = useState(false);
+  /** 正在录的秒数：微信那种「按住说话」的计时，让人知道录了多久。 */
+  const [recordedSec, setRecordedSec] = useState(0);
+  const recordStartedAt = useRef(0);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+
+  useEffect(() => {
+    if (!recording) return;
+    const timer = setInterval(() => {
+      setRecordedSec((previous) => Math.min(MAX_AUDIO_SECONDS, previous + 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [recording]);
 
   const trimmed = content.trim();
   const allImagesReady = images.every((img) => img.remoteUrl && !img.uploading && !img.failed);
@@ -172,6 +188,8 @@ export function ComposeScreen({
     try {
       await recorder.prepareToRecordAsync();
       recorder.record();
+      recordStartedAt.current = Date.now();
+      setRecordedSec(0);
       setRecording(true);
       // 到点自动停，避免忘关麦把整段会话录进去
       setTimeout(() => {
@@ -192,7 +210,12 @@ export function ComposeScreen({
     }
     const uri = recorder.uri;
     if (!uri) return;
-    setAudio({ uri, remoteUrl: null, uploading: true, failed: false });
+    // 用起止时间而不是计数的秒数：切到后台时 interval 会被节流，计数会偏短。
+    const elapsed = recordStartedAt.current
+      ? Math.round((Date.now() - recordStartedAt.current) / 1000)
+      : recordedSec;
+    const durationSec = Math.min(MAX_AUDIO_SECONDS, Math.max(1, elapsed));
+    setAudio({ uri, remoteUrl: null, uploading: true, failed: false, durationSec });
     void uploadAudio(uri);
   }
 
@@ -514,7 +537,10 @@ export function ComposeScreen({
         <View style={styles.audioRow}>
           {audio ? (
             <View style={styles.audioBox}>
-              <VoiceNote uri={audio.remoteUrl ?? audio.uri} />
+              <VoiceNote
+                uri={audio.remoteUrl ?? audio.uri}
+                durationSec={audio.durationSec}
+              />
               {audio.uploading ? (
                 <Text style={styles.audioHint}>{t("compose.audioUploading")}</Text>
               ) : null}
@@ -538,7 +564,9 @@ export function ComposeScreen({
               style={styles.recordStop}
             >
               <View style={styles.recordDot} />
-              <Text style={styles.recordStopText}>{t("compose.audioStop")}</Text>
+              <Text style={styles.recordStopText}>
+                {t("compose.audioStop")} · {formatVoiceDuration(Math.max(1, recordedSec))}
+              </Text>
             </Pressable>
           ) : (
             <Pressable

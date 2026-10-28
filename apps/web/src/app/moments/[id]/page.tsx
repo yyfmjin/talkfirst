@@ -26,6 +26,7 @@ import { MomentReportDialog } from "@/components/moment-report-dialog";
 import { ApiRequestError, apiFetch } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { formatCount, formatDuration, relativeTime } from "@/lib/moments";
+import { VoiceNote } from "@/components/voice-note";
 import { localePath, useT } from "@/lib/i18n";
 
 /**
@@ -644,10 +645,10 @@ export default function MomentDetailPage() {
               </div>
             ) : null}
 
-            {/* 语音动态（2026-10-24）：详情页这里整行放播放器，不嵌在链接里。 */}
+            {/* 语音动态（2026-10-24）：详情页不嵌在链接里，所以直接放语音条。 */}
             {moment.audioUrl ? (
               <div className="mt-3 px-4">
-                <audio controls src={moment.audioUrl} preload="metadata" className="w-full" />
+                <VoiceNote src={moment.audioUrl} durationSec={moment.durationSec} />
               </div>
             ) : null}
 
