@@ -316,7 +316,7 @@ function FeedbackScreen() {
                       {new Date(item.createdAt).toLocaleString()}
                     </span>
                     {item.user ? (
-                      <Link href={`/users/${item.user.id}`} className="text-[12px] text-blue-600 underline">
+                      <Link href={`/users/${item.user.id}`} className="text-[12px] text-primary-hover underline">
                         {item.user.nickname ?? item.user.email}
                       </Link>
                     ) : (
@@ -332,7 +332,7 @@ function FeedbackScreen() {
                   <p className="mt-2 text-[12px] text-muted">
                     回复地址：
                     {item.contactEmail ? (
-                      <a href={`mailto:${item.contactEmail}`} className="text-blue-600 underline">
+                      <a href={`mailto:${item.contactEmail}`} className="text-primary-hover underline">
                         {item.contactEmail}
                       </a>
                     ) : (

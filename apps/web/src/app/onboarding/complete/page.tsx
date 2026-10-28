@@ -1,5 +1,6 @@
 "use client";
 
+import { LogoMark } from "@/components/brand";
 import { PhoneShell } from "@/components/phone-shell";
 import { TFButton, TFCard } from "@/components/tf";
 import type { MsgKey } from "@/lib/i18n";
@@ -29,21 +30,13 @@ export default function CompletePage() {
     <PhoneShell>
       <div className="tf-scroll flex min-h-0 flex-1 flex-col overflow-y-auto px-6 py-10">
         <div className="flex flex-col items-center text-center">
-          {/* The bubble motif, earned this time: onboarding is where the member
-              learns that a reply is the point. */}
-          <span
-            aria-hidden="true"
-            className="grid h-20 w-20 place-items-center rounded-card bg-brand-500 shadow-brand"
-          >
-            <svg width="44" height="44" viewBox="0 0 48 48" fill="none">
-              <path
-                d="M10 18c0-5.5 6.3-9 14-9s14 3.5 14 9-6.3 9-14 9c-1.4 0-2.7-.1-4-.4L14 32l1.6-5.2C11.8 24.8 10 21.6 10 18Z"
-                fill="white"
-              />
-              <circle cx="20" cy="18" r="2" fill="#3B82F6" />
-              <circle cx="28" cy="18" r="2" fill="#3B82F6" />
-            </svg>
-          </span>
+          {/* The brand mark, earned this time: onboarding is where the member
+              learns that a reply is the point.
+
+              用 `LogoMark` 而不是自己画气泡（2026-10-28）：正式标志换成弧环+笑脸，
+              这里残留的旧气泡还带着写死的 `#3B82F6` 圆点，压在 #0B7FFF 的底上会
+              显出两种蓝。 */}
+          <LogoMark size={80} />
           <h1 className="mt-6 text-title font-semibold text-content">{t("onboarding.complete.title")}</h1>
           <p className="mt-2 max-w-[290px] text-ui leading-6 text-content-muted">
             {t("onboarding.complete.subtitle")}

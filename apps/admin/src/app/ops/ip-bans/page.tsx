@@ -182,7 +182,7 @@ function IpBansScreen() {
       <h1 className="text-[20px] font-semibold">IP 封禁</h1>
       <p className="mt-1 text-[13px] text-muted">
         被拒绝的请求仍会记入访问日志，可在
-        <Link href="/ops/access-logs" className="mx-1 text-blue-600 underline">
+        <Link href="/ops/access-logs" className="mx-1 text-primary-hover underline">
           访问日志
         </Link>
         中核对封禁是否生效，以及是否误伤。
@@ -332,7 +332,7 @@ function IpBansScreen() {
                         type="button"
                         data-testid={`ip-ban-lift-${ban.id}`}
                         onClick={() => void lift(ban)}
-                        className="text-[12px] text-blue-600 underline"
+                        className="text-[12px] text-primary-hover underline"
                       >
                         解封
                       </button>

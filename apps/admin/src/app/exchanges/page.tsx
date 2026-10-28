@@ -414,7 +414,7 @@ function ExchangesScreen() {
                     <td className="py-2">
                       <Link
                         href={`/exchanges/${item.id}`}
-                        className="text-[12px] text-blue-600 underline"
+                        className="text-[12px] text-primary-hover underline"
                       >
                         查看
                       </Link>

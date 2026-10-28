@@ -1,5 +1,7 @@
 import { Image, StyleSheet, View } from "react-native";
 
+import { colors } from "../theme";
+
 /**
  * 品牌标志（2026-10-28 换成正式图标）。
  *
@@ -12,10 +14,10 @@ import { Image, StyleSheet, View } from "react-native";
  *
  * ## 颜色
  *
- * 方块底色写死 `#0B7FFF`（图标蓝），而不是 `colors.primary`（界面主色 #6B7CFF）：
- * 两者本来就不是一个颜色，标志要跟应用图标一致，不跟按钮一致。
+ * 方块底色用 `colors.primary`（2026-10-28 起它已经是图标蓝 `#0B7FFF`）——
+ * 界面主色与标志同色，不再需要单独写死一个常量。
  */
-const BRAND_BLUE = "#0B7FFF";
+const BRAND_BLUE = colors.primary;
 
 export function Logo({ size = 56 }: { size?: number }) {
   return (

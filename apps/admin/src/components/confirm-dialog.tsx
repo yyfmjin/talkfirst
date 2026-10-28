@@ -104,7 +104,7 @@ export function ConfirmDialog({
             rows={3}
             maxLength={500}
             placeholder="请说明本次操作的原因，将写入审计日志"
-            className="mt-1 w-full rounded-xl border border-line px-3 py-2 text-[13px] text-ink outline-none focus:ring-2 focus:ring-indigo-200"
+            className="mt-1 w-full rounded-xl border border-line px-3 py-2 text-[13px] text-ink outline-none focus:ring-2 focus:ring-[#DBEEFF]"
           />
         </label>
         {touched && !reasonOk ? (
@@ -118,7 +118,7 @@ export function ConfirmDialog({
               type="datetime-local"
               value={expiresAt}
               onChange={(event) => setExpiresAt(event.target.value)}
-              className="mt-1 h-10 w-full rounded-xl border border-line px-3 text-[13px] text-ink outline-none focus:ring-2 focus:ring-indigo-200"
+              className="mt-1 h-10 w-full rounded-xl border border-line px-3 text-[13px] text-ink outline-none focus:ring-2 focus:ring-[#DBEEFF]"
             />
           </label>
         ) : null}
@@ -132,7 +132,7 @@ export function ConfirmDialog({
             <input
               value={phrase}
               onChange={(event) => setPhrase(event.target.value)}
-              className="mt-1 h-10 w-full rounded-xl border border-line px-3 text-[13px] text-ink outline-none focus:ring-2 focus:ring-indigo-200"
+              className="mt-1 h-10 w-full rounded-xl border border-line px-3 text-[13px] text-ink outline-none focus:ring-2 focus:ring-[#DBEEFF]"
             />
           </label>
         ) : null}

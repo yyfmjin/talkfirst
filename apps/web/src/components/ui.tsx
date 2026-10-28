@@ -17,7 +17,7 @@ export function GradientButton({
   onClick?: () => void;
 }) {
   const classes = cn(
-    "tf-gradient inline-flex min-h-[3rem] w-full shrink-0 items-center justify-center gap-2 rounded-full px-5 py-3 text-center text-[15px] font-medium leading-6 text-white shadow-md shadow-indigo-200 transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50",
+    "tf-gradient inline-flex min-h-[3rem] w-full shrink-0 items-center justify-center gap-2 rounded-full px-5 py-3 text-center text-[15px] font-medium leading-6 text-white shadow-brand transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50",
     className,
   );
 
@@ -92,7 +92,7 @@ export function SmallButton({
       ? "h-9 px-4 text-[13px] leading-5"
       : "min-h-[2.5rem] px-4 py-2 text-[13px] leading-5",
     variant === "gradient"
-      ? "tf-gradient text-white shadow-md shadow-indigo-200"
+      ? "tf-gradient text-white shadow-brand"
       : "border border-line bg-white text-ink",
     className,
   );
@@ -124,7 +124,7 @@ export function Field({
         placeholder={placeholder}
         value={value}
         onChange={(event) => onChange?.(event.target.value)}
-        className="h-12 w-full min-w-0 rounded-2xl border border-line bg-[#F8FAFF] px-4 text-[14px] outline-none ring-indigo-200 placeholder:text-muted/70 focus:ring-2"
+        className="h-12 w-full min-w-0 rounded-2xl border border-line bg-[#F8FAFF] px-4 text-[14px] outline-none ring-brand-200 placeholder:text-muted/70 focus:ring-2"
       />
     </label>
   );

@@ -47,14 +47,14 @@
  * nothing else. Everything informational uses the neutral scale.
  */
 export const brand = {
-  50: "#F5F9FF",
-  100: "#EAF3FF",
-  200: "#D6E6FF",
-  300: "#B3D1FE",
-  400: "#7BAAF9",
-  500: "#3B82F6", // primary — CTAs, active nav, links
-  600: "#2563EB", // pressed / hover for primary
-  700: "#1D4ED8", // rare: on-light text needing more contrast than 500
+  50: "#EFF7FF",
+  100: "#DBEEFF",
+  200: "#B7DCFF",
+  300: "#85C4FF",
+  400: "#4AA6FF",
+  500: "#0B7FFF", // primary — CTAs, active nav, the brand mark
+  600: "#0063E6", // white-on-600 = 5.34 → filled-button fill, and link text
+  700: "#0050B8", // pressed / hover for primary (white-on-700 = 7.39)
 } as const;
 
 /**
@@ -125,12 +125,15 @@ export const danger = {
   700: "#B91C1C",
 } as const;
 
-/** Info — neutral system notices that are neither success nor warning. */
+/** Info — neutral system notices that are neither success nor warning.
+ *
+ * 值跟 `brand` 同一支蓝：2026-10-28 界面主色迁到 `#0B7FFF` 后，这里若还留
+ * `#3B82F6`，页面上就会同时出现两种蓝。语义仍是分开的（信息徽标 ≠ 首要操作）。 */
 export const info = {
-  50: "#EFF6FF",
-  100: "#DBEAFE",
-  500: "#3B82F6",
-  700: "#1D4ED8",
+  50: "#EFF7FF",
+  100: "#DBEEFF",
+  500: "#0B7FFF",
+  700: "#0050B8",
 } as const;
 
 /* -------------------------------------------------------------------------- */
@@ -228,7 +231,7 @@ export const shadow = {
   /** Kept verbatim from the pre-existing config so PhoneShell is unchanged. */
   phone: "0 30px 80px rgba(80, 110, 200, 0.18)",
   /** The brand CTA's lift. Very light on purpose. */
-  brand: "0 6px 16px rgba(59, 130, 246, 0.24)",
+  brand: "0 6px 16px rgba(11, 127, 255, 0.24)",
 } as const;
 
 /* -------------------------------------------------------------------------- */

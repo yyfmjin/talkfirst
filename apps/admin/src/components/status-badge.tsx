@@ -37,7 +37,7 @@ const TONE_CLASS: Record<StatusTone, string> = {
    * nobody to notice — a silent regression is worse than a remaining literal.
    */
   neutral: "bg-subtle text-[#4B5563] ring-[#E5E7EB]",
-  info: "bg-info-wash text-[#1D4ED8] ring-[#BFDBFE]",
+  info: "bg-info-wash text-[#0050B8] ring-[#DBEEFF]",
   success: "bg-[#ECFDF5] text-[#047857] ring-[#A7F3D0]",
   warning: "bg-[#FFFBEB] text-[#B45309] ring-[#FDE68A]",
   danger: "bg-[#FEF2F2] text-[#B91C1C] ring-[#FECACA]",

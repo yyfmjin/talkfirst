@@ -669,7 +669,7 @@ export default function ComposePage() {
                   placeholder={t("cm.topicPlaceholder")}
                   aria-label={t("cm.topicSearchAria")}
                   data-testid="moment-topic-input"
-                  className="h-9 w-full rounded-xl border border-line px-3 text-[12px] outline-none focus:ring-2 focus:ring-indigo-200"
+                  className="h-9 w-full rounded-xl border border-line px-3 text-[12px] outline-none focus:ring-2 focus:ring-brand-200"
                 />
                 {topicQuery.trim() && !filteredTopics.includes(topicQuery.trim().replace(/^#+/, "")) ? (
                   <button

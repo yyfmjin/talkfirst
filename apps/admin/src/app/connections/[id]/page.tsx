@@ -183,7 +183,7 @@ function ConnectionDetailScreen() {
             <div className="mt-3 text-[13px]">
               <p>
                 <span className="text-muted">ID：</span>
-                <Link href={`/users/${data.userA.id}`} className="text-blue-600 underline">
+                <Link href={`/users/${data.userA.id}`} className="text-primary-hover underline">
                   {data.userA.id}
                 </Link>
               </p>
@@ -199,7 +199,7 @@ function ConnectionDetailScreen() {
             <div className="mt-3 text-[13px]">
               <p>
                 <span className="text-muted">ID：</span>
-                <Link href={`/users/${data.userB.id}`} className="text-blue-600 underline">
+                <Link href={`/users/${data.userB.id}`} className="text-primary-hover underline">
                   {data.userB.id}
                 </Link>
               </p>

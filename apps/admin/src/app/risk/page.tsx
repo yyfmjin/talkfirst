@@ -280,7 +280,7 @@ function RiskScreen() {
                   </div>
                   <Link
                     href={`/reports/${report.id}`}
-                    className="shrink-0 text-[12px] text-blue-600 underline"
+                    className="shrink-0 text-[12px] text-primary-hover underline"
                   >
                     查看举报
                   </Link>
@@ -340,7 +340,7 @@ function RiskScreen() {
                   </div>
                   <Link
                     href={`/reports/${signal.id}`}
-                    className="shrink-0 text-[12px] text-blue-600 underline"
+                    className="shrink-0 text-[12px] text-primary-hover underline"
                   >
                     查看举报
                   </Link>

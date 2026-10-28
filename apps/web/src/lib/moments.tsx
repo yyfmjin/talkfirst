@@ -1,3 +1,5 @@
+import { brand } from "@/design/tokens";
+
 export type MomentAuthor = {
   id: string;
   nickname: string | null;
@@ -60,7 +62,7 @@ export function platformMeta(platforms: MomentPlatform[], id: string): MomentPla
       label: id,
       icon: id.slice(0, 2),
       /* Unknown platform: the brand blue, not the old accent purple. */
-      color: "#3B82F6",
+      color: brand[500],
       connectedLabel: "",
     }
   );

@@ -184,7 +184,7 @@ function UserDetailScreen({ params }: { params: Promise<{ id: string }> }) {
             <div className="mt-2 flex items-center gap-3">
               <div className="h-2 w-32 overflow-hidden rounded-full bg-gray-100">
                 <div
-                  className="h-full rounded-full bg-blue-500"
+                  className="h-full rounded-full bg-primary"
                   style={{ width: `${data.profileCompletion.percentage}%` }}
                 />
               </div>

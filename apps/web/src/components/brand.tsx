@@ -11,14 +11,14 @@ import { useT } from "@/lib/i18n";
  * 是同一套图形，改一处要一起改 —— 所以这里直接内联 SVG，而不是引用位图：
  * 位图在 20px 的导航栏里会糊。
  *
- * 颜色写死 `#0B7FFF` 而不是 `bg-brand-500`：brand-500 仍是界面主色 #3B82F6，
- * 两者不同（标志比界面更深、更饱和）。等界面主色也迁到新蓝时再看要不要合并。
+ * 颜色用 `bg-brand-500`：2026-10-28 界面主色已从 #3B82F6 迁到这支蓝，
+ * 标志与界面现在同色，不必再写死。
  */
 export const LogoMark = ({ size = 56 }: { size?: number }) => {
   return (
     <div
-      className="grid place-items-center rounded-control shadow-brand"
-      style={{ width: size, height: size, backgroundColor: "#0B7FFF" }}
+      className="grid place-items-center rounded-control bg-brand-500 shadow-brand"
+      style={{ width: size, height: size }}
       aria-hidden="true"
     >
       {/* viewBox 裁到图案的包围盒（148..876），否则 1024 画布里会有大量留白 */}

@@ -176,7 +176,7 @@ function BlockDetailScreen() {
               <Link
                 href={`/users/${data.blocker.id}`}
                 data-testid="block-detail-blocker"
-                className="text-[14px] font-medium text-blue-600 underline"
+                className="text-[14px] font-medium text-primary-hover underline"
               >
                 {data.blocker.nickname ?? data.blocker.id.slice(0, 8)}
               </Link>
@@ -190,7 +190,7 @@ function BlockDetailScreen() {
               <Link
                 href={`/users/${data.blocked.id}`}
                 data-testid="block-detail-blocked"
-                className="text-[14px] font-medium text-blue-600 underline"
+                className="text-[14px] font-medium text-primary-hover underline"
               >
                 {data.blocked.nickname ?? data.blocked.id.slice(0, 8)}
               </Link>

@@ -75,7 +75,7 @@ export default function LoginPage() {
             onChange={(event) => setEmail(event.target.value)}
             placeholder="admin@example.com"
             autoComplete="username"
-            className="mt-1 h-11 w-full rounded-xl border border-line px-3 text-[14px] text-ink outline-none focus:ring-2 focus:ring-indigo-200"
+            className="mt-1 h-11 w-full rounded-xl border border-line px-3 text-[14px] text-ink outline-none focus:ring-2 focus:ring-[#DBEEFF]"
           />
         </label>
         <label className="mt-3 block text-[12px] text-muted">
@@ -86,7 +86,7 @@ export default function LoginPage() {
             type="password"
             placeholder="••••••••"
             autoComplete="current-password"
-            className="mt-1 h-11 w-full rounded-xl border border-line px-3 text-[14px] text-ink outline-none focus:ring-2 focus:ring-indigo-200"
+            className="mt-1 h-11 w-full rounded-xl border border-line px-3 text-[14px] text-ink outline-none focus:ring-2 focus:ring-[#DBEEFF]"
           />
         </label>
         {error ? <p className="mt-3 text-[12px] text-red-500">{error}</p> : null}

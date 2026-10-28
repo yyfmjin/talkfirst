@@ -17,10 +17,11 @@
 
 只用两个值，都来自设计体系 `apps/web/src/design/tokens.ts`：
 
-- `brand-500` = `#3B82F6`（底色；`app.json` 的背景色已从旧品牌紫 `#6B7CFF` 对齐到它）
+- `brand-500` = `#0B7FFF`（底色；`app.json` 与图标都是这支蓝）
 - 白 = `neutral-0`
 
-（`#6B7CFF` 是 Phase B 之前的旧品牌紫，成员端的 `HEX_MIGRATION` 里写着它应映射到 `brand-500`。）
+（`#6B7CFF` 是 Phase B 之前的旧品牌紫，成员端的 `HEX_MIGRATION` 里写着它应映射到 `brand-500`；
+`#3B82F6` 是 2026-10-28 之前的界面主色，已一并收归 `#0B7FFF`。）
 
 ## 重新生成
 

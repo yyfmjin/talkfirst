@@ -15,7 +15,7 @@ import {
  * 管理后台主题 —— 值全部来自 `src/design/tokens.ts`（B 方案，2026-10-06）。
  *
  * 上一版把色值直接写在这里，与成员端各一套：主色一边 indigo `#4F46E5`、
- * 一边 TalkFirst Blue `#3B82F6`。现在两边消费同一套值，映射表在 tokens.ts 文件头。
+ * 一边 TalkFirst Blue `#0B7FFF`。现在两边消费同一套值，映射表在 tokens.ts 文件头。
  *
  * 三条**必须继续成立**的结构约定（改这一行前先读）：
  *

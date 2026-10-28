@@ -19,7 +19,7 @@
    * are independent), so those fields keep the look they had.
    */
   :root {
-    --tf-focus: #3b82f6;
+    --tf-focus: #0b7fff;
   }
 
   :focus-visible {
@@ -155,16 +155,60 @@ button {
  * say a legacy token is deleted when its last caller is migrated, not before.
  */
 .tf-gradient {
-  background-image: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background-image: linear-gradient(135deg, #0b7fff 0%, #0063e6 100%);
 }
 
 .tf-gradient-soft {
-  background-image: linear-gradient(135deg, #7baaf9 0%, #3b82f6 100%);
+  background-image: linear-gradient(135deg, #4aa6ff 0%, #0b7fff 100%);
+}
+
+/*
+ * 语音条里的三根声波（2026-10-28）。
+ *
+ * 静止时不跳，播放时错相位上下伸缩 —— 那是「正在出声」的唯一视觉提示，
+ * 比进度百分比省地方，也更像微信。
+ * `prefers-reduced-motion` 下关掉动画：声音还在，只是不动。
+ */
+@keyframes tf-voice-wave {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.tf-voice-wave {
+  border-radius: 2px;
+  background-color: #0b7fff;
+  transform-origin: center;
+  opacity: 0.4;
+}
+
+.tf-voice[data-playing="true"] .tf-voice-wave {
+  opacity: 1;
+  animation: tf-voice-wave 900ms ease-in-out infinite;
+}
+
+.tf-voice[data-playing="true"] .tf-voice-wave:nth-child(2) {
+  animation-delay: 150ms;
+}
+
+.tf-voice[data-playing="true"] .tf-voice-wave:nth-child(3) {
+  animation-delay: 300ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tf-voice[data-playing="true"] .tf-voice-wave {
+    animation: none;
+    transform: scaleY(1);
+  }
 }
 
 .tf-scroll {
   scrollbar-width: thin;
-  scrollbar-color: rgba(59, 130, 246, 0.3) transparent;
+  scrollbar-color: rgba(11, 127, 255, 0.3) transparent;
 }
 
 .tf-scroll::-webkit-scrollbar {
@@ -173,7 +217,7 @@ button {
 }
 
 .tf-scroll::-webkit-scrollbar-thumb {
-  background: rgba(59, 130, 246, 0.22);
+  background: rgba(11, 127, 255, 0.22);
   border-radius: 999px;
 }
 

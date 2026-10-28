@@ -240,7 +240,7 @@ function ExchangeDetailScreen() {
             <div className="mt-3 text-[13px]">
               <p>
                 <span className="text-muted">ID：</span>
-                <Link href={`/users/${data.requester.id}`} className="text-blue-600 underline">
+                <Link href={`/users/${data.requester.id}`} className="text-primary-hover underline">
                   {data.requester.id}
                 </Link>
               </p>
@@ -256,7 +256,7 @@ function ExchangeDetailScreen() {
             <div className="mt-3 text-[13px]">
               <p>
                 <span className="text-muted">ID：</span>
-                <Link href={`/users/${data.receiver.id}`} className="text-blue-600 underline">
+                <Link href={`/users/${data.receiver.id}`} className="text-primary-hover underline">
                   {data.receiver.id}
                 </Link>
               </p>
@@ -337,7 +337,7 @@ function ExchangeDetailScreen() {
                   <span className="text-muted">连接 ID：</span>
                   <Link
                     href={`/connections/${data.connection.id}`}
-                    className="text-blue-600 underline"
+                    className="text-primary-hover underline"
                   >
                     {data.connection.id}
                   </Link>

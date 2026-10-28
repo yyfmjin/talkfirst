@@ -186,7 +186,7 @@ function MomentModerationScreen() {
                       {item.reviewStatus}
                     </span>
                     {item.user ? (
-                      <Link href={`/users/${item.user.id}`} className="text-[12px] text-blue-600 underline">
+                      <Link href={`/users/${item.user.id}`} className="text-[12px] text-primary-hover underline">
                         {item.user.nickname ?? item.user.email}
                       </Link>
                     ) : (

@@ -369,7 +369,7 @@ function BlocksScreen() {
                           unblock / edit / delete control anywhere on this page. */}
                       <Link
                         href={`/blocks/${item.blockerId}/${item.blockedId}`}
-                        className="text-[12px] text-blue-600 underline"
+                        className="text-[12px] text-primary-hover underline"
                       >
                         查看
                       </Link>

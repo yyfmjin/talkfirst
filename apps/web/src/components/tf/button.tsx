@@ -45,8 +45,8 @@ const VARIANT: Record<Variant, string> = {
   /* The sticky CTA from the composer is the reference: solid brand, pill,
      very light brand shadow, 120ms press.
 
-     底色用 600 而不是 500（2026-10-06）：白字压在 `brand-500`（#3B82F6）上只有 **3.68**，
-     不到正文级 AA 要求的 4.5；`brand-600`（#2563EB）是 **5.17**，按下用 700。
+     底色用 600 而不是 500：白字压在 `brand-500`（#0B7FFF）上只有 **3.83**，
+     不到正文级 AA 要求的 4.5；`brand-600`（#0063E6）是 **5.34**，按下用 700（**7.39**）。
      主色 token 本身不变（链接、激活态、选中态仍用 500）。 */
   primary:
     "bg-brand-600 text-white shadow-brand hover:bg-brand-700 active:bg-brand-700 focus-visible:ring-brand-300 disabled:bg-brand-200 disabled:shadow-none",

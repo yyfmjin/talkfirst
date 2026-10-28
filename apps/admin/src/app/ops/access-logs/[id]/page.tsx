@@ -246,7 +246,7 @@ function AccessLogDetailScreen() {
               label="账号"
               value={
                 detail.account ? (
-                  <Link href={`/users/${detail.account.id}`} className="text-blue-600 underline">
+                  <Link href={`/users/${detail.account.id}`} className="text-primary-hover underline">
                     {detail.account.nickname ?? detail.account.email}
                   </Link>
                 ) : detail.userId ? (
@@ -275,7 +275,7 @@ function AccessLogDetailScreen() {
                     <span className="font-mono">{detail.ip}</span>
                     <Link
                       href={`/ops/access-logs?ip=${encodeURIComponent(detail.ip)}`}
-                      className="text-[12px] text-blue-600 underline"
+                      className="text-[12px] text-primary-hover underline"
                     >
                       该 IP 的全部记录
                     </Link>
