@@ -765,7 +765,12 @@ for (const file of files) {
 
 for (const file of walk(path.join(SRC, "app"), (n) => n === "page.tsx")) {
   const source = read(file);
-  if (!/export\s+default\s/.test(source)) {
+  /* 除了 `export default X`，还要认「转发默认导出」——en 树里大量页面就是
+     `export { default } from "../../../messages/.../page"`，Next 一样能渲染。 */
+  const hasDefault =
+    /export\s+default\s/.test(source) ||
+    /export\s*\{[^}]*\bdefault\b[^}]*\}\s*from\s*["'`]/.test(source);
+  if (!hasDefault) {
     add(rel(file), "route", "page.tsx has no default export — Next.js will 500 on this route");
   }
 }

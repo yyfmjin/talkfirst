@@ -1190,6 +1190,17 @@ test("phase C5: no migration was added and the schema gained no model", () => {
     // 2026-10-06 — 通知合并：`Notification.count` + `dedupeKey`（+ 索引）。
     // 纯加法：既有行 `count` 默认 1、`dedupeKey` 为空（空 = 不参与合并）。
     "20261006230000_notification_message_aggregate",
+    // AI 伴侣：新建 `AiCompanion`，并把 `Message.senderId` 改为可空（AI 发的消息
+    // 没有人类作者）。既有行不变。
+    "20261015010000_ai_companion",
+    // `User.locale`：双语信号，既有行为空（等于跟随请求头）。
+    "20261016030000_user_locale",
+    // 动态支持语音：`Moment` 加音频字段（+ 时长），既有行全为空。
+    "20261024010000_moment_audio",
+    // 国家竞猜：新建 `CountryGuess` 表。
+    "20261025010000_country_guess",
+    // 竞猜邀请：新建邀请表，并清掉 `CountryGuess.guessOptOut` 这个一次性字段。
+    "20261025020000_guess_invite",
   ];
   assert.deepEqual(
     migrations.slice(C5_BASELINE.length),
@@ -1213,6 +1224,8 @@ test("phase C5: no migration was added and the schema gained no model", () => {
     "AdminAuditLog",
     "AdminNote",
     "AdminUser",
+    // AI 伴侣（2026-10-15）：AI 会话本身，不复用 `Conversation` 的成员语义。
+    "AiCompanion",
     // Editable console settings — currently the member-facing support address.
     "AppSetting",
     "AttributeDefinition",
@@ -1222,6 +1235,8 @@ test("phase C5: no migration was added and the schema gained no model", () => {
     "Conversation",
     "ConversationMember",
     "Country",
+    // 国家竞猜（2026-10-25）：一局一次记录 + 邀请。
+    "CountryGuess",
     "DeviceIdentity",
     "DeviceUser",
     // Discover filter tabs, moved out of the code constants they used to live in.
