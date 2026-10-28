@@ -20,6 +20,15 @@
     },
     "production": {
       "autoIncrement": true,
+      /*
+       * 2026-10-28：这里原本**没有** `channel`，于是 Play 包打出来的应用既没有
+       * `expo-channel-name` 也没有渠道可问 —— 「检查更新」每次都换服务端一个 400，
+       * 界面上却只说「请检查网络」。实测：不带这个头的请求被 u.expo.dev 直接拒掉。
+       *
+       * 本项目只发布一个分支（`scripts/ota.mjs` 固定 `--branch preview`），
+       * 所以 Play 包也用同一个渠道，扫一份更新流，避免「发到 A 而装的是 B」。
+       */
+      "channel": "preview",
       "android": {
         "buildType": "app-bundle"
       },

@@ -14,6 +14,7 @@ import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { SubHeader } from "../components/SubHeader";
 import { applyUpdate, checkForUpdate } from "../lib/update-check";
+import { formatAppVersion } from "../lib/app-info";
 import { useBackHandler } from "../lib/back-stack";
 import { apiFetch } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
@@ -149,16 +150,32 @@ export function MeScreen() {
     const result = await checkForUpdate();
     setUpdating(false);
 
-    if (result === "unsupported") {
-      Alert.alert(t("me.updateUnsupportedTitle"), t("me.updateUnsupportedBody"));
+    /* 弹窗里带上版本号与渠道：这两条是判断「到底是包的问题还是网的问题」的
+       全部依据，不显示出来就永远只能让用户说一句「更新失败」。 */
+    const version = formatAppVersion();
+    const channel = result.channel ?? "—";
+
+    if (result.status === "unsupported") {
+      Alert.alert(
+        t("me.updateUnsupportedTitle"),
+        t("me.updateUnsupportedBody", { version, channel }),
+      );
       return;
     }
-    if (result === "latest") {
-      Alert.alert(t("me.updateLatest"));
+    if (result.status === "latest") {
+      Alert.alert(t("me.updateLatest"), t("me.updateLatestBody", { version }));
       return;
     }
-    if (result === "failed") {
-      Alert.alert(t("me.updateFailed"));
+    if (result.status === "failed") {
+      Alert.alert(
+        t("me.updateFailedTitle"),
+        t("me.updateFailedBody", {
+          version,
+          channel,
+          /* 原始报错可能很长（服务端整段 HTML），截一下，弹窗不要被撑爆。 */
+          detail: (result.detail ?? "—").slice(0, 160),
+        }),
+      );
       return;
     }
     // ready：已经下载完，问用户什么时候重启（重启时机交给用户，不偷袭他）。
@@ -346,6 +363,14 @@ export function MeScreen() {
               <Icon name="chevron-forward" size={16} color={colors.muted} />
             )}
           </Pressable>
+          {/* 版本号（2026-10-28）：不可点，只读。放在「检查更新」下面是因为
+              它回答的正是失败时第一个要问的问题——你现在装的是哪一版。 */}
+          <View style={styles.versionRow}>
+            <Icon name="information-circle-outline" size={18} color={colors.muted} />
+            <Text style={styles.versionLabel}>
+              {t("me.versionLabel", { version: formatAppVersion() })}
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -533,6 +558,17 @@ const styles = StyleSheet.create({
   },
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
   rowLabel: { flex: 1, fontSize: 15, color: colors.ink },
+  /* 版本号行：与上面的可点行同构，但没有箭头、没有按压反馈 —— 它只是信息。 */
+  versionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+  },
+  versionLabel: { flex: 1, fontSize: 13, color: colors.muted },
   moreSoon: { marginTop: 14, paddingHorizontal: 20, fontSize: 12, color: colors.muted },
   ctaRow: {
     flexDirection: "row",

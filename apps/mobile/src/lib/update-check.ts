@@ -18,9 +18,19 @@ import type * as ExpoUpdates from "expo-updates";
  * 后者会让人反复点，真正的解决办法一句话都没说。
  *
  * 依赖以参数注入，便于单测把四条 native 调用按顺序断言（见 `update-check.test.ts`）。
+ *
+ * ## 2026-10-28：为什么结果里要带 `channel` 和 `detail`
+ *
+ * 运维方反馈「检查更新总是失败，让检查网络」。实测服务端：不带
+ * `expo-channel-name` 的请求被 `u.expo.dev` 以 **400** 拒掉（`"channel-name":
+ * Required`），而客户端把任何异常都显示成「请检查网络」—— 于是一个**配置问题**
+ * 被说成了网络问题，用户反复重试、我们反复排查网络。
+ *
+ * 现在两件事分开说：渠道为空就是「这个包不能自更新」，和网络无关；真的抛错时
+ * 把原始报错带回界面。`channel` 只在弹窗里用，不影响结果分支。
  */
 
-export type UpdateCheckResult =
+export type UpdateCheckStatus =
   /** 安装包不支持热更新（没带渠道，或本次是开发构建）。 */
   | "unsupported"
   /** 已经是最新。 */
@@ -30,8 +40,21 @@ export type UpdateCheckResult =
   /** 检查或下载失败（网络、服务端）。 */
   | "failed";
 
+export type UpdateCheckResult = {
+  status: UpdateCheckStatus;
+  /**
+   * 安装包里烧进去的更新渠道。`null` = 这个包没带渠道：服务端对不带
+   * `expo-channel-name` 的请求一律 400，重试多少次都一样，只能重新装包。
+   */
+  channel: string | null;
+  /** 失败时的原始报错（断网、服务端 4xx/5xx 的原文），用来把话说准。 */
+  detail?: string;
+};
+
 export type UpdateCheckDeps = {
   isEnabled: () => boolean;
+  /** 安装包里烧进去的渠道；读不到时返回 null。 */
+  channel: () => string | null;
   checkForUpdate: () => Promise<{ isAvailable: boolean }>;
   fetchUpdate: () => Promise<unknown>;
   reload: () => Promise<unknown>;
@@ -53,24 +76,39 @@ export function defaultUpdateDeps(): UpdateCheckDeps {
   const updates = loadUpdates();
   return {
     isEnabled: () => updates.isEnabled,
+    channel: () => updates.channel ?? null,
     checkForUpdate: () => updates.checkForUpdateAsync(),
     fetchUpdate: () => updates.fetchUpdateAsync(),
     reload: () => updates.reloadAsync(),
   };
 }
 
+/** 渠道读不到（老包、或 `isEnabled=false`）不应该让「检查更新」整个崩掉。 */
+function safeChannel(deps: UpdateCheckDeps): string | null {
+  try {
+    return deps.channel() || null;
+  } catch {
+    return null;
+  }
+}
+
 /** 检查 →（有的话）下载。**不**重启，交给用户决定什么时候。 */
 export async function checkForUpdate(
   deps: UpdateCheckDeps = defaultUpdateDeps(),
 ): Promise<UpdateCheckResult> {
-  if (!deps.isEnabled()) return "unsupported";
+  const channel = safeChannel(deps);
+  if (!deps.isEnabled() || !channel) return { status: "unsupported", channel };
   try {
     const result = await deps.checkForUpdate();
-    if (!result.isAvailable) return "latest";
+    if (!result.isAvailable) return { status: "latest", channel };
     await deps.fetchUpdate();
-    return "ready";
-  } catch {
-    return "failed";
+    return { status: "ready", channel };
+  } catch (error) {
+    return {
+      status: "failed",
+      channel,
+      detail: error instanceof Error ? error.message : String(error),
+    };
   }
 }
 
