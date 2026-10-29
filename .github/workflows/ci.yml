@@ -8,9 +8,17 @@
 # 不作为门禁」。它们还需要已构建的 API 与 3000/3001 端口。等那些清掉之后，
 # 再加一份独立的工作流（并且先非阻塞跑一段时间）。
 #
-# 两个作业都必须先 `npm run prisma:generate`：仓库**没有** postinstall 钩子，
-# 而生成的 client 落在 `node_modules/.prisma/client`，会被 `npm ci` 清掉。
+# 两个**后端/前端**作业都必须先 `npm run prisma:generate`：仓库**没有** postinstall
+# 钩子，而生成的 client 落在 `node_modules/.prisma/client`，会被 `npm ci` 清掉。
 # 少了这一步 `@prisma/client` 只是一个空壳，测试会在运行期炸。
+#
+# 手机端（`mobile-tests`）**不需要**这一步：它不碰数据库，`api.ts` 在测试里被 mock。
+#
+# 2026-10-28 新增 `mobile-tests`：此前手机端 122 条测试（含「检查更新」的分支断言）
+# 从来没进过门禁，只有本机想起来才跑。它不需要模拟器、不碰原生构建，
+# `npm test -w @talkfirst/mobile` 在 ubuntu 上几十秒就能跑完。
+# 其中 typecheck 与 `checks` 作业重复了一遍（约 12s），这是故意的：
+# 让手机端那一步自成一个完整命令，本地复现 CI 只需要一模一样的这一行。
 
 name: CI
 
@@ -65,6 +73,27 @@ jobs:
       # 调用才是对的，而不是必然误报。
       - name: 静态契约（testids / 主题色 / JSX / tf props）
         run: npm run test:contracts -w @talkfirst/web
+
+  mobile-tests:
+    name: Mobile tests（jest，无需模拟器）
+    runs-on: ubuntu-latest
+    # 本机实测：typecheck ~12s、11 个套件 ~35s。给足余量。
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+
+      - name: install
+        run: npm ci
+
+      # 脚本里已经包含 `tsc --noEmit`（见 apps/mobile/package.json），
+      # 所以这一步就是「类型 + 单测」的完整门禁，不需要额外的步骤。
+      - name: typecheck + jest（apps/mobile）
+        run: npm test -w @talkfirst/mobile
 
   api-tests:
     name: API unit tests（真 PostgreSQL）
