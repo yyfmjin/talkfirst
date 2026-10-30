@@ -17,7 +17,12 @@ set -uo pipefail
 
 SRC="D:/文件/网站/TalkFirst"
 DEST=/d/talkfirst
-KS="$DEST/apps/mobile/android/app/talkfirst-local.keystore"
+# 签名密钥放在**克隆目录之外**（2026-10-30 事故）：
+# 它原来在 $DEST/apps/mobile/android/app/ 里，而 $DEST 是可丢弃的克隆目录 ——
+# 重新 clone 一次，密钥就没了。密钥一丢，之后出的包签名必然不同，老用户**再也
+# 装不上**（只能卸载重装），而 OTA 修不了这个。所以它必须住在克隆目录外面。
+KS_DIR=/d/Android/keys
+KS="$KS_DIR/talkfirst-local.keystore"
 KS_PASS=talkfirst-local
 export ANDROID_HOME='D:\Android\sdk'
 export ANDROID_SDK_ROOT='D:\Android\sdk'
@@ -52,12 +57,16 @@ if [ ! -d android ]; then
   log "expo prebuild（生成 android/ 工程）…"
   npx expo prebuild --platform android --no-install >/tmp/local-prebuild.log 2>&1 || { tail -20 /tmp/local-prebuild.log; exit 1; }
 fi
+mkdir -p "$KS_DIR"
 if [ ! -f "$KS" ]; then
-  log "生成本机签名密钥（一次即可，后续复用）…"
+  log "生成签名密钥（长期复用，务必备份）…"
   keytool -genkeypair -v -keystore "$KS" -alias talkfirst -keyalg RSA -keysize 2048 \
     -validity 10000 -storepass "$KS_PASS" -keypass "$KS_PASS" \
     -dname "CN=TalkFirst Local, OU=Dev, O=TalkFirst, L=-, S=-, C=CN" >/dev/null 2>&1 || exit 1
 fi
+# gradle 的 storeFile 是相对 app 模块的路径，所以构建前把它拷进去。
+cp "$KS" "$DEST/apps/mobile/android/app/talkfirst-local.keystore"
+log "签名密钥：$KS"
 
 # ── 3.5 让包带上更新渠道（热更新的前提）──────────────────────────────────────
 #
