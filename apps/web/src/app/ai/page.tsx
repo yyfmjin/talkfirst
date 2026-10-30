@@ -71,6 +71,11 @@ export default function AiPage() {
   const [failedAfterId, setFailedAfterId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  /**
+   * 用户是不是「贴在底部」。默认是 —— 进来就该看到最新一条。
+   * 他往上翻了历史（离开底部超过 80px），新消息就不该把他拽下去。
+   */
+  const pinnedRef = useRef(true);
 
   const load = useCallback(async () => {
     try {
@@ -91,7 +96,18 @@ export default function AiPage() {
 
   useEffect(() => {
     const el = listRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return;
+    /*
+     * 排到下一帧再滚。消息刚进 DOM 时 `scrollHeight` 还是旧值，同步赋值会
+     * 少滚一条（表现为「新消息没跟上来」）；`requestAnimationFrame` 之后
+     * 布局已经算完，落点就是真正的底部。
+     */
+    const frame = requestAnimationFrame(() => {
+      if (!pinnedRef.current && !sending) return;
+      el.scrollTop = el.scrollHeight;
+      pinnedRef.current = true;
+    });
+    return () => cancelAnimationFrame(frame);
   }, [state?.messages.length, sending]);
 
   const companion = state?.companion;
@@ -247,7 +263,14 @@ export default function AiPage() {
 
         {state !== undefined && !loadError && state && view === "chat" ? (
           <>
-            <div ref={listRef} className="tf-scroll min-h-0 flex-1 overflow-y-auto px-4 py-4">
+            <div
+              ref={listRef}
+              onScroll={(event) => {
+                const el = event.currentTarget;
+                pinnedRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+              }}
+              className="tf-scroll min-h-0 flex-1 overflow-y-auto px-4 py-4"
+            >
               {state.messages.length === 0 ? (
                 <p className="mt-10 text-center text-caption text-content-muted">{t("ai.emptyHint", { name: state.companion.name })}</p>
               ) : (

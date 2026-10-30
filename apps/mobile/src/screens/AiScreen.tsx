@@ -90,6 +90,8 @@ export function AiScreen({ onBack }: { onBack: () => void }) {
   /** 回复失败时「卡在哪一条用户消息之后」，用于给重试按钮定位。 */
   const [failedAfterId, setFailedAfterId] = useState<string | null>(null);
   const listRef = useRef<FlatList<AiMessage>>(null);
+  /** 贴在底部？用户往上翻历史（离开底部超过 80px）后，新消息就不该把他拽回来。 */
+  const pinnedRef = useRef(true);
 
   // 表单（创建/设置共用）
   const [name, setName] = useState("");
@@ -124,11 +126,27 @@ export function AiScreen({ onBack }: { onBack: () => void }) {
     void load();
   }, [load]);
 
+  /**
+   * 滚到最新一条（2026-10-29）。
+   *
+   * 排到下一帧再滚：新消息刚进列表时 `scrollToEnd` 量到的还是**上一帧**的内容
+   * 高度，会少滚一条 —— 这就是「新消息不会自动跳过去」看到的那个现象。
+   * 键盘动画跨帧的那几十毫秒也靠这一帧吃掉。
+   */
+  const scrollToLatest = useCallback((animated: boolean) => {
+    requestAnimationFrame(() => {
+      if (!pinnedRef.current) return;
+      listRef.current?.scrollToEnd({ animated });
+    });
+  }, []);
+
   useEffect(() => {
-    if ((state?.messages.length ?? 0) > 0 || sending) {
-      listRef.current?.scrollToEnd({ animated: true });
-    }
-  }, [state?.messages.length, sending]);
+    const hasMessages = (state?.messages.length ?? 0) > 0;
+    if (!hasMessages && !sending) return;
+    /* 自己发的消息：不管刚才翻到哪儿，都回到底部（微信也是这个行为）。 */
+    if (sending) pinnedRef.current = true;
+    scrollToLatest(true);
+  }, [state?.messages.length, sending, scrollToLatest]);
 
   /*
    * 返回键：先退出「设定」回到聊天，再退出整个 AI 朋友页。
@@ -345,7 +363,12 @@ export function AiScreen({ onBack }: { onBack: () => void }) {
         data={state?.messages ?? []}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
-        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
+        onContentSizeChange={() => scrollToLatest(false)}
+        onScroll={(event) => {
+          const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+          pinnedRef.current = contentSize.height - contentOffset.y - layoutMeasurement.height < 80;
+        }}
+        scrollEventThrottle={16}
         ListEmptyComponent={
           <View style={styles.empty}>
             <Icon name="sparkles-outline" size={30} color={colors.muted} />

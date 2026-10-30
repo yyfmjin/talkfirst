@@ -71,6 +71,25 @@ export default function MessagesPage() {
     void load();
   }, [load]);
 
+  /*
+   * 回到这个页面时补拉一次（2026-10-29）。
+   *
+   * 从 `/ai` 返回时，这条路由的组件还活在栈上（客户端路由不卸载），列表永远是
+   * 离开那一刻的缓存 —— 于是「在里面读完了，出来还挂着 3 条未读」。同理适用于
+   * 从某个会话返回来。窗口重新可见/获得焦点时拉一次，是最小且不打扰的做法。
+   */
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [load]);
+
   async function respond(id: string, action: "accept" | "reject") {
     setActingId(id);
     try {
@@ -124,8 +143,10 @@ export default function MessagesPage() {
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-100 text-brand-600">
                 <Sparkles size={20} aria-hidden="true" />
               </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-ui font-semibold text-content">
+              <div className={`min-w-0 flex-1`}>
+                <p
+                  className={`truncate text-ui ${aiChat?.unreadCount ? "font-semibold text-content" : "font-medium text-content-muted"}`}
+                >
                   {aiChat?.aiCompanionName ?? t("messages.aiFriend")}
                   {aiChat?.unreadCount ? (
                     <span className="ml-1.5 font-normal text-brand-600">
@@ -133,7 +154,9 @@ export default function MessagesPage() {
                     </span>
                   ) : null}
                 </p>
-                <p className="truncate text-caption text-content-muted">
+                <p
+                  className={`truncate text-caption ${aiChat?.unreadCount ? "text-content" : "text-content-subtle"}`}
+                >
                   {aiChat ? aiChat.lastMessage?.content ?? t("messages.aiFriendHint") : t("messages.aiFriendHint")}
                 </p>
               </div>
@@ -227,7 +250,9 @@ export default function MessagesPage() {
                     >
                       <TFAvatar name={conversation.peer?.nickname} size="md" />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-ui font-semibold text-content">
+                        <p
+                          className={`truncate text-ui ${conversation.unreadCount ? "font-semibold text-content" : "font-medium text-content-muted"}`}
+                        >
                           {conversation.peer?.nickname ?? t("common.talkFirstUser")}
                           {conversation.unreadCount ? (
                             <span className="ml-1.5 font-normal text-brand-600">
@@ -235,11 +260,15 @@ export default function MessagesPage() {
                             </span>
                           ) : null}
                         </p>
-                        <p className="truncate text-caption text-content-muted">
+                        <p
+                          className={`truncate text-caption ${conversation.unreadCount ? "text-content" : "text-content-subtle"}`}
+                        >
                           {conversation.lastMessage?.content ?? t("messages.startChat")}
                         </p>
                       </div>
-                      <span className="shrink-0 text-overline text-content-subtle">
+                      <span
+                        className={`shrink-0 text-overline ${conversation.unreadCount ? "text-brand-600" : "text-content-subtle"}`}
+                      >
                         {new Date(conversation.updatedAt).toLocaleDateString()}
                       </span>
                     </Link>

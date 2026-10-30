@@ -233,6 +233,20 @@ export function MessagesScreen() {
   });
   useBackHandler(openId !== null && exchange, () => setExchange(false));
 
+  /**
+   * 打开 AI 聊天（2026-10-29）。
+   *
+   * 顺手把这一行的未读清零：`/ai-companion/messages/read` 只改服务端的
+   * `lastReadAt`，本地这份 `conversations` 不会自己变 —— 于是「读完退出来，
+   * 红点还挂着」。退出时再补拉一次（见 `<AiScreen onBack>`），两边就都干净了。
+   */
+  const openAi = useCallback(() => {
+    setConversations((previous) =>
+      previous.map((item) => (item.type === "AI" ? { ...item, unreadCount: 0 } : item)),
+    );
+    setAi(true);
+  }, []);
+
   const openConversation = useCallback(async (id: string) => {
     /*
      * AI 会话不在这一层打开：它的消息只能走 `/ai-companion`，普通会话接口对它一律
@@ -240,7 +254,7 @@ export function MessagesScreen() {
      * 后者会让这个回调每次拉完列表就变一个，挂着它的 effect 跟着重跑。
      */
     if (conversationsRef.current.find((item) => item.id === id)?.type === "AI") {
-      setAi(true);
+      openAi();
       return;
     }
     setOpenId(id);
@@ -267,7 +281,7 @@ export function MessagesScreen() {
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : t("messages.errorThread"));
     }
-  }, [t]);
+  }, [openAi, t]);
 
   /** 更早的一页：服务端最旧在前，`nextCursor` 指向更早。 */
   async function loadOlder() {
@@ -350,7 +364,15 @@ export function MessagesScreen() {
   }
 
   if (ai) {
-    return <AiScreen onBack={() => setAi(false)} />;
+    /* 退出时补拉：AI 页在加载时已经把 lastReadAt 推到现在了，这一拉就把红点消掉。 */
+    return (
+      <AiScreen
+        onBack={() => {
+          setAi(false);
+          void loadConversations();
+        }}
+      />
+    );
   }
 
   if (segment === "notifications") {
@@ -616,7 +638,7 @@ export function MessagesScreen() {
               </View>
             ) : null}
             <Pressable
-              onPress={() => setAi(true)}
+              onPress={openAi}
               accessibilityRole="button"
               accessibilityLabel={t("ai.title")}
               style={styles.aiEntry}
@@ -625,10 +647,16 @@ export function MessagesScreen() {
                 <Icon name="sparkles-outline" size={20} color={colors.primaryDark} />
               </View>
               <View style={styles.rowText}>
-                <Text style={styles.peerName} numberOfLines={1}>
+                <Text
+                  style={[styles.peerName, aiChat?.unreadCount ? styles.peerNameUnread : null]}
+                  numberOfLines={1}
+                >
                   {aiChat?.aiCompanionName ?? t("ai.title")}
                 </Text>
-                <Text style={styles.preview} numberOfLines={1}>
+                <Text
+                  style={[styles.preview, aiChat?.unreadCount ? styles.previewUnread : null]}
+                  numberOfLines={1}
+                >
                   {aiChat?.lastMessage?.content ?? t("ai.entryHint")}
                 </Text>
               </View>
@@ -650,31 +678,41 @@ export function MessagesScreen() {
             <Text style={styles.emptyText}>{t("messages.empty")}</Text>
           </View>
         }
-        renderItem={({ item }) => (
-          <Pressable
-            onPress={() => void openConversation(item.id)}
-            accessibilityRole="button"
-            style={styles.row}
-          >
-            <Avatar uri={item.peer?.avatarUrl ?? null} nickname={item.peer?.nickname ?? null} size={48} />
-            <View style={styles.rowText}>
-              <View style={styles.rowTop}>
-                <Text style={styles.peerName} numberOfLines={1}>
-                  {item.peer?.nickname ?? t("messages.conversationFallback")}
+        renderItem={({ item }) => {
+          /* 已读/未读三个信号：名字字重、预览颜色、时间颜色。只有徽标的话，
+             一眼看过去整列长得一模一样 —— 这正是之前「分不出来」的原因。 */
+          const unread = (item.unreadCount ?? 0) > 0;
+          return (
+            <Pressable
+              onPress={() => void openConversation(item.id)}
+              accessibilityRole="button"
+              style={styles.row}
+            >
+              <Avatar uri={item.peer?.avatarUrl ?? null} nickname={item.peer?.nickname ?? null} size={48} />
+              <View style={styles.rowText}>
+                <View style={styles.rowTop}>
+                  <Text
+                    style={[styles.peerName, unread ? styles.peerNameUnread : null]}
+                    numberOfLines={1}
+                  >
+                    {item.peer?.nickname ?? t("messages.conversationFallback")}
+                  </Text>
+                  <Text style={[styles.time, unread ? styles.timeUnread : null]}>
+                    {compactTime(item.lastMessage?.createdAt ?? item.updatedAt, t)}
+                  </Text>
+                </View>
+                <Text style={[styles.preview, unread ? styles.previewUnread : null]} numberOfLines={1}>
+                  {previewText(item, t)}
                 </Text>
-                <Text style={styles.time}>{compactTime(item.lastMessage?.createdAt ?? item.updatedAt, t)}</Text>
               </View>
-              <Text style={styles.preview} numberOfLines={1}>
-                {previewText(item, t)}
-              </Text>
-            </View>
-            {item.unreadCount && item.unreadCount > 0 ? (
-              <View style={styles.unreadBadge}>
-                <Text style={styles.unreadText}>{item.unreadCount > 99 ? "99+" : item.unreadCount}</Text>
-              </View>
-            ) : null}
-          </Pressable>
-        )}
+              {unread ? (
+                <View style={styles.unreadBadge}>
+                  <Text style={styles.unreadText}>{item.unreadCount! > 99 ? "99+" : item.unreadCount}</Text>
+                </View>
+              ) : null}
+            </Pressable>
+          );
+        }}
       />
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
@@ -816,9 +854,12 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 8 },
   rowText: { flex: 1 },
   rowTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
-  peerName: { flex: 1, fontSize: 15, fontWeight: "600", color: colors.ink },
+  peerName: { flex: 1, fontSize: 15, fontWeight: "500", color: colors.ink },
+  peerNameUnread: { fontWeight: "700" },
   time: { fontSize: 12, color: colors.muted },
+  timeUnread: { color: colors.primary, fontWeight: "600" },
   preview: { fontSize: 13, color: colors.muted, marginTop: 3 },
+  previewUnread: { color: colors.ink },
   unreadBadge: {
     minWidth: 22,
     height: 22,
