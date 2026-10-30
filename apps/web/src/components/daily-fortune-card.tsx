@@ -68,8 +68,13 @@ export function DailyFortuneCard() {
     let alive = true;
     void (async () => {
       try {
+        /* 用**浏览器本地**日期：接口按北京时间兜底，海外用户夜里会看到「明天」。 */
+        const now = new Date();
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
+          now.getDate(),
+        ).padStart(2, "0")}`;
         const data = await apiFetch<FortuneCard>(
-          `/fortune/today?lang=${locale === "en" ? "en" : "zh-CN"}`,
+          `/fortune/today?lang=${locale === "en" ? "en" : "zh-CN"}&date=${today}`,
         );
         if (!alive) return;
         /* 与手机端同一道校验：形状不对就整块不显示，不能把首页拖挂。 */

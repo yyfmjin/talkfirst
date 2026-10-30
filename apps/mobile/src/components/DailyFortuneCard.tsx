@@ -68,8 +68,17 @@ export function DailyFortuneCard() {
     let alive = true;
     void (async () => {
       try {
+        /*
+         * 带上**本地**日期。服务端默认按北京时间算「今天」，可海外用户在夜里
+         * （美东 20:00 = 北京次日 09:00）会看到「明天」的日期，看起来就像 bug。
+         * 接口只接受前后两天内的日期，越界自动退回北京今天。
+         */
+        const now = new Date();
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
+          now.getDate(),
+        ).padStart(2, "0")}`;
         const data = await apiFetch<FortuneCard>(
-          `/fortune/today?lang=${locale === "en" ? "en" : "zh-CN"}`,
+          `/fortune/today?lang=${locale === "en" ? "en" : "zh-CN"}&date=${today}`,
         );
         if (!alive) return;
         /*
