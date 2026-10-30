@@ -38,8 +38,14 @@
  *
  * 当前最新 Android 安装包（本机出包，自托管）。空串 = 还没有可下载的包，页面会显示「生成中」。
  */
+/**
+ * 文件名带版本号（2026-10-30）：`talkfirst.apk` 这种固定名字会被 CDN 与浏览器
+ * 缓存住 —— 源站已经换成新包，用户下到的还是旧包，而文件名一模一样，看不出来。
+ * 同目录里历史发布都是这么命名的（`talkfirst-0.1.10.apk` 就在旁边），换名字
+ * 等于天然破缓存，也让用户能对着文件名确认自己装的是哪一版。
+ */
 export const ANDROID_APK_URL =
-  "https://talkfirst.ccwu.cc/apk/talkfirst.apk";
+  "https://talkfirst.ccwu.cc/apk/talkfirst-0.1.11.apk";
 
 /** 给用户看的固定入口：永远指向"当前最新版"。 */
 export const ANDROID_APK_PATH = "/download/android";
