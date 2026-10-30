@@ -18,6 +18,7 @@ import { ChatModule } from "./chat/chat.module";
 import { ExchangeModule } from "./exchange/exchange.module";
 import { SafetyModule } from "./safety/safety.module";
 import { TranslateModule } from "./translate/translate.module";
+import { FortuneModule } from "./fortune/fortune.module";
 import { AdminModule } from "./admin/admin.module";
 import { UploadsModule } from "./uploads/uploads.module";
 import { MomentsModule } from "./moments/moments.module";
@@ -52,6 +53,7 @@ import { AiCompanionModule } from "./ai-companion/ai-companion.module";
     ExchangeModule,
     SafetyModule,
     TranslateModule,
+    FortuneModule,
     NotificationsModule,
     AdminModule,
     UploadsModule,

@@ -12,6 +12,7 @@ import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { MomentOwnerActions } from "../components/MomentOwnerActions";
 import { VoiceNote } from "../components/VoiceNote";
+import { DailyFortuneCard } from "../components/DailyFortuneCard";
 import { useAuth } from "../lib/auth-context";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
 import { colors } from "../theme";
@@ -241,6 +242,7 @@ export function MomentsScreen({
         }
         onEndReachedThreshold={0.4}
         onEndReached={() => void load("more")}
+        ListHeaderComponent={<DailyFortuneCard />}
         ListEmptyComponent={
           <View style={styles.center}>
             <Icon name="images-outline" size={32} color={colors.muted} />

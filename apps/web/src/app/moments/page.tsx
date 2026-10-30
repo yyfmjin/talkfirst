@@ -22,6 +22,7 @@ import {
   useToast,
 } from "@/components/tf";
 import { VoiceNote } from "@/components/voice-note";
+import { DailyFortuneCard } from "@/components/daily-fortune-card";
 import { apiFetch } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { formatCount, formatDuration, relativeTime } from "@/lib/moments";
@@ -405,6 +406,10 @@ export default function MomentsPage() {
             </Link>
           </div>
         </div>
+
+        {/* 每日占卜：放在页头与分类 tabs 之间 —— 它是「今天」的信息，
+            不随下面的推荐/关注/我的切换而变化。 */}
+        <DailyFortuneCard />
 
         {/* Feed tabs. `TFTabs` replaces the hand-rolled row, which had no
             `role`/`aria-selected` at all — a screen reader could not tell which
