@@ -115,12 +115,11 @@ export function DailyFortuneCard() {
 
   return (
     <View style={styles.card}>
-      <View style={styles.head}>
-        <Text style={styles.title}>{t("fortune.title")}</Text>
-        <Text style={styles.date}>
-          {dateLabel} · {weekday}
-        </Text>
-      </View>
+      {/* 标题由弹层提供（`DailyFortuneSheet`），这里只留日期 —— 否则同一句话
+          会在同一个面板里出现两遍（2026-10-31）。 */}
+      <Text style={styles.date}>
+        {dateLabel} · {weekday}
+      </Text>
 
       <View style={styles.metaRow}>
         {card.sign ? <Text style={styles.sign}>{card.sign}</Text> : null}
@@ -166,21 +165,14 @@ export function DailyFortuneCard() {
 }
 
 const styles = StyleSheet.create({
-  placeholder: { paddingVertical: 10, alignItems: "center" },
+  placeholder: { paddingVertical: 24, alignItems: "center" },
+  /* 2026-10-31：卡片不再自己带外框/外边距 —— 它现在只活在弹层里，
+     白底圆角面板由 `DailyFortuneSheet` 提供，这里只负责内容排布。 */
   card: {
-    marginHorizontal: 14,
-    marginTop: 6,
-    marginBottom: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.bgSoft,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
     gap: 6,
   },
-  head: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
-  title: { fontSize: 15, fontWeight: "700", color: colors.ink },
   date: { fontSize: 12, color: colors.muted },
   metaRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 10 },
   sign: { fontSize: 13, fontWeight: "600", color: colors.primaryDark },

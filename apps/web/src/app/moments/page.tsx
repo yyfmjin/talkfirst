@@ -22,7 +22,7 @@ import {
   useToast,
 } from "@/components/tf";
 import { VoiceNote } from "@/components/voice-note";
-import { DailyFortuneCard } from "@/components/daily-fortune-card";
+import { DailyFortuneEntry } from "@/components/daily-fortune-card";
 import { MomentTranslate } from "@/components/moment-translate";
 import { apiFetch } from "@/lib/api";
 import { useSession } from "@/lib/session";
@@ -391,6 +391,8 @@ export default function MomentsPage() {
             <p className="mt-1 text-caption text-content-muted">{t("moments.subtitle")}</p>
           </div>
           <div className="flex gap-1.5">
+            {/* 每日占卜：从「常驻在信息流顶部」改成「点开看」（2026-10-31）。 */}
+            <DailyFortuneEntry />
             <Link
               href={localePath(locale, "/moments/settings")}
               aria-label={t("moments.settings")}
@@ -408,9 +410,6 @@ export default function MomentsPage() {
           </div>
         </div>
 
-        {/* 每日占卜：放在页头与分类 tabs 之间 —— 它是「今天」的信息，
-            不随下面的推荐/关注/我的切换而变化。 */}
-        <DailyFortuneCard />
 
         {/* Feed tabs. `TFTabs` replaces the hand-rolled row, which had no
             `role`/`aria-selected` at all — a screen reader could not tell which

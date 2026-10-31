@@ -12,7 +12,7 @@ import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { MomentOwnerActions } from "../components/MomentOwnerActions";
 import { VoiceNote } from "../components/VoiceNote";
-import { DailyFortuneCard } from "../components/DailyFortuneCard";
+import { DailyFortuneEntry } from "../components/DailyFortuneSheet";
 import { MomentTranslate } from "../components/MomentTranslate";
 import { useAuth } from "../lib/auth-context";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
@@ -203,6 +203,9 @@ export function MomentsScreen({
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{t("moments.title")}</Text>
         <View style={styles.headerActions}>
+          {/* 每日占卜：从「常驻在信息流顶部」改成「点开看」——它每天只值得看一次，
+              常驻会抢在第一条动态前面（2026-10-31）。 */}
+          <DailyFortuneEntry />
           <Pressable
             onPress={() => setWatching(true)}
             accessibilityRole="button"
@@ -243,7 +246,6 @@ export function MomentsScreen({
         }
         onEndReachedThreshold={0.4}
         onEndReached={() => void load("more")}
-        ListHeaderComponent={<DailyFortuneCard />}
         ListEmptyComponent={
           <View style={styles.center}>
             <Icon name="images-outline" size={32} color={colors.muted} />

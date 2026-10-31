@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Sparkles } from "lucide-react";
+import { TFSheet } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { useT } from "@/lib/i18n/use-locale";
 import type { MsgKey } from "@/lib/i18n";
@@ -95,25 +97,24 @@ export function DailyFortuneCard() {
   if (hidden) return null;
   if (!card) {
     return (
-      <div className="mx-5 mt-3 h-24 animate-pulse rounded-card border border-border bg-surface-sunken" aria-hidden="true" />
+      <div className="mx-4 mt-2 h-20 animate-pulse rounded-card bg-surface-sunken" aria-hidden="true" />
     );
   }
 
   const [, month, day] = card.date.split("-");
   const dateLabel =
     locale === "en" ? `${Number(month)}/${Number(day)}` : `${Number(month)}月${Number(day)}日`;
+  const weekdayLabel = t(WEEKDAY_KEYS[card.weekday] ?? "weekday.sun");
 
   return (
     <section
       aria-label={t("fortune.title")}
-      className="mx-5 mt-3 rounded-card border border-border bg-surface px-4 py-3.5"
+      className="px-4 pb-4 pt-1"
     >
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-ui font-semibold text-content">{t("fortune.title")}</h2>
-        <span className="shrink-0 text-overline text-content-subtle">
-          {dateLabel} · {t(WEEKDAY_KEYS[card.weekday] ?? "weekday.sun")}
-        </span>
-      </div>
+      {/* 标题由弹层提供（TFSheet），这里只留日期，避免同一句话出现两遍。 */}
+      <p className="text-caption text-content-muted">
+        {dateLabel} · {weekdayLabel}
+      </p>
 
       <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-content-muted">
         {card.sign ? <span className="font-semibold text-brand-600">{card.sign}</span> : null}
@@ -161,5 +162,38 @@ export function DailyFortuneCard() {
         </p>
       ) : null}
     </section>
+  );
+}
+
+/**
+ * 「每日占卜」的入口按钮 + 弹层（2026-10-31）。
+ *
+ * 卡片原来是常驻在信息流顶部的：它抢在第一条动态前面，而用户打开这个页面是来
+ * 看人的。一块每天都一样、一天只值得看一次的板子压在最上面，视觉上就是突兀。
+ *
+ * 改成按钮后还顺手省掉一次请求 —— `DailyFortuneCard` 只在弹层挂载后才去拉
+ * `/fortune/today`，首页加载不再连带这个接口。
+ *
+ * 关闭方式：右上角 ✕、点遮罩、Esc（`TFSheet` 的焦点陷阱里已绑定）。
+ */
+export function DailyFortuneEntry() {
+  const { t } = useT();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label={t("fortune.entry")}
+        aria-haspopup="dialog"
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-surface text-content-muted transition-colors duration-instant hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
+      >
+        <Sparkles size={17} aria-hidden="true" />
+      </button>
+      <TFSheet open={open} onClose={() => setOpen(false)} title={t("fortune.title")}>
+        {open ? <DailyFortuneCard /> : null}
+      </TFSheet>
+    </>
   );
 }
