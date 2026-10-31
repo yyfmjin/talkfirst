@@ -163,7 +163,11 @@ export class FortuneService {
     const classDigit = chart ? FIVE_ELEMENTS_CLASS_DIGIT[chart.fiveElementsRaw] : undefined;
     const numbers = new Set<number>();
     elements.forEach((element) => ELEMENT_NUMBERS[element].forEach((n) => numbers.add(n)));
-    if (classDigit) numbers.add(classDigit);
+    /*
+     * 五行局的数字只在**不够三个**时才补位。早先的写法是无条件加进来再 slice(0,3)，
+     * 结果「土·木」这种本该是 3·5·8 的组合被挤成 3·4·5 —— 真实的那个 8 被砍掉了。
+     */
+    if (numbers.size < 3 && classDigit) numbers.add(classDigit);
     for (let candidate = 1; numbers.size < 3; candidate += 1) numbers.add(candidate);
     const luckyNumbers = [...numbers].sort((a, b) => a - b).slice(0, 3);
 
