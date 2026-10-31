@@ -1,9 +1,12 @@
 import { useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useI18n } from "../lib/i18n-context";
 import { colors } from "../theme";
 import { DailyFortuneCard } from "./DailyFortuneCard";
 import { Icon } from "./Icon";
+
+/* 图标源在 `store/brand/fortune-icon.svg`，PNG 由它渲染而来（手机端不引 react-native-svg）。 */
+const FORTUNE_ICON = require("../../assets/fortune-icon.png");
 
 /**
  * 「每日占卜」的入口按钮 + 弹层（2026-10-31）。
@@ -33,7 +36,7 @@ export function DailyFortuneEntry() {
         accessibilityLabel={t("fortune.entry")}
         style={styles.entry}
       >
-        <Icon name="sparkles-outline" size={18} color={colors.primary} />
+        <Image source={FORTUNE_ICON} style={styles.entryIcon} resizeMode="contain" />
       </Pressable>
 
       <Modal
@@ -67,17 +70,16 @@ export function DailyFortuneEntry() {
 }
 
 const styles = StyleSheet.create({
-  /* 与页头其它图标按钮同构：40×40、圆形描边、不抢发布按钮的蓝色。 */
+  /* 实底（不再用描边透明款）：淡品牌底 + 自家图标，和旁边两个描边按钮区分开。 */
   entry: {
     width: 40,
     height: 40,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.bg,
+    backgroundColor: colors.bgTint,
   },
+  entryIcon: { width: 24, height: 24 },
   backdrop: {
     flex: 1,
     backgroundColor: "rgba(15, 23, 42, 0.45)",

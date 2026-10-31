@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none">
+  <!-- 魔盒：盒身 + 盖沿 -->
+  <rect x="3.6" y="7.2" width="16.8" height="12.6" rx="2.6" stroke="#0B7FFF" stroke-width="1.6"/>
+  <path d="M3.6 10.8h16.8" stroke="#0B7FFF" stroke-width="1.6" stroke-linecap="round"/>
+  <!-- 盖上的一枚小锁扣，暗示这是个「盒子」而不是一个矩形 -->
+  <path d="M12 9.4v2.2" stroke="#0B7FFF" stroke-width="1.6" stroke-linecap="round"/>
+
+  <!-- 太极：外圈 + 阴阳鱼（一半实心，S 形分界）+ 两个鱼眼 -->
+  <circle cx="12" cy="15.4" r="3.5" stroke="#0B7FFF" stroke-width="1.4"/>
+  <path d="M12 11.9a3.5 3.5 0 0 1 0 7 1.75 1.75 0 0 0 0-3.5 1.75 1.75 0 0 1 0-3.5z" fill="#0B7FFF"/>
+  <circle cx="12" cy="13.65" r="0.85" fill="#FFFFFF"/>
+  <circle cx="12" cy="17.15" r="0.85" fill="#0B7FFF"/>
+</svg>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
 import { TFSheet } from "@/components/tf";
 import { apiFetch } from "@/lib/api";
 import { useT } from "@/lib/i18n/use-locale";
@@ -176,6 +175,28 @@ export function DailyFortuneCard() {
  *
  * 关闭方式：右上角 ✕、点遮罩、Esc（`TFSheet` 的焦点陷阱里已绑定）。
  */
+/**
+ * 「带太极的魔盒」图标（2026-10-31）。
+ *
+ * 源文件是 `store/brand/fortune-icon.svg`：网页这里内联（矢量、跟随 currentColor），
+ * 手机端用同一份 SVG 渲染出来的 `apps/mobile/assets/fortune-icon.png`
+ * （手机不引 react-native-svg，见 `DailyFortuneSheet`）。
+ * 改图形只改 SVG，然后重新渲染 PNG —— 两处不要各画一遍。
+ */
+function FortuneIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" aria-hidden="true">
+      <rect x="3.6" y="7.2" width="16.8" height="12.6" rx="2.6" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M3.6 10.8h16.8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M12 9.4v2.2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="12" cy="15.4" r="3.5" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M12 11.9a3.5 3.5 0 0 1 0 7 1.75 1.75 0 0 0 0-3.5 1.75 1.75 0 0 1 0-3.5z" fill="currentColor" />
+      <circle cx="12" cy="13.65" r="0.85" fill="white" />
+      <circle cx="12" cy="17.15" r="0.85" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function DailyFortuneEntry() {
   const { t } = useT();
   const [open, setOpen] = useState(false);
@@ -187,9 +208,9 @@ export function DailyFortuneEntry() {
         onClick={() => setOpen(true)}
         aria-label={t("fortune.entry")}
         aria-haspopup="dialog"
-        className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-surface text-content-muted transition-colors duration-instant hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-100 text-brand-600 transition-colors duration-instant hover:bg-brand-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
       >
-        <Sparkles size={17} aria-hidden="true" />
+        <FortuneIcon size={19} />
       </button>
       <TFSheet open={open} onClose={() => setOpen(false)} title={t("fortune.title")}>
         {open ? <DailyFortuneCard /> : null}
