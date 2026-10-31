@@ -19,6 +19,7 @@ import { Icon } from "../components/Icon";
 import { MomentOwnerActions } from "../components/MomentOwnerActions";
 import { SubHeader } from "../components/SubHeader";
 import { VoiceNote } from "../components/VoiceNote";
+import { MomentTranslate } from "../components/MomentTranslate";
 import { useAuth } from "../lib/auth-context";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
 import type { MsgKey } from "../lib/messages";
@@ -679,7 +680,12 @@ function MomentCard({
         </View>
       </Pressable>
 
-      {moment.content ? <Text style={styles.content}>{moment.content}</Text> : null}
+      {moment.content ? (
+        <>
+          <Text style={styles.content}>{moment.content}</Text>
+          <MomentTranslate momentId={moment.id} content={moment.content} />
+        </>
+      ) : null}
 
       {moment.tags.length > 0 ? (
         <View style={styles.tagRow}>

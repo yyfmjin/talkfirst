@@ -520,6 +520,9 @@ export const zh = {
   "moments.viewProfile": "查看 {name} 的资料卡",
   "moments.voicePlay": "播放语音",
   "moments.voicePause": "暂停语音",
+  "moments.translate": "翻译",
+  "moments.translateHide": "收起翻译",
+  "moments.translateFailed": "翻译暂时不可用",
 
   /* 每日占卜卡片：正文（宜忌/幸运色/运势/紫微）由服务端按 `lang` 出好，
      这里只放卡片外壳与星期名。 */
@@ -2081,6 +2084,9 @@ export const en: Record<MsgKey, string> = {
   "moments.viewProfile": "View {name}'s profile",
   "moments.voicePlay": "Play voice note",
   "moments.voicePause": "Pause voice note",
+  "moments.translate": "Translate",
+  "moments.translateHide": "Hide translation",
+  "moments.translateFailed": "Translation isn't available right now",
 
   "weekday.sun": "Sun",
   "weekday.mon": "Mon",

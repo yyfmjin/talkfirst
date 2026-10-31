@@ -27,6 +27,7 @@ import { ApiRequestError, apiFetch } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { formatCount, formatDuration, relativeTime } from "@/lib/moments";
 import { VoiceNote } from "@/components/voice-note";
+import { MomentTranslate } from "@/components/moment-translate";
 import { localePath, useT } from "@/lib/i18n";
 
 /**
@@ -598,6 +599,7 @@ export default function MomentDetailPage() {
             </header>
 
             <p className="whitespace-pre-line break-words px-4 pt-3 text-body text-content">{moment.content}</p>
+            {moment.content ? <MomentTranslate momentId={moment.id} content={moment.content} /> : null}
 
             {moment.tags.length > 0 ? (
               <div className="flex flex-wrap gap-x-2 gap-y-1 px-4 pt-2">

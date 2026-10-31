@@ -142,6 +142,46 @@ export class TranslateService {
     } satisfies TranslateResult;
   }
 
+  /**
+   * 翻译一段**自由文本**（动态正文用，2026-10-30）。
+   *
+   * 与 `translate(messageId)` 有两处刻意的不同：
+   *
+   *   1. **不写 `MessageTranslation`**：那张表以 `messageId` 为唯一键，塞动态进去
+   *      会把「消息翻译缓存」变成一张杂表；动态侧的缓存放在调用方（带 TTL 的内存表）。
+   *   2. **不返回「演示翻译」占位串**：那句降级是消息页的兜底，贴到动态卡片上
+   *      就是一句谁都不懂的噪声。拿不到就返回 null，由调用方决定怎么表达。
+   *
+   * 返回 `null` 的两种情况：provider 没配（或当场失败），或文本为空。
+   */
+  async translateText(text: string, targetLangRaw?: string) {
+    const trimmed = text.trim();
+    if (!trimmed) return null;
+
+    const sourceLang = this.detect(trimmed);
+    const targetLang = this.normalize(targetLangRaw, sourceLang === "en" ? "zh" : "en");
+    if (sourceLang === targetLang) {
+      return { sourceLang, targetLang, text: trimmed, provider: "local-passthrough" };
+    }
+
+    const dictionaryHit = DICTIONARY[trimmed.toLowerCase()]?.[targetLang];
+    if (dictionaryHit) {
+      return { sourceLang, targetLang, text: dictionaryHit, provider: "local-dictionary" };
+    }
+
+    const external = await this.provider.translateExternal(trimmed, sourceLang, targetLang);
+    if (external) {
+      return {
+        sourceLang,
+        targetLang,
+        text: external.text,
+        provider: external.provider,
+      };
+    }
+
+    return null;
+  }
+
   private saveCache(
     messageId: string,
     sourceLang: string,

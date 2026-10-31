@@ -13,6 +13,7 @@ import { Icon } from "../components/Icon";
 import { MomentOwnerActions } from "../components/MomentOwnerActions";
 import { VoiceNote } from "../components/VoiceNote";
 import { DailyFortuneCard } from "../components/DailyFortuneCard";
+import { MomentTranslate } from "../components/MomentTranslate";
 import { useAuth } from "../lib/auth-context";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
 import { colors } from "../theme";
@@ -264,7 +265,12 @@ export function MomentsScreen({
               </View>
             </View>
 
-            {item.content ? <Text style={styles.content}>{item.content}</Text> : null}
+            {item.content ? (
+              <>
+                <Text style={styles.content}>{item.content}</Text>
+                <MomentTranslate momentId={item.id} content={item.content} />
+              </>
+            ) : null}
 
             {item.videoUrl ? (
               <MomentVideo uri={item.videoUrl} />

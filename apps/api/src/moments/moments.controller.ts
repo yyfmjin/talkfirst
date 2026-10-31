@@ -11,6 +11,7 @@ import {
   Patch,
   Post,
   Query,
+  ServiceUnavailableException,
   UseGuards,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
@@ -20,7 +21,49 @@ import { CurrentUser, type AuthUser } from "../auth/current-user.decorator";
 import { UuidParamPipe } from "../common/uuid-param.pipe";
 import { ValidationPipe } from "../common/validation.pipe";
 import { MomentsService } from "./moments.service";
+import { TranslateService } from "../translate/translate.service";
 import { resolveLocale } from "../common/i18n";
+
+class TranslateMomentDto {
+  /** 目标语言（两位或带地区的标签）；缺省时按 `Accept-Language` 推。 */
+  @IsOptional()
+  @IsString()
+  @MaxLength(8)
+  targetLang?: string;
+}
+
+/**
+ * 动态翻译的内存缓存。
+ *
+ * 不用 `MessageTranslation`：那张表以 `messageId` 为唯一键，塞动态进去会把
+ * 「消息翻译缓存」变成一张杂表。而动态正文是**公开内容**，请求量主要来自
+ * 「多人看同一条」，所以内存表 + 30 分钟 TTL 就够了；进程重启丢掉也无害。
+ */
+const momentTranslationCache = (() => {
+  type Value = { sourceLang: string; targetLang: string; text: string; provider: string };
+  const ttlMs = 30 * 60_000;
+  const maxEntries = 2000;
+  const store = new Map<string, { expiresAt: number; value: Value }>();
+  return {
+    get(momentId: string, targetLang: string): Value | null {
+      const key = `${momentId}|${targetLang}`;
+      const hit = store.get(key);
+      if (!hit) return null;
+      if (hit.expiresAt < Date.now()) {
+        store.delete(key);
+        return null;
+      }
+      return hit.value;
+    },
+    set(momentId: string, targetLang: string, value: Value) {
+      if (store.size >= maxEntries) {
+        const oldest = store.keys().next().value;
+        if (oldest !== undefined) store.delete(oldest);
+      }
+      store.set(`${momentId}|${targetLang}`, { expiresAt: Date.now() + ttlMs, value });
+    },
+  };
+})();
 
 class BindDto {
   @IsIn(["TALKFIRST", "INSTAGRAM", "X", "TIKTOK", "YOUTUBE", "FACEBOOK"])
@@ -195,7 +238,10 @@ const COMMENT_ERROR_MESSAGES: Record<string, string> = {
 @Controller("moments")
 @UseGuards(JwtAuthGuard)
 export class MomentsController {
-  constructor(private readonly moments: MomentsService) {}
+  constructor(
+    private readonly moments: MomentsService,
+    private readonly translate: TranslateService,
+  ) {}
 
   @Get("platforms")
   platforms(@Headers("accept-language") acceptLanguage?: string) {
@@ -453,6 +499,41 @@ export class MomentsController {
       }
       throw error;
     }
+  }
+
+  /**
+   * 动态正文翻译（2026-10-30）。
+   *
+   * 为什么不让客户端把正文发给一个「通用翻译接口」：那等于送一个免费翻译代理，
+   * 任何登录用户都能拿它翻任意文本。这里按 id 取**服务端自己的**正文，顺带复用
+   * `getMoment` 的可见性规则 —— 看不到的动态也翻不出来。
+   */
+  @Post(":id/translate")
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  async translateMoment(
+    @CurrentUser() user: AuthUser,
+    @Param("id", UuidParamPipe) id: string,
+    @Headers("accept-language") acceptLanguage: string | undefined,
+    @Body(new ValidationPipe()) dto: TranslateMomentDto,
+  ) {
+    const moment = await this.moments.getMoment(user.id, id);
+    if (!moment) throw new NotFoundException(asError("MOMENT_NOT_FOUND", "Moment not found"));
+
+    const targetLang = dto.targetLang ?? resolveLocale({ locale: acceptLanguage });
+    const cached = momentTranslationCache.get(id, targetLang);
+    if (cached) {
+      return { success: true as const, data: { ...cached, cached: true } };
+    }
+
+    const result = await this.translate.translateText(moment.content ?? "", targetLang);
+    if (!result) {
+      throw new ServiceUnavailableException(
+        asError("TRANSLATION_UNAVAILABLE", "Translation is not available right now"),
+      );
+    }
+
+    momentTranslationCache.set(id, targetLang, result);
+    return { success: true as const, data: { ...result, cached: false } };
   }
 
   @Get(":id/comments")

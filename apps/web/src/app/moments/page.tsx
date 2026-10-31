@@ -23,6 +23,7 @@ import {
 } from "@/components/tf";
 import { VoiceNote } from "@/components/voice-note";
 import { DailyFortuneCard } from "@/components/daily-fortune-card";
+import { MomentTranslate } from "@/components/moment-translate";
 import { apiFetch } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { formatCount, formatDuration, relativeTime } from "@/lib/moments";
@@ -814,6 +815,9 @@ function MomentCard({
           </div>
         ) : null}
       </Link>
+
+      {/* 翻译：同样必须在 Link 外面，否则点翻译会先跳详情页（同语音条的理由）。 */}
+      <MomentTranslate momentId={moment.id} content={moment.content} />
 
       {/*
         语音动态（2026-10-24）：放在 Link 外面。
