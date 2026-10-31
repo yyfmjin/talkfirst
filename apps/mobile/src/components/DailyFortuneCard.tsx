@@ -1,51 +1,45 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 import { apiFetch } from "../lib/api";
 import { useI18n } from "../lib/i18n-context";
 import type { MsgKey } from "../lib/messages";
 import { colors } from "../theme";
 
 /**
- * 每日占卜小卡片（2026-10-30）。
+ * 每日运势（2026-10-31 加强版）。
  *
- * ## 内容全部来自服务端
+ * ## 内容从哪来
  *
- * 宜忌、幸运色、运势、紫微那一行都是服务端按「用户 + 日期」算好的成品字符串
- * （见 `apps/api/src/fortune`）。客户端只渲染 —— 两端（App/网页）共享同一份
- * 文案表，不会出现「手机上说宜聊天、网页上说宜早睡」。
+ * 全部来自服务端，而且是**算出来的**：农历与日柱干支由 iztro 排，四化（禄权科忌）
+ * 由当天的流日/流月/流年给出，幸运数字取日柱的河图数，幸运色取日干五行，
+ * 宜忌由四化落星映射成具体动作。没有一项是随机抽的。
  *
- * ## 为什么要确定性
+ * 客户端只负责排版 —— 中英文案也在服务端，避免两个客户端各翻一遍。
  *
- * 服务端用 `userId|date` 做种子，同一天刷新永远是同一张卡。这条很重要：会变的
- * 占卜不是占卜，是抽奖，用户一眼就看穿了。所以这里也**不做**任何本地重抽逻辑。
+ * ## 为什么要有「没有命盘」的分支
  *
- * ## 失败就整块不显示
- *
- * 首页的主角是动态。占卜加载不出来（没网、接口 5xx、没登录态）时静默隐藏，
- * 不占位、不弹错误 —— 一个锦上添花的东西不该让人以为 App 坏了。
+ * 四化需要出生日期。没填生日的用户照样能看农历、干支、五行、幸运数与宜忌
+ * （这些只依赖当天），但四化/流月/流年/命盘一律不显示 —— 不拿随机内容冒充命盘。
  */
+
+type FourItem = { star: string; theme: string; hint: string };
+type PeriodItem = { ganzhi: string; stars: string[] };
 
 type FortuneCard = {
   date: string;
   weekday: number;
+  lunar: string | null;
+  ganzhi: string;
+  element: string;
   sign: string | null;
   luckyNumbers: number[];
   luckyColor: { name: string; hex: string };
   dos: string[];
   donts: string[];
-  horoscope: string;
-  ziwei: {
-    lunar: string | null;
-    ganzhi: string;
-    soul: string;
-    body: string;
-    palaceStar: string | null;
-    lu: string;
-    quan: string;
-    ke: string;
-    ji: string;
-    assumedHour: boolean;
-  } | null;
+  four: { lu: FourItem; quan: FourItem; ke: FourItem; ji: FourItem } | null;
+  month: PeriodItem | null;
+  year: PeriodItem | null;
+  chart: { palaceStars: string[]; soul: string; body: string; fiveElements: string } | null;
 };
 
 /** 0 = 周日，与 `Date.getDay()` 一致。 */
@@ -59,6 +53,13 @@ const WEEKDAY_KEYS = [
   "weekday.sat",
 ] as const satisfies readonly MsgKey[];
 
+const FOUR_ORDER = [
+  { key: "lu", label: "fortune.lu" },
+  { key: "quan", label: "fortune.quan" },
+  { key: "ke", label: "fortune.ke" },
+  { key: "ji", label: "fortune.ji" },
+] as const satisfies ReadonlyArray<{ key: keyof NonNullable<FortuneCard["four"]>; label: MsgKey }>;
+
 export function DailyFortuneCard() {
   const { t, locale } = useI18n();
   const [card, setCard] = useState<FortuneCard | null>(null);
@@ -68,11 +69,7 @@ export function DailyFortuneCard() {
     let alive = true;
     void (async () => {
       try {
-        /*
-         * 带上**本地**日期。服务端默认按北京时间算「今天」，可海外用户在夜里
-         * （美东 20:00 = 北京次日 09:00）会看到「明天」的日期，看起来就像 bug。
-         * 接口只接受前后两天内的日期，越界自动退回北京今天。
-         */
+        /* 用**本地**日期：接口按北京时间兜底，海外用户夜里会看到「明天」。 */
         const now = new Date();
         const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
           now.getDate(),
@@ -81,10 +78,7 @@ export function DailyFortuneCard() {
           `/fortune/today?lang=${locale === "en" ? "en" : "zh-CN"}&date=${today}`,
         );
         if (!alive) return;
-        /*
-         * 校验形状再渲染：接口换字段、网关回一段 HTML、或测试里 mock 成空对象时，
-         * 缺一个 `date` 就会在首页崩掉整棵列表。占卜是锦上添花，宁可整块不显示。
-         */
+        /* 形状不对就整块不显示：占卜是锦上添花，不能把首页/弹层拖崩。 */
         if (!data || typeof data.date !== "string" || !Array.isArray(data.dos)) {
           setHidden(true);
           return;
@@ -114,15 +108,48 @@ export function DailyFortuneCard() {
   const weekday = t(WEEKDAY_KEYS[card.weekday] ?? "weekday.sun");
 
   return (
-    <View style={styles.card}>
-      {/* 标题由弹层提供（`DailyFortuneSheet`），这里只留日期 —— 否则同一句话
-          会在同一个面板里出现两遍（2026-10-31）。 */}
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.card} showsVerticalScrollIndicator>
       <Text style={styles.date}>
         {dateLabel} · {weekday}
       </Text>
 
       <View style={styles.metaRow}>
+        {card.lunar ? (
+          <Text style={styles.meta}>{t("fortune.lunar", { text: card.lunar })}</Text>
+        ) : null}
+        <Text style={styles.meta}>{t("fortune.ganzhi", { ganzhi: card.ganzhi, element: card.element })}</Text>
         {card.sign ? <Text style={styles.sign}>{card.sign}</Text> : null}
+      </View>
+
+      {card.four ? (
+        <View style={styles.block}>
+          <Text style={styles.blockTitle}>{t("fortune.four")}</Text>
+          <View style={styles.chips}>
+            {FOUR_ORDER.map(({ key, label }) => {
+              const item = card.four![key];
+              return (
+                <View key={key} style={[styles.chip, key === "ji" ? styles.chipJi : styles.chipGood]}>
+                  <Text style={[styles.chipLabel, key === "ji" ? styles.chipLabelJi : null]}>
+                    {t(label)}
+                  </Text>
+                  <Text style={styles.chipStar}>{item.star}</Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      ) : null}
+
+      <View style={styles.lineRow}>
+        <Text style={[styles.badge, styles.badgeDo]}>{t("fortune.do")}</Text>
+        <Text style={styles.lineText}>{card.dos.join(" · ")}</Text>
+      </View>
+      <View style={styles.lineRow}>
+        <Text style={[styles.badge, styles.badgeDont]}>{t("fortune.dont")}</Text>
+        <Text style={styles.lineText}>{card.donts.join(" · ")}</Text>
+      </View>
+
+      <View style={styles.metaRow}>
         <Text style={styles.meta}>
           {t("fortune.lucky")} {card.luckyNumbers.join(" · ")}
         </Text>
@@ -132,53 +159,73 @@ export function DailyFortuneCard() {
         </View>
       </View>
 
-      <View style={styles.lineRow}>
-        <Text style={[styles.badge, styles.badgeDo]}>{t("fortune.do")}</Text>
-        <Text style={styles.lineText} numberOfLines={2}>
-          {card.dos.join(" · ")}
-        </Text>
-      </View>
-      <View style={styles.lineRow}>
-        <Text style={[styles.badge, styles.badgeDont]}>{t("fortune.dont")}</Text>
-        <Text style={styles.lineText} numberOfLines={2}>
-          {card.donts.join(" · ")}
-        </Text>
-      </View>
-
-      <Text style={styles.horoscope}>{card.horoscope}</Text>
-
-      {card.ziwei ? (
-        <Text style={styles.ziwei} numberOfLines={2}>
-          {t("fortune.ziwei", {
-            ganzhi: card.ziwei.ganzhi,
-            soul: card.ziwei.soul,
-            lu: card.ziwei.lu,
-            quan: card.ziwei.quan,
-            ke: card.ziwei.ke,
-            ji: card.ziwei.ji,
-          })}
-          {card.ziwei.assumedHour ? `　${t("fortune.assumedHour")}` : ""}
-        </Text>
+      {card.month || card.year ? (
+        <View style={styles.block}>
+          {card.month ? (
+            <View style={styles.periodRow}>
+              <Text style={styles.periodLabel}>{t("fortune.month")}</Text>
+              <Text style={styles.periodText}>
+                {card.month.ganzhi} · {card.month.stars.join(" ")}
+              </Text>
+            </View>
+          ) : null}
+          {card.year ? (
+            <View style={styles.periodRow}>
+              <Text style={styles.periodLabel}>{t("fortune.year")}</Text>
+              <Text style={styles.periodText}>
+                {card.year.ganzhi} · {card.year.stars.join(" ")}
+              </Text>
+            </View>
+          ) : null}
+        </View>
       ) : null}
-    </View>
+
+      {card.chart ? (
+        <View style={styles.block}>
+          <Text style={styles.blockTitle}>{t("fortune.chart")}</Text>
+          <View style={styles.periodRow}>
+            <Text style={styles.periodLabel}>{t("fortune.palace")}</Text>
+            <Text style={styles.periodText}>{card.chart.palaceStars.join("·")}</Text>
+          </View>
+          <View style={styles.periodRow}>
+            <Text style={styles.periodLabel}>{t("fortune.soul")}</Text>
+            <Text style={styles.periodText}>{card.chart.soul}</Text>
+            <Text style={[styles.periodLabel, styles.periodLabelGap]}>{t("fortune.body")}</Text>
+            <Text style={styles.periodText}>{card.chart.body}</Text>
+            <Text style={[styles.periodLabel, styles.periodLabelGap]}>{card.chart.fiveElements}</Text>
+          </View>
+        </View>
+      ) : null}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   placeholder: { paddingVertical: 24, alignItems: "center" },
-  /* 2026-10-31：卡片不再自己带外框/外边距 —— 它现在只活在弹层里，
-     白底圆角面板由 `DailyFortuneSheet` 提供，这里只负责内容排布。 */
-  card: {
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-    gap: 6,
-  },
+  /* 弹层里内容可能超过一屏：自己滚，不要把面板撑出屏幕。 */
+  scroll: { maxHeight: 520 },
+  card: { paddingHorizontal: 16, paddingBottom: 14, gap: 8 },
   date: { fontSize: 12, color: colors.muted },
   metaRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 10 },
-  sign: { fontSize: 13, fontWeight: "600", color: colors.primaryDark },
   meta: { fontSize: 12, color: colors.muted },
-  colorChip: { flexDirection: "row", alignItems: "center", gap: 4 },
-  colorDot: { width: 8, height: 8, borderRadius: 4 },
+  sign: { fontSize: 13, fontWeight: "600", color: colors.primaryDark },
+  block: { gap: 6, marginTop: 2 },
+  blockTitle: { fontSize: 12, fontWeight: "700", color: colors.ink },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  chipGood: { backgroundColor: colors.bgTint },
+  chipJi: { backgroundColor: colors.dangerSoft },
+  chipLabel: { fontSize: 11, fontWeight: "700", color: colors.primaryDark },
+  chipLabelJi: { color: colors.danger },
+  chipStar: { fontSize: 12, fontWeight: "600", color: colors.ink },
+  hint: { fontSize: 13, lineHeight: 20, color: colors.ink },
   lineRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   badge: {
     minWidth: 22,
@@ -193,6 +240,10 @@ const styles = StyleSheet.create({
   badgeDo: { color: colors.primaryDark, backgroundColor: colors.bgTint },
   badgeDont: { color: colors.danger, backgroundColor: colors.dangerSoft },
   lineText: { flex: 1, fontSize: 13, lineHeight: 19, color: colors.ink },
-  horoscope: { fontSize: 13, lineHeight: 20, color: colors.ink, marginTop: 2 },
-  ziwei: { fontSize: 11, lineHeight: 16, color: colors.muted, marginTop: 2 },
+  colorChip: { flexDirection: "row", alignItems: "center", gap: 4 },
+  colorDot: { width: 8, height: 8, borderRadius: 4 },
+  periodRow: { flexDirection: "row", alignItems: "baseline", gap: 8, flexWrap: "wrap" },
+  periodLabel: { fontSize: 11, fontWeight: "700", color: colors.muted, minWidth: 30 },
+  periodLabelGap: { marginLeft: 12 },
+  periodText: { fontSize: 12, color: colors.ink },
 });

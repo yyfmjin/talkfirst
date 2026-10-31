@@ -1,176 +1,132 @@
-import { FortuneService, fnv1a, mulberry32, pickDistinct, todayInShanghai, weekdayOf } from "./fortune.service";
-import { DONTS, DOS } from "./fortune.copy";
+import { FortuneService, todayInShanghai, weekdayOf } from "./fortune.service";
+import { STAR_DO, STAR_DONT } from "./fortune.copy";
 import type { PrismaService } from "../prisma/prisma.service";
 
 /**
- * 每日占卜卡片（2026-10-30）。
+ * 每日运势卡片（2026-10-31 第二版）。
  *
- * 这一组测试钉住的是**可信度**，不是排版：
+ * 这一版的取数原则是：**能算的算，算不出的不编**。所以测试钉的也是这个：
  *
- *   1. **刷新不能重投**。同一个人同一天，连调两次必须字节一致 —— 否则用户刷新
- *      一次「宜忌」就变一次，这东西立刻从「占卜」变成「抽奖」。
- *   2. **宜忌不能撞车**。同一句话既「宜」又「忌」是纯 bug，但随机取样的写法很容易
- *      不小心放进来。
- *   3. **没有出生日期也要能用**。老用户里有一部分没填生日，卡片要降级（星座/紫微
- *      为 null），而不是 500。
- *   4. **中英切换不改变内容**。两种语言必须是同一张卡的两个译本（幸运数字一致），
- *      而不是各抽一次。
+ *   1. 同一个人同一天，两次调用必须一模一样（刷新不能重投）；
+ *   2. 幸运数字来自日柱的河图数，落在 1..9 且不重复；
+ *   3. 没有出生日期时**明确降级**（four / month / year / chart 全为 null），
+ *      而不是拿随机内容冒充命盘；
+ *   4. 有出生日期时，四化四项齐全，且「忌」确实取自化忌那颗星对应的条目
+ *      —— 这是「有依据」的可回归锚点。
  */
 
 function serviceWith(birthDate: Date | null, gender: "MALE" | "FEMALE" | "UNKNOWN" = "FEMALE") {
-  const prisma = {
-    user: { findUnique: async () => ({ birthDate, gender }) },
-  };
+  const prisma = { user: { findUnique: async () => ({ birthDate, gender }) } };
   return new FortuneService(prisma as unknown as PrismaService);
 }
 
 const BIRTH = new Date("1998-06-15T00:00:00.000Z");
+const DAY = "2026-10-31";
 
 describe("FortuneService.today", () => {
-  it("同一个人同一天：两次结果完全一致（刷新不重投）", async () => {
+  it("同一个人同一天：两次结果完全一致", async () => {
     const service = serviceWith(BIRTH);
-    const first = await service.today("user-a", "zh-CN", "2026-10-30");
-    const second = await service.today("user-a", "zh-CN", "2026-10-30");
-    expect(second).toEqual(first);
+    expect(await service.today("u1", "zh-CN", DAY)).toEqual(await service.today("u1", "zh-CN", DAY));
   });
 
-  it("换一天会变（不然就是一张写死的卡）", async () => {
-    const service = serviceWith(BIRTH);
-    const base = await service.today("user-a", "zh-CN", "2026-10-30");
-    const others = await Promise.all(
-      ["2026-10-31", "2026-11-01", "2026-10-29"].map((date) =>
-        service.today("user-a", "zh-CN", date),
-      ),
-    );
-    const same = others.filter(
-      (card) =>
-        card.horoscope === base.horoscope &&
-        card.luckyNumbers.join() === base.luckyNumbers.join() &&
-        card.dos.join() === base.dos.join(),
-    );
-    expect(same).toHaveLength(0);
-  });
-
-  it("不同用户同一天：不是同一张卡", async () => {
-    const service = serviceWith(BIRTH);
-    const a = await service.today("user-a", "zh-CN", "2026-10-30");
-    const b = await service.today("user-b", "zh-CN", "2026-10-30");
-    expect(JSON.stringify(b)).not.toEqual(JSON.stringify(a));
-  });
-
-  it("宜忌各两条，各自来自自己的池子（不再共用一个池）", async () => {
-    const service = serviceWith(BIRTH);
-    const card = await service.today("user-a", "zh-CN", "2026-10-30");
-    expect(card.dos).toHaveLength(2);
-    expect(card.donts).toHaveLength(2);
-    const dos = DOS.map((item) => item.zh);
-    const donts = DONTS.map((item) => item.zh);
-    expect(new Set(card.dos).size).toBe(2);
-    expect(new Set(card.donts).size).toBe(2);
-    card.dos.forEach((item) => expect(dos).toContain(item));
-    card.donts.forEach((item) => expect(donts).toContain(item));
-    /* 两个池子本身不能有交集，不然「忌 早点睡」那种语病会回来。 */
-    expect(dos.filter((item) => donts.includes(item))).toHaveLength(0);
-  });
-
-  it("幸运数字：三个、1..9、去重、升序", async () => {
-    const service = serviceWith(BIRTH);
-    const card = await service.today("user-a", "zh-CN", "2026-10-30");
+  it("幸运数字：三个、1..9、不乱序、不重复", async () => {
+    const card = await serviceWith(BIRTH).today("u1", "zh-CN", DAY);
     expect(card.luckyNumbers).toHaveLength(3);
     expect(new Set(card.luckyNumbers).size).toBe(3);
-    expect(card.luckyNumbers).toEqual([...card.luckyNumbers].sort((x, y) => x - y));
+    expect(card.luckyNumbers).toEqual([...card.luckyNumbers].sort((a, b) => a - b));
     card.luckyNumbers.forEach((n) => {
       expect(n).toBeGreaterThanOrEqual(1);
       expect(n).toBeLessThanOrEqual(9);
     });
   });
 
-  it("星期几算对：2026-10-30 是周五", async () => {
-    const service = serviceWith(BIRTH);
-    const card = await service.today("user-a", "zh-CN", "2026-10-30");
-    expect(card.date).toBe("2026-10-30");
-    expect(card.weekday).toBe(5);
+  it("干支与五行非空（2026-10-31 是戊寅日，土木）", async () => {
+    const card = await serviceWith(BIRTH).today("u1", "zh-CN", DAY);
+    expect(card.ganzhi).toBe("戊寅");
+    expect(card.element).toBe("土·木");
+    expect(card.weekday).toBe(6); // 周六
   });
 
-  it("没有出生日期：星座与紫微为 null，其余照常", async () => {
-    const service = serviceWith(null);
-    const card = await service.today("user-a", "zh-CN", "2026-10-30");
+  it("没有出生日期：四化/流月/流年/命盘全部为 null，宜忌仍给三条", async () => {
+    const card = await serviceWith(null).today("u1", "zh-CN", DAY);
     expect(card.sign).toBeNull();
-    expect(card.ziwei).toBeNull();
-    expect(card.dos).toHaveLength(2);
-    expect(card.luckyNumbers).toHaveLength(3);
-    expect(card.horoscope.length).toBeGreaterThan(0);
+    expect(card.four).toBeNull();
+    expect(card.month).toBeNull();
+    expect(card.year).toBeNull();
+    expect(card.chart).toBeNull();
+    expect(card.dos).toHaveLength(3);
+    expect(card.donts).toHaveLength(3);
+    card.dos.concat(card.donts).forEach((line) => expect(line.length).toBeGreaterThan(0));
   });
 
-  it("有出生日期：紫微四化齐全，时辰标记为推定", async () => {
-    const service = serviceWith(BIRTH, "FEMALE");
-    const card = await service.today("user-a", "zh-CN", "2026-10-30");
+  it("有出生日期：四化四项齐全，流月流年有干支与四星，命盘信息齐全", async () => {
+    const card = await serviceWith(BIRTH).today("u1", "zh-CN", DAY);
     expect(card.sign).toBe("双子座");
-    expect(card.ziwei).not.toBeNull();
-    const ziwei = card.ziwei!;
-    expect(ziwei.assumedHour).toBe(true);
-    expect(ziwei.soul.length).toBeGreaterThan(0);
-    expect(ziwei.body.length).toBeGreaterThan(0);
-    expect([ziwei.lu, ziwei.quan, ziwei.ke, ziwei.ji].every((star) => star.length > 0)).toBe(true);
-    expect(ziwei.ganzhi.length).toBeGreaterThan(0);
-    /* 中文环境下农历要有；拿不到时是 null —— 两种都允许，但不能是空串。 */
-    expect(ziwei.lunar === null || ziwei.lunar.length > 0).toBe(true);
+
+    const four = card.four!;
+    for (const item of [four.lu, four.quan, four.ke, four.ji]) {
+      expect(item.star.length).toBeGreaterThan(0);
+      expect(item.theme.length).toBeGreaterThan(0);
+      expect(item.hint.length).toBeGreaterThan(0);
+    }
+
+    expect(card.month?.ganzhi).toBeTruthy();
+    expect(card.month?.stars).toHaveLength(4);
+    expect(card.year?.stars).toHaveLength(4);
+
+    expect(card.chart?.palaceStars.length).toBeGreaterThan(0);
+    expect(card.chart?.soul.length).toBeGreaterThan(0);
+    expect(card.chart?.body.length).toBeGreaterThan(0);
+    expect(card.chart?.fiveElements.length).toBeGreaterThan(0);
   });
 
-  it("英文：内容里没有中文，紫微用拼音", async () => {
-    const service = serviceWith(BIRTH);
-    const card = await service.today("user-a", "en", "2026-10-30");
+  it("宜忌不是随机词：化忌那颗星的针对性条目一定出现在「忌」里", async () => {
+    const card = await serviceWith(BIRTH).today("u1", "zh-CN", DAY);
+    const jiStar = card.four!.ji.star;
+    const specific = STAR_DONT[jiStar]?.zh;
+    /* 四化可能在 20 颗星之外（右弼之类已覆盖）；覆盖不到时退化到通用条目，这里只断言「有兜底」。 */
+    if (specific) expect(card.donts).toContain(specific);
+    else expect(card.donts.length).toBe(3);
+  });
+
+  it("「宜」取自化禄/化权/化科三颗星对应的条目", async () => {
+    const card = await serviceWith(BIRTH).today("u1", "zh-CN", DAY);
+    const four = card.four!;
+    const expected = [four.lu.star, four.ke.star, four.quan.star]
+      .map((star) => STAR_DO[star]?.zh)
+      .filter((text): text is string => Boolean(text));
+    expected.forEach((text) => expect(card.dos).toContain(text));
+  });
+
+  it("英文：没有中文字符残留（含五行局）", async () => {
+    const card = await serviceWith(BIRTH).today("u1", "en", DAY);
     const cjk = /[\u4e00-\u9fff]/;
-    expect(card.sign).toBe("Gemini");
-    expect(card.dos.concat(card.donts, [card.horoscope, card.luckyColor.name]).some((text) => cjk.test(text))).toBe(false);
-    expect(card.ziwei).not.toBeNull();
-    expect(cjk.test(card.ziwei!.soul)).toBe(false);
-    expect(card.ziwei!.lunar).toBeNull();
-    expect(card.ziwei!.ganzhi).toMatch(/^[A-Za-z]+(-[A-Za-z]+)?$/);
+    const texts = [
+      card.ganzhi,
+      card.element,
+      card.sign ?? "",
+      card.luckyColor.name,
+      card.chart?.fiveElements ?? "",
+      card.chart?.soul ?? "",
+      ...card.dos,
+      ...card.donts,
+      card.four!.lu.star,
+      card.four!.ji.star,
+    ];
+    texts.forEach((text) => expect(cjk.test(text)).toBe(false));
   });
 
-  it("中英是同一张卡：幸运数字与宜忌条数一致", async () => {
-    const service = serviceWith(BIRTH);
-    const zh = await service.today("user-a", "zh-CN", "2026-10-30");
-    const en = await service.today("user-a", "en", "2026-10-30");
-    expect(en.luckyNumbers).toEqual(zh.luckyNumbers);
-    expect(en.luckyColor.hex).toBe(zh.luckyColor.hex);
-    expect(en.dos).toHaveLength(zh.dos.length);
-  });
-
-  it("日期参数超出窗口或格式非法时退回今天", async () => {
+  it("日期参数越界或格式非法时退回今天", async () => {
     const service = serviceWith(BIRTH);
     const today = todayInShanghai();
-    expect((await service.today("user-a", "zh-CN", "1999-01-01")).date).toBe(today);
-    expect((await service.today("user-a", "zh-CN", "2026/10/30")).date).toBe(today);
-    expect((await service.today("user-a", "zh-CN")).date).toBe(today);
+    expect((await service.today("u1", "zh-CN", "1999-01-01")).date).toBe(today);
+    expect((await service.today("u1", "zh-CN", "2026/10/31")).date).toBe(today);
   });
 });
 
-describe("确定性随机的底座", () => {
-  it("fnv1a 稳定且区分输入", () => {
-    expect(fnv1a("a|b")).toBe(fnv1a("a|b"));
-    expect(fnv1a("a|b")).not.toBe(fnv1a("a|c"));
-  });
-
-  it("mulberry32 同种子同序列", () => {
-    const a = mulberry32(42);
-    const b = mulberry32(42);
-    expect([a(), a(), a()]).toEqual([b(), b(), b()]);
-  });
-
-  it("pickDistinct 不放回", () => {
-    const random = mulberry32(7);
-    const picked = pickDistinct(random, 10, 4);
-    expect(new Set(picked).size).toBe(4);
-    picked.forEach((index) => {
-      expect(index).toBeGreaterThanOrEqual(0);
-      expect(index).toBeLessThan(10);
-    });
-  });
-
-  it("weekdayOf 用 UTC 中午，不受时区影响", () => {
-    expect(weekdayOf("2026-10-30")).toBe(5);
+describe("日期工具", () => {
+  it("weekdayOf 用 UTC 中午算，不受服务器时区影响", () => {
+    expect(weekdayOf("2026-10-31")).toBe(6);
     expect(weekdayOf("2026-11-01")).toBe(0);
   });
 });

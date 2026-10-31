@@ -7,47 +7,33 @@ import { useT } from "@/lib/i18n/use-locale";
 import type { MsgKey } from "@/lib/i18n";
 
 /**
- * 每日占卜小卡片（2026-10-30）。与手机端 `DailyFortuneCard` 同一份数据：
+ * 每日运势（2026-10-31 第二版，内容加强）。
  *
- *   GET /fortune/today?lang=…
+ * 数据全部由 `GET /fortune/today?lang=…&date=…` 给出，服务端按 iztro 排盘：
+ * 流日/流月/流年四化、命宫星、五行局都是**算出来的**；宜忌按四化的星曜对应，
+ * 幸运数字按日柱的河图数，幸运色按日干五行。没有任何一项是随机抽的。
  *
- * ## 内容由服务端按语言出好
- *
- * 宜忌、幸运色、运势、紫微四化都是服务端算的成品字符串（`apps/api/src/fortune`）。
- * 两端共用一张文案表，不会出现手机和网页说两套话。这里只渲染。
- *
- * ## 确定性
- *
- * 同一个人同一天刷新永远是同一张卡（服务端用 `userId|date` 做种子）。所以前端
- * **不做**任何重抽/缓存失效逻辑 —— 多刷一次也不会变，这正是它可信的原因。
- *
- * ## 失败就整块不显示
- *
- * 首页的主角是动态。接口挂了、没登录态，静默隐藏即可，不要用一块红色错误把
- * 信息流顶下去。
+ * 客户端只做排版。改内容去 `apps/api/src/fortune`，两端口径自然一致。
  */
+
+type FourItem = { star: string; theme: string; hint: string };
+type PeriodItem = { ganzhi: string; stars: string[] };
 
 type FortuneCard = {
   date: string;
   weekday: number;
+  lunar: string | null;
+  ganzhi: string;
+  element: string;
   sign: string | null;
   luckyNumbers: number[];
   luckyColor: { name: string; hex: string };
   dos: string[];
   donts: string[];
-  horoscope: string;
-  ziwei: {
-    lunar: string | null;
-    ganzhi: string;
-    soul: string;
-    body: string;
-    palaceStar: string | null;
-    lu: string;
-    quan: string;
-    ke: string;
-    ji: string;
-    assumedHour: boolean;
-  } | null;
+  four: { lu: FourItem; quan: FourItem; ke: FourItem; ji: FourItem } | null;
+  month: PeriodItem | null;
+  year: PeriodItem | null;
+  chart: { palaceStars: string[]; soul: string; body: string; fiveElements: string } | null;
 };
 
 const WEEKDAY_KEYS = [
@@ -59,6 +45,8 @@ const WEEKDAY_KEYS = [
   "weekday.fri",
   "weekday.sat",
 ] as const satisfies readonly MsgKey[];
+
+const FOUR_KEYS = ["lu", "quan", "ke", "ji"] as const;
 
 export function DailyFortuneCard() {
   const { t, locale } = useT();
@@ -78,7 +66,6 @@ export function DailyFortuneCard() {
           `/fortune/today?lang=${locale === "en" ? "en" : "zh-CN"}&date=${today}`,
         );
         if (!alive) return;
-        /* 与手机端同一道校验：形状不对就整块不显示，不能把首页拖挂。 */
         if (!data || typeof data.date !== "string" || !Array.isArray(data.dos)) {
           setHidden(true);
           return;
@@ -96,7 +83,7 @@ export function DailyFortuneCard() {
   if (hidden) return null;
   if (!card) {
     return (
-      <div className="mx-4 mt-2 h-20 animate-pulse rounded-card bg-surface-sunken" aria-hidden="true" />
+      <div className="mx-4 mt-2 h-28 animate-pulse rounded-card bg-surface-sunken" aria-hidden="true" />
     );
   }
 
@@ -106,75 +93,99 @@ export function DailyFortuneCard() {
   const weekdayLabel = t(WEEKDAY_KEYS[card.weekday] ?? "weekday.sun");
 
   return (
-    <section
-      aria-label={t("fortune.title")}
-      className="px-4 pb-4 pt-1"
-    >
-      {/* 标题由弹层提供（TFSheet），这里只留日期，避免同一句话出现两遍。 */}
+    <div className="space-y-3 px-4 pb-5 pt-1">
       <p className="text-caption text-content-muted">
         {dateLabel} · {weekdayLabel}
       </p>
 
-      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-content-muted">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-content-muted">
+        {card.lunar ? <span>{t("fortune.lunar", { text: card.lunar })}</span> : null}
+        <span>{t("fortune.ganzhi", { ganzhi: card.ganzhi, element: card.element })}</span>
         {card.sign ? <span className="font-semibold text-brand-600">{card.sign}</span> : null}
+      </div>
+
+      {card.four ? (
+        <section>
+          <p className="text-overline font-semibold tracking-wider text-content-subtle">
+            {t("fortune.four")}
+          </p>
+          <ul className="mt-1 space-y-1">
+            {FOUR_KEYS.map((key) => {
+              const item = card.four![key];
+              return (
+                <li key={key} className="flex items-baseline gap-2 text-caption">
+                  <span
+                    className={`w-5 shrink-0 text-center font-semibold ${
+                      key === "ji" ? "text-danger-700" : "text-brand-600"
+                    }`}
+                  >
+                    {t(`fortune.${key}` as MsgKey)}
+                  </span>
+                  <span className="shrink-0 font-semibold text-content">{item.star}</span>
+                  <span className="min-w-0 truncate text-content-muted">{item.theme}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
+
+      <section className="space-y-1.5">
+        <Row label={t("fortune.do")} tone="do" items={card.dos} />
+        <Row label={t("fortune.dont")} tone="dont" items={card.donts} />
+      </section>
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-caption text-content-muted">
         <span>
           {t("fortune.lucky")} {card.luckyNumbers.join(" · ")}
         </span>
-        <span className="inline-flex items-center gap-1">
-          <span
-            className="inline-block h-2 w-2 rounded-full"
-            style={{ backgroundColor: card.luckyColor.hex }}
-            aria-hidden="true"
-          />
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full" style={{ background: card.luckyColor.hex }} aria-hidden="true" />
           {card.luckyColor.name}
         </span>
       </div>
 
-      <dl className="mt-2 space-y-1">
-        <div className="flex items-start gap-2">
-          <dt className="mt-0.5 shrink-0 rounded-md bg-brand-50 px-1.5 py-0.5 text-overline font-semibold text-brand-600">
-            {t("fortune.do")}
-          </dt>
-          <dd className="text-caption leading-5 text-content">{card.dos.join(" · ")}</dd>
-        </div>
-        <div className="flex items-start gap-2">
-          <dt className="mt-0.5 shrink-0 rounded-md bg-danger-50 px-1.5 py-0.5 text-overline font-semibold text-danger-700">
-            {t("fortune.dont")}
-          </dt>
-          <dd className="text-caption leading-5 text-content">{card.donts.join(" · ")}</dd>
-        </div>
-      </dl>
+      {card.month || card.year ? (
+        <section className="space-y-1 border-t border-border pt-2 text-caption text-content-muted">
+          {card.month ? (
+            <p>
+              <span className="text-content-subtle">{t("fortune.month")} </span>
+              <span className="font-semibold text-content">{card.month.ganzhi}</span> ·{" "}
+              {card.month.stars.join(" · ")}
+            </p>
+          ) : null}
+          {card.year ? (
+            <p>
+              <span className="text-content-subtle">{t("fortune.year")} </span>
+              <span className="font-semibold text-content">{card.year.ganzhi}</span> ·{" "}
+              {card.year.stars.join(" · ")}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
 
-      <p className="mt-2 text-caption leading-5 text-content">{card.horoscope}</p>
-
-      {card.ziwei ? (
-        <p className="mt-1.5 text-overline leading-4 text-content-subtle">
-          {t("fortune.ziwei", {
-            ganzhi: card.ziwei.ganzhi,
-            soul: card.ziwei.soul,
-            lu: card.ziwei.lu,
-            quan: card.ziwei.quan,
-            ke: card.ziwei.ke,
-            ji: card.ziwei.ji,
-          })}
-          {card.ziwei.assumedHour ? ` · ${t("fortune.assumedHour")}` : ""}
+      {card.chart ? (
+        <p className="border-t border-border pt-2 text-caption text-content-muted">
+          <span className="text-content-subtle">{t("fortune.chart")} </span>
+          {t("fortune.palace")} {card.chart.palaceStars.join("·")} · {t("fortune.soul")}{" "}
+          {card.chart.soul} · {t("fortune.body")} {card.chart.body} · {card.chart.fiveElements}
         </p>
       ) : null}
-    </section>
+    </div>
   );
 }
 
-/**
- * 「每日占卜」的入口按钮 + 弹层（2026-10-31）。
- *
- * 卡片原来是常驻在信息流顶部的：它抢在第一条动态前面，而用户打开这个页面是来
- * 看人的。一块每天都一样、一天只值得看一次的板子压在最上面，视觉上就是突兀。
- *
- * 改成按钮后还顺手省掉一次请求 —— `DailyFortuneCard` 只在弹层挂载后才去拉
- * `/fortune/today`，首页加载不再连带这个接口。
- *
- * 关闭方式：右上角 ✕、点遮罩、Esc（`TFSheet` 的焦点陷阱里已绑定）。
- */
+function Row({ label, tone, items }: { label: string; tone: "do" | "dont"; items: string[] }) {
+  const badge =
+    tone === "do" ? "bg-brand-100 text-brand-700" : "bg-danger-50 text-danger-700";
+  return (
+    <div className="flex items-start gap-2 text-caption">
+      <span className={`mt-0.5 w-5 shrink-0 rounded text-center font-semibold ${badge}`}>{label}</span>
+      <span className="min-w-0 flex-1 leading-5 text-content">{items.join(" · ")}</span>
+    </div>
+  );
+}
+
 /**
  * 「带太极的魔盒」图标（2026-10-31）。
  *
@@ -197,6 +208,10 @@ function FortuneIcon({ size = 20 }: { size?: number }) {
   );
 }
 
+/**
+ * 入口按钮 + 弹层。卡片原来是常驻在信息流顶部的 —— 它抢在第一条动态前面，
+ * 而用户打开这个页面是来看人的（2026-10-31 改成点开看）。
+ */
 export function DailyFortuneEntry() {
   const { t } = useT();
   const [open, setOpen] = useState(false);
@@ -213,7 +228,11 @@ export function DailyFortuneEntry() {
         <FortuneIcon size={19} />
       </button>
       <TFSheet open={open} onClose={() => setOpen(false)} title={t("fortune.title")}>
-        {open ? <DailyFortuneCard /> : null}
+        {open ? (
+          <div className="max-h-[70vh] overflow-y-auto tf-scroll">
+            <DailyFortuneCard />
+          </div>
+        ) : null}
       </TFSheet>
     </>
   );

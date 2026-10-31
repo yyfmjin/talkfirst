@@ -151,3 +151,133 @@ export function starName(zhName: string, lang: FortuneLang): string {
   if (lang === "zh-CN") return zhName;
   return STAR_EN[zhName] ?? zhName;
 }
+
+/* -------------------------------------------------------------------------- */
+/* 五行与四化的对应（2026-10-31 加强版）                                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * 这一版把「幸运数字 / 幸运色 / 宜忌」从**随机抽**改成**按规则推导**。
+ *
+ * 理由很直接：随机抽出来的宜忌只能保证「看起来像」，经不起任何追问 —— 同一个用户
+ * 问一句「为什么今天忌早睡」，答案只能是「抽到的」。下面这三张表都是命理里固定的
+ * 对应关系，任何人都能拿去看：
+ *
+ *   - 天干/地支 → 五行（六十甲子的基础）
+ *   - 五行 → 河图数（一六水、二七火、三八木、四九金、五十土）与五色
+ *   - 四化（禄权科忌）与星曜 → 传统上对应的行事倾向
+ *
+ * 卡片上**不写**依据（用户要的是结果），但代码里必须站得住。
+ */
+export const STEM_ELEMENT: Readonly<Record<string, Element>> = {
+  甲: "wood", 乙: "wood",
+  丙: "fire", 丁: "fire",
+  戊: "earth", 己: "earth",
+  庚: "metal", 辛: "metal",
+  壬: "water", 癸: "water",
+};
+
+export const BRANCH_ELEMENT: Readonly<Record<string, Element>> = {
+  子: "water", 丑: "earth", 寅: "wood", 卯: "wood", 辰: "earth", 巳: "fire",
+  午: "fire", 未: "earth", 申: "metal", 酉: "metal", 戌: "earth", 亥: "water",
+};
+
+export type Element = "wood" | "fire" | "earth" | "metal" | "water";
+
+/** 河图数：一六水、二七火、三八木、四九金、五十土（十记作不带，取 5）。 */
+export const ELEMENT_NUMBERS: Readonly<Record<Element, number[]>> = {
+  water: [1, 6],
+  fire: [2, 7],
+  wood: [3, 8],
+  metal: [4, 9],
+  earth: [5],
+};
+
+/** 五行 → 五色。色值取自产品色板，避免出现系统里没有的颜色。 */
+export const ELEMENT_COLORS: Readonly<Record<Element, { zh: string; en: string; hex: string }>> = {
+  wood: { zh: "青（木）", en: "Green (wood)", hex: "#22A06B" },
+  fire: { zh: "赤（火）", en: "Crimson (fire)", hex: "#E5484D" },
+  earth: { zh: "黄（土）", en: "Amber (earth)", hex: "#B7791F" },
+  metal: { zh: "白（金）", en: "Ivory (metal)", hex: "#C9A227" },
+  water: { zh: "玄（水）", en: "Indigo (water)", hex: "#0B3D91" },
+};
+
+/** 五行局 → 数字，用于幸运数字不足三个时补位（水二局、木三局…）。 */
+export const FIVE_ELEMENTS_CLASS_DIGIT: Readonly<Record<string, number>> = {
+  水二局: 2,
+  木三局: 3,
+  金四局: 4,
+  土五局: 5,
+  火六局: 6,
+};
+
+/**
+ * 四化对应的行事倾向。
+ *
+ * 传统说法：化禄主顺遂与得，化权主掌控与推进，化科主名声与文，化忌主阻滞与纠结。
+ * 这里把它们落到**这个 App 里能做的事**（开口、发文、练习、别争吵），而不是笼统的
+ * 「宜求财」—— 用户看完要能直接做一个动作。
+ */
+export const FOUR_THEME: Readonly<Record<"lu" | "quan" | "ke" | "ji", { zh: string; en: string }>> = {
+  lu: { zh: "顺遂、人缘、得来", en: "ease, goodwill, what comes to you" },
+  quan: { zh: "掌控、推进、决断", en: "control, pushing forward, decisions" },
+  ke: { zh: "名声、文书、学习", en: "reputation, writing, study" },
+  ji: { zh: "阻滞、反复、易执", en: "friction, repetition, fixation" },
+};
+
+/** 化禄 / 化权 / 化科 落在哪颗星，就给一条对应的「宜」。 */
+export const STAR_DO: Readonly<Record<string, { zh: string; en: string }>> = {
+  太阴: { zh: "把话说明白，谈钱谈感受", en: "say it plainly — money or feelings" },
+  天同: { zh: "陪人聊两句，别急着办事", en: "spend a few minutes talking" },
+  天机: { zh: "把待办排一遍顺序", en: "put your to-dos in order" },
+  贪狼: { zh: "去认识一个新的人", en: "meet someone new" },
+  巨门: { zh: "把一直没说的话说出口", en: "say the thing you have not said" },
+  太阳: { zh: "公开做一件事，别藏着", en: "do something in the open" },
+  武曲: { zh: "把账目或计划算清楚", en: "settle the numbers" },
+  天府: { zh: "整理手头的资源", en: "take stock of what you have" },
+  天相: { zh: "帮人搭个桥、做个介绍", en: "make an introduction" },
+  天梁: { zh: "找长辈或有经验的人聊", en: "ask someone with experience" },
+  七杀: { zh: "把拖着的那件事拍板", en: "decide the thing you keep postponing" },
+  破军: { zh: "清掉一个旧习惯", en: "drop one old habit" },
+  廉贞: { zh: "把边界讲清楚", en: "draw a clear boundary" },
+  紫微: { zh: "主动张罗一件事", en: "take the lead on something" },
+  文昌: { zh: "写点东西、读长文", en: "write something, read something long" },
+  文曲: { zh: "练发音、开口念", en: "practise speaking out loud" },
+  左辅: { zh: "找个人一起做", en: "do it with someone" },
+  右弼: { zh: "接住别人递来的机会", en: "take the offer that comes" },
+  天魁: { zh: "回应那条你搁置的消息", en: "answer the message you left" },
+  天钺: { zh: "主动求助一次", en: "ask for help once" },
+};
+
+/** 化忌落在哪颗星，就给一条针对性的「忌」。 */
+export const STAR_DONT: Readonly<Record<string, { zh: string; en: string }>> = {
+  巨门: { zh: "口舌争辩", en: "arguing over words" },
+  天机: { zh: "临时改计划", en: "changing plans at the last minute" },
+  太阴: { zh: "情绪化决定", en: "deciding on a mood" },
+  太阳: { zh: "逞强出头", en: "showing off / taking on too much" },
+  廉贞: { zh: "冲动消费", en: "impulse spending" },
+  贪狼: { zh: "应酬过度", en: "over-socialising" },
+  武曲: { zh: "大额支出", en: "big payments" },
+  天府: { zh: "守着旧做法不放", en: "clinging to the old way" },
+  天相: { zh: "替人作保", en: "vouching for someone" },
+  天梁: { zh: "开口说教", en: "lecturing people" },
+  七杀: { zh: "硬碰硬", en: "head-on confrontation" },
+  破军: { zh: "大改大动", en: "big upheavals" },
+  文昌: { zh: "文书笔误", en: "sloppy writing" },
+  文曲: { zh: "话说太满", en: "promising too much" },
+  左辅: { zh: "一个人硬扛", en: "carrying it alone" },
+  右弼: { zh: "错过递到手上的机会", en: "missing what is handed to you" },
+  天魁: { zh: "拖着不回消息", en: "leaving messages unanswered" },
+  天钺: { zh: "拒绝本该接受的帮助", en: "refusing help you need" },
+  紫微: { zh: "摆架子", en: "putting on airs" },
+  天同: { zh: "拖延", en: "procrastinating" },
+};
+
+/** 五行局的英文写法（iztro 只给中文「金四局」，英文环境要换掉，否则中文会漏到英文界面）。 */
+export const FIVE_ELEMENTS_CLASS_EN: Readonly<Record<string, string>> = {
+  水二局: "Water 2",
+  木三局: "Wood 3",
+  金四局: "Metal 4",
+  土五局: "Earth 5",
+  火六局: "Fire 6",
+};
