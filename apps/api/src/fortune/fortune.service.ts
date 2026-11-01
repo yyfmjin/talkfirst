@@ -3,6 +3,10 @@ import type { Gender } from "@prisma/client";
 import { astro } from "iztro";
 import { PrismaService } from "../prisma/prisma.service";
 import {
+  ASPECT_LABEL,
+  ASPECT_NOTE,
+  ASPECT_NOTE_PLAIN,
+  ASPECT_PALACES,
   BRANCH_ELEMENT,
   ELEMENT_COLORS,
   ELEMENT_NUMBERS,
@@ -11,10 +15,15 @@ import {
   FOUR_THEME,
   SIGNS,
   STAR_DO,
+  RATING_LABEL,
   STAR_DONT,
   STEM_ELEMENT,
+  priorityOf,
+  ratingOf,
   ganzhiToEnglish,
   starName,
+  type AspectId,
+  type AspectKind,
   type Element,
   type FortuneLang,
 } from "./fortune.copy";
@@ -72,6 +81,13 @@ export type FortuneCard = {
   month: PeriodItem | null;
   /** 流年四化。 */
   year: PeriodItem | null;
+  /**
+   * 分类运势：爱情 / 亲情 / 财运 / 行事。
+   *
+   * 依据是「当日四化飞进了哪一宫」——化禄入财帛主进、化忌入田宅主守，这是紫微里
+   * 判断单件事顺不顺的基本方法。没有命盘（无生日）时为空数组。
+   */
+  aspects: AspectItem[];
   /** 命盘上的固定信息。 */
   chart: {
     palaceStars: string[];
@@ -82,6 +98,14 @@ export type FortuneCard = {
 };
 
 type FourItem = { star: string; theme: string; hint: string };
+type AspectItem = {
+  id: AspectId;
+  label: string;
+  rating: "good" | "even" | "careful";
+  /** 服务端出好的评级词（吉 / 平 / 慎），客户端不翻译。 */
+  ratingLabel: string;
+  note: string;
+};
 type PeriodItem = { ganzhi: string; stars: string[] };
 
 /** 午时（11:00–13:00）在 iztro 的 timeIndex 里是 6。资料里没有时辰，统一按它排。 */
@@ -218,6 +242,7 @@ export class FortuneService {
       dos,
       donts,
       four,
+      aspects: chart ? aspectsOf(chart.fourRaw, chart.starPalace, lang) : [],
       month: chart?.month ?? null,
       year: chart?.year ?? null,
       chart: chart
@@ -262,6 +287,9 @@ export class FortuneService {
     body: string;
     fiveElements: string;
     fiveElementsRaw: string;
+    /** 中文星名 → 所在宫名（iztro 的宫名不带「宫」字）。 */
+    starPalace: Record<string, string>;
+    fourRaw: Record<AspectKind, string>;
   } | null {
     try {
       const chart = astro.bySolar(
@@ -281,6 +309,14 @@ export class FortuneService {
       const soulPalace = chart.palaces.find((palace) => palace.name === "命宫");
       const palaceStars = (soulPalace?.majorStars ?? []).map((star) => starName(star.name, lang));
 
+      /* 星曜落在哪一宫 —— 分类运势全靠这张表。主星与辅星都算。 */
+      const starPalace: Record<string, string> = {};
+      for (const palace of chart.palaces) {
+        for (const star of [...palace.majorStars, ...palace.minorStars]) {
+          starPalace[star.name] = palace.name;
+        }
+      }
+
       return {
         four: {
           lu: buildFour("lu", lu, lang),
@@ -297,6 +333,8 @@ export class FortuneService {
           stars: yearly.map((star: string) => starName(star, lang)),
         },
         palaceStars,
+        starPalace,
+        fourRaw: { lu, quan, ke, ji },
         soul: starName(chart.soul, lang),
         body: starName(chart.body, lang),
         fiveElements:
@@ -401,4 +439,49 @@ function padTo(list: string[], pool: ReadonlyArray<string>, n: number): string[]
     if (!result.includes(item)) result.push(item);
   }
   return result.slice(0, n);
+}
+
+/**
+ * 把当天的四化按「飞进哪一宫」归到四个类目。
+ *
+ * 同一类目可能命中多个四化（比如财帛宫同时有禄和忌），按 `ji → lu → ke → quan`
+ * 取一条：**先说坏消息**，因为「别大额支出」比「财上有进」更需要被看见。
+ */
+function aspectsOf(
+  fourRaw: Record<AspectKind, string>,
+  starPalace: Record<string, string>,
+  lang: FortuneLang,
+): AspectItem[] {
+  const ids: AspectId[] = ["love", "family", "wealth", "action"];
+  const kinds: AspectKind[] = ["lu", "quan", "ke", "ji"];
+
+  return ids.map((id) => {
+    const palaces = ASPECT_PALACES[id];
+    const hits = kinds
+      .map((kind) => ({ kind, palace: starPalace[fourRaw[kind]] }))
+      .filter((hit) => Boolean(hit.palace) && palaces.includes(hit.palace))
+      .sort((a, b) => priorityOf(a.kind) - priorityOf(b.kind));
+
+    const label = lang === "zh-CN" ? ASPECT_LABEL[id].zh : ASPECT_LABEL[id].en;
+    const plainRating: AspectItem["rating"] = "even";
+    if (hits.length === 0) {
+      return {
+        id,
+        label,
+        rating: plainRating,
+        ratingLabel: lang === "zh-CN" ? RATING_LABEL[plainRating].zh : RATING_LABEL[plainRating].en,
+        note: lang === "zh-CN" ? ASPECT_NOTE_PLAIN[id].zh : ASPECT_NOTE_PLAIN[id].en,
+      };
+    }
+
+    const kind = hits[0].kind;
+    const rating = ratingOf(kind);
+    return {
+      id,
+      label,
+      rating,
+      ratingLabel: lang === "zh-CN" ? RATING_LABEL[rating].zh : RATING_LABEL[rating].en,
+      note: lang === "zh-CN" ? ASPECT_NOTE[id][kind].zh : ASPECT_NOTE[id][kind].en,
+    };
+  });
 }

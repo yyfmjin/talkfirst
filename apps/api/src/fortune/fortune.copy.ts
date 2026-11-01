@@ -281,3 +281,94 @@ export const FIVE_ELEMENTS_CLASS_EN: Readonly<Record<string, string>> = {
   土五局: "Earth 5",
   火六局: "Fire 6",
 };
+
+/* -------------------------------------------------------------------------- */
+/* 分类运势：四化飞入哪一宫（2026-10-31）                                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * 紫微里判断一件事顺不顺，看的是**四化飞进了哪一宫**：化禄入某宫主顺遂，化忌入
+ * 某宫主阻滞。所以「财运/爱情/亲情/行事」不是另编一套，而是同一天的四化按宫位
+ * 归到对应类目 —— 同一天的四化只有四个，落到哪一类是算出来的。
+ */
+export type AspectId = "love" | "family" | "wealth" | "action";
+export type AspectKind = "lu" | "quan" | "ke" | "ji";
+/** 吉 / 平 / 慎。客户端按它上色，不自己判断。 */
+export type AspectRating = "good" | "even" | "careful";
+
+/** 每个类目看哪几宫。iztro 的宫名不带「宫」字（`财帛`、`夫妻`…）。 */
+export const ASPECT_PALACES: Readonly<Record<AspectId, ReadonlyArray<string>>> = {
+  love: ["夫妻"],
+  family: ["父母", "兄弟"],
+  wealth: ["财帛", "田宅"],
+  action: ["迁移", "仆役", "官禄", "命宫"],
+};
+
+export const ASPECT_LABEL: Readonly<Record<AspectId, { zh: string; en: string }>> = {
+  love: { zh: "爱情", en: "Love" },
+  family: { zh: "亲情", en: "Family" },
+  wealth: { zh: "财运", en: "Money" },
+  action: { zh: "行事", en: "Action" },
+};
+
+/** 评级文案（服务端出，客户端不翻译）。 */
+export const RATING_LABEL: Readonly<Record<AspectRating, { zh: string; en: string }>> = {
+  good: { zh: "吉", en: "good" },
+  even: { zh: "平", en: "even" },
+  careful: { zh: "慎", en: "careful" },
+};
+
+/** 四化种类 → 评级。化权是「要用力」，不算顺遂也不算阻滞。 */
+const KIND_RATING: Readonly<Record<AspectKind, AspectRating>> = {
+  lu: "good",
+  ke: "good",
+  quan: "even",
+  ji: "careful",
+};
+
+/** 同一类目里命中多个四化时的取舍顺序：先说坏消息，再报好消息。 */
+const KIND_PRIORITY: Readonly<Record<AspectKind, number>> = { ji: 0, lu: 1, ke: 2, quan: 3 };
+
+/** 类目 × 四化 → 一句话。 */
+export const ASPECT_NOTE: Readonly<Record<AspectId, Record<AspectKind, { zh: string; en: string }>>> = {
+  love: {
+    lu: { zh: "有回应，主动一点不吃亏", en: "there is a response — reach out" },
+    quan: { zh: "容易想主导，收着点", en: "you'll want to lead; soften it" },
+    ke: { zh: "适合把话讲清楚", en: "a good day to say it clearly" },
+    ji: { zh: "容易拧巴，别翻旧账", en: "friction — don't reopen old things" },
+  },
+  family: {
+    lu: { zh: "家里有顺事，问候一句", en: "good news at home — say hello" },
+    quan: { zh: "长辈有交代，顺着应", en: "an elder will ask something; agree" },
+    ke: { zh: "适合解释、报个平安", en: "a good day to explain or check in" },
+    ji: { zh: "易起摩擦，少讲道理", en: "friction at home — skip the lecture" },
+  },
+  wealth: {
+    lu: { zh: "财上有进项，可以谈价", en: "money comes in; negotiate" },
+    quan: { zh: "适合把账目算清", en: "settle the numbers" },
+    ke: { zh: "适合理票据、做记录", en: "tidy receipts and records" },
+    ji: { zh: "宜守不宜出，别大额支出", en: "hold, don't spend big" },
+  },
+  action: {
+    lu: { zh: "出门有利，开口有回应", en: "going out helps; people answer" },
+    quan: { zh: "适合拍板，把事推下去", en: "decide and push it through" },
+    ke: { zh: "适合谈事、递材料", en: "good for talks and submissions" },
+    ji: { zh: "别硬推，容易卡住", en: "don't force it — it will stick" },
+  },
+};
+
+/** 类目没有被任何四化命中时的兜底（不是随机句，是「无起伏」这个结论）。 */
+export const ASPECT_NOTE_PLAIN: Readonly<Record<AspectId, { zh: string; en: string }>> = {
+  love: { zh: "无大起伏，照常就好", en: "no swings — keep it normal" },
+  family: { zh: "平稳，按平时的节奏", en: "steady, as usual" },
+  wealth: { zh: "平常，不必刻意", en: "ordinary — nothing special needed" },
+  action: { zh: "按部就班即可", en: "just do what's planned" },
+};
+
+export function ratingOf(kind: AspectKind): AspectRating {
+  return KIND_RATING[kind];
+}
+
+export function priorityOf(kind: AspectKind): number {
+  return KIND_PRIORITY[kind];
+}

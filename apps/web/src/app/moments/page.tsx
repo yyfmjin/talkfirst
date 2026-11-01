@@ -838,7 +838,7 @@ function MomentCard({
           disabled={liking}
           aria-label={t("moments.like")}
           aria-pressed={moment.liked}
-          className={`flex min-h-9 items-center gap-1.5 rounded-full px-2.5 transition-colors duration-instant hover:bg-surface-sunken disabled:opacity-60 ${
+          className={`flex min-h-9 items-center gap-1.5 rounded-full px-2.5 transition-[color,transform] duration-instant hover:bg-surface-sunken active:scale-90 disabled:opacity-60 motion-reduce:active:scale-100 ${
             moment.liked ? "text-danger-500" : ""
           }`}
         >

@@ -47,6 +47,27 @@ describe("FortuneService.today", () => {
     expect(card.weekday).toBe(6); // 周六
   });
 
+  it("分类运势：爱情/亲情/财运/行事四条，字段齐全", async () => {
+    const card = await serviceWith(BIRTH).today("u1", "zh-CN", DAY);
+    expect(card.aspects).toHaveLength(4);
+    expect(card.aspects.map((a) => a.id)).toEqual(["love", "family", "wealth", "action"]);
+    card.aspects.forEach((aspect) => {
+      expect(aspect.label.length).toBeGreaterThan(0);
+      expect(aspect.ratingLabel.length).toBeGreaterThan(0);
+      expect(aspect.note.length).toBeGreaterThan(0);
+      expect(["good", "even", "careful"]).toContain(aspect.rating);
+    });
+  });
+
+  it("分类运势跟着四化落宫走：戊寅日「忌入田宅」→ 财运为「慎」", async () => {
+    /* 这一条是回归锚点：2026-10-31 这张盘的四化为 禄贪狼(福德) 权太阴(父母)
+       科右弼(迁移) 忌天机(田宅)。田宅属财运类，所以财运必须是 careful。 */
+    const card = await serviceWith(BIRTH).today("u1", "zh-CN", DAY);
+    const wealth = card.aspects.find((a) => a.id === "wealth")!;
+    expect(wealth.rating).toBe("careful");
+    expect(wealth.ratingLabel).toBe("慎");
+  });
+
   it("没有出生日期：四化/流月/流年/命盘全部为 null，宜忌仍给三条", async () => {
     const card = await serviceWith(null).today("u1", "zh-CN", DAY);
     expect(card.sign).toBeNull();
@@ -54,6 +75,7 @@ describe("FortuneService.today", () => {
     expect(card.month).toBeNull();
     expect(card.year).toBeNull();
     expect(card.chart).toBeNull();
+    expect(card.aspects).toEqual([]);
     expect(card.dos).toHaveLength(3);
     expect(card.donts).toHaveLength(3);
     card.dos.concat(card.donts).forEach((line) => expect(line.length).toBeGreaterThan(0));

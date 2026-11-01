@@ -19,6 +19,14 @@ import type { MsgKey } from "@/lib/i18n";
 type FourItem = { star: string; theme: string; hint: string };
 type PeriodItem = { ganzhi: string; stars: string[] };
 
+type AspectItem = {
+  id: "love" | "family" | "wealth" | "action";
+  label: string;
+  rating: "good" | "even" | "careful";
+  ratingLabel: string;
+  note: string;
+};
+
 type FortuneCard = {
   date: string;
   weekday: number;
@@ -30,6 +38,7 @@ type FortuneCard = {
   luckyColor: { name: string; hex: string };
   dos: string[];
   donts: string[];
+  aspects: AspectItem[];
   four: { lu: FourItem; quan: FourItem; ke: FourItem; ji: FourItem } | null;
   month: PeriodItem | null;
   year: PeriodItem | null;
@@ -52,6 +61,7 @@ export function DailyFortuneCard() {
   const { t, locale } = useT();
   const [card, setCard] = useState<FortuneCard | null>(null);
   const [hidden, setHidden] = useState(false);
+  const [more, setMore] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -91,6 +101,7 @@ export function DailyFortuneCard() {
   const dateLabel =
     locale === "en" ? `${Number(month)}/${Number(day)}` : `${Number(month)}月${Number(day)}日`;
   const weekdayLabel = t(WEEKDAY_KEYS[card.weekday] ?? "weekday.sun");
+  const hasMore = Boolean(card.month || card.year || card.chart);
 
   return (
     <div className="space-y-3 px-4 pb-5 pt-1">
@@ -104,30 +115,57 @@ export function DailyFortuneCard() {
         {card.sign ? <span className="font-semibold text-brand-600">{card.sign}</span> : null}
       </div>
 
+      {/* 分类运势：爱情 / 亲情 / 财运 / 行事，2×2 一眼扫完。 */}
+      {card.aspects.length ? (
+        <div className="grid grid-cols-2 gap-2">
+          {card.aspects.map((aspect) => (
+            <div
+              key={aspect.id}
+              className={`rounded-card border px-3 py-2 ${
+                aspect.rating === "good"
+                  ? "border-brand-100 bg-brand-50"
+                  : aspect.rating === "careful"
+                    ? "border-danger-100 bg-danger-50"
+                    : "border-border bg-surface-sunken"
+              }`}
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-caption font-semibold text-content">{aspect.label}</span>
+                <span
+                  className={`text-overline font-semibold ${
+                    aspect.rating === "good"
+                      ? "text-brand-700"
+                      : aspect.rating === "careful"
+                        ? "text-danger-700"
+                        : "text-content-subtle"
+                  }`}
+                >
+                  {aspect.ratingLabel}
+                </span>
+              </div>
+              <p className="mt-0.5 text-caption leading-5 text-content-muted">{aspect.note}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       {card.four ? (
-        <section>
-          <p className="text-overline font-semibold tracking-wider text-content-subtle">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="text-overline font-semibold tracking-wider text-content-subtle">
             {t("fortune.four")}
-          </p>
-          <ul className="mt-1 space-y-1">
-            {FOUR_KEYS.map((key) => {
-              const item = card.four![key];
-              return (
-                <li key={key} className="flex items-baseline gap-2 text-caption">
-                  <span
-                    className={`w-5 shrink-0 text-center font-semibold ${
-                      key === "ji" ? "text-danger-700" : "text-brand-600"
-                    }`}
-                  >
-                    {t(`fortune.${key}` as MsgKey)}
-                  </span>
-                  <span className="shrink-0 font-semibold text-content">{item.star}</span>
-                  <span className="min-w-0 truncate text-content-muted">{item.theme}</span>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
+          </span>
+          {FOUR_KEYS.map((key) => (
+            <span
+              key={key}
+              className={`inline-flex items-baseline gap-1 rounded-full px-2 py-0.5 text-caption ${
+                key === "ji" ? "bg-danger-50 text-danger-700" : "bg-brand-50 text-brand-700"
+              }`}
+            >
+              <span className="font-semibold">{t(`fortune.${key}` as MsgKey)}</span>
+              <span className="font-semibold text-content">{card.four![key].star}</span>
+            </span>
+          ))}
+        </div>
       ) : null}
 
       <section className="space-y-1.5">
@@ -145,31 +183,43 @@ export function DailyFortuneCard() {
         </span>
       </div>
 
-      {card.month || card.year ? (
-        <section className="space-y-1 border-t border-border pt-2 text-caption text-content-muted">
-          {card.month ? (
-            <p>
-              <span className="text-content-subtle">{t("fortune.month")} </span>
-              <span className="font-semibold text-content">{card.month.ganzhi}</span> ·{" "}
-              {card.month.stars.join(" · ")}
-            </p>
-          ) : null}
-          {card.year ? (
-            <p>
-              <span className="text-content-subtle">{t("fortune.year")} </span>
-              <span className="font-semibold text-content">{card.year.ganzhi}</span> ·{" "}
-              {card.year.stars.join(" · ")}
-            </p>
+      {/* 本月/今年/命盘默认收起：它们是「查资料」而不是「今天怎么过」。 */}
+      {hasMore ? (
+        <section className="border-t border-border pt-2">
+          <button
+            type="button"
+            onClick={() => setMore((open) => !open)}
+            aria-expanded={more}
+            className="text-caption font-semibold text-brand-600 transition-colors duration-instant hover:text-brand-700"
+          >
+            {more ? t("fortune.less") : t("fortune.more")}
+          </button>
+          {more ? (
+            <div className="mt-1.5 space-y-1 text-caption text-content-muted animate-fade-in motion-reduce:animate-none">
+              {card.month ? (
+                <p>
+                  <span className="text-content-subtle">{t("fortune.month")} </span>
+                  <span className="font-semibold text-content">{card.month.ganzhi}</span> ·{" "}
+                  {card.month.stars.join(" · ")}
+                </p>
+              ) : null}
+              {card.year ? (
+                <p>
+                  <span className="text-content-subtle">{t("fortune.year")} </span>
+                  <span className="font-semibold text-content">{card.year.ganzhi}</span> ·{" "}
+                  {card.year.stars.join(" · ")}
+                </p>
+              ) : null}
+              {card.chart ? (
+                <p>
+                  <span className="text-content-subtle">{t("fortune.chart")} </span>
+                  {t("fortune.palace")} {card.chart.palaceStars.join("·")} · {t("fortune.soul")}{" "}
+                  {card.chart.soul} · {t("fortune.body")} {card.chart.body} · {card.chart.fiveElements}
+                </p>
+              ) : null}
+            </div>
           ) : null}
         </section>
-      ) : null}
-
-      {card.chart ? (
-        <p className="border-t border-border pt-2 text-caption text-content-muted">
-          <span className="text-content-subtle">{t("fortune.chart")} </span>
-          {t("fortune.palace")} {card.chart.palaceStars.join("·")} · {t("fortune.soul")}{" "}
-          {card.chart.soul} · {t("fortune.body")} {card.chart.body} · {card.chart.fiveElements}
-        </p>
       ) : null}
     </div>
   );

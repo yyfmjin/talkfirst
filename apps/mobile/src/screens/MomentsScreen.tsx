@@ -14,6 +14,7 @@ import { MomentOwnerActions } from "../components/MomentOwnerActions";
 import { VoiceNote } from "../components/VoiceNote";
 import { DailyFortuneEntry } from "../components/DailyFortuneSheet";
 import { MomentTranslate } from "../components/MomentTranslate";
+import { LikeButton } from "../components/LikeButton";
 import { useAuth } from "../lib/auth-context";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
 import { colors } from "../theme";
@@ -290,20 +291,12 @@ export function MomentsScreen({
             ) : null}
 
             <View style={styles.actions}>
-              <Pressable
+              <LikeButton
+                liked={item.liked}
+                count={item.likeCount}
                 onPress={() => void toggleLike(item)}
-                accessibilityRole="button"
-                accessibilityLabel={item.liked ? t("moments.unlike") : t("moments.like")}
-                accessibilityState={{ selected: item.liked }}
-                style={styles.action}
-              >
-                <Icon
-                  name={item.liked ? "heart" : "heart-outline"}
-                  size={20}
-                  color={item.liked ? colors.danger : colors.muted}
-                />
-                <Text style={styles.actionLabel}>{item.likeCount}</Text>
-              </Pressable>
+                label={t(item.liked ? "moments.unlike" : "moments.like")}
+              />
               <View style={styles.action}>
                 <Icon name="chatbubble-outline" size={19} color={colors.muted} />
                 <Text style={styles.actionLabel}>{item.commentCount}</Text>
