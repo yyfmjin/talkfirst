@@ -87,3 +87,43 @@ export function playPopIn(value: Animated.Value) {
     useNativeDriver: true,
   }).start();
 }
+
+/**
+ * 从上方滑入 + 淡入（提示条用）。
+ *
+ * `distance` 默认 8px：超过 12px 就会「飞进来」，在列表页会抢注意力；这里要的是
+ * 「有个东西出现了」，不是「请你注意」。
+ */
+export function playSlideIn(value: Animated.Value, distance = 8) {
+  value.setValue(0);
+  Animated.timing(value, {
+    toValue: 1,
+    duration: MOTION.fast,
+    easing: EASE.out,
+    useNativeDriver: true,
+  }).start();
+  return {
+    opacity: value,
+    transform: [{ translateY: value.interpolate({ inputRange: [0, 1], outputRange: [-distance, 0] }) }],
+  };
+}
+
+/** 滑入样式的只读版本（render 里用，不启动画）。 */
+export function slideInStyle(value: Animated.Value, distance = 8) {
+  return {
+    opacity: value,
+    transform: [{ translateY: value.interpolate({ inputRange: [0, 1], outputRange: [-distance, 0] }) }],
+  };
+}
+
+/** 收起：滑回上方并淡出。 */
+export function playSlideOut(value: Animated.Value, distance = 8) {
+  return new Promise<void>((resolve) => {
+    Animated.timing(value, {
+      toValue: 0,
+      duration: MOTION.fast,
+      easing: EASE.inOut,
+      useNativeDriver: true,
+    }).start(() => resolve());
+  });
+}

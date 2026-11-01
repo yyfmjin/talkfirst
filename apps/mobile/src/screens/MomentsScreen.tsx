@@ -15,6 +15,7 @@ import { VoiceNote } from "../components/VoiceNote";
 import { DailyFortuneEntry } from "../components/DailyFortuneSheet";
 import { MomentTranslate } from "../components/MomentTranslate";
 import { LikeButton } from "../components/LikeButton";
+import { FlashNotice } from "../components/FlashNotice";
 import { useAuth } from "../lib/auth-context";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
 import { colors } from "../theme";
@@ -50,6 +51,8 @@ export function MomentsScreen({
   onFocusHandled?: () => void;
 } = {}) {
   const { t } = useI18n();
+  /** 「已发布」提示；置空即消失（见 FlashNotice）。 */
+  const [notice, setNotice] = useState<string | null>(null);
   const { user } = useAuth();
   const [items, setItems] = useState<Moment[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -159,6 +162,7 @@ export function MomentsScreen({
         onCancel={() => setComposing(false)}
         onPublished={() => {
           setComposing(false);
+          setNotice(t("moments.published"));
           // 发完重拉第一页：新动态的位置以服务端为准（不往本地列表里插）。
           void load("refresh");
         }}
@@ -201,6 +205,7 @@ export function MomentsScreen({
 
   return (
     <View style={styles.root}>
+      <FlashNotice message={notice} onHidden={() => setNotice(null)} />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{t("moments.title")}</Text>
         <View style={styles.headerActions}>

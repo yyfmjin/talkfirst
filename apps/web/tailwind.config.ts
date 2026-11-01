@@ -135,7 +135,13 @@ const config: Config = {
         "fade-in": "tf-fade-in 180ms cubic-bezier(0.22, 1, 0.36, 1) both",
         "slide-up": "tf-slide-up 240ms cubic-bezier(0.22, 1, 0.36, 1) both",
         "sheet-up": "tf-sheet-up 240ms cubic-bezier(0.22, 1, 0.36, 1) both",
-        "pulse-soft": "tf-pulse-soft 1.6s ease-in-out infinite",
+        /*
+         * 骨架节奏统一（2026-10-31）：原来 `pulse-soft` 是 1.6s、Tailwind 自带的
+         * `animate-pulse` 是 2s，同一个页面里两种呼吸速度，看起来像卡顿。现在两个
+         * 名字指向同一个 keyframes、同一个 1.2s，谁写哪个都对。
+         */
+        "pulse-soft": "tf-pulse-soft 1.2s ease-in-out infinite",
+        pulse: "tf-pulse-soft 1.2s ease-in-out infinite",
       },
 
       /**

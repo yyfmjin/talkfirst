@@ -16,6 +16,7 @@ import { Avatar } from "../components/Avatar";
 import { Icon } from "../components/Icon";
 import { KeyboardAware } from "../components/KeyboardAware";
 import { AiScreen } from "./AiScreen";
+import { UnreadBadge } from "../components/UnreadBadge";
 import { ExchangeScreen } from "./ExchangeScreen";
 import { NotificationsScreen } from "./NotificationsScreen";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
@@ -660,13 +661,8 @@ export function MessagesScreen() {
                   {aiChat?.lastMessage?.content ?? t("ai.entryHint")}
                 </Text>
               </View>
-              {aiChat?.unreadCount && aiChat.unreadCount > 0 ? (
-                <View style={styles.unreadBadge}>
-                  <Text style={styles.unreadText}>
-                    {aiChat.unreadCount > 99 ? "99+" : aiChat.unreadCount}
-                  </Text>
-                </View>
-              ) : (
+              <UnreadBadge count={aiChat?.unreadCount ?? 0} />
+              {aiChat?.unreadCount ? null : (
                 <Icon name="chevron-forward" size={18} color={colors.muted} />
               )}
             </Pressable>
@@ -705,11 +701,7 @@ export function MessagesScreen() {
                   {previewText(item, t)}
                 </Text>
               </View>
-              {unread ? (
-                <View style={styles.unreadBadge}>
-                  <Text style={styles.unreadText}>{item.unreadCount! > 99 ? "99+" : item.unreadCount}</Text>
-                </View>
-              ) : null}
+              <UnreadBadge count={item.unreadCount ?? 0} />
             </Pressable>
           );
         }}

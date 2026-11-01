@@ -4,6 +4,7 @@ import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { Icon } from "./Icon";
 import { colors } from "../theme";
 import { useI18n } from "../lib/i18n-context";
+import { EASE, MOTION } from "../lib/motion";
 
 /**
  * 语音条（2026-10-28 重做：微信那种）。
@@ -42,6 +43,7 @@ export function VoiceNote({
   const { t } = useI18n();
   const player = useAudioPlayer({ uri }, { updateInterval: 250 });
   const status = useAudioPlayerStatus(player);
+  const breathe = useRef(new Animated.Value(1)).current;
 
   const total = Math.max(
     1,
@@ -62,7 +64,43 @@ export function VoiceNote({
 
   const width = voiceBubbleWidth(total);
 
+  /*
+   * 播放时的「呼吸」：整条气泡 1 → 1.02 循环。声波已经在跳，但气泡本身不动会显得
+   * 有点僵；2% 的幅度刚好「有生命」，再大就会跟相邻卡片撞上。
+   * 只有播放中才跑循环，停下立刻归位 —— 否则列表里滚过去的十条语音都在呼吸。
+   */
+  useEffect(() => {
+    if (!playing) {
+      breathe.stopAnimation();
+      Animated.timing(breathe, {
+        toValue: 1,
+        duration: MOTION.instant,
+        useNativeDriver: true,
+      }).start();
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breathe, {
+          toValue: 1.02,
+          duration: 800,
+          easing: EASE.inOut,
+          useNativeDriver: true,
+        }),
+        Animated.timing(breathe, {
+          toValue: 1,
+          duration: 800,
+          easing: EASE.inOut,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [breathe, playing]);
+
   return (
+    <Animated.View style={{ transform: [{ scale: breathe }] }}>
     <Pressable
       onPress={toggle}
       hitSlop={6}
@@ -74,7 +112,8 @@ export function VoiceNote({
       <Icon name="volume-medium" size={17} color={colors.primary} />
       <SoundWaves active={playing} />
       <Text style={styles.duration}>{formatVoiceDuration(total)}</Text>
-    </Pressable>
+      </Pressable>
+    </Animated.View>
   );
 }
 
