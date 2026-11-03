@@ -302,10 +302,10 @@ const styles = StyleSheet.create({
   markAllLabel: { fontSize: 12, color: colors.primary, fontWeight: "500" },
   list: { paddingHorizontal: 16, paddingBottom: 24 },
   row: {
-    backgroundColor: colors.bg,
+    backgroundColor: colors.glass,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: colors.glassEdge,
     padding: 16,
     marginBottom: 12,
   },

@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 15,
     color: colors.ink,
-    backgroundColor: colors.white,
+    backgroundColor: colors.glass,
   },
   errorText: { fontSize: 13, color: colors.danger },
   dangerButton: {

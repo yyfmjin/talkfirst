@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   sheet: {
-    backgroundColor: colors.bg,
+    backgroundColor: colors.glassRaised,
     borderRadius: 20,
     paddingTop: 14,
     paddingBottom: 6,

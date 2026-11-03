@@ -44,7 +44,7 @@ export function ScreenHeader({
     "grid h-11 w-11 shrink-0 place-items-center rounded-full text-content transition-colors duration-instant ease-out hover:bg-surface-sunken active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300";
 
   return (
-    <header className="z-10 grid shrink-0 grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-border bg-surface/95 px-2 py-1 backdrop-blur">
+    <header className="z-10 grid shrink-0 grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-border bg-surface-raised px-2 py-1">
       {onBack ? (
         <button type="button" onClick={onBack} className={backClasses} aria-label={t("common.back")}>
           <ChevronLeft size={24} />

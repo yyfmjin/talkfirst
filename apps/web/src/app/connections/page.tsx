@@ -75,7 +75,7 @@ export default function ConnectionsPage() {
 
         {loading ? (
           <TFLoadingRegion label={t("connections.loading")}>
-            <div className="mt-6 divide-y divide-border">
+            <div className="mt-6 divide-y divide-border-hairline">
               <TFRowSkeleton />
               <TFRowSkeleton />
               <TFRowSkeleton />
@@ -104,7 +104,7 @@ export default function ConnectionsPage() {
 
         {!loading && !error && items.length > 0 ? (
           /* Hairline-divided rows, matching messages and the feed. */
-          <div className="mt-5 divide-y divide-border overflow-hidden rounded-card border border-border">
+          <div className="mt-5 divide-y divide-border-hairline overflow-hidden rounded-card border border-border">
             {items.map((item) => (
               <article key={item.id} className="bg-surface px-4 py-4">
                 <div className="flex items-center gap-3">

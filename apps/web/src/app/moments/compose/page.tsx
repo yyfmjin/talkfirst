@@ -774,7 +774,7 @@ export default function ComposePage() {
         </div>
 
         {/* Sticky CTA — the single strongest action on the screen. */}
-        <div className="shrink-0 border-t border-line/70 bg-white px-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3">
+        <div className="shrink-0 border-t border-border bg-surface-raised px-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3">
           <GradientButton
             onClick={() => void publish()}
             disabled={!canPublish}
@@ -853,7 +853,7 @@ export default function ComposePage() {
             data-testid="moment-leave-dialog"
             className="absolute inset-0 z-50 grid place-items-center overflow-y-auto bg-black/30 p-5"
           >
-            <div className="w-full max-w-[320px] rounded-3xl bg-white p-5 text-center shadow-xl">
+            <div className="w-full max-w-[320px] rounded-sheet bg-surface-raised p-5 text-center shadow-overlay">
               <p className="text-[15px] font-semibold">{t("cm.leaveTitle")}</p>
               <p className="mt-1 text-[12px] leading-5 text-muted">{t("cm.leaveBody")}</p>
               <div className="mt-4 flex gap-2">
@@ -1010,7 +1010,7 @@ function Sheet({
       onClick={onClose}
     >
       <div
-        className="rounded-t-3xl bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl"
+        className="rounded-t-sheet bg-surface-raised p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-overlay"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line" />

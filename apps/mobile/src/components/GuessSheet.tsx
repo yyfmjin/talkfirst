@@ -292,7 +292,7 @@ export function GuessSheet({
 const styles = StyleSheet.create({
   scrim: { flex: 1, backgroundColor: "rgba(20,22,40,0.42)" },
   sheet: {
-    backgroundColor: colors.bg,
+    backgroundColor: colors.glassRaised,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 18,
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 13,
     paddingHorizontal: 14,
-    backgroundColor: colors.white,
+    backgroundColor: colors.glass,
   },
   optionPicked: { borderColor: colors.primary },
   optionFlag: { fontSize: 20 },
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.white,
+    backgroundColor: colors.glass,
     borderRadius: 14,
     paddingVertical: 13,
     alignItems: "center",

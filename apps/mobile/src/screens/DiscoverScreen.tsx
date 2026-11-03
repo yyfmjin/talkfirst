@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     borderColor: "#DCE0FF",
-    backgroundColor: colors.white,
+    backgroundColor: colors.glass,
   },
   inviteDeclineLabel: { fontSize: 13, fontWeight: "500", color: colors.muted },
   root: { flex: 1, backgroundColor: colors.bg, paddingTop: 8 },

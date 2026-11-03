@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.white,
+    backgroundColor: colors.glass,
     overflow: "hidden",
   },
   row: { padding: 14, borderBottomWidth: 1, borderBottomColor: colors.line, gap: 10 },

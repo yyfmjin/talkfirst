@@ -456,7 +456,7 @@ export default function MomentDetailPage() {
         a `⋯` glyph rather than an icon because the previous icon was not
         `aria-hidden` and its accessible name came from the glyph.
       */}
-      <div className="z-10 grid shrink-0 grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-border bg-surface/95 px-2 py-1 backdrop-blur">
+      <div className="z-10 grid shrink-0 grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-border bg-surface-raised px-2 py-1">
         <Link
           href={localePath(locale, "/moments")}
           aria-label={t("md.back")}

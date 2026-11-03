@@ -551,7 +551,7 @@ const styles = StyleSheet.create({
   groupTitle: { fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 8 },
   groupCard: {
     borderRadius: 16,
-    backgroundColor: colors.white,
+    backgroundColor: colors.glass,
     borderWidth: 1,
     borderColor: colors.line,
     overflow: "hidden",
@@ -611,7 +611,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     color: colors.ink,
-    backgroundColor: colors.white,
+    backgroundColor: colors.glass,
     textAlignVertical: "top",
   },
   errorText: { fontSize: 13, color: colors.danger },

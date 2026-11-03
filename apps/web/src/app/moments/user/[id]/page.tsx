@@ -177,7 +177,7 @@ export default function UserMomentsPage() {
 
   return (
     <PhoneShell>
-      <div className="z-10 grid shrink-0 grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-border bg-surface/95 px-2 py-1 backdrop-blur">
+      <div className="z-10 grid shrink-0 grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-border bg-surface-raised px-2 py-1">
         <Link
           href={localePath(locale, "/moments")}
           aria-label={t("mu.back")}
@@ -302,7 +302,7 @@ export default function UserMomentsPage() {
 
             {/* Rows separated by a hairline, matching the feed: a person's moments
                 are one column of content, not a stack of bordered cards. */}
-            <div className="mt-3 divide-y divide-border">
+            <div className="mt-3 divide-y divide-border-hairline">
               {data.items.map((item) => (
                 <article key={item.id} className="bg-surface">
                   <p className="flex items-center gap-2 px-4 pt-4 text-caption text-content-muted">

@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     fontSize: 15,
     color: colors.ink,
-    backgroundColor: colors.bg,
+    backgroundColor: colors.glassSunken,
   },
   inputMultiline: { minHeight: 96, paddingTop: 12, textAlignVertical: "top" },
 });

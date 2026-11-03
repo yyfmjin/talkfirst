@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.white,
+    backgroundColor: colors.glass,
   },
   socialLabel: { fontSize: 15, fontWeight: "600", color: colors.ink },
   googleGlyph: { fontSize: 17, fontWeight: "700", color: "#4285F4" },

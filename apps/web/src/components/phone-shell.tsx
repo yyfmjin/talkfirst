@@ -53,7 +53,7 @@ export function PhoneShell({
     <main className="flex min-h-[100dvh] items-start justify-center bg-surface-canvas p-0 sm:items-center sm:p-4 md:p-8">
       <div
         className={cn(
-          "relative flex h-[100dvh] w-full flex-col overflow-hidden bg-surface",
+          "relative flex h-[100dvh] w-full flex-col overflow-hidden bg-surface-frame",
           "sm:h-[844px] sm:max-h-[calc(100dvh-2rem)] sm:w-[390px] sm:rounded-frame sm:shadow-phone",
           className,
         )}

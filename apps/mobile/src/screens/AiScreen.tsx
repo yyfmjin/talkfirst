@@ -611,7 +611,7 @@ const styles = StyleSheet.create({
     padding: 10,
     borderTopWidth: 1,
     borderTopColor: colors.line,
-    backgroundColor: colors.white,
+    backgroundColor: colors.glass,
   },
   input: {
     flex: 1,

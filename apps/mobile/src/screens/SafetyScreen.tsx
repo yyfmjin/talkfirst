@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.white,
+    backgroundColor: colors.glass,
     overflow: "hidden",
   },
   blockRow: {
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.white,
+    backgroundColor: colors.glass,
     padding: 12,
     gap: 4,
   },

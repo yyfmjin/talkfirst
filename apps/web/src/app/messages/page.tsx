@@ -167,7 +167,7 @@ export default function MessagesPage() {
 
         {loading ? (
           <TFLoadingRegion label={t("messages.loading")}>
-            <div className="mt-6 divide-y divide-border">
+            <div className="mt-6 divide-y divide-border-hairline">
               <TFRowSkeleton />
               <TFRowSkeleton />
               <TFRowSkeleton />
@@ -241,7 +241,7 @@ export default function MessagesPage() {
                 /* Conversations as hairline-divided rows rather than one bordered
                    card each: a list of chats is a list, and the unread count is the
                    only thing that needs to stand out. */
-                <div className="mt-3 divide-y divide-border overflow-hidden rounded-card border border-border">
+                <div className="mt-3 divide-y divide-border-hairline overflow-hidden rounded-card border border-border">
                   {humanChats.map((conversation) => (
                     <Link
                       key={conversation.id}

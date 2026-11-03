@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.white,
+    backgroundColor: colors.glass,
     paddingHorizontal: 14,
   },
   toggleRow: {
@@ -533,7 +533,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.white,
+    backgroundColor: colors.glass,
     padding: 14,
   },
   platformTop: { flexDirection: "row", alignItems: "center", gap: 12 },
@@ -563,7 +563,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     fontSize: 15,
     color: colors.ink,
-    backgroundColor: colors.bg,
+    backgroundColor: colors.glassSunken,
   },
   bindButton: { width: 96 },
   confirmBox: {

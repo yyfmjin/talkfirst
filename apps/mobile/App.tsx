@@ -12,6 +12,7 @@ import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from "react-native-
 import { useFonts } from "expo-font";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Icon } from "./src/components/Icon";
+import { Glass, Wash } from "./src/components/Glass";
 import { AuthProvider, useAuth } from "./src/lib/auth-context";
 import { ErrorBoundary } from "./src/components/error-boundary";
 import { handleHardwareBack } from "./src/lib/back-stack";
@@ -116,7 +117,7 @@ function TabBar({ tab, onSelect }: { tab: Tab; onSelect: (next: Tab) => void }) 
   const { t } = useI18n();
 
   return (
-    <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+    <Glass tone="raised" style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
       {TABS.map((item) => {
         const active = tab === item.id;
         const tint = active ? colors.primary : colors.muted;
@@ -139,7 +140,7 @@ function TabBar({ tab, onSelect }: { tab: Tab; onSelect: (next: Tab) => void }) 
           </Pressable>
         );
       })}
-    </View>
+    </Glass>
   );
 }
 
@@ -187,8 +188,11 @@ function Root() {
   if (!user) {
     return (
       <SafeAreaProvider>
-        <StatusBar style="dark" />
-        <AuthScreen onRegistered={() => setOnboarding(true)} />
+        <View style={styles.root}>
+          <Wash />
+          <StatusBar style="dark" />
+          <AuthScreen onRegistered={() => setOnboarding(true)} />
+        </View>
       </SafeAreaProvider>
     );
   }
@@ -197,6 +201,7 @@ function Root() {
     return (
       <SafeAreaProvider>
         <View style={styles.root}>
+          <Wash />
           <StatusBar style="dark" />
           <SafeAreaView style={styles.body} edges={["top"]}>
             {/* 引导也要有自己的边界：它比 tab 里的任何一页都长，
@@ -219,6 +224,7 @@ function Root() {
   return (
     <SafeAreaProvider>
       <View style={styles.root}>
+        <Wash />
         <StatusBar style="dark" />
         {/*
          * 每个 tab 各自一层错误边界：某一页渲染崩了，只挡住**那一页**，
@@ -324,9 +330,8 @@ const styles = StyleSheet.create({
   body: { flex: 1 },
   tabBar: {
     flexDirection: "row",
-    borderTopWidth: 1,
-    borderTopColor: colors.line,
-    backgroundColor: colors.white,
+    borderTopColor: colors.glassEdge,
+    /* 底下的旧 `backgroundColor: colors.white` 已撤：现在由 <Glass tone="raised"> 给。 */
     /* paddingBottom 在渲染时按真实安全区取（全面屏手势条会压住 tab 文字）。 */
   },
   tabItem: { flex: 1, alignItems: "center", justifyContent: "center", minHeight: 56, paddingTop: 8 },

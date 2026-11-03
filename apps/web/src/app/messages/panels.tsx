@@ -132,7 +132,7 @@ export function SentRequestsPanel() {
   return (
     <section className="mt-6">
       <h2 className="text-ui font-semibold text-content">{t("mp.sentHeading", { count: items.length })}</h2>
-      <div className="mt-3 divide-y divide-border overflow-hidden rounded-card border border-border">
+      <div className="mt-3 divide-y divide-border-hairline overflow-hidden rounded-card border border-border">
         {items.map((item) => (
           <div key={item.id} className="flex items-center justify-between gap-3 bg-surface px-4 py-3">
             <div className="min-w-0">

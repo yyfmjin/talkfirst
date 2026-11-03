@@ -902,7 +902,7 @@ const styles = StyleSheet.create({
     padding: 10,
     borderTopWidth: 1,
     borderTopColor: colors.line,
-    backgroundColor: colors.white,
+    backgroundColor: colors.glass,
   },
   input: {
     flex: 1,
@@ -942,7 +942,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.white,
+    backgroundColor: colors.glass,
   },
   requestActions: { gap: 6 },
   acceptButton: {
@@ -986,6 +986,6 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.white,
+    backgroundColor: colors.glass,
   },
 });

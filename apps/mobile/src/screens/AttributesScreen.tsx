@@ -702,7 +702,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.white,
+    backgroundColor: colors.glass,
     padding: 16,
     marginTop: 8,
   },
@@ -781,7 +781,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.white,
+    backgroundColor: colors.glass,
   },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipLabel: { fontSize: 13, color: colors.ink },
@@ -798,7 +798,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 15,
     color: colors.ink,
-    backgroundColor: colors.white,
+    backgroundColor: colors.glass,
   },
 
   currentRow: {

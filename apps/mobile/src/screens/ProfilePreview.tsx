@@ -243,7 +243,7 @@ function Tag({ children, tone }: { children: ReactNode; tone?: "warm" }) {
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
   card: {
-    backgroundColor: colors.bg,
+    backgroundColor: colors.glassRaised,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     maxHeight: "88%",

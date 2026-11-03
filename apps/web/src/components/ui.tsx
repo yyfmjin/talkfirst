@@ -52,7 +52,7 @@ export function OutlineButton({
   onClick?: () => void;
 }) {
   const classes = cn(
-    "inline-flex min-h-[3rem] items-center justify-center gap-2 rounded-full border border-line bg-white px-5 py-3 text-center text-[14px] font-medium leading-6 text-ink transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50",
+    "inline-flex min-h-[3rem] items-center justify-center gap-2 rounded-full border border-border bg-surface-raised px-5 py-3 text-center text-[14px] font-medium leading-6 text-content transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50",
     className,
   );
   if (href && !disabled) {
@@ -93,7 +93,7 @@ export function SmallButton({
       : "min-h-[2.5rem] px-4 py-2 text-[13px] leading-5",
     variant === "gradient"
       ? "tf-gradient text-white shadow-brand"
-      : "border border-line bg-white text-ink",
+      : "border border-border bg-surface-raised text-content",
     className,
   );
   return (

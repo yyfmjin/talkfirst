@@ -776,7 +776,7 @@ const styles = StyleSheet.create({
   list: { paddingHorizontal: 16, paddingBottom: 32 },
   listHeader: { gap: 12 },
 
-  card: { backgroundColor: colors.white, borderRadius: 16, borderWidth: 1, borderColor: colors.line, padding: 14, gap: 10 },
+  card: { backgroundColor: colors.glass, borderRadius: 16, borderWidth: 1, borderColor: colors.line, padding: 14, gap: 10 },
   cardHead: { flexDirection: "row", alignItems: "center", gap: 10 },
   cardHeadText: { flex: 1 },
   nickname: { fontSize: 15, fontWeight: "600", color: colors.ink },
@@ -798,7 +798,7 @@ const styles = StyleSheet.create({
   commentsErrorBox: { alignItems: "center", paddingVertical: 16, gap: 8 },
   commentsEmpty: { fontSize: 13, color: colors.muted, paddingVertical: 16, textAlign: "center" },
 
-  comment: { backgroundColor: colors.white, borderRadius: 14, borderWidth: 1, borderColor: colors.line, padding: 12, gap: 6 },
+  comment: { backgroundColor: colors.glass, borderRadius: 14, borderWidth: 1, borderColor: colors.line, padding: 12, gap: 6 },
   commentHead: { flexDirection: "row", alignItems: "center", gap: 8 },
   commentHeadText: { flex: 1 },
   commentNickname: { fontSize: 13, fontWeight: "600", color: colors.ink },
@@ -812,7 +812,7 @@ const styles = StyleSheet.create({
   actionText: { fontSize: 12, color: colors.muted, fontWeight: "500" },
   actionTextDanger: { color: colors.danger },
 
-  composer: { backgroundColor: colors.white, borderRadius: 14, borderWidth: 1, borderColor: colors.line, padding: 12, gap: 10 },
+  composer: { backgroundColor: colors.glass, borderRadius: 14, borderWidth: 1, borderColor: colors.line, padding: 12, gap: 10 },
   composerContext: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   composerContextText: { fontSize: 13, fontWeight: "600", color: colors.primary },
   composerInput: {
@@ -842,7 +842,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.white,
+    backgroundColor: colors.glass,
   },
   reportChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   reportChipLabel: { fontSize: 13, color: colors.ink },

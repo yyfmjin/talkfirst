@@ -156,21 +156,70 @@ export const neutral = {
   200: "#E9EDF4", // hairlines, dividers
   300: "#D8DEE9",
   400: "#B4BCCC",
-  500: "#68738A", // secondary text
+  /**
+   * 次要文字。
+   *
+   * 2026-11-03 从 `#68738A` 调深一档：毛玻璃把底wash 换成了淡蓝渐变，同样的灰压
+   * 在上面只剩 4.06–4.53（蓝光斑处 & 输入框里已经跌破 AA）。`#5A6478` 在同样的
+   * 三档 tint × 底wash 亮度组合上是 5.08–5.88，全区间过线。
+   */
+  500: "#5A6478", // secondary text
   600: "#4A5468",
   700: "#2E3849",
   800: "#172033", // primary text
   900: "#0E1522",
 } as const;
 
+/**
+ * Glass surfaces (2026-11-03).
+ *
+ * 全站表面语言改成毛玻璃：每一块面板都是一层半透明白，浮在一片固定的品牌蓝
+ * 底wash 上，而不是压在不透明的画布上。这里有两个必须成对成立的前提 ——
+ *
+ *   1. 这些 tint **只是半透明**。单靠它们，页面只会变成一层灰雾。真正让它
+ *      读起来像玻璃的是 `app/globals.css` 里同名 class 上的 `backdrop-filter`。
+ *   2. 玻璃必须透得出东西。所以 `surface.canvas` 改成了 `transparent`，底wash
+ *      画在 `body` 上；谁再把 canvas 改回不透明色，全站玻璃立刻失效。
+ *
+ * 不透明度按「离屏幕多远」分三档，不要随手加第四档。
+ */
+export const glass = {
+  /** 普通卡片 / 面板。 */
+  tint: "rgba(255, 255, 255, 0.58)",
+  /** 必须压在滚动内容之上读的东西：弹层、菜单、吸顶导航、底栏。 */
+  tintRaised: "rgba(255, 255, 255, 0.80)",
+  /** 面板内部的凹陷：输入框、静默行。 */
+  tintSunken: "rgba(255, 255, 255, 0.38)",
+  /** 设备外框那一层，要最薄，否则里面的卡片压上去就没有层次了。 */
+  tintFrame: "rgba(255, 255, 255, 0.30)",
+  /** 给纸片一道边的白hairline。 */
+  edge: "rgba(255, 255, 255, 0.66)",
+  /**
+   * 顶部反光。故意用 `background-image` 而不是 `box-shadow`：Tailwind 的
+   * `bg-surface` 只写 `background-color`，两者不抢属性，也不会覆盖组件自己的
+   * `shadow-card` / `shadow-raised`。
+   */
+  sheen:
+    "linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.04) 100%)",
+  /** `@supports not (backdrop-filter)` 时的兜底：模糊不可用就必须够实，字要能读。 */
+  tintOpaque: "rgba(255, 255, 255, 0.92)",
+} as const;
+
 /** Readable aliases for the neutral roles, so call sites read as intent. */
 export const surface = {
   /** Card / sheet / row background. */
-  DEFAULT: neutral[0],
-  /** Page canvas behind content. */
-  canvas: neutral[50],
+  DEFAULT: glass.tint,
+  /** 浮在滚动之上的那一层：弹层、菜单、吸顶栏、底栏。 */
+  raised: glass.tintRaised,
+  /** 设备外框。 */
+  frame: glass.tintFrame,
+  /**
+   * `transparent` 是刻意的。底wash 画在 `body` 上；canvas 一旦填色，就正好盖住
+   * 玻璃想透出来的那层东西，全站会同时变成不透明。
+   */
+  canvas: "transparent",
   /** Recessed fill: inputs, quiet panels, code blocks. */
-  sunken: neutral[100],
+  sunken: glass.tintSunken,
   /** A tint that belongs to the brand rather than to depth. */
   brand: brand[100],
   /** Overlay scrim behind sheets and dialogs. */
@@ -187,7 +236,16 @@ export const content = {
 } as const;
 
 export const border = {
-  DEFAULT: neutral[200],
+  /**
+   * 玻璃上的边 = 白hairline，不是灰线。灰线压在蓝底上会显出脏，白线才是
+   * 「一块玻璃的边缘」。需要真·分隔线（表格、实色区域）时用 `strong`。
+   */
+  DEFAULT: glass.edge,
+  /**
+   * 面板**内部**的分隔线（列表行与行之间）。它不能跟 `DEFAULT` 一样是白的 ——
+   * 白线压在玻璃上等于没画，列表会糊成一大块。这也是 `divide-y` 唯一该用的颜色。
+   */
+  hairline: neutral[200],
   /** A border that must read on a sunken surface. */
   strong: neutral[300],
   /** Brand-tinted border for selected chips and focused rows. */

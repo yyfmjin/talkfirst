@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 15,
     color: colors.ink,
-    backgroundColor: colors.white,
+    backgroundColor: colors.glass,
   },
   errorText: { fontSize: 13, color: colors.danger },
   okText: { fontSize: 13, color: colors.primary },

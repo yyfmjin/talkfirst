@@ -541,7 +541,7 @@ export default function MomentsPage() {
            * gives exactly one separator between children (never a leading or
            * trailing rule), so the composition reads as one continuous column.
            */
-          <div className="mt-2 divide-y divide-border">
+          <div className="mt-2 divide-y divide-border-hairline">
             {feed.map((moment) => (
               <MomentCard
                 key={moment.id}
@@ -924,7 +924,7 @@ function FeedSkeleton() {
   const { t } = useT();
   return (
     <TFLoadingRegion label={t("moments.loading")}>
-      <div className="mt-2 divide-y divide-border">
+      <div className="mt-2 divide-y divide-border-hairline">
         {[0, 1, 2].map((index) => (
           <div key={index} className="px-5 py-4">
             <TFRowSkeleton />

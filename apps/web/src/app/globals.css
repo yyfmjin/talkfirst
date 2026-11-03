@@ -101,7 +101,8 @@
 
 :root {
   color: #1c2740;
-  background: #eef3ff;
+  /* 底wash 的色相基准。真正的渐变画在 `body` 上（见下方 Glass 一节）。 */
+  background: #eaf2ff;
   color-scheme: light;
 }
 
@@ -131,6 +132,117 @@ svg {
 
 img {
   height: auto;
+}
+
+/* --------------------------------------------------------------------------
+ * Glass - 全站毛玻璃表面（2026-11-03）
+ *
+ * 玻璃能不能成立，取决于三个东西同时在位：
+ *   1. 一层半透明的 tint —— 在 `design/tokens.ts` 的 `glass` / `surface`；
+ *   2. 同名 class 上的 `backdrop-filter` —— 就在下面；
+ *   3. 背后确实有东西可透 —— 也就是这一段底wash。
+ *
+ * 少任何一个，半透明白就只是一层灰雾，比原来的白卡片难读。所以改这里之前先
+ * 看一遍 tokens 里 `glass` 的注释。
+ *
+ * 下面这些规则是 **unlayered**（不在 `@layer` 里）：它们只补 `background-image`
+ * / `backdrop-filter` 这两个 Tailwind 的 `bg-surface` 不写的属性，因此不会和
+ * 组件自己的 `background-color`、`shadow-card` 抢。唯一例外是最后的兜底分支：
+ * 那里必须压掉半透明，才谈得上可读性。
+ * -------------------------------------------------------------------------- */
+
+/*
+ * 底wash。三团柔光 + 一层竖向渐变，`fixed` 是为滚动时不拖尾：
+ * 玻璃下的背景要是会跟着滑，看起来就像面板在泥里拖。
+ * 不用斜向紫→蓝渐变（最典型的 AI 味），只用品牌蓝同一支做浓淡。
+ */
+body {
+  background-color: #eaf2ff;
+  background-image:
+    radial-gradient(900px 620px at 6% -8%, #cfe4ff 0%, rgba(207, 228, 255, 0) 62%),
+    radial-gradient(760px 520px at 104% 0%, #e2eeff 0%, rgba(226, 238, 255, 0) 58%),
+    radial-gradient(900px 700px at 50% 108%, #d6e7ff 0%, rgba(214, 231, 255, 0) 62%),
+    linear-gradient(180deg, #f4f8ff 0%, #eaf2ff 55%, #e5eeff 100%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+/* 顶部反光：给每一块玻璃一个「上亮下暗」的厚度感。 */
+.bg-surface,
+.bg-surface-raised,
+.bg-surface-frame,
+.bg-surface-sunken {
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.34) 0%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+}
+
+/*
+ * 模糊强度按「离屏幕多远」分三档，跟 tokens 里的三档 tint 一一对应。
+ * 都写 `-webkit-` 前缀：Safari 至今仍需。
+ */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .bg-surface {
+    -webkit-backdrop-filter: blur(16px) saturate(170%);
+    backdrop-filter: blur(16px) saturate(170%);
+  }
+
+  .bg-surface-sunken {
+    -webkit-backdrop-filter: blur(10px) saturate(160%);
+    backdrop-filter: blur(10px) saturate(160%);
+  }
+
+  .bg-surface-raised {
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
+  }
+
+  .bg-surface-frame {
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    backdrop-filter: blur(28px) saturate(180%);
+  }
+}
+
+/*
+ * 不支接 backdrop-filter 的浏览器上，半透明就只是个意外 —— 直接把面板压到接近
+ * 实色。宁可不像玻璃，也不能让正文糊在花背景上。
+ */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .bg-surface,
+  .bg-surface-raised,
+  .bg-surface-frame {
+    background-color: rgba(255, 255, 255, 0.92);
+  }
+
+  .bg-surface-sunken {
+    background-color: rgba(255, 255, 255, 0.78);
+  }
+}
+
+/*
+ * 系统开了「降低透明度」时的降级。
+ *
+ * 不能归零：Windows 关掉「透明效果」（设置 → 个性化 → 颜色）后 Chromium 就会报
+ * reduce，而那是很多人的默认状态 —— 一刀切成实色，全站看起来就像这次改版什么都没做。
+ * 所以这里取中间值：tint 抬高到 .80、模糊砍到 8px。能读，也还看得出是玻璃。
+ * 真正需要绝对实色的是无障碍阅读场景，那是浏览器强制颜色模式管的。
+ */
+@media (prefers-reduced-transparency: reduce) {
+  .bg-surface,
+  .bg-surface-raised,
+  .bg-surface-frame {
+    background-color: rgba(255, 255, 255, 0.8);
+    -webkit-backdrop-filter: blur(8px) saturate(150%);
+    backdrop-filter: blur(8px) saturate(150%);
+  }
+
+  .bg-surface-sunken {
+    background-color: rgba(255, 255, 255, 0.68);
+    -webkit-backdrop-filter: blur(6px) saturate(150%);
+    backdrop-filter: blur(6px) saturate(150%);
+  }
 }
 
 input,

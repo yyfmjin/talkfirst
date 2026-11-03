@@ -326,7 +326,7 @@ export default function MomentsSettingsPage() {
                     <SlidersHorizontal size={16} className="text-brand-500" aria-hidden="true" />
                     {t("ms.filterHeading")}
                   </h2>
-                  <div className="mt-3 divide-y divide-border rounded-card border border-border px-4">
+                  <div className="mt-3 divide-y divide-border-hairline rounded-card border border-border px-4">
                     {(
                       [
                         ["showPhotos", "ms.fPhotos", "ms.fPhotosDesc"],

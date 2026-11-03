@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.white,
+    backgroundColor: colors.glass,
   },
   chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipLabel: { fontSize: 13, color: colors.ink },

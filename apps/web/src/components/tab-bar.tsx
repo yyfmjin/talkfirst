@@ -104,7 +104,7 @@ export function TabBar({ active }: { active?: string }) {
     <nav
       aria-label={t("nav.primaryNav")}
       data-testid="tab-bar"
-      className="z-10 shrink-0 border-t border-border bg-surface/95 backdrop-blur"
+      className="z-10 shrink-0 border-t border-border bg-surface-raised"
     >
       <div className="grid grid-cols-5 items-end px-1 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-1.5">
         {/* Slots 1–2 */}

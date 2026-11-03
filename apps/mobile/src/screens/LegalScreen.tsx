@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
   body: { padding: 12, paddingBottom: 32 },
   intro: { fontSize: 13, color: colors.muted, lineHeight: 19, marginBottom: 12 },
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.glass,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.line,

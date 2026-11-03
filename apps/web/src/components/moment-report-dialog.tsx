@@ -104,7 +104,7 @@ export function MomentReportDialog({
       /* Phase B: `absolute`, not `fixed` — see `moment-comments.tsx` for why. */
       className="absolute inset-0 z-50 grid place-items-center overflow-y-auto bg-surface-scrim p-5"
     >
-      <div className="w-full max-w-[340px] rounded-sheet bg-surface p-5 text-left shadow-overlay">
+      <div className="w-full max-w-[340px] rounded-sheet bg-surface-raised p-5 text-left shadow-overlay">
         <p className="text-heading font-semibold text-content">{t("report.title", { what })}</p>
         <p className="mt-1 text-caption leading-4 text-content-muted">
           {t("report.intro")}

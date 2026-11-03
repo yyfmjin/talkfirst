@@ -59,7 +59,7 @@ export function OfficialSite({ locale }: { locale: Locale }) {
   return (
     <div className="min-h-screen bg-surface-canvas">
       {/* ── 顶栏 ───────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-20 border-b border-border bg-surface/95 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-border bg-surface-raised">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 px-6">
           <Link href={localePath(locale, "/site")} className="flex items-center gap-2.5" aria-label={t(locale, "site.homeLabel")}>
             <LogoMark size={32} />

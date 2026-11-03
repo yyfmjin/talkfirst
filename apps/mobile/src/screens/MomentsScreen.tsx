@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.white,
+    backgroundColor: colors.glass,
   },
   watchLabel: { fontSize: 14, fontWeight: "600", color: colors.primary },
   /* 只放一个图标，可点区域撞到 40×40（与另两个胶囊按钮同高）。 */
@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.white,
+    backgroundColor: colors.glass,
   },
   composeButton: {
     flexDirection: "row",
@@ -411,7 +411,7 @@ const styles = StyleSheet.create({
   },
   composeLabel: { fontSize: 14, fontWeight: "600", color: colors.white },
   list: { paddingHorizontal: 16, paddingBottom: 24, gap: 12 },
-  card: { backgroundColor: colors.white, borderRadius: 16, borderWidth: 1, borderColor: colors.line, padding: 14, gap: 10 },
+  card: { backgroundColor: colors.glass, borderRadius: 16, borderWidth: 1, borderColor: colors.line, padding: 14, gap: 10 },
   cardHead: { flexDirection: "row", alignItems: "center", gap: 10 },
   cardHeadText: { flex: 1 },
   nickname: { fontSize: 15, fontWeight: "600", color: colors.ink },

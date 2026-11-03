@@ -85,7 +85,7 @@ export default function SafetyPage() {
               {blocks.length === 0 ? (
                 <p className="mt-2 text-caption text-content-muted">{t("sf.blockedEmpty")}</p>
               ) : (
-                <div className="mt-3 divide-y divide-border overflow-hidden rounded-card border border-border">
+                <div className="mt-3 divide-y divide-border-hairline overflow-hidden rounded-card border border-border">
                   {blocks.map((item) => (
                     <div key={item.blockedId} className="flex items-center justify-between gap-3 bg-surface px-4 py-3">
                       <div className="min-w-0">
