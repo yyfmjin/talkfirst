@@ -10,9 +10,12 @@
 - [ ] AAB 存在且是**最新一次构建**：`D:\Android\play\talkfirst-<version>.aab`
 - [ ] `versionCode` 比上一次上传的大（当前 `12`，versionName `0.1.12`）
 - [ ] 签名用的是 Play 上传密钥（证书 SHA-256 以 `71:83:AE:` 开头）
-- [ ] 权限里**没有**相机/录音/悬浮窗/存储：
-      `aapt2 dump badging` 只应出现 `INTERNET`、`VIBRATE`、`ACCESS_NETWORK_STATE`、
-      `FOREGROUND_SERVICE`、`FOREGROUND_SERVICE_MEDIA_PLAYBACK`
+- [ ] 权限符合预期：`aapt2 dump badging` 应只有 `INTERNET`、`VIBRATE`、`ACCESS_NETWORK_STATE`、
+      `FOREGROUND_SERVICE`、`FOREGROUND_SERVICE_MEDIA_PLAYBACK`、`RECORD_AUDIO`、
+      `MODIFY_AUDIO_SETTINGS`。**不得出现**相机 / 悬浮窗 / 存储（`CAMERA`、`SYSTEM_ALERT_WINDOW`、
+      `READ_EXTERNAL_STORAGE`、`WRITE_EXTERNAL_STORAGE`）。
+      （`RECORD_AUDIO` 是 2026-10-24 起**有意保留**的：语音动态要录音；代价是数据安全表单里
+      必须声明「语音」类数据、隐私政策里要写到录音）
 - [ ] `targetSdkVersion = 36`
 
 一键复核：
