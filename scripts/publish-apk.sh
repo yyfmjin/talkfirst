@@ -73,6 +73,26 @@ if [ -n "$APK" ]; then
   else
     echo "⚠️  源站已是 $VER，但公网仍拿到旧副本（Cloudflare 缓存），最多 5 分钟后一致"
   fi
+
+  # 官网"下载"跳转的唯一真源是 apps/web/src/lib/downloads.ts，它原本靠 EAS 的
+  # sync:apk 更新；改成本机出包后就没人改它了（2026-11-05：站点已经发到 0.1.12，
+  # 点下载还跳到 talkfirst-0.1.11.apk）。每次发版在这里同步这一行，发完记得提交。
+  python - "$REPO" "$VER" <<'PY'
+import io, re, sys
+repo, ver = sys.argv[1], sys.argv[2]
+path = f"{repo}/apps/web/src/lib/downloads.ts"
+with io.open(path, encoding="utf-8", newline="") as fh:
+    text = fh.read()
+new, hit = re.subn(
+    r"https://talkfirst\.ccwu\.cc/apk/talkfirst-[0-9.]+\.apk",
+    f"https://talkfirst.ccwu.cc/apk/talkfirst-{ver}.apk",
+    text,
+)
+if hit:
+    with io.open(path, "w", encoding="utf-8", newline="") as fh:
+        fh.write(new)
+print(f"downloads.ts -> talkfirst-{ver}.apk（{hit} 处）")
+PY
 fi
 
 # ── AAB：归档 + 16 KB 闸门 + 文档回填 ──────────────────────────────────────
