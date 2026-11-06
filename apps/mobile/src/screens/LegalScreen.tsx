@@ -6,7 +6,7 @@ import { useI18n } from "../lib/i18n-context";
 import { LEGAL_DOCS, legalUrl, SUPPORT_EMAIL } from "../lib/legal";
 import { colors } from "../theme";
 
-import { sizes } from "../design/tokens";
+import { radii, sizes } from "../design/tokens";
 /**
  * 条款与隐私 —— 「我的」里唯一一个不自己渲染正文的子页。
  *
@@ -77,10 +77,10 @@ export function LegalScreen({ onBack }: { onBack: () => void }) {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   body: { padding: 12, paddingBottom: 32 },
-  intro: { fontSize: 13, color: colors.muted, lineHeight: 19, marginBottom: 12 },
+  intro: { fontSize: sizes.ui, color: colors.muted, lineHeight: 19, marginBottom: 12 },
   card: {
     backgroundColor: colors.glass,
-    borderRadius: 12,
+    borderRadius: radii.chip,
     borderWidth: 1,
     borderColor: colors.line,
     overflow: "hidden",
@@ -97,6 +97,6 @@ const styles = StyleSheet.create({
   },
   rowDivided: { borderTopWidth: 1, borderTopColor: colors.line },
   rowLabel: { fontSize: sizes.body, color: colors.ink },
-  sectionTitle: { fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 8 },
-  error: { fontSize: 13, color: colors.danger },
+  sectionTitle: { fontSize: sizes.ui, fontWeight: "600", color: colors.muted, marginBottom: 8 },
+  error: { fontSize: sizes.ui, color: colors.danger },
 });

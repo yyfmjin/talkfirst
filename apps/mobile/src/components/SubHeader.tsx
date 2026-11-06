@@ -3,6 +3,7 @@ import { useI18n } from "../lib/i18n-context";
 import { colors } from "../theme";
 import { Icon } from "./Icon";
 
+import { sizes } from "../design/tokens";
 /**
  * 子页面通用的头部：返回 + 标题。
  *
@@ -44,5 +45,5 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.line,
   },
   subBack: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
-  subTitle: { flex: 1, textAlign: "center", fontSize: 16, fontWeight: "600", color: colors.ink },
+  subTitle: { flex: 1, textAlign: "center", fontSize: sizes.body, fontWeight: "600", color: colors.ink },
 });

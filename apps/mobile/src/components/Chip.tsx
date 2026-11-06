@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text } from "react-native";
 import { Icon } from "./Icon";
 import { colors } from "../theme";
 
-import { radii } from "../design/tokens";
+import { radii, sizes } from "../design/tokens";
 /**
  * 可多选的标签胶囊。
  *
@@ -47,6 +47,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.glass,
   },
   chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipLabel: { fontSize: 13, color: colors.ink },
+  chipLabel: { fontSize: sizes.ui, color: colors.ink },
   chipLabelSelected: { color: colors.white, fontWeight: "600" },
 });

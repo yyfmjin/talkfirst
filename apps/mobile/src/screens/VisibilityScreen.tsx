@@ -168,10 +168,10 @@ export function VisibilityScreen({ onBack }: { onBack: () => void }) {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   body: { padding: 20, paddingBottom: 40 },
-  intro: { fontSize: 13, lineHeight: 20, color: colors.muted },
+  intro: { fontSize: sizes.ui, lineHeight: 20, color: colors.muted },
   blockNote: {
     marginTop: 10,
-    borderRadius: 12,
+    borderRadius: radii.chip,
     backgroundColor: colors.bgSoft,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -181,10 +181,10 @@ const styles = StyleSheet.create({
   },
   center: { marginTop: 28 },
   errorBox: { alignItems: "center", marginTop: 24, gap: 10 },
-  errorText: { fontSize: 13, color: colors.danger, textAlign: "center" },
+  errorText: { fontSize: sizes.ui, color: colors.danger, textAlign: "center" },
   list: { marginTop: 16, gap: 10 },
   row: {
-    borderRadius: 16,
+    borderRadius: radii.control,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.glass,
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
   chipLabelActive: { color: colors.white, fontWeight: "600" },
   notice: {
     marginTop: 16,
-    fontSize: 13,
+    fontSize: sizes.ui,
     color: colors.success,
     textAlign: "center",
   },

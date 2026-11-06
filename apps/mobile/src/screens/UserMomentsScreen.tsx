@@ -21,7 +21,7 @@ import type { UserMomentItem, UserMomentsDetail } from "../lib/types";
 import { colors } from "../theme";
 import { MomentDetailScreen } from "./MomentDetailScreen";
 
-import { sizes } from "../design/tokens";
+import { radii, sizes } from "../design/tokens";
 /**
  * 某个人的动态 —— 对齐 web 的 `/moments/user/[id]`。
  *
@@ -336,18 +336,18 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 14 },
   list: { padding: 20, paddingBottom: 40 },
   authorCard: { alignItems: "center", paddingVertical: 12 },
-  authorName: { marginTop: 10, fontSize: 18, fontWeight: "600", color: colors.ink },
+  authorName: { marginTop: 10, fontSize: sizes.heading, fontWeight: "600", color: colors.ink },
   authorMeta: { marginTop: 4, fontSize: sizes.caption, color: colors.muted },
   authorBio: {
     marginTop: 8,
-    fontSize: 13,
+    fontSize: sizes.ui,
     color: colors.muted,
     lineHeight: 20,
     textAlign: "center",
   },
   bindingRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
   bindingTag: {
-    borderRadius: 14,
+    borderRadius: radii.chip,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.glass,
@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
   bindingText: { fontSize: sizes.caption, color: colors.muted },
   lockedCard: {
     marginTop: 16,
-    borderRadius: 16,
+    borderRadius: radii.control,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.glass,
@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
   lockedTitle: { fontSize: sizes.body, fontWeight: "600", color: colors.ink, textAlign: "center" },
   lockedBody: {
     marginTop: 6,
-    fontSize: 13,
+    fontSize: sizes.ui,
     color: colors.muted,
     textAlign: "center",
     lineHeight: 20,
@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
   lockedAction: { alignSelf: "stretch", marginTop: 14 },
   emptyCard: { marginTop: 24, alignItems: "center" },
   emptyTitle: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
-  emptyBody: { marginTop: 6, fontSize: 13, color: colors.muted, textAlign: "center" },
+  emptyBody: { marginTop: 6, fontSize: sizes.ui, color: colors.muted, textAlign: "center" },
   card: {
     borderTopWidth: 1,
     borderTopColor: colors.line,
@@ -385,20 +385,20 @@ const styles = StyleSheet.create({
   meta: { fontSize: sizes.caption, color: colors.muted },
   content: { marginTop: 6, fontSize: sizes.body, color: colors.ink, lineHeight: 22 },
   imageRow: { flexDirection: "row", gap: 6, marginTop: 10 },
-  image: { width: 92, height: 92, borderRadius: 12, backgroundColor: colors.bgSoft },
+  image: { width: 92, height: 92, borderRadius: radii.chip, backgroundColor: colors.bgSoft },
   videoPlaceholder: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     marginTop: 10,
     padding: 12,
-    borderRadius: 12,
+    borderRadius: radii.chip,
     backgroundColor: colors.bgSoft,
   },
-  videoHint: { fontSize: 13, color: colors.muted },
+  videoHint: { fontSize: sizes.ui, color: colors.muted },
   actions: { flexDirection: "row", gap: 22, marginTop: 10 },
   action: { flexDirection: "row", alignItems: "center", gap: 5 },
-  actionLabel: { fontSize: 13, color: colors.muted },
+  actionLabel: { fontSize: sizes.ui, color: colors.muted },
   loadMore: { alignItems: "center", paddingVertical: 16 },
   loadMoreLabel: { fontSize: sizes.ui, color: colors.primary, fontWeight: "600" },
   footer: { marginVertical: 16 },

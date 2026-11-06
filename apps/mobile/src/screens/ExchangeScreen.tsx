@@ -16,7 +16,7 @@ import { useI18n } from "../lib/i18n-context";
 import type { ExchangeEligibility, ExchangePlatformOption, SharedContact } from "../lib/types";
 import { colors } from "../theme";
 
-import { sizes } from "../design/tokens";
+import { radii, sizes } from "../design/tokens";
 /**
  * 交换联系方式 —— 对齐 web 的 `/messages/[id]/connect`。
  *
@@ -362,12 +362,12 @@ export function ExchangeScreen({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   body: { padding: 20, paddingTop: 14, paddingBottom: 40 },
-  intro: { fontSize: 13, lineHeight: 20, color: colors.muted },
+  intro: { fontSize: sizes.ui, lineHeight: 20, color: colors.muted },
   center: { alignItems: "center", gap: 10, paddingVertical: 28 },
-  muted: { fontSize: 13, lineHeight: 19, color: colors.muted },
+  muted: { fontSize: sizes.ui, lineHeight: 19, color: colors.muted },
   progressCard: {
     marginTop: 16,
-    borderRadius: 14,
+    borderRadius: radii.chip,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.bgSoft,
@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: sizes.body, fontWeight: "700", color: colors.ink },
   card: {
     marginTop: 10,
-    borderRadius: 14,
+    borderRadius: radii.chip,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.glass,
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
   textarea: {
     marginTop: 6,
     minHeight: 72,
-    borderRadius: 14,
+    borderRadius: radii.chip,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.glass,
@@ -407,5 +407,5 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
   },
   submitRow: { marginTop: 16 },
-  errorText: { marginTop: 16, fontSize: 13, lineHeight: 19, color: colors.danger },
+  errorText: { marginTop: 16, fontSize: sizes.ui, lineHeight: 19, color: colors.danger },
 });

@@ -87,7 +87,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
 const styles = StyleSheet.create({
   root: { flex: 1, alignItems: "center", justifyContent: "center", padding: 28, gap: 12 },
-  title: { fontSize: 18, fontWeight: "600", color: colors.ink, textAlign: "center" },
+  title: { fontSize: sizes.heading, fontWeight: "600", color: colors.ink, textAlign: "center" },
   body: { fontSize: sizes.ui, lineHeight: 21, color: colors.muted, textAlign: "center" },
   detail: { fontSize: sizes.caption, lineHeight: 18, color: colors.muted, textAlign: "center" },
   stack: {
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     textAlign: "left",
     alignSelf: "stretch",
     padding: 10,
-    borderRadius: 10,
+    borderRadius: radii.chip,
     backgroundColor: colors.bgSoft,
   },
   retry: {

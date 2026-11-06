@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
   body: { padding: 20, paddingBottom: 40, gap: 12 },
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: colors.ink, marginTop: 8 },
+  sectionTitle: { fontSize: sizes.body, fontWeight: "700", color: colors.ink, marginTop: 8 },
   sectionHint: { fontSize: sizes.caption, color: colors.muted },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
@@ -367,9 +367,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.glass,
   },
   chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipLabel: { fontSize: 13, color: colors.ink },
+  chipLabel: { fontSize: sizes.ui, color: colors.ink },
   chipLabelSelected: { color: colors.white, fontWeight: "600" },
   saveRow: { marginTop: 4, alignItems: "flex-start" },
-  errorText: { fontSize: 13, color: colors.danger },
-  okText: { fontSize: 13, color: colors.primary },
+  errorText: { fontSize: sizes.ui, color: colors.danger },
+  okText: { fontSize: sizes.ui, color: colors.primary },
 });

@@ -7,7 +7,7 @@ import { GENDER_VALUES, type GenderValue } from "../lib/profile-options";
 import type { CountryOption } from "../lib/types";
 import { colors } from "../theme";
 
-import { sizes } from "../design/tokens";
+import { radii, sizes } from "../design/tokens";
 /**
  * 引导流程与「我的 → 编辑基本资料」共用的两个字段控件。
  *
@@ -158,7 +158,7 @@ export function FieldHint({ text, tone = "muted" }: { text: string; tone?: "mute
 
 const styles = StyleSheet.create({
   field: { marginBottom: 16 },
-  label: { fontSize: 13, color: colors.ink, marginBottom: 8, fontWeight: "500" },
+  label: { fontSize: sizes.ui, color: colors.ink, marginBottom: 8, fontWeight: "500" },
   selectRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 14,
+    borderRadius: radii.chip,
     paddingHorizontal: 14,
     backgroundColor: colors.glassSunken,
   },
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 14,
+    borderRadius: radii.chip,
     backgroundColor: colors.glass,
     paddingVertical: 4,
     overflow: "hidden",
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     minHeight: 40,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 10,
+    borderRadius: radii.chip,
     paddingHorizontal: 12,
     fontSize: sizes.ui,
     color: colors.ink,
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
   },
   optionLabel: { flex: 1, fontSize: sizes.ui, color: colors.ink },
-  empty: { paddingHorizontal: 14, paddingVertical: 10, fontSize: 13, color: colors.muted },
+  empty: { paddingHorizontal: 14, paddingVertical: 10, fontSize: sizes.ui, color: colors.muted },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   hint: { marginTop: 6, fontSize: sizes.caption, color: colors.muted },
   hintDanger: { marginTop: 6, fontSize: sizes.caption, color: colors.danger },

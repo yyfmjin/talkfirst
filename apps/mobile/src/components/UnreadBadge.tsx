@@ -3,7 +3,7 @@ import { Animated, StyleSheet, Text } from "react-native";
 import { EASE, MOTION } from "../lib/motion";
 import { colors } from "../theme";
 
-import { sizes } from "../design/tokens";
+import { radii, sizes } from "../design/tokens";
 /**
  * 未读徽标（2026-10-31）。
  *
@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
   badge: {
     minWidth: 22,
     height: 22,
-    borderRadius: 11,
+    borderRadius: radii.chip,
     paddingHorizontal: 6,
     alignItems: "center",
     justifyContent: "center",

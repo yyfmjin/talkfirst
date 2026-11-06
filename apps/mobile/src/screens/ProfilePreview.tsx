@@ -16,7 +16,7 @@ import { useI18n } from "../lib/i18n-context";
 import type { PublicProfile } from "../lib/types";
 import { colors } from "../theme";
 
-import { sizes } from "../design/tokens";
+import { radii, sizes } from "../design/tokens";
 export function ProfilePreview({
   userId,
   onClose,
@@ -252,39 +252,39 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  headerTitle: { fontSize: 16, fontWeight: "600", color: colors.ink },
+  headerTitle: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
   close: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: radii.control,
     backgroundColor: colors.bgTint,
     alignItems: "center",
     justifyContent: "center",
   },
   closeText: { color: colors.primaryDark, fontSize: sizes.ui },
   identity: { alignItems: "center", marginTop: 20 },
-  name: { fontSize: 18, fontWeight: "600", color: colors.ink, marginTop: 12 },
-  age: { fontSize: 13, fontWeight: "400", color: colors.muted },
+  name: { fontSize: sizes.heading, fontWeight: "600", color: colors.ink, marginTop: 12 },
+  age: { fontSize: sizes.ui, fontWeight: "400", color: colors.muted },
   place: { fontSize: sizes.caption, color: colors.muted, marginTop: 4 },
   bio: {
-    fontSize: 13,
+    fontSize: sizes.ui,
     lineHeight: 20,
     color: colors.muted,
     backgroundColor: colors.bgSoft,
-    borderRadius: 14,
+    borderRadius: radii.chip,
     padding: 12,
     marginTop: 16,
   },
   section: { marginTop: 18 },
   sectionTitle: { fontSize: sizes.overline, fontWeight: "500", color: colors.muted, marginBottom: 8 },
   tagWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  tag: { backgroundColor: colors.bgTint, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
+  tag: { backgroundColor: colors.bgTint, borderRadius: radii.control, paddingHorizontal: 12, paddingVertical: 6 },
   tagWarm: { backgroundColor: "#FFF4E5" },
   tagText: { fontSize: sizes.overline, color: colors.primaryDark },
   tagTextWarm: { color: "#B26A00" },
   tagSub: { fontSize: 10, opacity: 0.7 },
   inlineError: { color: colors.danger, fontSize: sizes.caption, textAlign: "center", marginTop: 12 },
   errorBox: { alignItems: "center", marginTop: 24 },
-  errorText: { color: colors.danger, fontSize: 13, textAlign: "center", marginBottom: 12 },
+  errorText: { color: colors.danger, fontSize: sizes.ui, textAlign: "center", marginBottom: 12 },
   actions: { marginTop: 24, gap: 8 },
 });

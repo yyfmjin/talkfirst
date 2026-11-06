@@ -9,7 +9,7 @@ import type { MsgKey } from "../lib/messages";
 import type { BlockItem, ReportItem } from "../lib/types";
 import { colors } from "../theme";
 
-import { sizes } from "../design/tokens";
+import { radii, sizes } from "../design/tokens";
 /**
  * 安全中心 —— 对齐 web 的 `/me/safety`。
  *
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   body: { padding: 20, paddingBottom: 40 },
   intro: {
-    borderRadius: 14,
+    borderRadius: radii.chip,
     backgroundColor: colors.bgSoft,
     padding: 14,
     fontSize: sizes.caption,
@@ -182,10 +182,10 @@ const styles = StyleSheet.create({
   center: { marginTop: 28 },
   section: { marginTop: 22 },
   sectionTitle: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
-  emptyText: { fontSize: 13, color: colors.muted, marginTop: 8 },
+  emptyText: { fontSize: sizes.ui, color: colors.muted, marginTop: 8 },
   blockList: {
     marginTop: 10,
-    borderRadius: 14,
+    borderRadius: radii.chip,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.glass,
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
   blockName: { fontSize: sizes.ui, fontWeight: "500", color: colors.ink },
   blockMeta: { fontSize: sizes.caption, color: colors.muted, marginTop: 1 },
   unblockButton: {
-    borderRadius: 16,
+    borderRadius: radii.control,
     borderWidth: 1,
     borderColor: colors.line,
     paddingHorizontal: 14,
@@ -211,11 +211,11 @@ const styles = StyleSheet.create({
     minWidth: 64,
     alignItems: "center",
   },
-  unblockLabel: { fontSize: 13, color: colors.primaryDark, fontWeight: "500" },
+  unblockLabel: { fontSize: sizes.ui, color: colors.primaryDark, fontWeight: "500" },
   disabled: { opacity: 0.5 },
   reportList: { marginTop: 10, gap: 8 },
   reportRow: {
-    borderRadius: 14,
+    borderRadius: radii.chip,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.glass,
@@ -224,6 +224,6 @@ const styles = StyleSheet.create({
   },
   reportTitle: { fontSize: sizes.ui, fontWeight: "500", color: colors.ink },
   reportMeta: { fontSize: sizes.caption, color: colors.muted },
-  errorText: { marginTop: 16, fontSize: 13, color: colors.danger, textAlign: "center" },
+  errorText: { marginTop: 16, fontSize: sizes.ui, color: colors.danger, textAlign: "center" },
   footer: { marginTop: 24 },
 });

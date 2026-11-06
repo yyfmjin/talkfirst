@@ -6,7 +6,7 @@ import { playPopIn, popInStyle } from "../lib/motion";
 import type { MsgKey } from "../lib/messages";
 import { colors } from "../theme";
 
-import { sizes } from "../design/tokens";
+import { radii, sizes } from "../design/tokens";
 /**
  * 每日运势（2026-10-31 第三版：按类目聚合）。
  *
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   date: { fontSize: sizes.caption, color: colors.muted },
   metaRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 10 },
   meta: { fontSize: sizes.caption, color: colors.muted },
-  sign: { fontSize: 13, fontWeight: "600", color: colors.primaryDark },
+  sign: { fontSize: sizes.ui, fontWeight: "600", color: colors.primaryDark },
 
   /* 2×2 类目格：一眼扫完，不用滚。 */
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 2 },
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
     gap: 3,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    borderRadius: 12,
+    borderRadius: radii.chip,
     backgroundColor: colors.bgSoft,
     borderWidth: 1,
     borderColor: colors.line,
@@ -282,18 +282,18 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     paddingVertical: 2,
     paddingHorizontal: 6,
-    borderRadius: 6,
+    borderRadius: radii.chip,
     overflow: "hidden",
   },
   badgeDo: { color: colors.primaryDark, backgroundColor: colors.bgTint },
   badgeDont: { color: colors.danger, backgroundColor: colors.dangerSoft },
-  lineText: { flex: 1, fontSize: 13, lineHeight: 19, color: colors.ink },
+  lineText: { flex: 1, fontSize: sizes.ui, lineHeight: 19, color: colors.ink },
 
   colorChip: { flexDirection: "row", alignItems: "center", gap: 4 },
-  colorDot: { width: 8, height: 8, borderRadius: 4 },
+  colorDot: { width: 8, height: 8, borderRadius: radii.chip },
 
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  chip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  chip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: radii.chip },
   chipGood: { backgroundColor: colors.bgTint },
   chipJi: { backgroundColor: colors.dangerSoft },
   chipLabel: { fontSize: sizes.overline, fontWeight: "700", color: colors.primaryDark },

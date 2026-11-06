@@ -10,7 +10,7 @@ import { saveTokens } from "../lib/storage";
 import type { AccountLoginMethods } from "../lib/types";
 import { colors } from "../theme";
 
-import { sizes } from "../design/tokens";
+import { radii, sizes } from "../design/tokens";
 type Mode = "loading" | "set" | "change";
 
 /**
@@ -193,20 +193,20 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
   body: { padding: 20, paddingBottom: 40, gap: 16 },
-  hint: { fontSize: 13, lineHeight: 20, color: colors.muted },
+  hint: { fontSize: sizes.ui, lineHeight: 20, color: colors.muted },
   field: { gap: 6 },
-  fieldLabel: { fontSize: 13, fontWeight: "600", color: colors.muted },
+  fieldLabel: { fontSize: sizes.ui, fontWeight: "600", color: colors.muted },
   input: {
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 12,
+    borderRadius: radii.chip,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: sizes.body,
     color: colors.ink,
     backgroundColor: colors.glass,
   },
-  errorText: { fontSize: 13, color: colors.danger },
-  okText: { fontSize: 13, color: colors.primary },
+  errorText: { fontSize: sizes.ui, color: colors.danger },
+  okText: { fontSize: sizes.ui, color: colors.primary },
   actions: { marginTop: 4 },
 });

@@ -25,10 +25,9 @@ export const sizes = {
  * 命名用 `radii`（不是 radius）：Avatar 这类组件内部有同名的局部常量 `radius`，
  * 同名导入会被局部变量遮蔽，编译器不报错但取到的是数字。 */
 export const radii = {
-  control: 18,
-  row: 20,
+  chip: 12,
+  control: 16,
   card: 24,
-  sheet: 28,
-  frame: 32,
+  sheet: 32,
   pill: 999,
 } as const;

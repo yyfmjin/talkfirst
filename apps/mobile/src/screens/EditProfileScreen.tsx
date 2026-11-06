@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
   avatarText: { flex: 1, gap: 4 },
   avatarAction: { fontSize: sizes.body, fontWeight: "600", color: colors.primaryDark },
   avatarHint: { fontSize: sizes.caption, lineHeight: 18, color: colors.muted },
-  errorText: { fontSize: 13, lineHeight: 19, color: colors.danger },
-  okText: { fontSize: 13, color: colors.primary },
+  errorText: { fontSize: sizes.ui, lineHeight: 19, color: colors.danger },
+  okText: { fontSize: sizes.ui, color: colors.primary },
   actions: { marginTop: 8 },
 });

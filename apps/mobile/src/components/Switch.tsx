@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, View } from "react-native";
 import { colors } from "../theme";
 
+import { radii } from "../design/tokens";
 /**
  * 开关。
  *
@@ -51,13 +52,13 @@ const styles = StyleSheet.create({
   track: {
     width: 48,
     height: 28,
-    borderRadius: 14,
+    borderRadius: radii.chip,
     paddingHorizontal: 2,
     justifyContent: "center",
   },
   trackOn: { backgroundColor: colors.primary, alignItems: "flex-end" },
   trackOff: { backgroundColor: colors.muted, alignItems: "flex-start" },
   /* 白色的滑块在两种底色上都是 3:1 以上，不靠颜色单独区分开关状态。 */
-  knob: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.white },
+  knob: { width: 24, height: 24, borderRadius: radii.chip, backgroundColor: colors.white },
   disabled: { opacity: 0.5 },
 });

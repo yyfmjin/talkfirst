@@ -6,6 +6,7 @@ import { ComposeScreen } from "../screens/ComposeScreen";
 import { colors } from "../theme";
 import { Icon } from "./Icon";
 
+import { radii, sizes } from "../design/tokens";
 /**
  * 「自己发的动态」的管理入口：编辑 / 删除。
  *
@@ -150,12 +151,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    borderRadius: 12,
+    borderRadius: radii.chip,
     paddingHorizontal: 12,
     paddingVertical: 7,
     backgroundColor: colors.bgTint,
   },
   rowButtonDanger: { backgroundColor: colors.dangerSoft },
-  rowLabel: { fontSize: 13, fontWeight: "600", color: colors.primaryDark },
+  rowLabel: { fontSize: sizes.ui, fontWeight: "600", color: colors.primaryDark },
   rowLabelDanger: { color: colors.danger },
 });

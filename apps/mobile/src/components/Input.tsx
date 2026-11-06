@@ -1,7 +1,7 @@
 import { StyleSheet, Text, TextInput, View } from "react-native";
 import { colors } from "../theme";
 
-import { sizes } from "../design/tokens";
+import { radii, sizes } from "../design/tokens";
 export function Input({
   label,
   value,
@@ -58,12 +58,12 @@ export function Input({
 
 const styles = StyleSheet.create({
   field: { marginBottom: 16 },
-  label: { fontSize: 13, color: colors.ink, marginBottom: 8, fontWeight: "500" },
+  label: { fontSize: sizes.ui, color: colors.ink, marginBottom: 8, fontWeight: "500" },
   input: {
     minHeight: 48,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 14,
+    borderRadius: radii.chip,
     paddingHorizontal: 14,
     fontSize: sizes.body,
     color: colors.ink,

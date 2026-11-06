@@ -27,7 +27,7 @@ import { MomentsScreen } from "./src/screens/MomentsScreen";
 import { OnboardingScreen } from "./src/screens/OnboardingScreen";
 import { colors } from "./src/theme";
 
-import { sizes } from "./src/design/tokens";
+import { radii, sizes } from "./src/design/tokens";
 /**
  * 图标字体资源（**直接 require 一个具体 ttf**）。
  *
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
     top: 0,
     width: 32,
     height: 3,
-    borderRadius: 2,
+    borderRadius: radii.chip,
     backgroundColor: colors.primary,
   },
 });

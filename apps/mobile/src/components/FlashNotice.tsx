@@ -3,7 +3,7 @@ import { Animated, StyleSheet, Text } from "react-native";
 import { playSlideIn, playSlideOut, slideInStyle } from "../lib/motion";
 import { colors } from "../theme";
 
-import { radii } from "../design/tokens";
+import { radii, sizes } from "../design/tokens";
 /**
  * 一次性提示条（2026-10-31）。
  *
@@ -48,5 +48,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.ink,
     zIndex: 20,
   },
-  text: { fontSize: 13, fontWeight: "600", color: colors.white },
+  text: { fontSize: sizes.ui, fontWeight: "600", color: colors.white },
 });

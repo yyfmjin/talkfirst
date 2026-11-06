@@ -4,6 +4,7 @@ import { EASE, MOTION } from "../lib/motion";
 import { colors } from "../theme";
 import { Icon } from "./Icon";
 
+import { sizes } from "../design/tokens";
 /**
  * 点赞按钮（2026-10-31）。
  *
@@ -72,5 +73,5 @@ export function LikeButton({
 
 const styles = StyleSheet.create({
   action: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 6, paddingRight: 10 },
-  label: { fontSize: 13, color: colors.muted },
+  label: { fontSize: sizes.ui, color: colors.muted },
 });

@@ -6,6 +6,7 @@ import { colors } from "../theme";
 import { useI18n } from "../lib/i18n-context";
 import { EASE, MOTION } from "../lib/motion";
 
+import { radii, sizes } from "../design/tokens";
 /**
  * 语音条（2026-10-28 重做：微信那种）。
  *
@@ -206,11 +207,11 @@ const styles = StyleSheet.create({
     gap: 8,
     height: 40,
     paddingHorizontal: 14,
-    borderRadius: 10,
+    borderRadius: radii.chip,
     backgroundColor: colors.bgSoft,
   },
   bubblePlaying: { backgroundColor: colors.bgTint },
-  duration: { fontSize: 13, fontWeight: "600", color: colors.ink, marginLeft: "auto" },
+  duration: { fontSize: sizes.ui, fontWeight: "600", color: colors.ink, marginLeft: "auto" },
   waves: { flexDirection: "row", alignItems: "center", gap: 2.5 },
-  wave: { width: 2.5, borderRadius: 2, backgroundColor: colors.primary },
+  wave: { width: 2.5, borderRadius: radii.chip, backgroundColor: colors.primary },
 });

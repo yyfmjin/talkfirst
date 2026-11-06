@@ -11,7 +11,7 @@ import { colors } from "../theme";
 import { ProfilePreview } from "./ProfilePreview";
 import { UserMomentsScreen } from "./UserMomentsScreen";
 
-import { sizes } from "../design/tokens";
+import { radii, sizes } from "../design/tokens";
 /**
  * 我的连接 —— 对齐 web 的 `/connections`（apps/web/src/app/connections/page.tsx）。
  *
@@ -176,13 +176,13 @@ const styles = StyleSheet.create({
   intro: { fontSize: sizes.caption, lineHeight: 18, color: colors.muted },
   center: { marginTop: 28 },
   errorBox: { alignItems: "center", marginTop: 24, gap: 10 },
-  errorText: { fontSize: 13, color: colors.danger, textAlign: "center" },
+  errorText: { fontSize: sizes.ui, color: colors.danger, textAlign: "center" },
   emptyBox: { alignItems: "center", marginTop: 36, gap: 8, paddingHorizontal: 12 },
-  emptyTitle: { fontSize: 16, fontWeight: "600", color: colors.ink },
-  emptyBody: { fontSize: 13, lineHeight: 20, color: colors.muted, textAlign: "center" },
+  emptyTitle: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
+  emptyBody: { fontSize: sizes.ui, lineHeight: 20, color: colors.muted, textAlign: "center" },
   list: {
     marginTop: 16,
-    borderRadius: 16,
+    borderRadius: radii.control,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.glass,
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   tagWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   tag: {
     backgroundColor: colors.bgTint,
-    borderRadius: 14,
+    borderRadius: radii.chip,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     backgroundColor: colors.bgSoft,
-    borderRadius: 10,
+    borderRadius: radii.chip,
     paddingHorizontal: 10,
     paddingVertical: 7,
   },

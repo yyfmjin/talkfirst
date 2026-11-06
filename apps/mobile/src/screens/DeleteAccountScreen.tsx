@@ -8,7 +8,7 @@ import { useI18n } from "../lib/i18n-context";
 import { clearTokens } from "../lib/storage";
 import { colors } from "../theme";
 
-import { sizes } from "../design/tokens";
+import { radii, sizes } from "../design/tokens";
 /**
  * 注销账号 —— 不可恢复，要求输入确认词（中文「注销」/ 英文「DELETE」）。
  *
@@ -78,16 +78,16 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   body: { padding: 20, paddingBottom: 40, gap: 16 },
   warning: { fontSize: sizes.body, lineHeight: 22, color: colors.danger, fontWeight: "600" },
-  hint: { fontSize: 13, lineHeight: 20, color: colors.muted },
+  hint: { fontSize: sizes.ui, lineHeight: 20, color: colors.muted },
   input: {
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 12,
+    borderRadius: radii.chip,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: sizes.body,
     color: colors.ink,
     backgroundColor: colors.glass,
   },
-  errorText: { fontSize: 13, color: colors.danger },
+  errorText: { fontSize: sizes.ui, color: colors.danger },
 });
