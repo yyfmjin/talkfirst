@@ -23,6 +23,7 @@ import type {
 } from "../lib/types";
 import { colors } from "../theme";
 
+import { radii, sizes } from "../design/tokens";
 /** 镜像 `ATTRIBUTE_MAX_PER_KIND`（profile-attributes.service.ts）。 */
 const MAX_PER_KIND = 10;
 /** 镜像 `ATTRIBUTE_LABEL_MAX_LENGTH`。 */
@@ -709,7 +710,7 @@ const styles = StyleSheet.create({
   sectionHead: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
   sectionHeadText: { flex: 1 },
   sectionTitle: { fontSize: 16, fontWeight: "700", color: colors.ink },
-  sectionHint: { fontSize: 12, color: colors.muted, marginTop: 2, lineHeight: 17 },
+  sectionHint: { fontSize: sizes.caption, color: colors.muted, marginTop: 2, lineHeight: 17 },
   count: {
     borderRadius: 12,
     paddingHorizontal: 10,
@@ -717,14 +718,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgTint,
   },
   countFull: { backgroundColor: colors.dangerSoft },
-  countText: { fontSize: 12, color: colors.primary, fontWeight: "600" },
+  countText: { fontSize: sizes.caption, color: colors.primary, fontWeight: "600" },
   countFullText: { color: colors.danger },
   example: {
     marginTop: 12,
     borderRadius: 12,
     backgroundColor: colors.bgSoft,
     padding: 12,
-    fontSize: 12,
+    fontSize: sizes.caption,
     lineHeight: 18,
     color: colors.muted,
   },
@@ -740,8 +741,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   rowMain: { flex: 1 },
-  rowLabel: { fontSize: 15, color: colors.ink },
-  rowMeta: { fontSize: 11, color: colors.muted, marginTop: 2 },
+  rowLabel: { fontSize: sizes.body, color: colors.ink },
+  rowMeta: { fontSize: sizes.overline, color: colors.muted, marginTop: 2 },
   rowActions: { flexDirection: "row", alignItems: "center" },
   moveBtn: {
     width: 28,
@@ -778,7 +779,7 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 18,
+    borderRadius: radii.control,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.glass,
@@ -796,7 +797,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    fontSize: 15,
+    fontSize: sizes.body,
     color: colors.ink,
     backgroundColor: colors.glass,
   },
@@ -806,14 +807,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgSoft,
     padding: 12,
   },
-  currentLabel: { fontSize: 15, fontWeight: "600", color: colors.ink },
-  currentMeta: { fontSize: 11, color: colors.muted, marginTop: 2 },
+  currentLabel: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
+  currentMeta: { fontSize: sizes.overline, color: colors.muted, marginTop: 2 },
 
   actions: { marginTop: 4 },
 
   deleteBlock: { marginTop: 20, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 14 },
   deleteLink: { alignItems: "center", paddingVertical: 10 },
-  deleteLinkText: { fontSize: 15, color: colors.danger, fontWeight: "500" },
+  deleteLinkText: { fontSize: sizes.body, color: colors.danger, fontWeight: "500" },
   deleteConfirm: {
     borderRadius: 12,
     backgroundColor: colors.dangerSoft,

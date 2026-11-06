@@ -3,6 +3,7 @@ import { Animated, StyleSheet, Text } from "react-native";
 import { playSlideIn, playSlideOut, slideInStyle } from "../lib/motion";
 import { colors } from "../theme";
 
+import { radii } from "../design/tokens";
 /**
  * 一次性提示条（2026-10-31）。
  *
@@ -43,7 +44,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 999,
+    borderRadius: radii.pill,
     backgroundColor: colors.ink,
     zIndex: 20,
   },

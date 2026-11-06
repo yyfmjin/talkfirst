@@ -27,6 +27,7 @@ import { MomentsScreen } from "./src/screens/MomentsScreen";
 import { OnboardingScreen } from "./src/screens/OnboardingScreen";
 import { colors } from "./src/theme";
 
+import { sizes } from "./src/design/tokens";
 /**
  * 图标字体资源（**直接 require 一个具体 ttf**）。
  *
@@ -335,7 +336,7 @@ const styles = StyleSheet.create({
     /* paddingBottom 在渲染时按真实安全区取（全面屏手势条会压住 tab 文字）。 */
   },
   tabItem: { flex: 1, alignItems: "center", justifyContent: "center", minHeight: 56, paddingTop: 8 },
-  tabLabel: { fontSize: 11, color: colors.muted, marginTop: 2 },
+  tabLabel: { fontSize: sizes.overline, color: colors.muted, marginTop: 2 },
   tabLabelActive: { color: colors.primary, fontWeight: "600" },
   tabIndicator: {
     position: "absolute",

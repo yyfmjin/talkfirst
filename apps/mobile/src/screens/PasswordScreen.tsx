@@ -10,6 +10,7 @@ import { saveTokens } from "../lib/storage";
 import type { AccountLoginMethods } from "../lib/types";
 import { colors } from "../theme";
 
+import { sizes } from "../design/tokens";
 type Mode = "loading" | "set" | "change";
 
 /**
@@ -201,7 +202,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    fontSize: 15,
+    fontSize: sizes.body,
     color: colors.ink,
     backgroundColor: colors.glass,
   },

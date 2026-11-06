@@ -18,6 +18,7 @@ import type { MsgKey } from "../lib/messages";
 import type { MomentPlatform, MomentPlatformBinding, MomentSettings } from "../lib/types";
 import { colors } from "../theme";
 
+import { radii, sizes } from "../design/tokens";
 /**
  * 我的动态设置 —— 对齐 web 的 `/moments/settings`。
  *
@@ -475,7 +476,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  savedLabel: { fontSize: 12, color: colors.success, fontWeight: "600" },
+  savedLabel: { fontSize: sizes.caption, color: colors.success, fontWeight: "600" },
   noticeCard: {
     borderRadius: 14,
     borderWidth: 1,
@@ -484,12 +485,12 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   noticeTitle: { fontSize: 13, fontWeight: "700", color: colors.primaryDark },
-  noticeBody: { marginTop: 6, fontSize: 12, lineHeight: 19, color: colors.ink },
+  noticeBody: { marginTop: 6, fontSize: sizes.caption, lineHeight: 19, color: colors.ink },
   intro: { marginTop: 12, fontSize: 13, lineHeight: 20, color: colors.muted },
   errorText: { marginTop: 10, fontSize: 13, lineHeight: 19, color: colors.danger },
   center: { alignItems: "center", gap: 10, paddingVertical: 28 },
   loadingLabel: { fontSize: 13, color: colors.muted },
-  sectionTitle: { marginTop: 24, fontSize: 15, fontWeight: "700", color: colors.ink },
+  sectionTitle: { marginTop: 24, fontSize: sizes.body, fontWeight: "700", color: colors.ink },
   sectionIntro: { marginTop: 6, fontSize: 13, lineHeight: 19, color: colors.muted },
   card: {
     marginTop: 10,
@@ -507,9 +508,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   divided: { borderTopWidth: 1, borderTopColor: colors.line },
-  rowLabel: { fontSize: 15, color: colors.ink },
+  rowLabel: { fontSize: sizes.body, color: colors.ink },
   rowLabelActive: { color: colors.primaryDark, fontWeight: "600" },
-  rowDesc: { marginTop: 3, fontSize: 12, lineHeight: 18, color: colors.muted },
+  rowDesc: { marginTop: 3, fontSize: sizes.caption, lineHeight: 18, color: colors.muted },
   radioText: { flex: 1, minWidth: 0 },
   radioRow: {
     flexDirection: "row",
@@ -540,8 +541,8 @@ const styles = StyleSheet.create({
   platformBadge: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   platformBadgeText: { fontSize: 13, fontWeight: "700", color: colors.white },
   platformInfo: { flex: 1, minWidth: 0 },
-  platformName: { fontSize: 15, fontWeight: "500", color: colors.ink },
-  platformMeta: { marginTop: 3, fontSize: 12, color: colors.muted },
+  platformName: { fontSize: sizes.body, fontWeight: "500", color: colors.ink },
+  platformMeta: { marginTop: 3, fontSize: sizes.caption, color: colors.muted },
   badge: {
     borderRadius: 12,
     borderWidth: 1,
@@ -549,9 +550,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  badgeText: { fontSize: 12, color: colors.muted },
+  badgeText: { fontSize: sizes.caption, color: colors.muted },
   linkRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 10, alignSelf: "flex-start" },
-  linkLabel: { fontSize: 12, color: colors.muted },
+  linkLabel: { fontSize: sizes.caption, color: colors.muted },
   bindRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10 },
   handleInput: {
     flex: 1,
@@ -561,7 +562,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderRadius: 14,
     paddingHorizontal: 12,
-    fontSize: 15,
+    fontSize: sizes.body,
     color: colors.ink,
     backgroundColor: colors.glassSunken,
   },
@@ -572,28 +573,28 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgSoft,
     padding: 12,
   },
-  confirmTitle: { fontSize: 14, fontWeight: "600", color: colors.ink },
-  confirmBody: { marginTop: 4, fontSize: 12, lineHeight: 18, color: colors.muted },
-  confirmTarget: { marginTop: 6, fontSize: 12, color: colors.ink },
+  confirmTitle: { fontSize: sizes.ui, fontWeight: "600", color: colors.ink },
+  confirmBody: { marginTop: 4, fontSize: sizes.caption, lineHeight: 18, color: colors.muted },
+  confirmTarget: { marginTop: 6, fontSize: sizes.caption, color: colors.ink },
   confirmActions: { flexDirection: "row", gap: 8, marginTop: 12 },
   cancelButton: {
     flex: 1,
     minHeight: 40,
-    borderRadius: 20,
+    borderRadius: radii.row,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.bgTint,
   },
-  cancelLabel: { fontSize: 14, fontWeight: "600", color: colors.primaryDark },
+  cancelLabel: { fontSize: sizes.ui, fontWeight: "600", color: colors.primaryDark },
   dangerButton: {
     flex: 1,
     minHeight: 40,
-    borderRadius: 20,
+    borderRadius: radii.row,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.danger,
   },
-  dangerLabel: { fontSize: 14, fontWeight: "600", color: colors.white },
+  dangerLabel: { fontSize: sizes.ui, fontWeight: "600", color: colors.white },
   disabled: { opacity: 0.5 },
   doneRow: { marginTop: 24 },
 });

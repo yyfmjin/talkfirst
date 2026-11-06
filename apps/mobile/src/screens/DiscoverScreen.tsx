@@ -19,6 +19,7 @@ import { colors } from "../theme";
 import { ProfilePreview } from "./ProfilePreview";
 import { UserMomentsScreen } from "./UserMomentsScreen";
 
+import { radii, sizes } from "../design/tokens";
 /** 筛选条存词典键（不是中文串）：语言一变，标签跟着变。 */
 const FILTERS = [
   { id: "all", labelKey: "discover.filterAll" },
@@ -293,20 +294,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#DCE0FF",
   },
-  inviteTitle: { fontSize: 15, fontWeight: "600", color: colors.ink },
+  inviteTitle: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
   inviteBody: { marginTop: 4, fontSize: 13, lineHeight: 19, color: colors.muted },
   inviteActions: { flexDirection: "row", gap: 8, marginTop: 12 },
   inviteAccept: {
     paddingHorizontal: 16,
     paddingVertical: 9,
-    borderRadius: 999,
+    borderRadius: radii.pill,
     backgroundColor: colors.primary,
   },
   inviteAcceptLabel: { fontSize: 13, fontWeight: "600", color: colors.white },
   inviteDecline: {
     paddingHorizontal: 16,
     paddingVertical: 9,
-    borderRadius: 999,
+    borderRadius: radii.pill,
     borderWidth: 1,
     borderColor: "#DCE0FF",
     backgroundColor: colors.glass,
@@ -320,7 +321,7 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 999,
+    borderRadius: radii.pill,
     borderWidth: 1,
     borderColor: "#DCE0FF",
     backgroundColor: "#F1F2FF",
@@ -328,20 +329,20 @@ const styles = StyleSheet.create({
   guessLabel: { fontSize: 13, fontWeight: "600", color: colors.primary },
   center: { flex: 1, backgroundColor: colors.bg, alignItems: "center", justifyContent: "center", padding: 28 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", paddingHorizontal: 20 },
-  title: { fontSize: 22, fontWeight: "600", color: colors.ink },
+  title: { fontSize: sizes.title, fontWeight: "600", color: colors.ink },
   subtitle: { fontSize: 13, color: colors.muted, marginTop: 4 },
   badge: { backgroundColor: colors.bgTint, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
-  badgeText: { fontSize: 11, color: colors.primary, fontWeight: "500" },
+  badgeText: { fontSize: sizes.overline, color: colors.primary, fontWeight: "500" },
   filters: { flexDirection: "row", gap: 8, paddingHorizontal: 20, marginTop: 16 },
   filterChip: {
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 18,
+    borderRadius: radii.control,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
   filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  filterLabel: { fontSize: 12, color: colors.muted },
+  filterLabel: { fontSize: sizes.caption, color: colors.muted },
   filterLabelActive: { color: colors.white, fontWeight: "500" },
   switching: { paddingVertical: 12, alignItems: "center" },
   list: { paddingHorizontal: 12, paddingBottom: 24, paddingTop: 16 },
@@ -349,9 +350,9 @@ const styles = StyleSheet.create({
   bubble: { flex: 1, alignItems: "center", paddingVertical: 8 },
   bubblePressed: { opacity: 0.7 },
   bubbleName: { fontSize: 13, color: colors.ink, fontWeight: "500", marginTop: 8, maxWidth: 100 },
-  bubbleMeta: { fontSize: 11, color: colors.muted, marginTop: 2, maxWidth: 100 },
-  errorTitle: { fontSize: 15, fontWeight: "600", color: colors.danger, marginBottom: 8 },
+  bubbleMeta: { fontSize: sizes.overline, color: colors.muted, marginTop: 2, maxWidth: 100 },
+  errorTitle: { fontSize: sizes.body, fontWeight: "600", color: colors.danger, marginBottom: 8 },
   emptyEmoji: { fontSize: 40, marginBottom: 12 },
-  emptyTitle: { fontSize: 15, fontWeight: "600", color: colors.ink, marginBottom: 8 },
+  emptyTitle: { fontSize: sizes.body, fontWeight: "600", color: colors.ink, marginBottom: 8 },
   muted: { fontSize: 13, color: colors.muted, textAlign: "center", marginTop: 8 },
 });

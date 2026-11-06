@@ -11,6 +11,7 @@ import { useI18n } from "../lib/i18n-context";
 import type { SessionUser } from "../lib/types";
 import { colors } from "../theme";
 
+import { sizes } from "../design/tokens";
 /**
  * 邮箱验证码。
  *
@@ -188,8 +189,8 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: "600", color: colors.ink, marginTop: 18 },
   subtitle: { fontSize: 13, color: colors.muted, marginTop: 8, textAlign: "center", lineHeight: 19 },
   form: { width: "100%" },
-  notice: { color: colors.primaryDark, fontSize: 12, marginBottom: 10, lineHeight: 18 },
-  error: { color: colors.danger, fontSize: 12, marginBottom: 10, lineHeight: 18 },
+  notice: { color: colors.primaryDark, fontSize: sizes.caption, marginBottom: 10, lineHeight: 18 },
+  error: { color: colors.danger, fontSize: sizes.caption, marginBottom: 10, lineHeight: 18 },
   resend: { alignSelf: "center", marginTop: 16, paddingVertical: 6 },
   resendText: { color: colors.primary, fontSize: 13, fontWeight: "600" },
   resendDisabled: { color: colors.muted },

@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { t } from "../lib/i18n";
 import { colors } from "../theme";
 
+import { radii, sizes } from "../design/tokens";
 /**
  * 顶层错误边界。
  *
@@ -87,10 +88,10 @@ export class ErrorBoundary extends Component<Props, State> {
 const styles = StyleSheet.create({
   root: { flex: 1, alignItems: "center", justifyContent: "center", padding: 28, gap: 12 },
   title: { fontSize: 18, fontWeight: "600", color: colors.ink, textAlign: "center" },
-  body: { fontSize: 14, lineHeight: 21, color: colors.muted, textAlign: "center" },
-  detail: { fontSize: 12, lineHeight: 18, color: colors.muted, textAlign: "center" },
+  body: { fontSize: sizes.ui, lineHeight: 21, color: colors.muted, textAlign: "center" },
+  detail: { fontSize: sizes.caption, lineHeight: 18, color: colors.muted, textAlign: "center" },
   stack: {
-    fontSize: 11,
+    fontSize: sizes.overline,
     lineHeight: 16,
     color: colors.ink,
     textAlign: "left",
@@ -103,8 +104,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderRadius: 999,
+    borderRadius: radii.pill,
     backgroundColor: colors.primary,
   },
-  retryLabel: { fontSize: 14, fontWeight: "600", color: colors.white },
+  retryLabel: { fontSize: sizes.ui, fontWeight: "600", color: colors.white },
 });

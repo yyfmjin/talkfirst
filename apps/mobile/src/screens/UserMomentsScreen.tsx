@@ -21,6 +21,7 @@ import type { UserMomentItem, UserMomentsDetail } from "../lib/types";
 import { colors } from "../theme";
 import { MomentDetailScreen } from "./MomentDetailScreen";
 
+import { sizes } from "../design/tokens";
 /**
  * 某个人的动态 —— 对齐 web 的 `/moments/user/[id]`。
  *
@@ -336,7 +337,7 @@ const styles = StyleSheet.create({
   list: { padding: 20, paddingBottom: 40 },
   authorCard: { alignItems: "center", paddingVertical: 12 },
   authorName: { marginTop: 10, fontSize: 18, fontWeight: "600", color: colors.ink },
-  authorMeta: { marginTop: 4, fontSize: 12, color: colors.muted },
+  authorMeta: { marginTop: 4, fontSize: sizes.caption, color: colors.muted },
   authorBio: {
     marginTop: 8,
     fontSize: 13,
@@ -353,7 +354,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  bindingText: { fontSize: 12, color: colors.muted },
+  bindingText: { fontSize: sizes.caption, color: colors.muted },
   lockedCard: {
     marginTop: 16,
     borderRadius: 16,
@@ -363,7 +364,7 @@ const styles = StyleSheet.create({
     padding: 18,
     alignItems: "center",
   },
-  lockedTitle: { fontSize: 15, fontWeight: "600", color: colors.ink, textAlign: "center" },
+  lockedTitle: { fontSize: sizes.body, fontWeight: "600", color: colors.ink, textAlign: "center" },
   lockedBody: {
     marginTop: 6,
     fontSize: 13,
@@ -373,7 +374,7 @@ const styles = StyleSheet.create({
   },
   lockedAction: { alignSelf: "stretch", marginTop: 14 },
   emptyCard: { marginTop: 24, alignItems: "center" },
-  emptyTitle: { fontSize: 15, fontWeight: "600", color: colors.ink },
+  emptyTitle: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
   emptyBody: { marginTop: 6, fontSize: 13, color: colors.muted, textAlign: "center" },
   card: {
     borderTopWidth: 1,
@@ -381,8 +382,8 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 10,
   },
-  meta: { fontSize: 12, color: colors.muted },
-  content: { marginTop: 6, fontSize: 15, color: colors.ink, lineHeight: 22 },
+  meta: { fontSize: sizes.caption, color: colors.muted },
+  content: { marginTop: 6, fontSize: sizes.body, color: colors.ink, lineHeight: 22 },
   imageRow: { flexDirection: "row", gap: 6, marginTop: 10 },
   image: { width: 92, height: 92, borderRadius: 12, backgroundColor: colors.bgSoft },
   videoPlaceholder: {
@@ -399,7 +400,7 @@ const styles = StyleSheet.create({
   action: { flexDirection: "row", alignItems: "center", gap: 5 },
   actionLabel: { fontSize: 13, color: colors.muted },
   loadMore: { alignItems: "center", paddingVertical: 16 },
-  loadMoreLabel: { fontSize: 14, color: colors.primary, fontWeight: "600" },
+  loadMoreLabel: { fontSize: sizes.ui, color: colors.primary, fontWeight: "600" },
   footer: { marginVertical: 16 },
-  errorText: { fontSize: 14, color: colors.danger, textAlign: "center" },
+  errorText: { fontSize: sizes.ui, color: colors.danger, textAlign: "center" },
 });

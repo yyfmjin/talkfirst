@@ -6,6 +6,7 @@ import { useI18n } from "../lib/i18n-context";
 import { LEGAL_DOCS, legalUrl, SUPPORT_EMAIL } from "../lib/legal";
 import { colors } from "../theme";
 
+import { sizes } from "../design/tokens";
 /**
  * 条款与隐私 —— 「我的」里唯一一个不自己渲染正文的子页。
  *
@@ -95,7 +96,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   rowDivided: { borderTopWidth: 1, borderTopColor: colors.line },
-  rowLabel: { fontSize: 15, color: colors.ink },
+  rowLabel: { fontSize: sizes.body, color: colors.ink },
   sectionTitle: { fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 8 },
   error: { fontSize: 13, color: colors.danger },
 });

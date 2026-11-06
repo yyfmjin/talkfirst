@@ -24,6 +24,7 @@ import { Icon } from "../components/Icon";
 import { KeyboardAware } from "../components/KeyboardAware";
 import { colors } from "../theme";
 
+import { radii, sizes } from "../design/tokens";
 /**
  * 发动态（2026-10-08 起）—— 对齐 web 的 `/moments/compose`。
  *
@@ -677,19 +678,19 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.line,
   },
   headButton: { minWidth: 64, paddingVertical: 6 },
-  cancel: { fontSize: 15, color: colors.muted },
-  title: { fontSize: 17, fontWeight: "600", color: colors.ink },
+  cancel: { fontSize: sizes.body, color: colors.muted },
+  title: { fontSize: sizes.heading, fontWeight: "600", color: colors.ink },
   publish: {
     minWidth: 64,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 999,
+    borderRadius: radii.pill,
     backgroundColor: colors.primary,
   },
   publishDisabled: { opacity: 0.45 },
-  publishLabel: { fontSize: 14, fontWeight: "600", color: colors.white },
+  publishLabel: { fontSize: sizes.ui, fontWeight: "600", color: colors.white },
   editor: { flex: 1 },
   input: {
     flex: 1,
@@ -725,7 +726,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  imageFailedMark: { color: colors.white, fontSize: 22, fontWeight: "700" },
+  imageFailedMark: { color: colors.white, fontSize: sizes.title, fontWeight: "700" },
   imageRemove: {
     position: "absolute",
     top: 4,
@@ -737,7 +738,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  imageRemoveMark: { color: colors.white, fontSize: 12 },
+  imageRemoveMark: { color: colors.white, fontSize: sizes.caption },
   addTile: {
     width: 96,
     height: 96,
@@ -749,8 +750,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 2,
   },
-  addTileMark: { fontSize: 22, color: colors.primary, lineHeight: 24 },
-  addTileLabel: { fontSize: 11, color: colors.muted },
+  addTileMark: { fontSize: sizes.title, color: colors.primary, lineHeight: 24 },
+  addTileLabel: { fontSize: sizes.overline, color: colors.muted },
   videoTile: {
     width: 96,
     height: 96,
@@ -771,8 +772,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.line,
   },
-  note: { flex: 1, fontSize: 12, color: colors.muted },
-  counter: { fontSize: 12, color: colors.muted },
+  note: { flex: 1, fontSize: sizes.caption, color: colors.muted },
+  counter: { fontSize: sizes.caption, color: colors.muted },
   error: {
     position: "absolute",
     left: 16,
@@ -784,8 +785,8 @@ const styles = StyleSheet.create({
   },
   audioRow: { paddingHorizontal: 18, paddingBottom: 12 },
   audioBox: { position: "relative" },
-  audioHint: { marginTop: 6, fontSize: 12, color: colors.muted },
-  audioError: { marginTop: 6, fontSize: 12, color: colors.danger },
+  audioHint: { marginTop: 6, fontSize: sizes.caption, color: colors.muted },
+  audioError: { marginTop: 6, fontSize: sizes.caption, color: colors.danger },
   audioRemove: {
     position: "absolute",
     top: -6,
@@ -797,18 +798,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: colors.ink,
   },
-  audioRemoveMark: { fontSize: 12, color: colors.white },
+  audioRemoveMark: { fontSize: sizes.caption, color: colors.white },
   recordStop: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     paddingVertical: 12,
-    borderRadius: 999,
+    borderRadius: radii.pill,
     backgroundColor: "#FDE8E8",
   },
   recordDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.danger },
-  recordStopText: { fontSize: 14, fontWeight: "600", color: colors.danger },
+  recordStopText: { fontSize: sizes.ui, fontWeight: "600", color: colors.danger },
   previewBackdrop: {
     flex: 1,
     backgroundColor: "rgba(12, 14, 24, 0.94)",
@@ -822,7 +823,7 @@ const styles = StyleSheet.create({
     right: 20,
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: radii.row,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(255, 255, 255, 0.14)",
@@ -841,10 +842,10 @@ const styles = StyleSheet.create({
   previewAction: {
     paddingHorizontal: 20,
     paddingVertical: 11,
-    borderRadius: 999,
+    borderRadius: radii.pill,
     backgroundColor: "rgba(255, 255, 255, 0.14)",
   },
   previewActionDisabled: { opacity: 0.4 },
-  previewActionText: { fontSize: 14, fontWeight: "600", color: colors.white },
+  previewActionText: { fontSize: sizes.ui, fontWeight: "600", color: colors.white },
   previewDanger: { color: "#FF8A8A" },
 });

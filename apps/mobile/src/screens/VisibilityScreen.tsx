@@ -8,6 +8,7 @@ import type { MsgKey } from "../lib/messages";
 import type { FieldVisibilityRow, ProfileVisibilityField, VisibilityTier } from "../lib/types";
 import { colors } from "../theme";
 
+import { radii, sizes } from "../design/tokens";
 /**
  * 资料可见范围 —— 对齐 web 的 `/me/visibility`（PC-1.4 §11-§12）。
  *
@@ -174,7 +175,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgSoft,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontSize: 12,
+    fontSize: sizes.caption,
     lineHeight: 18,
     color: colors.muted,
   },
@@ -190,21 +191,21 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 8,
   },
-  fieldLabel: { fontSize: 15, fontWeight: "600", color: colors.ink },
-  current: { fontSize: 12, color: colors.muted },
+  fieldLabel: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
+  current: { fontSize: sizes.caption, color: colors.muted },
   chipRow: { flexDirection: "row", gap: 8 },
   chip: {
     flex: 1,
     alignItems: "center",
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 18,
+    borderRadius: radii.control,
     paddingVertical: 8,
     paddingHorizontal: 4,
   },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipDisabled: { opacity: 0.5 },
-  chipLabel: { fontSize: 12, color: colors.muted },
+  chipLabel: { fontSize: sizes.caption, color: colors.muted },
   chipLabelActive: { color: colors.white, fontWeight: "600" },
   notice: {
     marginTop: 16,

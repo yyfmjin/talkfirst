@@ -11,6 +11,7 @@ import { colors } from "../theme";
 import { ProfilePreview } from "./ProfilePreview";
 import { UserMomentsScreen } from "./UserMomentsScreen";
 
+import { sizes } from "../design/tokens";
 /**
  * 我的连接 —— 对齐 web 的 `/connections`（apps/web/src/app/connections/page.tsx）。
  *
@@ -172,7 +173,7 @@ function ExchangeState({ item }: { item: ConnectionItem }) {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   body: { padding: 20, paddingBottom: 40 },
-  intro: { fontSize: 12, lineHeight: 18, color: colors.muted },
+  intro: { fontSize: sizes.caption, lineHeight: 18, color: colors.muted },
   center: { marginTop: 28 },
   errorBox: { alignItems: "center", marginTop: 24, gap: 10 },
   errorText: { fontSize: 13, color: colors.danger, textAlign: "center" },
@@ -190,9 +191,9 @@ const styles = StyleSheet.create({
   row: { padding: 14, borderBottomWidth: 1, borderBottomColor: colors.line, gap: 10 },
   rowHead: { flexDirection: "row", alignItems: "center", gap: 12 },
   rowHeadText: { flex: 1 },
-  name: { fontSize: 15, fontWeight: "600", color: colors.ink },
-  meta: { fontSize: 12, color: colors.muted, marginTop: 2 },
-  bio: { fontSize: 12, lineHeight: 18, color: colors.muted },
+  name: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
+  meta: { fontSize: sizes.caption, color: colors.muted, marginTop: 2 },
+  bio: { fontSize: sizes.caption, lineHeight: 18, color: colors.muted },
   tagWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   tag: {
     backgroundColor: colors.bgTint,
@@ -200,7 +201,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  tagText: { fontSize: 11, color: colors.primaryDark },
+  tagText: { fontSize: sizes.overline, color: colors.primaryDark },
   exchangeStrip: {
     flexDirection: "row",
     alignItems: "center",
@@ -210,5 +211,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 7,
   },
-  exchangeText: { flex: 1, fontSize: 12, color: colors.muted },
+  exchangeText: { flex: 1, fontSize: sizes.caption, color: colors.muted },
 });

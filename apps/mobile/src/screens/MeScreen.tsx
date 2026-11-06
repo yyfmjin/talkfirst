@@ -36,6 +36,7 @@ import { MomentsSettingsScreen } from "./MomentsSettingsScreen";
 import { EditProfileScreen } from "./EditProfileScreen";
 import { LegalScreen } from "./LegalScreen";
 
+import { radii, sizes } from "../design/tokens";
 /**
  * 界面语言选项。
  *
@@ -525,18 +526,18 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   content: { paddingBottom: 40 },
   header: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 12 },
-  title: { fontSize: 22, fontWeight: "600", color: colors.ink },
+  title: { fontSize: sizes.title, fontWeight: "600", color: colors.ink },
   card: {
     marginHorizontal: 20,
     marginTop: 8,
-    borderRadius: 24,
+    borderRadius: radii.card,
     backgroundColor: colors.bgSoft,
     alignItems: "center",
     padding: 24,
   },
   name: { fontSize: 20, fontWeight: "600", color: colors.ink, marginTop: 12 },
   email: { fontSize: 13, color: colors.muted, marginTop: 4 },
-  place: { fontSize: 12, color: colors.muted, marginTop: 4 },
+  place: { fontSize: sizes.caption, color: colors.muted, marginTop: 4 },
   bio: { fontSize: 13, color: colors.muted, lineHeight: 20, textAlign: "center", marginTop: 12 },
   badgeRow: { flexDirection: "row", marginTop: 16 },
   badge: {
@@ -545,7 +546,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  badgeText: { fontSize: 11, color: colors.primary, fontWeight: "500" },
+  badgeText: { fontSize: sizes.overline, color: colors.primary, fontWeight: "500" },
 
   group: { marginTop: 22, paddingHorizontal: 20 },
   groupTitle: { fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 8 },
@@ -557,7 +558,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
-  rowLabel: { flex: 1, fontSize: 15, color: colors.ink },
+  rowLabel: { flex: 1, fontSize: sizes.body, color: colors.ink },
   /* 版本号行：与上面的可点行同构，但没有箭头、没有按压反馈 —— 它只是信息。 */
   versionRow: {
     flexDirection: "row",
@@ -569,7 +570,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.line,
   },
   versionLabel: { flex: 1, fontSize: 13, color: colors.muted },
-  moreSoon: { marginTop: 14, paddingHorizontal: 20, fontSize: 12, color: colors.muted },
+  moreSoon: { marginTop: 14, paddingHorizontal: 20, fontSize: sizes.caption, color: colors.muted },
   ctaRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -581,23 +582,23 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
     backgroundColor: colors.bgTint,
   },
-  ctaLabel: { flex: 1, fontSize: 15, color: colors.primary, fontWeight: "600" },
+  ctaLabel: { flex: 1, fontSize: sizes.body, color: colors.primary, fontWeight: "600" },
 
   actions: { paddingHorizontal: 20, marginTop: 24 },
-  sectionTitle: { fontSize: 15, fontWeight: "600", color: colors.ink },
+  sectionTitle: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
   languageRow: { flexDirection: "row", gap: 8, marginTop: 10 },
   languageChip: {
     flex: 1,
     alignItems: "center",
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 18,
+    borderRadius: radii.control,
     paddingVertical: 9,
   },
   languageChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   languageLabel: { fontSize: 13, color: colors.muted },
   languageLabelActive: { color: colors.white, fontWeight: "600" },
-  languageNote: { fontSize: 12, color: colors.muted, lineHeight: 18, marginTop: 8 },
+  languageNote: { fontSize: sizes.caption, color: colors.muted, lineHeight: 18, marginTop: 8 },
 
   page: { flex: 1, backgroundColor: colors.bg },
   pageBody: { padding: 20, gap: 16 },
@@ -608,7 +609,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderRadius: 12,
     padding: 14,
-    fontSize: 15,
+    fontSize: sizes.body,
     lineHeight: 22,
     color: colors.ink,
     backgroundColor: colors.glass,
@@ -623,8 +624,8 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     gap: 6,
   },
-  historyBody: { fontSize: 14, lineHeight: 21, color: colors.ink },
-  historyMeta: { fontSize: 12, color: colors.muted },
+  historyBody: { fontSize: sizes.ui, lineHeight: 21, color: colors.ink },
+  historyMeta: { fontSize: sizes.caption, color: colors.muted },
   historyReply: {
     marginTop: 4,
     padding: 12,
@@ -632,5 +633,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgTint,
     gap: 4,
   },
-  historyReplyLabel: { fontSize: 12, fontWeight: "600", color: colors.primaryDark },
+  historyReplyLabel: { fontSize: sizes.caption, fontWeight: "600", color: colors.primaryDark },
 });

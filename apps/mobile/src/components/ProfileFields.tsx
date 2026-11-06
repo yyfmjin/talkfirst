@@ -7,6 +7,7 @@ import { GENDER_VALUES, type GenderValue } from "../lib/profile-options";
 import type { CountryOption } from "../lib/types";
 import { colors } from "../theme";
 
+import { sizes } from "../design/tokens";
 /**
  * 引导流程与「我的 → 编辑基本资料」共用的两个字段控件。
  *
@@ -170,8 +171,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     backgroundColor: colors.glassSunken,
   },
-  selectValue: { flex: 1, fontSize: 15, color: colors.ink },
-  selectPlaceholder: { flex: 1, fontSize: 15, color: colors.muted },
+  selectValue: { flex: 1, fontSize: sizes.body, color: colors.ink },
+  selectPlaceholder: { flex: 1, fontSize: sizes.body, color: colors.muted },
   selectBody: {
     marginTop: 8,
     borderWidth: 1,
@@ -188,7 +189,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderRadius: 10,
     paddingHorizontal: 12,
-    fontSize: 14,
+    fontSize: sizes.ui,
     color: colors.ink,
   },
   optionRow: {
@@ -199,9 +200,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 11,
   },
-  optionLabel: { flex: 1, fontSize: 14, color: colors.ink },
+  optionLabel: { flex: 1, fontSize: sizes.ui, color: colors.ink },
   empty: { paddingHorizontal: 14, paddingVertical: 10, fontSize: 13, color: colors.muted },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  hint: { marginTop: 6, fontSize: 12, color: colors.muted },
-  hintDanger: { marginTop: 6, fontSize: 12, color: colors.danger },
+  hint: { marginTop: 6, fontSize: sizes.caption, color: colors.muted },
+  hintDanger: { marginTop: 6, fontSize: sizes.caption, color: colors.danger },
 });

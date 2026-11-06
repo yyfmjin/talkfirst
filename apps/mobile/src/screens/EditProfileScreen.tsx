@@ -19,6 +19,7 @@ import { ageFromBirthDateInput, MIN_AGE, type GenderValue } from "../lib/profile
 import type { CountryOption, SessionUser } from "../lib/types";
 import { colors } from "../theme";
 
+import { sizes } from "../design/tokens";
 /**
  * 编辑基本资料 —— 对齐 web 的 `/me/edit`。
  *
@@ -332,8 +333,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   avatarText: { flex: 1, gap: 4 },
-  avatarAction: { fontSize: 15, fontWeight: "600", color: colors.primaryDark },
-  avatarHint: { fontSize: 12, lineHeight: 18, color: colors.muted },
+  avatarAction: { fontSize: sizes.body, fontWeight: "600", color: colors.primaryDark },
+  avatarHint: { fontSize: sizes.caption, lineHeight: 18, color: colors.muted },
   errorText: { fontSize: 13, lineHeight: 19, color: colors.danger },
   okText: { fontSize: 13, color: colors.primary },
   actions: { marginTop: 8 },

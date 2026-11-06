@@ -43,6 +43,7 @@ import type {
 import { colors } from "../theme";
 import { SocialScreen } from "./SocialScreen";
 
+import { radii, sizes } from "../design/tokens";
 /**
  * 首次进入的引导流程 —— 对齐 web 的 `/onboarding/*`。
  *
@@ -671,7 +672,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
   progressWrap: { paddingHorizontal: 20, paddingTop: 12 },
-  progressText: { fontSize: 12, color: colors.muted },
+  progressText: { fontSize: sizes.caption, color: colors.muted },
   progressTrack: {
     marginTop: 6,
     height: 4,
@@ -682,8 +683,8 @@ const styles = StyleSheet.create({
   progressFill: { height: 4, borderRadius: 2, backgroundColor: colors.primary },
   body: { padding: 20, paddingBottom: 32 },
   footer: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20, gap: 6 },
-  hint: { fontSize: 12, color: colors.muted, marginBottom: 12, lineHeight: 18 },
-  sectionTitle: { fontSize: 14, fontWeight: "600", color: colors.ink, marginTop: 8, marginBottom: 8 },
+  hint: { fontSize: sizes.caption, color: colors.muted, marginBottom: 12, lineHeight: 18 },
+  sectionTitle: { fontSize: sizes.ui, fontWeight: "600", color: colors.ink, marginTop: 8, marginBottom: 8 },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   errorText: { fontSize: 13, color: colors.danger, marginBottom: 12 },
   avatarStep: { alignItems: "center", paddingTop: 24 },
@@ -703,7 +704,7 @@ const styles = StyleSheet.create({
     bottom: 4,
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: radii.control,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
@@ -711,7 +712,7 @@ const styles = StyleSheet.create({
     borderColor: colors.white,
   },
   skipRow: { alignItems: "center", paddingVertical: 10 },
-  skipLabel: { fontSize: 14, color: colors.muted },
+  skipLabel: { fontSize: sizes.ui, color: colors.muted },
   doneBox: { alignItems: "center", paddingTop: 12 },
   doneBadge: {
     width: 80,
@@ -722,11 +723,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   doneTitle: { marginTop: 20, fontSize: 20, fontWeight: "600", color: colors.ink },
-  doneSubtitle: { marginTop: 8, fontSize: 14, color: colors.muted, textAlign: "center" },
+  doneSubtitle: { marginTop: 8, fontSize: sizes.ui, color: colors.muted, textAlign: "center" },
   doneCard: {
     alignSelf: "stretch",
     marginTop: 24,
-    borderRadius: 18,
+    borderRadius: radii.control,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.glass,
@@ -742,6 +743,6 @@ const styles = StyleSheet.create({
     marginTop: 7,
   },
   doneText: { flex: 1 },
-  doneRowTitle: { fontSize: 14, fontWeight: "600", color: colors.ink },
-  doneRowBody: { marginTop: 3, fontSize: 12, color: colors.muted, lineHeight: 18 },
+  doneRowTitle: { fontSize: sizes.ui, fontWeight: "600", color: colors.ink },
+  doneRowBody: { marginTop: 3, fontSize: sizes.caption, color: colors.muted, lineHeight: 18 },
 });

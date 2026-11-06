@@ -16,6 +16,7 @@ import { useI18n, type TranslateFn } from "../lib/i18n-context";
 import { colors } from "../theme";
 import type { Moment, VideoFeedPage } from "../lib/types";
 
+import { radii, sizes } from "../design/tokens";
 /**
  * 视频流（移动端）—— 全屏、上下滑切换，与 web 的 `/videos` 同源。
  *
@@ -244,20 +245,20 @@ const styles = StyleSheet.create({
   },
   authorRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   authorText: { flex: 1 },
-  nickname: { fontSize: 15, fontWeight: "700", color: colors.white },
-  country: { fontSize: 12, color: "rgba(255,255,255,0.75)", marginTop: 1 },
-  content: { fontSize: 14, lineHeight: 20, color: "rgba(255,255,255,0.92)" },
+  nickname: { fontSize: sizes.body, fontWeight: "700", color: colors.white },
+  country: { fontSize: sizes.caption, color: "rgba(255,255,255,0.75)", marginTop: 1 },
+  content: { fontSize: sizes.ui, lineHeight: 20, color: "rgba(255,255,255,0.92)" },
   counts: { flexDirection: "row", alignItems: "center", gap: 14, marginTop: 2 },
   countGroup: { flexDirection: "row", alignItems: "center", gap: 5 },
   countText: { fontSize: 13, color: colors.white },
-  emptyText: { fontSize: 14, color: "rgba(255,255,255,0.8)", textAlign: "center", paddingHorizontal: 40, lineHeight: 21 },
+  emptyText: { fontSize: sizes.ui, color: "rgba(255,255,255,0.8)", textAlign: "center", paddingHorizontal: 40, lineHeight: 21 },
   topLeft: {
     position: "absolute",
     top: 54,
     left: 16,
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: radii.row,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(0,0,0,0.45)",
@@ -268,7 +269,7 @@ const styles = StyleSheet.create({
     right: 16,
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: radii.row,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(0,0,0,0.45)",

@@ -28,6 +28,7 @@ import type { CommentPage, Moment, MomentComment } from "../lib/types";
 import { ProfilePreview } from "./ProfilePreview";
 import { UserMomentsScreen } from "./UserMomentsScreen";
 
+import { radii, sizes } from "../design/tokens";
 /**
  * 动态详情（移动端）。
  *
@@ -779,9 +780,9 @@ const styles = StyleSheet.create({
   card: { backgroundColor: colors.glass, borderRadius: 16, borderWidth: 1, borderColor: colors.line, padding: 14, gap: 10 },
   cardHead: { flexDirection: "row", alignItems: "center", gap: 10 },
   cardHeadText: { flex: 1 },
-  nickname: { fontSize: 15, fontWeight: "600", color: colors.ink },
-  meta: { fontSize: 12, color: colors.muted, marginTop: 2 },
-  content: { fontSize: 15, lineHeight: 22, color: colors.ink },
+  nickname: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
+  meta: { fontSize: sizes.caption, color: colors.muted, marginTop: 2 },
+  content: { fontSize: sizes.body, lineHeight: 22, color: colors.ink },
   tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   tag: { fontSize: 13, color: colors.primary },
   video: { width: "100%", aspectRatio: 16 / 9, borderRadius: 12, backgroundColor: "#0B0B14" },
@@ -793,7 +794,7 @@ const styles = StyleSheet.create({
   actionLabel: { fontSize: 13, color: colors.muted },
 
   commentsHeader: { paddingTop: 6 },
-  commentsTitle: { fontSize: 15, fontWeight: "600", color: colors.ink },
+  commentsTitle: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
   commentsLoading: { paddingVertical: 16 },
   commentsErrorBox: { alignItems: "center", paddingVertical: 16, gap: 8 },
   commentsEmpty: { fontSize: 13, color: colors.muted, paddingVertical: 16, textAlign: "center" },
@@ -802,14 +803,14 @@ const styles = StyleSheet.create({
   commentHead: { flexDirection: "row", alignItems: "center", gap: 8 },
   commentHeadText: { flex: 1 },
   commentNickname: { fontSize: 13, fontWeight: "600", color: colors.ink },
-  commentMeta: { fontSize: 11, color: colors.muted, marginTop: 1 },
-  commentContent: { fontSize: 14, lineHeight: 20, color: colors.ink },
+  commentMeta: { fontSize: sizes.overline, color: colors.muted, marginTop: 1 },
+  commentContent: { fontSize: sizes.ui, lineHeight: 20, color: colors.ink },
   replies: { marginTop: 4, paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: colors.line, gap: 10 },
   reply: { gap: 4 },
 
   commentActions: { flexDirection: "row", gap: 14, paddingTop: 2 },
   actionTextWrap: { paddingVertical: 2 },
-  actionText: { fontSize: 12, color: colors.muted, fontWeight: "500" },
+  actionText: { fontSize: sizes.caption, color: colors.muted, fontWeight: "500" },
   actionTextDanger: { color: colors.danger },
 
   composer: { backgroundColor: colors.glass, borderRadius: 14, borderWidth: 1, borderColor: colors.line, padding: 12, gap: 10 },
@@ -821,7 +822,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderRadius: 12,
     padding: 12,
-    fontSize: 14,
+    fontSize: sizes.ui,
     lineHeight: 20,
     color: colors.ink,
     textAlignVertical: "top",
@@ -839,7 +840,7 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 18,
+    borderRadius: radii.control,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.glass,
@@ -853,7 +854,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderRadius: 12,
     padding: 12,
-    fontSize: 14,
+    fontSize: sizes.ui,
     lineHeight: 20,
     color: colors.ink,
     textAlignVertical: "top",

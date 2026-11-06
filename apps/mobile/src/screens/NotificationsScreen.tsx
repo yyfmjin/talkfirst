@@ -14,6 +14,7 @@ import type { MsgKey } from "../lib/messages";
 import type { NotificationPage, NotificationRecord } from "../lib/types";
 import { colors } from "../theme";
 
+import { radii, sizes } from "../design/tokens";
 /**
  * 通知类型 → 词典键（不是中文串）：类型是服务端给的枚举，标签在本端翻译，
  * 所以「新消息」这类标签会跟着 App 语言走。
@@ -289,17 +290,17 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 12,
   },
-  title: { fontSize: 22, fontWeight: "600", color: colors.ink },
-  subtitle: { fontSize: 12, color: colors.muted, marginTop: 4 },
+  title: { fontSize: sizes.title, fontWeight: "600", color: colors.ink },
+  subtitle: { fontSize: sizes.caption, color: colors.muted, marginTop: 4 },
   markAll: {
     borderWidth: 1,
     borderColor: colors.primary,
-    borderRadius: 18,
+    borderRadius: radii.control,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
   markAllDisabled: { borderColor: colors.line },
-  markAllLabel: { fontSize: 12, color: colors.primary, fontWeight: "500" },
+  markAllLabel: { fontSize: sizes.caption, color: colors.primary, fontWeight: "500" },
   list: { paddingHorizontal: 16, paddingBottom: 24 },
   row: {
     backgroundColor: colors.glass,
@@ -311,9 +312,9 @@ const styles = StyleSheet.create({
   },
   rowUnread: { backgroundColor: colors.bgSoft, borderColor: "#E3E8FF" },
   rowTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  typeLabel: { fontSize: 11, color: colors.primary, fontWeight: "500" },
-  time: { fontSize: 11, color: colors.muted },
-  rowTitle: { fontSize: 15, color: colors.ink, fontWeight: "600", marginTop: 6 },
+  typeLabel: { fontSize: sizes.overline, color: colors.primary, fontWeight: "500" },
+  time: { fontSize: sizes.overline, color: colors.muted },
+  rowTitle: { fontSize: sizes.body, color: colors.ink, fontWeight: "600", marginTop: 6 },
   rowBody: { fontSize: 13, color: colors.muted, lineHeight: 19, marginTop: 4 },
   dot: {
     position: "absolute",
@@ -331,10 +332,10 @@ const styles = StyleSheet.create({
     marginTop: 16,
     borderWidth: 1,
     borderColor: colors.primary,
-    borderRadius: 18,
+    borderRadius: radii.control,
     paddingHorizontal: 20,
     paddingVertical: 10,
   },
   retryLabel: { fontSize: 13, color: colors.primary, fontWeight: "500" },
-  emptyTitle: { fontSize: 15, color: colors.muted },
+  emptyTitle: { fontSize: sizes.body, color: colors.muted },
 });

@@ -5,6 +5,7 @@ import { useI18n } from "../lib/i18n-context";
 import { Icon } from "./Icon";
 import { colors } from "../theme";
 
+import { sizes } from "../design/tokens";
 /**
  * 动态正文的「翻译」开关（2026-10-30）。
  *
@@ -83,14 +84,14 @@ export function MomentTranslate({ momentId, content }: { momentId: string; conte
 const styles = StyleSheet.create({
   wrap: { marginTop: 6, gap: 4 },
   button: { flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start" },
-  label: { fontSize: 12, fontWeight: "600", color: colors.primaryDark },
+  label: { fontSize: sizes.caption, fontWeight: "600", color: colors.primaryDark },
   translation: {
-    fontSize: 14,
+    fontSize: sizes.ui,
     lineHeight: 21,
     color: colors.ink,
     paddingLeft: 8,
     borderLeftWidth: 2,
     borderLeftColor: colors.primary,
   },
-  failed: { fontSize: 12, color: colors.danger },
+  failed: { fontSize: sizes.caption, color: colors.danger },
 });

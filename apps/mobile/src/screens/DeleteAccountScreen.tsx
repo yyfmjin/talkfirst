@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Button } from "../components/Button";
 import { SubHeader } from "../components/SubHeader";
 import { apiFetch } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
@@ -7,6 +8,7 @@ import { useI18n } from "../lib/i18n-context";
 import { clearTokens } from "../lib/storage";
 import { colors } from "../theme";
 
+import { sizes } from "../design/tokens";
 /**
  * 注销账号 —— 不可恢复，要求输入确认词（中文「注销」/ 英文「DELETE」）。
  *
@@ -60,19 +62,13 @@ export function DeleteAccountScreen({ onBack }: { onBack: () => void }) {
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        <Pressable
+        <Button
+          label={t("me.deleteConfirmButton")}
           onPress={() => void confirmDelete()}
-          disabled={!confirmed || deleting}
-          accessibilityRole="button"
-          accessibilityLabel={t("me.deleteConfirmButton")}
-          style={({ pressed }) => [
-            styles.dangerButton,
-            (!confirmed || deleting) ? styles.dangerButtonDisabled : null,
-            pressed && confirmed && !deleting ? styles.dangerButtonPressed : null,
-          ]}
-        >
-          <Text style={styles.dangerButtonLabel}>{t("me.deleteConfirmButton")}</Text>
-        </Pressable>
+          variant="danger"
+          disabled={!confirmed}
+          loading={deleting}
+        />
       </ScrollView>
     </View>
   );
@@ -81,7 +77,7 @@ export function DeleteAccountScreen({ onBack }: { onBack: () => void }) {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   body: { padding: 20, paddingBottom: 40, gap: 16 },
-  warning: { fontSize: 15, lineHeight: 22, color: colors.danger, fontWeight: "600" },
+  warning: { fontSize: sizes.body, lineHeight: 22, color: colors.danger, fontWeight: "600" },
   hint: { fontSize: 13, lineHeight: 20, color: colors.muted },
   input: {
     borderWidth: 1,
@@ -89,20 +85,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    fontSize: 15,
+    fontSize: sizes.body,
     color: colors.ink,
     backgroundColor: colors.glass,
   },
   errorText: { fontSize: 13, color: colors.danger },
-  dangerButton: {
-    minHeight: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.danger,
-    paddingHorizontal: 20,
-  },
-  dangerButtonDisabled: { opacity: 0.4 },
-  dangerButtonPressed: { opacity: 0.85 },
-  dangerButtonLabel: { color: colors.white, fontSize: 15, fontWeight: "600" },
 });

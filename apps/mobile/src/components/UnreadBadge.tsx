@@ -3,6 +3,7 @@ import { Animated, StyleSheet, Text } from "react-native";
 import { EASE, MOTION } from "../lib/motion";
 import { colors } from "../theme";
 
+import { sizes } from "../design/tokens";
 /**
  * 未读徽标（2026-10-31）。
  *
@@ -56,5 +57,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: colors.danger,
   },
-  text: { fontSize: 12, fontWeight: "700", color: colors.white },
+  text: { fontSize: sizes.caption, fontWeight: "700", color: colors.white },
 });

@@ -16,6 +16,7 @@ import { useI18n } from "../lib/i18n-context";
 import type { ExchangeEligibility, ExchangePlatformOption, SharedContact } from "../lib/types";
 import { colors } from "../theme";
 
+import { sizes } from "../design/tokens";
 /**
  * 交换联系方式 —— 对齐 web 的 `/messages/[id]/connect`。
  *
@@ -372,9 +373,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgSoft,
     padding: 14,
   },
-  progressText: { fontSize: 12, lineHeight: 18, color: colors.muted },
+  progressText: { fontSize: sizes.caption, lineHeight: 18, color: colors.muted },
   section: { marginTop: 22 },
-  sectionTitle: { fontSize: 15, fontWeight: "700", color: colors.ink },
+  sectionTitle: { fontSize: sizes.body, fontWeight: "700", color: colors.ink },
   card: {
     marginTop: 10,
     borderRadius: 14,
@@ -383,15 +384,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.glass,
     padding: 14,
   },
-  cardTitle: { fontSize: 15, color: colors.ink, fontWeight: "600" },
-  handle: { marginTop: 6, fontSize: 15, color: colors.primaryDark },
-  note: { marginTop: 8, fontSize: 12, lineHeight: 18, color: colors.muted },
-  hint: { marginTop: 10, fontSize: 12, lineHeight: 18, color: colors.muted },
+  cardTitle: { fontSize: sizes.body, color: colors.ink, fontWeight: "600" },
+  handle: { marginTop: 6, fontSize: sizes.body, color: colors.primaryDark },
+  note: { marginTop: 8, fontSize: sizes.caption, lineHeight: 18, color: colors.muted },
+  hint: { marginTop: 10, fontSize: sizes.caption, lineHeight: 18, color: colors.muted },
   actionRow: { flexDirection: "row", gap: 8, marginTop: 12 },
   actionItem: { flex: 1 },
   actionItemWide: { flex: 2 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
-  fieldLabel: { marginTop: 16, fontSize: 12, fontWeight: "600", color: colors.muted },
+  fieldLabel: { marginTop: 16, fontSize: sizes.caption, fontWeight: "600", color: colors.muted },
   textarea: {
     marginTop: 6,
     minHeight: 72,
@@ -401,7 +402,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.glass,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    fontSize: 14,
+    fontSize: sizes.ui,
     color: colors.ink,
     textAlignVertical: "top",
   },

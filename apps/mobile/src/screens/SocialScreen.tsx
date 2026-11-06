@@ -19,6 +19,7 @@ import type { MsgKey } from "../lib/messages";
 import type { SharedBinding, SocialSyncAccount, SocialSyncProvider } from "../lib/types";
 import { colors } from "../theme";
 
+import { radii, sizes } from "../design/tokens";
 /** 同步条数可选项（服务端同样只认 1~3）。 */
 const SYNC_LIMITS = [1, 2, 3];
 
@@ -412,14 +413,14 @@ function SmallButton({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   body: { padding: 20, paddingBottom: 40 },
-  notice: { fontSize: 12, color: colors.success, marginBottom: 8 },
+  notice: { fontSize: sizes.caption, color: colors.success, marginBottom: 8 },
   error: { fontSize: 13, color: colors.danger, marginBottom: 8 },
   center: { marginTop: 24 },
   sectionTitle: { fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 6 },
-  sectionHint: { fontSize: 11, lineHeight: 16, color: colors.muted, marginBottom: 12 },
+  sectionHint: { fontSize: sizes.overline, lineHeight: 16, color: colors.muted, marginBottom: 12 },
   emptyBox: { alignItems: "center", marginTop: 16, gap: 6 },
-  emptyTitle: { fontSize: 14, fontWeight: "600", color: colors.ink },
-  emptyBody: { fontSize: 12, color: colors.muted, textAlign: "center" },
+  emptyTitle: { fontSize: sizes.ui, fontWeight: "600", color: colors.ink },
+  emptyBody: { fontSize: sizes.caption, color: colors.muted, textAlign: "center" },
   card: {
     borderRadius: 16,
     borderWidth: 1,
@@ -430,7 +431,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   cardHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
-  providerLabel: { fontSize: 15, fontWeight: "600", color: colors.ink, flexShrink: 1 },
+  providerLabel: { fontSize: sizes.body, fontWeight: "600", color: colors.ink, flexShrink: 1 },
   badge: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
   badgeOk: { backgroundColor: "#E8F7EF" },
   badgeOkText: { color: colors.success },
@@ -438,15 +439,15 @@ const styles = StyleSheet.create({
   badgeWarnText: { color: "#B26A00" },
   badgeNeutral: { backgroundColor: colors.bgTint },
   badgeNeutralText: { color: colors.muted },
-  badgeText: { fontSize: 11, fontWeight: "500" },
-  notBound: { fontSize: 11, color: colors.muted },
+  badgeText: { fontSize: sizes.overline, fontWeight: "500" },
+  notBound: { fontSize: sizes.overline, color: colors.muted },
   hintRow: { flexDirection: "row", alignItems: "flex-start", gap: 6 },
-  hintText: { flex: 1, fontSize: 11, lineHeight: 16, color: colors.muted },
+  hintText: { flex: 1, fontSize: sizes.overline, lineHeight: 16, color: colors.muted },
   handle: { fontSize: 13, color: colors.muted },
   warnRow: { flexDirection: "row", alignItems: "flex-start", gap: 6 },
-  warnText: { flex: 1, fontSize: 11, lineHeight: 16, color: "#B26A00" },
+  warnText: { flex: 1, fontSize: sizes.overline, lineHeight: 16, color: "#B26A00" },
   syncRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
-  syncLabel: { fontSize: 12, color: colors.muted },
+  syncLabel: { fontSize: sizes.caption, color: colors.muted },
   chipRow: { flexDirection: "row", gap: 8 },
   chip: {
     width: 32,
@@ -462,11 +463,11 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 13, color: colors.muted },
   chipTextActive: { color: colors.white, fontWeight: "600" },
   textButton: { alignSelf: "flex-start" },
-  textButtonLabel: { fontSize: 11, color: colors.muted, textDecorationLine: "underline" },
-  lastSynced: { fontSize: 11, color: colors.muted },
+  textButtonLabel: { fontSize: sizes.overline, color: colors.muted, textDecorationLine: "underline" },
+  lastSynced: { fontSize: sizes.overline, color: colors.muted },
   actionRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   smallBtn: {
-    borderRadius: 999,
+    borderRadius: radii.pill,
     paddingHorizontal: 14,
     paddingVertical: 8,
     minWidth: 88,
@@ -491,6 +492,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   bindingRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
-  bindingHandle: { fontSize: 14, color: colors.ink, flexShrink: 1 },
+  bindingHandle: { fontSize: sizes.ui, color: colors.ink, flexShrink: 1 },
   footer: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20 },
 });

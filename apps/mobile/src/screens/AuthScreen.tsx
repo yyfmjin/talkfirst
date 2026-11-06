@@ -20,6 +20,7 @@ import { ResetPasswordScreen } from "./ResetPasswordScreen";
 import { VerifyScreen } from "./VerifyScreen";
 import { colors } from "../theme";
 
+import { radii, sizes } from "../design/tokens";
 /**
  * Mirrors `RegisterDto` in apps/api/src/auth/auth.dto.ts (8-72 characters).
  * Login is deliberately NOT length-checked here: `LoginDto` only requires 1-72,
@@ -375,31 +376,31 @@ const styles = StyleSheet.create({
   title: { fontSize: 26, fontWeight: "600", color: colors.ink, marginTop: 20 },
   subtitle: { fontSize: 13, color: colors.muted, marginTop: 8 },
   form: { width: "100%" },
-  error: { color: colors.danger, fontSize: 12, marginBottom: 12 },
+  error: { color: colors.danger, fontSize: sizes.caption, marginBottom: 12 },
   footer: { flexDirection: "row", justifyContent: "center", marginTop: 28 },
   footerText: { color: colors.muted, fontSize: 13 },
   footerLink: { color: colors.primary, fontSize: 13, fontWeight: "600" },
   consent: { marginBottom: 14 },
   consentRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
-  consentText: { flex: 1, fontSize: 12, color: colors.muted, lineHeight: 17 },
+  consentText: { flex: 1, fontSize: sizes.caption, color: colors.muted, lineHeight: 17 },
   consentLinks: { flexDirection: "row", gap: 14, marginTop: 6, marginLeft: 28 },
-  consentLink: { color: colors.primary, fontSize: 12, fontWeight: "600" },
+  consentLink: { color: colors.primary, fontSize: sizes.caption, fontWeight: "600" },
   social: { gap: 10, marginBottom: 20 },
   socialDisabled: { opacity: 0.45 },
-  socialHint: { fontSize: 11, color: colors.muted, textAlign: "center" },
+  socialHint: { fontSize: sizes.overline, color: colors.muted, textAlign: "center" },
   socialButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     height: 48,
-    borderRadius: 24,
+    borderRadius: radii.card,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.glass,
   },
-  socialLabel: { fontSize: 15, fontWeight: "600", color: colors.ink },
-  googleGlyph: { fontSize: 17, fontWeight: "700", color: "#4285F4" },
+  socialLabel: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
+  googleGlyph: { fontSize: sizes.heading, fontWeight: "700", color: "#4285F4" },
   facebookBadge: {
     width: 20,
     height: 20,
@@ -411,7 +412,7 @@ const styles = StyleSheet.create({
   facebookGlyph: { color: colors.white, fontSize: 13, fontWeight: "700" },
   divider: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 6 },
   dividerLine: { flex: 1, height: 1, backgroundColor: colors.line },
-  dividerText: { fontSize: 12, color: colors.muted },
+  dividerText: { fontSize: sizes.caption, color: colors.muted },
   forgot: { alignSelf: "flex-end", marginTop: -4, marginBottom: 12 },
-  forgotText: { color: colors.primary, fontSize: 12, fontWeight: "600" },
+  forgotText: { color: colors.primary, fontSize: sizes.caption, fontWeight: "600" },
 });

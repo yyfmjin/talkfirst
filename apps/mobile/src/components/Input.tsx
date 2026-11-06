@@ -1,6 +1,7 @@
 import { StyleSheet, Text, TextInput, View } from "react-native";
 import { colors } from "../theme";
 
+import { sizes } from "../design/tokens";
 export function Input({
   label,
   value,
@@ -64,7 +65,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderRadius: 14,
     paddingHorizontal: 14,
-    fontSize: 15,
+    fontSize: sizes.body,
     color: colors.ink,
     backgroundColor: colors.glassSunken,
   },

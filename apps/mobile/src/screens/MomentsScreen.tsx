@@ -21,6 +21,7 @@ import { useI18n, type TranslateFn } from "../lib/i18n-context";
 import { colors } from "../theme";
 import type { Moment, MomentPage } from "../lib/types";
 
+import { radii, sizes } from "../design/tokens";
 /**
  * 动态（2026-10-07）—— 移动端的主时间线。
  *
@@ -383,19 +384,19 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 999,
+    borderRadius: radii.pill,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.glass,
   },
-  watchLabel: { fontSize: 14, fontWeight: "600", color: colors.primary },
+  watchLabel: { fontSize: sizes.ui, fontWeight: "600", color: colors.primary },
   /* 只放一个图标，可点区域撞到 40×40（与另两个胶囊按钮同高）。 */
   iconButton: {
     width: 40,
     height: 40,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 20,
+    borderRadius: radii.row,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.glass,
@@ -406,24 +407,24 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 999,
+    borderRadius: radii.pill,
     backgroundColor: colors.primary,
   },
-  composeLabel: { fontSize: 14, fontWeight: "600", color: colors.white },
+  composeLabel: { fontSize: sizes.ui, fontWeight: "600", color: colors.white },
   list: { paddingHorizontal: 16, paddingBottom: 24, gap: 12 },
   card: { backgroundColor: colors.glass, borderRadius: 16, borderWidth: 1, borderColor: colors.line, padding: 14, gap: 10 },
   cardHead: { flexDirection: "row", alignItems: "center", gap: 10 },
   cardHeadText: { flex: 1 },
-  nickname: { fontSize: 15, fontWeight: "600", color: colors.ink },
-  meta: { fontSize: 12, color: colors.muted, marginTop: 2 },
-  content: { fontSize: 15, lineHeight: 22, color: colors.ink },
+  nickname: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
+  meta: { fontSize: sizes.caption, color: colors.muted, marginTop: 2 },
+  content: { fontSize: sizes.body, lineHeight: 22, color: colors.ink },
   video: { width: "100%", aspectRatio: 16 / 9, borderRadius: 12, backgroundColor: "#0B0B14" },
   imageRow: { flexDirection: "row", gap: 6 },
   image: { flex: 1, height: 120, borderRadius: 10, backgroundColor: colors.bgSoft },
   actions: { flexDirection: "row", alignItems: "center", gap: 20, paddingTop: 2 },
   action: { flexDirection: "row", alignItems: "center", gap: 5 },
   actionLabel: { fontSize: 13, color: colors.muted },
-  emptyText: { fontSize: 14, color: colors.muted, textAlign: "center", lineHeight: 21 },
+  emptyText: { fontSize: sizes.ui, color: colors.muted, textAlign: "center", lineHeight: 21 },
   footer: { paddingVertical: 18 },
   error: { position: "absolute", left: 16, right: 16, bottom: 12, fontSize: 13, color: colors.danger, textAlign: "center" },
 });

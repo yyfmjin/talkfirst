@@ -16,6 +16,7 @@ import { useI18n } from "../lib/i18n-context";
 import type { PublicProfile } from "../lib/types";
 import { colors } from "../theme";
 
+import { sizes } from "../design/tokens";
 export function ProfilePreview({
   userId,
   onClose,
@@ -260,11 +261,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  closeText: { color: colors.primaryDark, fontSize: 14 },
+  closeText: { color: colors.primaryDark, fontSize: sizes.ui },
   identity: { alignItems: "center", marginTop: 20 },
   name: { fontSize: 18, fontWeight: "600", color: colors.ink, marginTop: 12 },
   age: { fontSize: 13, fontWeight: "400", color: colors.muted },
-  place: { fontSize: 12, color: colors.muted, marginTop: 4 },
+  place: { fontSize: sizes.caption, color: colors.muted, marginTop: 4 },
   bio: {
     fontSize: 13,
     lineHeight: 20,
@@ -275,14 +276,14 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   section: { marginTop: 18 },
-  sectionTitle: { fontSize: 11, fontWeight: "500", color: colors.muted, marginBottom: 8 },
+  sectionTitle: { fontSize: sizes.overline, fontWeight: "500", color: colors.muted, marginBottom: 8 },
   tagWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   tag: { backgroundColor: colors.bgTint, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
   tagWarm: { backgroundColor: "#FFF4E5" },
-  tagText: { fontSize: 11, color: colors.primaryDark },
+  tagText: { fontSize: sizes.overline, color: colors.primaryDark },
   tagTextWarm: { color: "#B26A00" },
   tagSub: { fontSize: 10, opacity: 0.7 },
-  inlineError: { color: colors.danger, fontSize: 12, textAlign: "center", marginTop: 12 },
+  inlineError: { color: colors.danger, fontSize: sizes.caption, textAlign: "center", marginTop: 12 },
   errorBox: { alignItems: "center", marginTop: 24 },
   errorText: { color: colors.danger, fontSize: 13, textAlign: "center", marginBottom: 12 },
   actions: { marginTop: 24, gap: 8 },

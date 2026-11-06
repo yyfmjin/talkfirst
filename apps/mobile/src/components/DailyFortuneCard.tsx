@@ -6,6 +6,7 @@ import { playPopIn, popInStyle } from "../lib/motion";
 import type { MsgKey } from "../lib/messages";
 import { colors } from "../theme";
 
+import { sizes } from "../design/tokens";
 /**
  * 每日运势（2026-10-31 第三版：按类目聚合）。
  *
@@ -247,9 +248,9 @@ const styles = StyleSheet.create({
   placeholder: { paddingVertical: 24, alignItems: "center" },
   shell: { maxHeight: 560 },
   card: { paddingHorizontal: 16, paddingBottom: 14, gap: 8 },
-  date: { fontSize: 12, color: colors.muted },
+  date: { fontSize: sizes.caption, color: colors.muted },
   metaRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 10 },
-  meta: { fontSize: 12, color: colors.muted },
+  meta: { fontSize: sizes.caption, color: colors.muted },
   sign: { fontSize: 13, fontWeight: "600", color: colors.primaryDark },
 
   /* 2×2 类目格：一眼扫完，不用滚。 */
@@ -267,17 +268,17 @@ const styles = StyleSheet.create({
   cellGood: { backgroundColor: colors.bgTint, borderColor: colors.bgTint },
   cellCareful: { backgroundColor: colors.dangerSoft, borderColor: colors.dangerSoft },
   cellHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  cellLabel: { fontSize: 12, fontWeight: "700", color: colors.ink },
-  cellRating: { fontSize: 11, fontWeight: "700", color: colors.muted },
+  cellLabel: { fontSize: sizes.caption, fontWeight: "700", color: colors.ink },
+  cellRating: { fontSize: sizes.overline, fontWeight: "700", color: colors.muted },
   textGood: { color: colors.primaryDark },
   textCareful: { color: colors.danger },
-  cellNote: { fontSize: 12, lineHeight: 17, color: colors.ink },
+  cellNote: { fontSize: sizes.caption, lineHeight: 17, color: colors.ink },
 
   lineRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   badge: {
     minWidth: 22,
     textAlign: "center",
-    fontSize: 11,
+    fontSize: sizes.overline,
     fontWeight: "700",
     paddingVertical: 2,
     paddingHorizontal: 6,
@@ -295,14 +296,14 @@ const styles = StyleSheet.create({
   chip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   chipGood: { backgroundColor: colors.bgTint },
   chipJi: { backgroundColor: colors.dangerSoft },
-  chipLabel: { fontSize: 11, fontWeight: "700", color: colors.primaryDark },
+  chipLabel: { fontSize: sizes.overline, fontWeight: "700", color: colors.primaryDark },
   chipLabelJi: { color: colors.danger },
-  chipStar: { fontSize: 12, fontWeight: "600", color: colors.ink },
+  chipStar: { fontSize: sizes.caption, fontWeight: "600", color: colors.ink },
 
   moreButton: { alignSelf: "flex-start", paddingVertical: 4 },
-  moreLabel: { fontSize: 12, fontWeight: "600", color: colors.primaryDark },
+  moreLabel: { fontSize: sizes.caption, fontWeight: "600", color: colors.primaryDark },
   more: { gap: 4, paddingTop: 2 },
   periodRow: { flexDirection: "row", alignItems: "baseline", gap: 8, flexWrap: "wrap" },
-  periodLabel: { fontSize: 11, fontWeight: "700", color: colors.muted, minWidth: 30 },
-  periodText: { fontSize: 12, color: colors.ink, flexShrink: 1 },
+  periodLabel: { fontSize: sizes.overline, fontWeight: "700", color: colors.muted, minWidth: 30 },
+  periodText: { fontSize: sizes.caption, color: colors.ink, flexShrink: 1 },
 });

@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text } from "react-native";
 import { Icon } from "./Icon";
 import { colors } from "../theme";
 
+import { radii } from "../design/tokens";
 /**
  * 可多选的标签胶囊。
  *
@@ -40,7 +41,7 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 18,
+    borderRadius: radii.control,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.glass,

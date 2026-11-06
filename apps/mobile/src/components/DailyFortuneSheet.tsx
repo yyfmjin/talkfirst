@@ -5,6 +5,7 @@ import { colors } from "../theme";
 import { DailyFortuneCard } from "./DailyFortuneCard";
 import { Icon } from "./Icon";
 
+import { radii } from "../design/tokens";
 /* 图标源在 `store/brand/fortune-icon.svg`，PNG 由它渲染而来（手机端不引 react-native-svg）。 */
 const FORTUNE_ICON = require("../../assets/fortune-icon.png");
 
@@ -76,7 +77,7 @@ const styles = StyleSheet.create({
     height: 40,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 20,
+    borderRadius: radii.row,
     backgroundColor: colors.bgTint,
   },
   entryIcon: { width: 24, height: 24 },
@@ -88,7 +89,7 @@ const styles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: colors.glassRaised,
-    borderRadius: 20,
+    borderRadius: radii.row,
     paddingTop: 14,
     paddingBottom: 6,
     overflow: "hidden",

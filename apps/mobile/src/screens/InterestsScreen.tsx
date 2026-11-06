@@ -13,6 +13,7 @@ import { Icon } from "../components/Icon";
 import { SubHeader } from "../components/SubHeader";
 import { useI18n } from "../lib/i18n-context";
 import { colors } from "../theme";
+import { radii, sizes } from "../design/tokens";
 import type {
   CountryOption,
   InterestOption,
@@ -352,7 +353,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
   body: { padding: 20, paddingBottom: 40, gap: 12 },
   sectionTitle: { fontSize: 16, fontWeight: "700", color: colors.ink, marginTop: 8 },
-  sectionHint: { fontSize: 12, color: colors.muted },
+  sectionHint: { fontSize: sizes.caption, color: colors.muted },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
     flexDirection: "row",
@@ -360,7 +361,7 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 18,
+    borderRadius: radii.control,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.glass,

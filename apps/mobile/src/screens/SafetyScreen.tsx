@@ -9,6 +9,7 @@ import type { MsgKey } from "../lib/messages";
 import type { BlockItem, ReportItem } from "../lib/types";
 import { colors } from "../theme";
 
+import { sizes } from "../design/tokens";
 /**
  * 安全中心 —— 对齐 web 的 `/me/safety`。
  *
@@ -174,13 +175,13 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: colors.bgSoft,
     padding: 14,
-    fontSize: 12,
+    fontSize: sizes.caption,
     lineHeight: 18,
     color: colors.muted,
   },
   center: { marginTop: 28 },
   section: { marginTop: 22 },
-  sectionTitle: { fontSize: 15, fontWeight: "600", color: colors.ink },
+  sectionTitle: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
   emptyText: { fontSize: 13, color: colors.muted, marginTop: 8 },
   blockList: {
     marginTop: 10,
@@ -199,8 +200,8 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.line,
   },
   blockRowText: { flex: 1 },
-  blockName: { fontSize: 14, fontWeight: "500", color: colors.ink },
-  blockMeta: { fontSize: 12, color: colors.muted, marginTop: 1 },
+  blockName: { fontSize: sizes.ui, fontWeight: "500", color: colors.ink },
+  blockMeta: { fontSize: sizes.caption, color: colors.muted, marginTop: 1 },
   unblockButton: {
     borderRadius: 16,
     borderWidth: 1,
@@ -221,8 +222,8 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 4,
   },
-  reportTitle: { fontSize: 14, fontWeight: "500", color: colors.ink },
-  reportMeta: { fontSize: 12, color: colors.muted },
+  reportTitle: { fontSize: sizes.ui, fontWeight: "500", color: colors.ink },
+  reportMeta: { fontSize: sizes.caption, color: colors.muted },
   errorText: { marginTop: 16, fontSize: 13, color: colors.danger, textAlign: "center" },
   footer: { marginTop: 24 },
 });

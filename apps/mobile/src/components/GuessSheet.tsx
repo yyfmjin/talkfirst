@@ -15,6 +15,7 @@ import { useI18n } from "../lib/i18n-context";
 import { Icon } from "../components/Icon";
 import { colors } from "../theme";
 
+import { radii, sizes } from "../design/tokens";
 /**
  * 猜猜看（2026-10-25）。
  *
@@ -310,7 +311,7 @@ const styles = StyleSheet.create({
   },
   body: { paddingBottom: 8 },
   center: { alignItems: "center", justifyContent: "center", paddingVertical: 40, gap: 12 },
-  photo: { width: "100%", aspectRatio: 4 / 5, borderRadius: 18, backgroundColor: colors.bgSoft },
+  photo: { width: "100%", aspectRatio: 4 / 5, borderRadius: radii.control, backgroundColor: colors.bgSoft },
   prompt: { fontSize: 18, fontWeight: "600", color: colors.ink, marginTop: 16 },
   hint: { fontSize: 13, color: colors.muted, marginTop: 4, marginBottom: 12 },
   options: { gap: 8, marginTop: 4 },
@@ -327,17 +328,17 @@ const styles = StyleSheet.create({
   },
   optionPicked: { borderColor: colors.primary },
   optionFlag: { fontSize: 20 },
-  optionName: { flex: 1, fontSize: 15, color: colors.ink, fontWeight: "500" },
+  optionName: { flex: 1, fontSize: sizes.body, color: colors.ink, fontWeight: "500" },
   footerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 14 },
-  remainingText: { fontSize: 12, color: colors.muted },
+  remainingText: { fontSize: sizes.caption, color: colors.muted },
   ghost: { fontSize: 13, color: colors.muted, paddingVertical: 6 },
   resultHead: { flexDirection: "row", gap: 12, alignItems: "center", marginTop: 6 },
   thumb: { width: 88, height: 88, borderRadius: 14, backgroundColor: colors.bgSoft },
   resultText: { flex: 1, gap: 4 },
   verdict: { fontSize: 16, fontWeight: "600", color: colors.ink },
   verdictOk: { color: "#16A34A" },
-  answerLine: { fontSize: 15, color: colors.ink },
-  stat: { fontSize: 12, color: colors.muted },
+  answerLine: { fontSize: sizes.body, color: colors.ink },
+  stat: { fontSize: sizes.caption, color: colors.muted },
   primary: {
     marginTop: 16,
     backgroundColor: colors.primary,
@@ -346,7 +347,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   primaryDone: { backgroundColor: "#16A34A" },
-  primaryLabel: { color: colors.white, fontSize: 15, fontWeight: "600" },
+  primaryLabel: { color: colors.white, fontSize: sizes.body, fontWeight: "600" },
   secondary: {
     marginTop: 8,
     borderWidth: 1,
@@ -356,7 +357,7 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     alignItems: "center",
   },
-  secondaryLabel: { color: colors.ink, fontSize: 15, fontWeight: "500" },
+  secondaryLabel: { color: colors.ink, fontSize: sizes.body, fontWeight: "500" },
   emptyTitle: { fontSize: 16, fontWeight: "600", color: colors.ink },
   emptyBody: { fontSize: 13, color: colors.muted, textAlign: "center", lineHeight: 20, paddingHorizontal: 12 },
   error: { marginTop: 10, fontSize: 13, color: colors.danger, textAlign: "center" },
