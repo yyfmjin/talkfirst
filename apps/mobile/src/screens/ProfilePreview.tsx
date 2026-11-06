@@ -120,7 +120,8 @@ export function ProfilePreview({
               style={styles.close}
               accessibilityRole="button"
               accessibilityLabel={t("common.close")}
-            >
+                hitSlop={10}
+              >
               <Text style={styles.closeText}>✕</Text>
             </Pressable>
           </View>

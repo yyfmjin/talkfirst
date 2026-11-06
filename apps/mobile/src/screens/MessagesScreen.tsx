@@ -435,7 +435,8 @@ export function MessagesScreen() {
             accessibilityRole="button"
             accessibilityLabel={t("messages.backToList")}
             style={styles.backButton}
-          >
+              hitSlop={10}
+            >
             <Icon name="chevron-back" size={22} color={colors.ink} />
           </Pressable>
           <Avatar uri={peer?.avatarUrl ?? null} nickname={peer?.nickname ?? null} size={32} />

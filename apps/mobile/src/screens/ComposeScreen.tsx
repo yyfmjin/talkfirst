@@ -611,7 +611,8 @@ export function ComposeScreen({
             accessibilityRole="button"
             accessibilityLabel={t("compose.imagePreviewClose")}
             style={styles.previewCloseButton}
-          >
+              hitSlop={10}
+            >
             <Text style={styles.previewCloseMark}>✕</Text>
           </Pressable>
 

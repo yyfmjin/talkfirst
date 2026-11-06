@@ -146,7 +146,8 @@ export function VideosScreen({
         accessibilityRole="button"
         accessibilityLabel={t("videos.back")}
         style={styles.topLeft}
-      >
+          hitSlop={10}
+        >
         <Icon name="arrow-back" size={22} color={colors.white} />
       </Pressable>
       <Pressable
@@ -155,7 +156,8 @@ export function VideosScreen({
         accessibilityLabel={muted ? t("videos.unmute") : t("videos.mute")}
         accessibilityState={{ selected: !muted }}
         style={styles.topRight}
-      >
+          hitSlop={10}
+        >
         <Icon name={muted ? "volume-mute" : "volume-high"} size={22} color={colors.white} />
       </Pressable>
 

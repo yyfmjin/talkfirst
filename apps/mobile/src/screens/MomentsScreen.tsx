@@ -229,7 +229,8 @@ export function MomentsScreen({
             accessibilityRole="button"
             accessibilityLabel={t("momentsSettings.title")}
             style={styles.iconButton}
-          >
+              hitSlop={10}
+            >
             <Icon name="options-outline" size={18} color={colors.ink} />
           </Pressable>
           <Pressable
