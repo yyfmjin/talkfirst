@@ -667,7 +667,7 @@ function ChatBubble({
         </span>
       ) : null}
       {translationError ? (
-        <p role="alert" className={mine ? "mt-1 break-words text-[11px] text-white/90" : "mt-1 break-words text-[11px] text-red-600"}>
+        <p role="alert" className={mine ? "mt-1 break-words text-overline text-white/90" : "mt-1 break-words text-overline text-red-600"}>
           {translationError}
         </p>
       ) : null}

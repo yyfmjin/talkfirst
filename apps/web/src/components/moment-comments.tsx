@@ -722,7 +722,7 @@ export function MomentComments({
                   const target = findTarget(confirmingId);
                   if (target) void confirmDelete(target.comment, target.parentId);
                 }}
-                className="h-9 min-w-0 flex-1 rounded-full bg-red-600 text-[12px] text-white disabled:opacity-60"
+                className="h-9 min-w-0 flex-1 rounded-full bg-red-600 text-caption text-white disabled:opacity-60"
               >
                 {deletingId ? t("common.deleting") : t("common.delete")}
               </button>

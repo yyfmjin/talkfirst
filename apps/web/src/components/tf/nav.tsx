@@ -143,7 +143,7 @@ export function TFTabs<T extends string>({
  * TFSectionHeader — the small label above a group of rows.
  *
  * Exists because the audit found the same heading written four ways at four sizes
- * (`text-[11px]`/`text-[12px]`/`text-[13px]`/`text-[14px]`, uppercase or not,
+ * (`text-overline`/`text-caption`/`text-ui`/`text-ui`, uppercase or not,
  * muted or not) with no rule about which to use where.
  */
 export function TFSectionHeader({

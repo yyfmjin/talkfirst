@@ -17,7 +17,7 @@ export function GradientButton({
   onClick?: () => void;
 }) {
   const classes = cn(
-    "tf-gradient inline-flex min-h-[3rem] w-full shrink-0 items-center justify-center gap-2 rounded-full px-5 py-3 text-center text-[15px] font-medium leading-6 text-white shadow-brand transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50",
+    "tf-gradient inline-flex min-h-[3rem] w-full shrink-0 items-center justify-center gap-2 rounded-full px-5 py-3 text-center text-body font-medium leading-6 text-white shadow-brand transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50",
     className,
   );
 
@@ -52,7 +52,7 @@ export function OutlineButton({
   onClick?: () => void;
 }) {
   const classes = cn(
-    "inline-flex min-h-[3rem] items-center justify-center gap-2 rounded-full border border-border bg-surface-raised px-5 py-3 text-center text-[14px] font-medium leading-6 text-content transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50",
+    "inline-flex min-h-[3rem] items-center justify-center gap-2 rounded-full border border-border bg-surface-raised px-5 py-3 text-center text-ui font-medium leading-6 text-content transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50",
     className,
   );
   if (href && !disabled) {
@@ -89,8 +89,8 @@ export function SmallButton({
   const classes = cn(
     "inline-flex items-center justify-center gap-1.5 rounded-full text-center font-medium transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50",
     size === "sm"
-      ? "h-9 px-4 text-[13px] leading-5"
-      : "min-h-[2.5rem] px-4 py-2 text-[13px] leading-5",
+      ? "h-9 px-4 text-ui leading-5"
+      : "min-h-[2.5rem] px-4 py-2 text-ui leading-5",
     variant === "gradient"
       ? "tf-gradient text-white shadow-brand"
       : "border border-border bg-surface-raised text-content",
@@ -118,13 +118,13 @@ export function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-[13px] text-muted">{label}</span>
+      <span className="mb-2 block text-ui text-muted">{label}</span>
       <input
         type={type}
         placeholder={placeholder}
         value={value}
         onChange={(event) => onChange?.(event.target.value)}
-        className="h-12 w-full min-w-0 rounded-2xl border border-line bg-[#F8FAFF] px-4 text-[14px] outline-none ring-brand-200 placeholder:text-muted/70 focus:ring-2"
+        className="h-12 w-full min-w-0 rounded-2xl border border-line bg-[#F8FAFF] px-4 text-ui outline-none ring-brand-200 placeholder:text-muted/70 focus:ring-2"
       />
     </label>
   );

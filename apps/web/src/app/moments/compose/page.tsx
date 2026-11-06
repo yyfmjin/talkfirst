@@ -503,7 +503,7 @@ export default function ComposePage() {
         <div className="tf-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6 pt-3">
           {/* Identity + who-can-see, condensed to one line. */}
           <div className="flex items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full bg-[#F1F3FF] text-[15px] font-semibold text-[#6572D8]">
+            <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full bg-[#F1F3FF] text-body font-semibold text-[#6572D8]">
               {avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
@@ -512,13 +512,13 @@ export default function ComposePage() {
               )}
             </span>
             <div className="min-w-0">
-              <p className="truncate text-[14px] font-medium">{submitterName}</p>
+              <p className="truncate text-ui font-medium">{submitterName}</p>
               <button
                 type="button"
                 data-testid="moment-visibility"
                 onClick={() => setSheet("visibility")}
                 aria-label={t("cm.whoCanSee")}
-                className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-[#F1F3FF] px-2.5 py-0.5 text-[11px] font-medium text-[#6572D8]"
+                className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-[#F1F3FF] px-2.5 py-0.5 text-overline font-medium text-[#6572D8]"
               >
                 {t(VISIBILITY_LABEL[visibleTo])}
                 <span className="text-[9px]">▼</span>
@@ -536,12 +536,12 @@ export default function ComposePage() {
             rows={4}
             aria-label={t("cm.contentAria")}
             data-testid="moment-content"
-            className="mt-4 max-h-[220px] min-h-[7rem] w-full resize-none overflow-y-auto bg-transparent text-[15px] leading-7 outline-none placeholder:text-muted/70"
+            className="mt-4 max-h-[220px] min-h-[7rem] w-full resize-none overflow-y-auto bg-transparent text-body leading-7 outline-none placeholder:text-muted/70"
           />
           <p
             data-testid="moment-counter"
             className={cn(
-              "text-right text-[11px] tabular-nums",
+              "text-right text-overline tabular-nums",
               content.length >= MAX_CONTENT ? "text-amber-600" : "text-muted",
             )}
           >
@@ -599,7 +599,7 @@ export default function ComposePage() {
             data-testid="moment-add-media"
             onClick={() => setSheet("media")}
             disabled={images.length >= MAX_IMAGES && Boolean(video)}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line py-3 text-[13px] text-[#6572D8] transition active:scale-[0.99] disabled:opacity-50"
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line py-3 text-ui text-[#6572D8] transition active:scale-[0.99] disabled:opacity-50"
           >
             <ImagePlus size={16} />
             {t("cm.addMedia")}
@@ -638,7 +638,7 @@ export default function ComposePage() {
               data-testid="moment-topic-toggle"
               onClick={() => setTopicsOpen((open) => !open)}
               aria-expanded={topicsOpen}
-              className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-[12px] text-[#6572D8]"
+              className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-caption text-[#6572D8]"
             >
               <Hash size={13} />
               {t("cm.addTopic")}
@@ -650,7 +650,7 @@ export default function ComposePage() {
                   <span
                     key={tag}
                     data-testid="moment-tag"
-                    className="inline-flex items-center gap-1 rounded-full bg-[#F1F3FF] px-2.5 py-1 text-[11px] text-[#6572D8]"
+                    className="inline-flex items-center gap-1 rounded-full bg-[#F1F3FF] px-2.5 py-1 text-overline text-[#6572D8]"
                   >
                     #{tag}
                     <button type="button" aria-label={t("cm.removeTopic", { tag })} onClick={() => toggleTag(tag)}>
@@ -669,7 +669,7 @@ export default function ComposePage() {
                   placeholder={t("cm.topicPlaceholder")}
                   aria-label={t("cm.topicSearchAria")}
                   data-testid="moment-topic-input"
-                  className="h-9 w-full rounded-xl border border-line px-3 text-[12px] outline-none focus:ring-2 focus:ring-brand-200"
+                  className="h-9 w-full rounded-xl border border-line px-3 text-caption outline-none focus:ring-2 focus:ring-brand-200"
                 />
                 {topicQuery.trim() && !filteredTopics.includes(topicQuery.trim().replace(/^#+/, "")) ? (
                   <button
@@ -679,13 +679,13 @@ export default function ComposePage() {
                       toggleTag(topicQuery.trim().replace(/^#+/, ""));
                       setTopicQuery("");
                     }}
-                    className="mt-2 text-[12px] text-[#6572D8]"
+                    className="mt-2 text-caption text-[#6572D8]"
                   >
                     {t("cm.useTopic", { topic: topicQuery.trim().replace(/^#+/, "") })}
                   </button>
                 ) : null}
                 {recentTags.length > 0 && !topicQuery ? (
-                  <p className="mt-3 text-[11px] text-muted">{t("cm.recent")}</p>
+                  <p className="mt-3 text-overline text-muted">{t("cm.recent")}</p>
                 ) : null}
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {filteredTopics.map((tag) => (
@@ -695,7 +695,7 @@ export default function ComposePage() {
                       data-testid="moment-topic-option"
                       onClick={() => toggleTag(tag)}
                       className={cn(
-                        "rounded-full border px-2.5 py-1 text-[11px]",
+                        "rounded-full border px-2.5 py-1 text-overline",
                         tags.includes(tag) ? "border-transparent tf-gradient text-white" : "border-line text-[#3D4663]",
                       )}
                     >
@@ -708,7 +708,7 @@ export default function ComposePage() {
 
             {/* Location */}
             {locationOpen || location ? (
-              <div className="flex items-center gap-2 rounded-full border border-line px-3 py-1.5 text-[12px]">
+              <div className="flex items-center gap-2 rounded-full border border-line px-3 py-1.5 text-caption">
                 <MapPin size={13} className="shrink-0 text-[#6572D8]" />
                 <input
                   value={location}
@@ -735,7 +735,7 @@ export default function ComposePage() {
                 type="button"
                 data-testid="moment-location-toggle"
                 onClick={() => setLocationOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-[12px] text-[#6572D8]"
+                className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-caption text-[#6572D8]"
               >
                 <MapPin size={13} />
                 {t("cm.addLocation")}
@@ -744,7 +744,7 @@ export default function ComposePage() {
           </div>
 
           {error ? (
-            <p role="alert" data-testid="moment-error" className="mt-3 break-words text-[12px] text-red-500">
+            <p role="alert" data-testid="moment-error" className="mt-3 break-words text-caption text-red-500">
               {error}
             </p>
           ) : null}
@@ -758,14 +758,14 @@ export default function ComposePage() {
               role="status"
               className="mt-3 rounded-2xl bg-surface-sunken p-3"
             >
-              <p className="text-[12px] leading-5 text-content-muted">
+              <p className="text-caption leading-5 text-content-muted">
                 {t("cm.pendingBody")}
               </p>
               <button
                 type="button"
                 data-testid="moment-pending-leave"
                 onClick={() => router.push(localePath(locale, "/moments"))}
-                className="mt-2 text-[12px] font-medium text-brand-600 underline"
+                className="mt-2 text-caption font-medium text-brand-600 underline"
               >
                 {t("cm.pendingLeave")}
               </button>
@@ -834,8 +834,8 @@ export default function ComposePage() {
                     <Icon size={16} />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-medium">{t(option.labelKey)}</span>
-                    <span className="block text-[11px] text-muted">{t(option.hintKey)}</span>
+                    <span className="block text-ui font-medium">{t(option.labelKey)}</span>
+                    <span className="block text-overline text-muted">{t(option.hintKey)}</span>
                   </span>
                   {active ? <Check size={16} className="shrink-0 text-[#6572D8]" /> : null}
                 </button>
@@ -854,14 +854,14 @@ export default function ComposePage() {
             className="absolute inset-0 z-50 grid place-items-center overflow-y-auto bg-black/30 p-5"
           >
             <div className="w-full max-w-[320px] rounded-sheet bg-surface-raised p-5 text-center shadow-overlay">
-              <p className="text-[15px] font-semibold">{t("cm.leaveTitle")}</p>
-              <p className="mt-1 text-[12px] leading-5 text-muted">{t("cm.leaveBody")}</p>
+              <p className="text-body font-semibold">{t("cm.leaveTitle")}</p>
+              <p className="mt-1 text-caption leading-5 text-muted">{t("cm.leaveBody")}</p>
               <div className="mt-4 flex gap-2">
                 <button
                   type="button"
                   data-testid="moment-leave-cancel"
                   onClick={() => setLeaveOpen(false)}
-                  className="h-10 min-w-0 flex-1 rounded-full border border-line text-[13px] text-[#3D4663]"
+                  className="h-10 min-w-0 flex-1 rounded-full border border-line text-ui text-[#3D4663]"
                 >
                   {t("cm.keepEditing")}
                 </button>
@@ -872,7 +872,7 @@ export default function ComposePage() {
                     setLeaveOpen(false);
                     router.push(localePath(locale, "/moments"));
                   }}
-                  className="h-10 min-w-0 flex-1 rounded-full bg-[#6572D8] text-[13px] text-white"
+                  className="h-10 min-w-0 flex-1 rounded-full bg-[#6572D8] text-ui text-white"
                 >
                   {t("cm.discard")}
                 </button>
@@ -917,7 +917,7 @@ function StatusOverlay({ item }: { item: MediaItem }) {
         className="absolute inset-0 grid place-items-center gap-1 bg-black/35 text-white"
       >
         <Loader2 size={20} className="animate-spin motion-reduce:animate-none" />
-        <span className="text-[11px]">{t("cm.uploading")}</span>
+        <span className="text-overline">{t("cm.uploading")}</span>
       </span>
     );
   }
@@ -928,7 +928,7 @@ function StatusOverlay({ item }: { item: MediaItem }) {
         className="absolute inset-0 grid place-items-center gap-1 bg-black/45 px-2 text-center text-white"
       >
         <Loader2 size={20} className="animate-spin motion-reduce:animate-none" />
-        <span className="text-[11px]">{t("cm.processing")}</span>
+        <span className="text-overline">{t("cm.processing")}</span>
       </span>
     );
   }
@@ -1014,7 +1014,7 @@ function Sheet({
         onClick={(event) => event.stopPropagation()}
       >
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line" />
-        <p className="mb-3 text-center text-[14px] font-semibold">{title}</p>
+        <p className="mb-3 text-center text-ui font-semibold">{title}</p>
         {children}
       </div>
     </div>
@@ -1045,8 +1045,8 @@ function SheetOption({
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[14px] font-medium">{label}</span>
-        <span className="block text-[11px] text-muted">{hint}</span>
+        <span className="block text-ui font-medium">{label}</span>
+        <span className="block text-overline text-muted">{hint}</span>
       </span>
     </button>
   );

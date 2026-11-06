@@ -79,7 +79,7 @@ export default function PurposesPage() {
     <PhoneShell>
       <ScreenHeader title={t("onboarding.purposes.title")} backHref={localePath(locale, "/onboarding/languages")} />
       <div className="tf-scroll min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-2">
-        <p className="text-[15px] font-medium">{t("onboarding.purposes.question")}</p>
+        <p className="text-body font-medium">{t("onboarding.purposes.question")}</p>
         {fetching ? (
           <TFLoadingRegion label={t("onboarding.purposes.loading")}>
             <div className="mt-5 space-y-3">

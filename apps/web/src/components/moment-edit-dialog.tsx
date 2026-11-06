@@ -566,7 +566,7 @@ function MediaTile({
       {item.status === "uploading" || item.status === "processing" ? (
         <span className="absolute inset-0 grid place-items-center gap-1 bg-black/40 text-white">
           <Loader2 size={18} className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
-          <span className="text-[11px]">
+          <span className="text-overline">
             {item.status === "processing" ? t("momentEdit.processingVideo") : t("momentEdit.uploadingShort")}
           </span>
         </span>

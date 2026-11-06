@@ -106,7 +106,7 @@ export function VoiceNote({
             <span key={index} className="tf-voice-wave w-[2.5px]" style={{ height }} />
           ))}
         </span>
-        <span className="ml-auto text-[13px] font-semibold tabular-nums text-content">
+        <span className="ml-auto text-ui font-semibold tabular-nums text-content">
           {formatVoiceDuration(seconds)}
         </span>
       </button>
