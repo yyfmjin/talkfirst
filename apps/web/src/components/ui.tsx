@@ -124,7 +124,7 @@ export function Field({
         placeholder={placeholder}
         value={value}
         onChange={(event) => onChange?.(event.target.value)}
-        className="h-12 w-full min-w-0 rounded-2xl border border-line bg-[#F8FAFF] px-4 text-ui outline-none ring-brand-200 placeholder:text-muted/70 focus:ring-2"
+        className="h-12 w-full min-w-0 rounded-2xl border border-line bg-surface-sunken px-4 text-ui outline-none ring-brand-200 placeholder:text-muted/70 focus:ring-2"
       />
     </label>
   );

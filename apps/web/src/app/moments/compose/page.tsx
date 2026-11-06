@@ -503,7 +503,7 @@ export default function ComposePage() {
         <div className="tf-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-6 pt-3">
           {/* Identity + who-can-see, condensed to one line. */}
           <div className="flex items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full bg-[#F1F3FF] text-body font-semibold text-[#6572D8]">
+            <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full bg-brand-100 text-body font-semibold text-brand-600">
               {avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
@@ -518,7 +518,7 @@ export default function ComposePage() {
                 data-testid="moment-visibility"
                 onClick={() => setSheet("visibility")}
                 aria-label={t("cm.whoCanSee")}
-                className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-[#F1F3FF] px-2.5 py-0.5 text-overline font-medium text-[#6572D8]"
+                className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-brand-100 px-2.5 py-0.5 text-overline font-medium text-brand-600"
               >
                 {t(VISIBILITY_LABEL[visibleTo])}
                 <span className="text-[9px]">▼</span>
@@ -555,7 +555,7 @@ export default function ComposePage() {
               {images.length > 0 ? (
                 <div className={gridClasses(images.length)}>
                   {images.map((item, index) => (
-                    <div key={item.id} className={cn("relative overflow-hidden rounded-2xl bg-[#F1F3FF]", tileClasses(images.length, index))} data-testid="moment-media">
+                    <div key={item.id} className={cn("relative overflow-hidden rounded-2xl bg-brand-100", tileClasses(images.length, index))} data-testid="moment-media">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={item.previewUrl} alt="" className="h-full w-full object-cover" />
                       <StatusOverlay item={item} />
@@ -581,7 +581,7 @@ export default function ComposePage() {
                           type="button"
                           onClick={() => retryItem(item.id)}
                           data-testid="moment-media-retry"
-                          className="absolute bottom-1 left-1 inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-[10px] text-[#6572D8] shadow"
+                          className="absolute bottom-1 left-1 inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-[10px] text-brand-600 shadow"
                         >
                           <RefreshCw size={11} />
                           {t("cm.retry")}
@@ -599,7 +599,7 @@ export default function ComposePage() {
             data-testid="moment-add-media"
             onClick={() => setSheet("media")}
             disabled={images.length >= MAX_IMAGES && Boolean(video)}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line py-3 text-ui text-[#6572D8] transition active:scale-[0.99] disabled:opacity-50"
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line py-3 text-ui text-brand-600 transition active:scale-[0.99] disabled:opacity-50"
           >
             <ImagePlus size={16} />
             {t("cm.addMedia")}
@@ -638,7 +638,7 @@ export default function ComposePage() {
               data-testid="moment-topic-toggle"
               onClick={() => setTopicsOpen((open) => !open)}
               aria-expanded={topicsOpen}
-              className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-caption text-[#6572D8]"
+              className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-caption text-brand-600"
             >
               <Hash size={13} />
               {t("cm.addTopic")}
@@ -650,7 +650,7 @@ export default function ComposePage() {
                   <span
                     key={tag}
                     data-testid="moment-tag"
-                    className="inline-flex items-center gap-1 rounded-full bg-[#F1F3FF] px-2.5 py-1 text-overline text-[#6572D8]"
+                    className="inline-flex items-center gap-1 rounded-full bg-brand-100 px-2.5 py-1 text-overline text-brand-600"
                   >
                     #{tag}
                     <button type="button" aria-label={t("cm.removeTopic", { tag })} onClick={() => toggleTag(tag)}>
@@ -679,7 +679,7 @@ export default function ComposePage() {
                       toggleTag(topicQuery.trim().replace(/^#+/, ""));
                       setTopicQuery("");
                     }}
-                    className="mt-2 text-caption text-[#6572D8]"
+                    className="mt-2 text-caption text-brand-600"
                   >
                     {t("cm.useTopic", { topic: topicQuery.trim().replace(/^#+/, "") })}
                   </button>
@@ -696,7 +696,7 @@ export default function ComposePage() {
                       onClick={() => toggleTag(tag)}
                       className={cn(
                         "rounded-full border px-2.5 py-1 text-overline",
-                        tags.includes(tag) ? "border-transparent tf-gradient text-white" : "border-line text-[#3D4663]",
+                        tags.includes(tag) ? "border-transparent tf-gradient text-white" : "border-line text-content",
                       )}
                     >
                       #{tag}
@@ -709,7 +709,7 @@ export default function ComposePage() {
             {/* Location */}
             {locationOpen || location ? (
               <div className="flex items-center gap-2 rounded-full border border-line px-3 py-1.5 text-caption">
-                <MapPin size={13} className="shrink-0 text-[#6572D8]" />
+                <MapPin size={13} className="shrink-0 text-brand-600" />
                 <input
                   value={location}
                   onChange={(event) => setLocation(event.target.value)}
@@ -735,7 +735,7 @@ export default function ComposePage() {
                 type="button"
                 data-testid="moment-location-toggle"
                 onClick={() => setLocationOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-caption text-[#6572D8]"
+                className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-caption text-brand-600"
               >
                 <MapPin size={13} />
                 {t("cm.addLocation")}
@@ -830,14 +830,14 @@ export default function ComposePage() {
                     active ? "border-brand-500 bg-brand-50" : "border-line",
                   )}
                 >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-[#6572D8]">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-brand-600">
                     <Icon size={16} />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-ui font-medium">{t(option.labelKey)}</span>
                     <span className="block text-overline text-muted">{t(option.hintKey)}</span>
                   </span>
-                  {active ? <Check size={16} className="shrink-0 text-[#6572D8]" /> : null}
+                  {active ? <Check size={16} className="shrink-0 text-brand-600" /> : null}
                 </button>
               );
             })}
@@ -861,7 +861,7 @@ export default function ComposePage() {
                   type="button"
                   data-testid="moment-leave-cancel"
                   onClick={() => setLeaveOpen(false)}
-                  className="h-10 min-w-0 flex-1 rounded-full border border-line text-ui text-[#3D4663]"
+                  className="h-10 min-w-0 flex-1 rounded-full border border-line text-ui text-content"
                 >
                   {t("cm.keepEditing")}
                 </button>
@@ -872,7 +872,7 @@ export default function ComposePage() {
                     setLeaveOpen(false);
                     router.push(localePath(locale, "/moments"));
                   }}
-                  className="h-10 min-w-0 flex-1 rounded-full bg-[#6572D8] text-ui text-white"
+                  className="h-10 min-w-0 flex-1 rounded-full bg-brand-600 text-ui text-white"
                 >
                   {t("cm.discard")}
                 </button>
@@ -966,7 +966,7 @@ function VideoTile({ item, onRemove, onRetry }: { item: MediaItem; onRemove: () 
           type="button"
           onClick={onRetry}
           data-testid="moment-media-retry"
-          className="absolute bottom-1 left-1 inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-[10px] text-[#6572D8] shadow"
+          className="absolute bottom-1 left-1 inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-[10px] text-brand-600 shadow"
         >
           <RefreshCw size={11} />
           {t("cm.retry")}
@@ -1041,7 +1041,7 @@ function SheetOption({
       disabled={disabled}
       className="flex w-full items-center gap-3 rounded-2xl border border-line px-3 py-3 text-left transition active:scale-[0.99] disabled:opacity-50"
     >
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#EEF1FF] text-[#5B6BD6]">
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-50 text-brand-600">
         {icon}
       </span>
       <span className="min-w-0 flex-1">

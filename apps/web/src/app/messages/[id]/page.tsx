@@ -500,7 +500,7 @@ export default function ChatDetailPage() {
 
           So the sizes stay `h-11 w-11`, the order is untouched, and the input
           keeps `min-h-11 min-w-0 flex-1`. What changes is only the palette:
-          `border-line/70` + `bg-[#F8FAFF]` + a purple send button become tokens,
+          `border-line/70` + `bg-surface-sunken` + a purple send button become tokens,
           and the send button loses its `shadow-indigo-200` (an indigo shadow under
           a brand control). `rounded-2xl` is kept as-is rather than swapped for
           `rounded-control`, because the input's radius is part of the shape the
