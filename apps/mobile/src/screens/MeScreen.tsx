@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -122,6 +123,14 @@ const ME_GROUPS: MeGroup[] = [
   },
 ];
 
+/**
+ * 外部「八字起名」工具页。
+ *
+ * 项目里没装 `react-native-webview`（多一个原生依赖 = 多一轮构建与权限审查），
+ * 所以直接交给系统浏览器打开。
+ */
+const BAZI_URL = "https://bazi-app-production-b3f8.up.railway.app";
+
 export function MeScreen() {
   const { user, signOut, setUser } = useAuth();
   const { t, preference, setPreference } = useI18n();
@@ -133,6 +142,21 @@ export function MeScreen() {
   const [onboarding, setOnboarding] = useState(false);
   /** 正在检查/下载更新（按钮期间转圈，避免连点）。 */
   const [updating, setUpdating] = useState(false);
+
+  /**
+   * 打开起名工具：交给系统浏览器。
+   *
+   * 这里**不先问 `canOpenURL`**：Android 11+ 的包可见性下，manifest 里没声明
+   * `<queries>` 时它会返回 false —— 等于自己把入口锁死。直接 `openURL`，
+   * 由系统决定用哪个浏览器；真没处理器时再提示。
+   */
+  const openBazi = useCallback(async () => {
+    try {
+      await Linking.openURL(BAZI_URL);
+    } catch {
+      Alert.alert(t("me.baziEntry"), t("me.baziOpenFailed"));
+    }
+  }, [t]);
 
   /* 系统返回键：引导 → 子页 → （没有任何子页时退出 app，交由系统默认）。 */
   useBackHandler(open !== null, () => setOpen(null));
@@ -342,6 +366,22 @@ export function MeScreen() {
           </View>
         </View>
       ))}
+
+      <View style={styles.group}>
+        <Text style={styles.groupTitle}>{t("me.groupTools")}</Text>
+        <View style={styles.groupCard}>
+          <Pressable
+            onPress={() => void openBazi()}
+            accessibilityRole="button"
+            accessibilityLabel={t("me.baziEntry")}
+            style={styles.row}
+          >
+            <Icon name="brush-outline" size={18} color={colors.primary} />
+            <Text style={styles.rowLabel}>{t("me.baziEntry")}</Text>
+            <Icon name="chevron-forward" size={16} color={colors.muted} />
+          </Pressable>
+        </View>
+      </View>
 
       <View style={styles.group}>
         <Text style={styles.groupTitle}>{t("me.groupUpdate")}</Text>

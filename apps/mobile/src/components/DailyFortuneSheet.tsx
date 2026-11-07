@@ -83,12 +83,23 @@ const styles = themed((c) => StyleSheet.create({
   entryIcon: { width: 24, height: 24 },
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.45)",
+    /* 0.55：再淡一点，背后的头像/文字会透上来把注意力拉走。 */
+    backgroundColor: "rgba(15, 23, 42, 0.55)",
     justifyContent: "center",
     paddingHorizontal: 18,
   },
   sheet: {
-    backgroundColor: c.glassRaised,
+    /*
+     * 实底（2026-11-07）。
+     *
+     * 原来是 `c.glassRaised`（80% 白）：背后的动态、头像会透过弹层，
+     * 运势卡片里的文字与背后的人脸叠在一起——看着像脏了，也不利阅读。
+     * 这里换成 `c.bgSolid`（浅色 = 纯白，深色 = #0F1620），只留一道 hairline 边，
+     * 玻璃质感交给外层的遮罩，弹层自己不再半透。
+     */
+    backgroundColor: c.bgSolid,
+    borderWidth: 1,
+    borderColor: c.line,
     borderRadius: radii.card,
     paddingTop: 14,
     paddingBottom: 6,

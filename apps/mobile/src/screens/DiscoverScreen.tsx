@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
-  Linking,
   Pressable,
   StyleSheet,
   Text,
@@ -32,14 +30,6 @@ const FILTERS = [
 type FilterId = (typeof FILTERS)[number]["id"];
 const DAILY_LIMIT = 20;
 
-/**
- * 外部「八字起名」工具页。
- *
- * 项目里没有装 `react-native-webview`（多一个原生依赖 = 多一轮构建与权限审查），
- * 所以按约定直接交给系统浏览器打开，而不是在 App 内渲染。
- */
-const BAZI_URL = "https://bazi-app-production-b3f8.up.railway.app";
-
 export function DiscoverScreen() {
   const { t } = useI18n();
   const [filter, setFilter] = useState<FilterId>("all");
@@ -61,21 +51,6 @@ export function DiscoverScreen() {
   const [inviteBusy, setInviteBusy] = useState(false);
   /* 猜猜看（2026-10-25）：与发现页共用同一天额度，关掉时把余额写回顶部。 */
   const [guessOpen, setGuessOpen] = useState(false);
-
-  /**
-   * 打开起名工具：交给系统浏览器。
-   *
-   * 这里**不先问 `canOpenURL`**：Android 11+ 的包可见性下，manifest 里没声明
-   * `<queries>` 时它会返回 false —— 等于自己把入口锁死。直接 `openURL`，
-   * 由系统决定用哪个浏览器；真没处理器时再提示。
-   */
-  const openBazi = useCallback(async () => {
-    try {
-      await Linking.openURL(BAZI_URL);
-    } catch {
-      Alert.alert(t("discover.baziEntry"), t("discover.baziOpenFailed"));
-    }
-  }, [t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -204,22 +179,6 @@ export function DiscoverScreen() {
         </View>
       </View>
 
-      {/* 起名工具：一张小卡片，放在标题下方、筛选条之前。 */}
-      <Pressable
-        onPress={() => void openBazi()}
-        accessibilityRole="button"
-        accessibilityLabel={t("discover.baziEntry")}
-        style={({ pressed }) => [styles.baziCard, pressed ? styles.baziCardPressed : null]}
-      >
-        <View style={styles.baziIcon}>
-          <Icon name="brush-outline" size={17} color={colors.primary} />
-        </View>
-        <Text style={styles.baziLabel} numberOfLines={1}>
-          {t("discover.baziEntry")}
-        </Text>
-        <Icon name="chevron-forward" size={16} color={colors.muted} />
-      </Pressable>
-
       <View style={styles.filters}>
         {FILTERS.map((option) => (
           <Pressable
@@ -326,29 +285,6 @@ function Bubble({ item, onPress }: { item: Recommendation; onPress: () => void }
 }
 
 const styles = themed((c) => StyleSheet.create({
-  baziCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginHorizontal: 20,
-    marginBottom: 10,
-    paddingVertical: 9,
-    paddingHorizontal: 12,
-    borderRadius: radii.control,
-    borderWidth: 1,
-    borderColor: c.line,
-    backgroundColor: c.bgTint,
-  },
-  baziCardPressed: { opacity: 0.85 },
-  baziIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: radii.chip,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: c.glassRaised,
-  },
-  baziLabel: { flex: 1, fontSize: sizes.ui, fontWeight: "600", color: c.ink },
   inviteCard: {
     marginHorizontal: 20,
     marginBottom: 10,
