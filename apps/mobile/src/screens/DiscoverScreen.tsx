@@ -62,10 +62,15 @@ export function DiscoverScreen() {
   /* 猜猜看（2026-10-25）：与发现页共用同一天额度，关掉时把余额写回顶部。 */
   const [guessOpen, setGuessOpen] = useState(false);
 
-  /** 打开起名工具：系统浏览器。打不开时给一句人话，而不是静默失败。 */
+  /**
+   * 打开起名工具：交给系统浏览器。
+   *
+   * 这里**不先问 `canOpenURL`**：Android 11+ 的包可见性下，manifest 里没声明
+   * `<queries>` 时它会返回 false —— 等于自己把入口锁死。直接 `openURL`，
+   * 由系统决定用哪个浏览器；真没处理器时再提示。
+   */
   const openBazi = useCallback(async () => {
     try {
-      if (!(await Linking.canOpenURL(BAZI_URL))) throw new Error("unsupported");
       await Linking.openURL(BAZI_URL);
     } catch {
       Alert.alert(t("discover.baziEntry"), t("discover.baziOpenFailed"));
