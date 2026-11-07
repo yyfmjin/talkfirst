@@ -63,3 +63,30 @@ jest.mock("expo-audio", () => ({
   }),
   requestRecordingPermissionsAsync: jest.fn(async () => ({ granted: true })),
 }));
+
+/**
+ * expo-video / expo-image-manipulator 的桩（2026-11-08，聊天支持图片和视频后）。
+ *
+ * `MessagesScreen` 在模块顶层 import 了这两个包，而它们的原生模块在 jsdom 里加载即崩：
+ * `TypeError: Cannot read properties of undefined (reading 'prototype')`。
+ * 结果是 `notification-links.test.ts` 整个套件一条都没跑 —— 报错位置还在 import 行，
+ * 看上去像业务代码坏了，实际只是测试环境没有原生实现。
+ *
+ * 屏幕测试要验的是「界面能渲染、点得到、跳得对」，不是真播一段视频或真压一张图；
+ * 所以这里给最小可用实现。真正发图/发视频的链路要在真机或集成测试里验。
+ */
+jest.mock("expo-video", () => ({
+  useVideoPlayer: () => ({ play: jest.fn(), pause: jest.fn() }),
+  VideoView: () => null,
+}));
+
+jest.mock("expo-image-manipulator", () => ({
+  manipulateAsync: jest.fn(async (uri: string) => ({
+    uri,
+    width: 1600,
+    height: 1200,
+    base64: "ZmFrZQ==",
+  })),
+  SaveFormat: { JPEG: "jpeg", PNG: "png", WEBP: "webp" },
+}));
+
