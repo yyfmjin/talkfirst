@@ -329,6 +329,23 @@ export function MeScreen() {
         </View>
       </View>
 
+      {/* 小工具：放在资料卡下方第一屏，不用滚到底部才看得到。 */}
+      <View style={styles.group}>
+        <Text style={styles.groupTitle}>{t("me.groupTools")}</Text>
+        <View style={styles.groupCard}>
+          <Pressable
+            onPress={() => void openBazi()}
+            accessibilityRole="button"
+            accessibilityLabel={t("me.baziEntry")}
+            style={styles.row}
+          >
+            <Icon name="brush-outline" size={18} color={colors.primary} />
+            <Text style={styles.rowLabel}>{t("me.baziEntry")}</Text>
+            <Icon name="chevron-forward" size={16} color={colors.muted} />
+          </Pressable>
+        </View>
+      </View>
+
       {!user.profileCompleted ? (
         /* 资料不完整的人应该能自己找到补的入口 —— 引导本来只在注册后出现一次，
            而那次跳过的人当时还什么都不知道。 */
@@ -366,22 +383,6 @@ export function MeScreen() {
           </View>
         </View>
       ))}
-
-      <View style={styles.group}>
-        <Text style={styles.groupTitle}>{t("me.groupTools")}</Text>
-        <View style={styles.groupCard}>
-          <Pressable
-            onPress={() => void openBazi()}
-            accessibilityRole="button"
-            accessibilityLabel={t("me.baziEntry")}
-            style={styles.row}
-          >
-            <Icon name="brush-outline" size={18} color={colors.primary} />
-            <Text style={styles.rowLabel}>{t("me.baziEntry")}</Text>
-            <Icon name="chevron-forward" size={16} color={colors.muted} />
-          </Pressable>
-        </View>
-      </View>
 
       <View style={styles.group}>
         <Text style={styles.groupTitle}>{t("me.groupUpdate")}</Text>
