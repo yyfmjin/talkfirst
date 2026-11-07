@@ -1,4 +1,4 @@
-import { useColorScheme } from "react-native";
+import { Appearance, useColorScheme } from "react-native";
 
 /**
  * 配色（浅色）。深色见下面的 `dark`：**同一套语义键，只换值**。
@@ -134,7 +134,14 @@ export function themed<T>(factory: (palette: Palette) => T): T {
  * 只有模块级状态能让它们同时切换；Context 只能影响拿得到 hook 的组件。
  */
 export function useAppearance(): "light" | "dark" {
-  const scheme = useColorScheme();
+  const hookScheme = useColorScheme();
+  /*
+   * `useColorScheme()` 首次渲染可能是 `null`（Android 上原生配置还没回传）。
+   * 早前这里直接 `=== "dark" ? ... : "light"`，冷启动在深色系统下会先落到
+   * light 且再也不会纠正（原生只在**配置变化**时发事件，不会“补发”初始值）。
+   * 所以先用 `Appearance.getColorScheme()`（同步读）兜底。
+   */
+  const scheme = hookScheme ?? Appearance.getColorScheme() ?? "light";
   currentScheme = scheme === "dark" ? "dark" : "light";
   return currentScheme;
 }
