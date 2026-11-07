@@ -492,6 +492,8 @@ enum ExchangeStatus {
 enum MessageType {
   TEXT
   IMAGE
+  /** 视频消息（2026-11-08）：`content` 存服务端转码后的 mp4 URL。 */
+  VIDEO
   SYSTEM
 }
 

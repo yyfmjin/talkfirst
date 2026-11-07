@@ -22,6 +22,29 @@ type ChatMessage = {
   createdAt: string;
 };
 
+/**
+ * 浏览器端图片压缩：长边 1600 / JPEG 0.72。
+ *
+ * 手机原图 4–8MB 直接 base64 上去，请求体会撞到服务端 7MB 的上限（data URL 长度）；
+ * 压完通常 200–400KB，传输和存储都降一个量级。
+ */
+async function compressImageToDataUrl(file: File): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  const longest = Math.max(bitmap.width, bitmap.height);
+  const scale = longest > 1600 ? 1600 / longest : 1;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("canvas unavailable");
+  // JPEG 没有透明通道：先铺白，否则 PNG 的透明区域会变成黑色。
+  context.fillStyle = "#fff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  return canvas.toDataURL("image/jpeg", 0.72);
+}
+
 /** The peer of one conversation, as `GET /conversations` reports it. */
 type ConversationPeer = { id: string; nickname: string | null };
 type ConversationListItem = { id: string; peer: ConversationPeer | null };
@@ -291,35 +314,62 @@ export default function ChatDetailPage() {
     if (optimistic) setDraft("");
   }
 
-  async function sendImage(file: File | undefined) {
+  /**
+   * 附件发送。
+   *
+   * 图片在浏览器里先压（canvas，长边 1600 / JPEG 0.72）—— 手机原图 4–8MB，
+   * 直接 base64 上去既慢又吃服务端磁盘。视频不压，交给服务端 ffmpeg
+   * （`/uploads/message-video`，与动态视频同一套流程），这里只提前拦一下超大的文件。
+   */
+  async function sendAttachment(file: File | undefined) {
     if (!file || !conversationId) return;
     setActionError("");
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+    const isVideo = file.type.startsWith("video/");
+
+    if (!isVideo && !["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       setActionError(t("mc.imageType"));
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setActionError(t("mc.imageTooBig"));
-      return;
-    }
     try {
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error(t("mc.readImageFailed")));
-        reader.readAsDataURL(file);
-      });
-      const uploaded = await apiFetch<{ imageUrl: string }>("/uploads/message-image", {
-        method: "POST",
-        body: { image: dataUrl },
-      });
-      await apiFetch(`/conversations/${conversationId}/messages/image`, {
-        method: "POST",
-        body: { imageUrl: uploaded.imageUrl },
-      });
+      if (isVideo) {
+        if (!["video/mp4", "video/quicktime", "video/webm", "video/x-m4v"].includes(file.type)) {
+          setActionError(t("mc.videoType"));
+          return;
+        }
+        if (file.size > 90 * 1024 * 1024) {
+          setActionError(t("mc.videoTooBig"));
+          return;
+        }
+        const form = new FormData();
+        form.append("file", file, file.name || `chat-${Date.now()}.mp4`);
+        const uploaded = await apiFetch<{ url: string }>("/uploads/message-video", {
+          method: "POST",
+          formData: form,
+        });
+        await apiFetch(`/conversations/${conversationId}/messages/video`, {
+          method: "POST",
+          body: { videoUrl: uploaded.url },
+        });
+      } else {
+        const dataUrl = await compressImageToDataUrl(file);
+        const uploaded = await apiFetch<{ imageUrl: string }>("/uploads/message-image", {
+          method: "POST",
+          body: { image: dataUrl },
+        });
+        await apiFetch(`/conversations/${conversationId}/messages/image`, {
+          method: "POST",
+          body: { imageUrl: uploaded.imageUrl },
+        });
+      }
       await loadHistory();
     } catch (requestError) {
-      setActionError(requestError instanceof Error ? requestError.message : t("mc.imageSendFailed"));
+      setActionError(
+        requestError instanceof Error
+          ? requestError.message
+          : isVideo
+            ? t("mc.videoSendFailed")
+            : t("mc.imageSendFailed"),
+      );
     } finally {
       /*
        * `input.value` is cleared on every exit path. It used to be cleared
@@ -513,17 +563,17 @@ export default function ChatDetailPage() {
           <label
             data-testid="chat-attach"
             className="grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-full border border-border bg-surface-sunken text-content-muted transition-colors duration-instant hover:bg-neutral-200 focus-within:ring-2 focus-within:ring-brand-300"
-            aria-label={t("mc.sendImage")}
-            title={t("mc.sendImage")}
+            aria-label={t("mc.sendMedia")}
+            title={t("mc.sendMedia")}
           >
             <ImageIcon className="h-[18px] w-[18px]" aria-hidden="true" />
             <input
               ref={imageInputRef}
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm,video/x-m4v"
               className="sr-only"
-              aria-label={t("mc.chooseImage")}
-              onChange={(event) => void sendImage(event.target.files?.[0])}
+              aria-label={t("mc.chooseMedia")}
+              onChange={(event) => void sendAttachment(event.target.files?.[0])}
             />
           </label>
           <textarea
@@ -594,16 +644,30 @@ function ChatBubble({
       </div>
     );
   }
-  if (message.type === "IMAGE") {
+  if (message.type === "IMAGE" || message.type === "VIDEO") {
     return (
       <div className={mine ? "ml-auto max-w-[80%]" : "mr-auto max-w-[80%]"}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={message.content}
-          alt={t("mc.imageAlt")}
-          className="block h-auto w-full rounded-row border border-border object-cover"
-          loading="lazy"
-        />
+        {message.type === "IMAGE" ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={message.content}
+              alt={t("mc.imageAlt")}
+              className="block h-auto w-full rounded-row border border-border object-cover"
+              loading="lazy"
+            />
+          </>
+        ) : (
+          /* 视频消息：`controls` 用浏览器原生控件 —— 自定义播放器在移动端 Safari
+             里全屏行为不一致，聊天场景没必要重写一套。 */
+          <video
+            src={message.content}
+            controls
+            playsInline
+            preload="metadata"
+            className="block h-auto w-full rounded-row border border-border bg-black"
+          />
+        )}
         {!message.id.startsWith("local-") && mine ? (
           <button
             type="button"

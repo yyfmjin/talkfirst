@@ -178,15 +178,20 @@ export class UploadsService {
    * (`/uploads/moments/<name>`), and the moment row keeps writing the same
    * `videoUrl` column. Existing rows and existing files are untouched.
    */
-  storeProcessedVideo(tempPath: string, ext = "mp4"): string {
-    const dir = join(this.uploadRoot(), "moments");
+  storeProcessedVideo(tempPath: string, ext = "mp4", folder = "moments"): string {
+    /*
+     * `folder` 目前只来自调用方的常量（moments / messages），但它是拼进文件路径的
+     * 东西 —— 白名单一道，以后真接了用户输入也不会变成目录穿越。
+     */
+    const safeFolder = /^[a-z]{1,20}$/.test(folder) ? folder : "moments";
+    const dir = join(this.uploadRoot(), safeFolder);
     mkdirSync(dir, { recursive: true });
 
     const safeExt = /^[a-z0-9]{1,5}$/.test(ext) ? ext : "mp4";
     const name = `${randomUUID()}.${safeExt}`;
     copyFileSync(tempPath, join(dir, name));
 
-    return `${this.publicBase()}/moments/${name}`;
+    return `${this.publicBase()}/${safeFolder}/${name}`;
   }
 
   private publicBase(): string {

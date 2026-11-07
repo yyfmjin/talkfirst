@@ -41,6 +41,12 @@ class SendImageDto {
   imageUrl!: string;
 }
 
+class SendVideoDto {
+  @IsString()
+  @MaxLength(2000)
+  videoUrl!: string;
+}
+
 class ReportDto {
   /**
    * Exactly one target per request: `userId` reports a person, `momentId`
@@ -439,6 +445,36 @@ export class SocialSafetyController {
     @Param("id", UuidParamPipe) id: string,
     @Body(new ValidationPipe()) dto: SendImageDto,
   ) {
+    return this.sendMediaMessage(user, id, dto.imageUrl, "IMAGE");
+  }
+
+  /**
+   * 视频消息（2026-11-08）。
+   *
+   * URL 来自 `POST /uploads/message-video`（服务端已转码成 mp4 并压到目标大小），
+   * 客户端的视频体积压力在那一层就解决了。
+   */
+  @Post("conversations/:id/messages/video")
+  async sendVideoMessage(
+    @CurrentUser() user: AuthUser,
+    @Param("id", UuidParamPipe) id: string,
+    @Body(new ValidationPipe()) dto: SendVideoDto,
+  ) {
+    return this.sendMediaMessage(user, id, dto.videoUrl, "VIDEO");
+  }
+
+  /**
+   * 图片 / 视频消息的共用路径。
+   *
+   * 抽出来的原因：两者的守卫完全一样（成员 → 封禁 → 账号状态 → 连接状态）。
+   * 复制一份的话，下次改守卫必然漏掉一处 —— 而这条路承载的正是「谁能给谁发东西」。
+   */
+  private async sendMediaMessage(
+    user: AuthUser,
+    id: string,
+    url: string,
+    type: "IMAGE" | "VIDEO",
+  ) {
     const membership = await this.prisma.conversationMember.findUnique({
       where: { conversationId_userId: { conversationId: id, userId: user.id } },
     });
@@ -448,10 +484,13 @@ export class SocialSafetyController {
         error: { code: "CONVERSATION_NOT_FOUND", message: "Conversation not found" },
       });
     }
-    if (!this.isAllowedImageUrl(dto.imageUrl)) {
+    if (!this.isAllowedImageUrl(url)) {
       throw new ForbiddenException({
         success: false,
-        error: { code: "INVALID_IMAGE", message: "Image must be an https URL" },
+        error: {
+          code: type === "IMAGE" ? "INVALID_IMAGE" : "INVALID_VIDEO",
+          message: type === "IMAGE" ? "Image must be an https URL" : "Video must be an https URL",
+        },
       });
     }
     const conversation = await this.prisma.conversation.findUnique({
@@ -459,16 +498,16 @@ export class SocialSafetyController {
       include: { members: true },
     });
     const peerId = conversation?.members.find((member) => member.userId !== user.id)?.userId;
-    // P0-2: same guard as the text path — an image must not bypass a block.
+    // P0-2: same guard as the text path — media must not bypass a block.
     await assertNotBlocked(this.prisma, user.id, peerId);
-    // P002/P003: an image must not bypass the account or connection rule either.
+    // P002/P003: media must not bypass the account or connection rule either.
     await requireActiveAccount(this.prisma, user.id);
     if (peerId) {
       await assertConnectionActive(this.prisma, id, user.id, peerId);
     }
     const message = await this.prisma.$transaction(async (tx) => {
       const created = await tx.message.create({
-        data: { conversationId: id, senderId: user.id, type: "IMAGE", content: dto.imageUrl },
+        data: { conversationId: id, senderId: user.id, type, content: url },
       });
       await tx.conversation.update({ where: { id }, data: { updatedAt: new Date() } });
       return created;
@@ -478,8 +517,8 @@ export class SocialSafetyController {
         userId: peerId,
         actorId: user.id,
         conversationId: id,
-        title: msg("notify.newMessage.imageTitle"),
-        body: msg("notify.newMessage.imageBody"),
+        title: msg(type === "IMAGE" ? "notify.newMessage.imageTitle" : "notify.newMessage.videoTitle"),
+        body: msg(type === "IMAGE" ? "notify.newMessage.imageBody" : "notify.newMessage.videoBody"),
       });
     }
     return { success: true as const, data: message };

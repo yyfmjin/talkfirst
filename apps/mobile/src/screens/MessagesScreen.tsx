@@ -1,14 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
+  Image,
+  Modal,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
-import { apiFetch } from "../lib/api";
+import * as ImagePicker from "expo-image-picker";
+import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
+import { useVideoPlayer, VideoView } from "expo-video";
+import { apiFetch, ApiRequestError, apiUploadMultipart } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { appendMessageOnce, mergeMessages, useChatSocket } from "../lib/chat-socket";
 import { useBackHandler } from "../lib/back-stack";
@@ -26,6 +32,21 @@ import { colors, themed } from "../theme";
 import type { ChatMessage, ConversationItem, IncomingRequest, MessagePage } from "../lib/types";
 
 import { radii, sizes } from "../design/tokens";
+
+/**
+ * 聊天附件（2026-11-08）。
+ *
+ * 图片在客户端压：长边 1600、JPEG 0.72 —— 手机原图动辄 4–8MB，而聊天里的图片
+ * 显示宽度不超过 220，不压只是白占服务器磁盘和对方的流量。
+ *
+ * 视频不在客户端压：手机上可靠的转码库要么体积翻倍、要么耗时不可控；客户端只做
+ * 两道闸（时长 ≤ 60s、文件 ≤ 90MB），真正的压缩交给服务端 ffmpeg
+ * （`POST /uploads/message-video`，与动态视频同一套流程）。
+ */
+const IMAGE_MAX_EDGE = 1600;
+const IMAGE_QUALITY = 0.72;
+const MAX_VIDEO_UPLOAD_BYTES = 90 * 1024 * 1024;
+const MAX_VIDEO_SECONDS = 60;
 /**
  * 消息（2026-10-07；实时 2026-10-16）—— 会话列表 + 会话内对话。
  *
@@ -69,6 +90,10 @@ export function MessagesScreen() {
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  /** 附件上传中：按钮转圈，避免连点发出两条。 */
+  const [attaching, setAttaching] = useState(false);
+  /** 正在全屏播放的视频 URL。 */
+  const [playingVideo, setPlayingVideo] = useState<string | null>(null);
   const [error, setError] = useState("");
   /**
    * 会话 / 通知两个分段。
@@ -340,6 +365,101 @@ export function MessagesScreen() {
     }
   }
 
+  /** 选图/选视频：一条消息只带一个附件，选完立即上传发送。 */
+  function pickAttachment() {
+    if (!openId || attaching) return;
+    Alert.alert(t("messages.attachTitle"), undefined, [
+      { text: t("messages.attachImage"), onPress: () => void sendPicked("image") },
+      { text: t("messages.attachVideo"), onPress: () => void sendPicked("video") },
+      { text: t("common.cancel"), style: "cancel" },
+    ]);
+  }
+
+  async function sendPicked(kind: "image" | "video") {
+    const conversationId = openId;
+    if (!conversationId || attaching) return;
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        setError(t("messages.mediaPermission"));
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: kind === "image" ? ["images"] : ["videos"],
+        allowsMultipleSelection: false,
+        quality: 1,
+        ...(kind === "video" ? { videoMaxDuration: MAX_VIDEO_SECONDS } : {}),
+      });
+      if (result.canceled || result.assets.length === 0) return;
+
+      setAttaching(true);
+      setError("");
+      const created =
+        kind === "image"
+          ? await uploadImageMessage(conversationId, result.assets[0])
+          : await uploadVideoMessage(conversationId, result.assets[0]);
+      // 与文字消息一致：服务端返回的那一条直接接在末尾，广播回来的由 appendMessageOnce 去重。
+      setMessages((previous) => appendMessageOnce(previous, created));
+      void loadConversations();
+    } catch (mediaError) {
+      setError(
+        mediaError instanceof ApiRequestError && mediaError.code === "IMAGE_TOO_LARGE"
+          ? t("messages.imageTooLarge")
+          : mediaError instanceof Error
+            ? mediaError.message
+            : t("messages.mediaUploadFailed"),
+      );
+    } finally {
+      setAttaching(false);
+    }
+  }
+
+  /** 图片：先压到长边 1600 / JPEG 0.72，再以 data URL 传（服务端另有一道 5MB 闸）。 */
+  async function uploadImageMessage(
+    conversationId: string,
+    asset: ImagePicker.ImagePickerAsset,
+  ): Promise<ChatMessage> {
+    const width = asset.width ?? IMAGE_MAX_EDGE;
+    const actions = width > IMAGE_MAX_EDGE ? [{ resize: { width: IMAGE_MAX_EDGE } }] : [];
+    const shrunk = await manipulateAsync(asset.uri, actions, {
+      compress: IMAGE_QUALITY,
+      format: SaveFormat.JPEG,
+      base64: true,
+    });
+    if (!shrunk.base64) throw new Error(t("messages.mediaUploadFailed"));
+
+    const uploaded = await apiFetch<{ imageUrl: string }>("/uploads/message-image", {
+      method: "POST",
+      body: { image: `data:image/jpeg;base64,${shrunk.base64}` },
+    });
+    return apiFetch<ChatMessage>(`/conversations/${conversationId}/messages/image`, {
+      method: "POST",
+      body: { imageUrl: uploaded.imageUrl },
+    });
+  }
+
+  /** 视频：客户端不转码，只卡时长与大小；压缩由服务端 ffmpeg 做。 */
+  async function uploadVideoMessage(
+    conversationId: string,
+    asset: ImagePicker.ImagePickerAsset,
+  ): Promise<ChatMessage> {
+    if (asset.fileSize && asset.fileSize > MAX_VIDEO_UPLOAD_BYTES) {
+      throw new Error(t("messages.videoTooLarge"));
+    }
+    const form = new FormData();
+    form.append("file", {
+      uri: asset.uri,
+      name: asset.fileName ?? `chat-${Date.now()}.mp4`,
+      type: asset.mimeType ?? "video/mp4",
+    } as unknown as Blob);
+
+    const uploaded = await apiUploadMultipart<{ url: string }>("/uploads/message-video", form);
+    return apiFetch<ChatMessage>(`/conversations/${conversationId}/messages/video`, {
+      method: "POST",
+      body: { videoUrl: uploaded.url },
+    });
+  }
+
   /*
    * 实时状态只在**不健康**时显示一行：正常连着不该占地方。
    * 文案只描述连接状态，不说「发不出去」—— 发送走 REST，与这条长连接无关。
@@ -424,6 +544,7 @@ export function MessagesScreen() {
   if (openId) {
     const peer = conversations.find((item) => item.id === openId)?.peer ?? null;
     return (
+      <>
       <KeyboardAware style={styles.root} iosOffset={8}>
         <View style={styles.threadHead}>
           <Pressable
@@ -493,7 +614,26 @@ export function MessagesScreen() {
             return (
               <View style={[styles.bubbleRow, mine ? styles.bubbleRowMine : null]}>
                 <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
-                  <Text style={mine ? styles.bubbleTextMine : styles.bubbleTextTheirs}>{item.content}</Text>
+                  {item.type === "IMAGE" ? (
+                    <Image
+                      source={{ uri: item.content }}
+                      style={styles.bubbleImage}
+                      resizeMode="cover"
+                      accessibilityLabel={t("messages.imagePreview")}
+                    />
+                  ) : item.type === "VIDEO" ? (
+                    <Pressable
+                      onPress={() => setPlayingVideo(item.content)}
+                      accessibilityRole="button"
+                      accessibilityLabel={t("messages.playVideo")}
+                      style={styles.bubbleVideo}
+                    >
+                      <Icon name="play" size={26} color={colors.white} />
+                      <Text style={styles.bubbleVideoLabel}>{t("messages.videoPreview")}</Text>
+                    </Pressable>
+                  ) : (
+                    <Text style={mine ? styles.bubbleTextMine : styles.bubbleTextTheirs}>{item.content}</Text>
+                  )}
                   {/*
                    * 翻译（与网页同接口 POST /messages/:id/translate）。
                    * 只给「别人发的、已经落库的」消息加：自己发的不需要翻，
@@ -529,6 +669,20 @@ export function MessagesScreen() {
         {peerTyping ? <Text style={styles.typingLine}>{t("messages.typing")}</Text> : null}
 
         <View style={styles.composer}>
+          <Pressable
+            onPress={pickAttachment}
+            disabled={attaching}
+            accessibilityRole="button"
+            accessibilityLabel={t("messages.attach")}
+            hitSlop={8}
+            style={styles.attachButton}
+          >
+            {attaching ? (
+              <ActivityIndicator color={colors.primary} size="small" />
+            ) : (
+              <Icon name="add" size={22} color={colors.primary} />
+            )}
+          </Pressable>
           <TextInput
             value={draft}
             onChangeText={(value) => {
@@ -562,6 +716,10 @@ export function MessagesScreen() {
           </Pressable>
         </View>
       </KeyboardAware>
+      {playingVideo ? (
+        <ChatVideoPlayer uri={playingVideo} onClose={() => setPlayingVideo(null)} />
+      ) : null}
+      </>
     );
   }
 
@@ -719,7 +877,11 @@ export function MessagesScreen() {
  */
 function previewText(item: ConversationItem, t: TranslateFn): string {
   if (!item.lastMessage) return t("messages.startChat");
-  return item.lastMessage.type === "IMAGE" ? t("messages.imagePreview") : item.lastMessage.content;
+  return item.lastMessage.type === "IMAGE"
+    ? t("messages.imagePreview")
+    : item.lastMessage.type === "VIDEO"
+      ? t("messages.videoPreview")
+      : item.lastMessage.content;
 }
 
 /**
@@ -829,6 +991,37 @@ function Segments({
   );
 }
 
+/**
+ * 全屏视频播放。
+ *
+ * 为什么不在气泡里直接播：一个会话可能有几十条视频，每条都挂一个播放器实例既费内存，
+ * 也会让列表滚动掉帧。气泡只显示一个「播放」入口，点开才创建播放器。
+ */
+function ChatVideoPlayer({ uri, onClose }: { uri: string; onClose: () => void }) {
+  const { t } = useI18n();
+  const player = useVideoPlayer(uri, (instance) => {
+    instance.loop = false;
+    instance.play();
+  });
+
+  return (
+    <Modal visible animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      <View style={styles.videoRoot}>
+        <VideoView player={player} style={styles.videoFull} contentFit="contain" nativeControls />
+        <Pressable
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel={t("common.close")}
+          hitSlop={12}
+          style={styles.videoClose}
+        >
+          <Icon name="close" size={22} color={colors.white} />
+        </Pressable>
+      </View>
+    </Modal>
+  );
+}
+
 const styles = themed((c) => StyleSheet.create({
   root: { flex: 1, backgroundColor: c.bg },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 10 },
@@ -897,6 +1090,41 @@ const styles = themed((c) => StyleSheet.create({
   bubbleTheirs: { backgroundColor: c.bgTint, borderBottomLeftRadius: 5 },
   bubbleTextMine: { fontSize: sizes.body, lineHeight: 21, color: c.white },
   bubbleTextTheirs: { fontSize: sizes.body, lineHeight: 21, color: c.ink },
+  /* 附件气泡：固定 220 宽，列表里高度可预测、不会被原图撑破。 */
+  bubbleImage: { width: 220, height: 165, borderRadius: radii.chip },
+  bubbleVideo: {
+    width: 220,
+    height: 140,
+    borderRadius: radii.chip,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  bubbleVideoLabel: { fontSize: sizes.caption, fontWeight: "600", color: c.white },
+  attachButton: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.chip,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: c.bgSoft,
+    borderWidth: 1,
+    borderColor: c.line,
+  },
+  videoRoot: { flex: 1, backgroundColor: "#000" },
+  videoFull: { flex: 1 },
+  videoClose: {
+    position: "absolute",
+    top: 48,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
   composer: {
     flexDirection: "row",
     alignItems: "flex-end",

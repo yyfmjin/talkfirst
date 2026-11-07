@@ -215,6 +215,32 @@ export class UploadsController {
   @UseInterceptors(new VideoUploadInterceptor(momentVideoUploadOptions()))
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   async uploadMomentVideo(@Req() request: { file?: StreamedFile }) {
+    return this.processVideo(request, "moments");
+  }
+
+  /**
+   * 聊天里的视频（2026-11-08）。
+   *
+   * 与动态视频走**同一套**拦截器与转码（客户端只传原文件，压缩在服务端做），
+   * 只是落到 `messages/` 目录 —— 两者生命周期不同，混在一个目录以后没法按用途清理。
+   */
+  @Post("message-video")
+  @UseInterceptors(new VideoUploadInterceptor(momentVideoUploadOptions()))
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  async uploadMessageVideo(@Req() request: { file?: StreamedFile }) {
+    return this.processVideo(request, "messages");
+  }
+
+  /**
+   * 视频上传的共用实现：校验 → 转码 → 落盘。
+   *
+   * 抽出来的原因：动态视频与聊天视频的校验一字不差，而这里每一步失败都会删临时文件；
+   * 复制一份等于把「清理时机」这种容易漏的东西再抄一遍。
+   */
+  private async processVideo(
+    request: { file?: StreamedFile },
+    folder: string,
+  ) {
     const file = request.file;
     if (!file) {
       throw new BadRequestException({
@@ -245,7 +271,7 @@ export class UploadsController {
       const compressed = await this.video.compressVideo(file.path, "mp4");
       compressedPath = compressed.path;
 
-      const url = this.uploads.storeProcessedVideo(compressed.path, "mp4");
+      const url = this.uploads.storeProcessedVideo(compressed.path, "mp4", folder);
 
       return {
         success: true as const,

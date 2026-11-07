@@ -328,6 +328,16 @@ export const zh = {
   "messages.liveReconnecting": "实时连接断开，正在重连…",
   "messages.liveOffline": "实时连接不可用，下拉可手动刷新。",
   "messages.imagePreview": "[图片]",
+  "messages.videoPreview": "[视频]",
+  "messages.attach": "发送图片或视频",
+  "messages.attachTitle": "发送",
+  "messages.attachImage": "图片",
+  "messages.attachVideo": "视频",
+  "messages.playVideo": "播放视频",
+  "messages.mediaPermission": "需要相册权限才能发送图片或视频。",
+  "messages.mediaUploadFailed": "发送失败，请重试。",
+  "messages.imageTooLarge": "图片太大，请换一张。",
+  "messages.videoTooLarge": "视频太大（上限 90MB），请换一个。",
   "messages.typing": "正在输入…",
 
   /* ───────────────────────── 通知 ───────────────────────── */
@@ -1151,6 +1161,16 @@ export const en: Record<MsgKey, string> = {
   "messages.liveReconnecting": "Connection lost — reconnecting…",
   "messages.liveOffline": "Live updates unavailable. Pull down to refresh.",
   "messages.imagePreview": "[Image]",
+  "messages.videoPreview": "[Video]",
+  "messages.attach": "Send a photo or video",
+  "messages.attachTitle": "Send",
+  "messages.attachImage": "Photo",
+  "messages.attachVideo": "Video",
+  "messages.playVideo": "Play video",
+  "messages.mediaPermission": "Photo access is needed to send a photo or video.",
+  "messages.mediaUploadFailed": "Couldn't send it. Please try again.",
+  "messages.imageTooLarge": "That image is too large. Pick another one.",
+  "messages.videoTooLarge": "That video is too large (90MB max). Pick another one.",
   "messages.typing": "typing…",
 
   /* notifications */
