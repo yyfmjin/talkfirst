@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -29,6 +28,7 @@ import { SocialScreen } from "./SocialScreen";
 import { VisibilityScreen } from "./VisibilityScreen";
 import { InterestsScreen } from "./InterestsScreen";
 import { AttributesScreen } from "./AttributesScreen";
+import { BaziScreen } from "./BaziScreen";
 import { PasswordScreen } from "./PasswordScreen";
 import { DeleteAccountScreen } from "./DeleteAccountScreen";
 import { OnboardingScreen } from "./OnboardingScreen";
@@ -75,6 +75,8 @@ type MeEntry = {
     | "password"
     | "deleteAccount"
     | "legal"
+    /* 不在 `ME_GROUPS` 里：入口是自定义的「小工具」那一行。 */
+    | "bazi"
     /* 不在 `ME_GROUPS` 里：它的入口是「管理社交账号」页底部那一个按钮
        （与 web `/me/social` → `/moments/settings` 同一条路径），不是「我的」下的一行。 */
     | "momentsSettings";
@@ -123,14 +125,6 @@ const ME_GROUPS: MeGroup[] = [
   },
 ];
 
-/**
- * 外部「八字起名」工具页。
- *
- * 项目里没装 `react-native-webview`（多一个原生依赖 = 多一轮构建与权限审查），
- * 所以直接交给系统浏览器打开。
- */
-const BAZI_URL = "https://bazi-app-production-b3f8.up.railway.app";
-
 export function MeScreen() {
   const { user, signOut, setUser } = useAuth();
   const { t, preference, setPreference } = useI18n();
@@ -142,21 +136,6 @@ export function MeScreen() {
   const [onboarding, setOnboarding] = useState(false);
   /** 正在检查/下载更新（按钮期间转圈，避免连点）。 */
   const [updating, setUpdating] = useState(false);
-
-  /**
-   * 打开起名工具：交给系统浏览器。
-   *
-   * 这里**不先问 `canOpenURL`**：Android 11+ 的包可见性下，manifest 里没声明
-   * `<queries>` 时它会返回 false —— 等于自己把入口锁死。直接 `openURL`，
-   * 由系统决定用哪个浏览器；真没处理器时再提示。
-   */
-  const openBazi = useCallback(async () => {
-    try {
-      await Linking.openURL(BAZI_URL);
-    } catch {
-      Alert.alert(t("me.baziEntry"), t("me.baziOpenFailed"));
-    }
-  }, [t]);
 
   /* 系统返回键：引导 → 子页 → （没有任何子页时退出 app，交由系统默认）。 */
   useBackHandler(open !== null, () => setOpen(null));
@@ -259,6 +238,9 @@ export function MeScreen() {
   if (open === "feedback") {
     return <FeedbackScreen onDone={() => setOpen(null)} />;
   }
+  if (open === "bazi") {
+    return <BaziScreen onClose={() => setOpen(null)} />;
+  }
   if (open === "connections") {
     return <ConnectionsScreen onBack={() => setOpen(null)} />;
   }
@@ -334,7 +316,7 @@ export function MeScreen() {
         <Text style={styles.groupTitle}>{t("me.groupTools")}</Text>
         <View style={styles.groupCard}>
           <Pressable
-            onPress={() => void openBazi()}
+            onPress={() => setOpen("bazi")}
             accessibilityRole="button"
             accessibilityLabel={t("me.baziEntry")}
             style={styles.row}
