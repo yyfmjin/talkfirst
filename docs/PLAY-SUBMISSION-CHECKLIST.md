@@ -8,7 +8,7 @@
 ## A. 产物（5 条）
 
 - [ ] AAB 存在且是**最新一次构建**：`D:\Android\play\talkfirst-<version>.aab`
-- [ ] `versionCode` 比上一次上传的大（当前 `18`，versionName `0.1.18`）
+- [ ] `versionCode` 比上一次上传的大（当前 `19`，versionName `0.1.19`）
 - [ ] 签名用的是 Play 上传密钥（证书 SHA-256 以 `71:83:AE:` 开头）
 - [ ] 权限符合预期：`aapt2 dump badging` 应只有 `INTERNET`、`VIBRATE`、`ACCESS_NETWORK_STATE`、
       `FOREGROUND_SERVICE`、`FOREGROUND_SERVICE_MEDIA_PLAYBACK`、`RECORD_AUDIO`、
