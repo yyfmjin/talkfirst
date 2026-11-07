@@ -195,19 +195,26 @@ components:
 
 未完成（按优先级）：
 
-1. App 端仍有 12/14/16 三档圆角与 13/16 两个字号未收敛（2026-11-05 已把 219 处字号、
-   38 处圆角换成 token，剩下的是会改变像素的量，需要真机逐屏核对后再动）。
-2. 可点区域小于 44×44 的图标按钮约 22 处（App）。
-3. 网页端仍有 9 处 8–10px 小徽标字号（刻意保留，见上）与 37 处裸十六进制色
-   （`#6572D8` / `#F1F3FF` 这类旧紫蓝残留）。
-4. **App 端还没有深色模式**（网页端已于 2026-11-06 跟随系统上线）。App 的 48 个文件
-   都在模块作用域调 `StyleSheet.create({ color: colors.x })` —— 颜色在模块加载时就
-   定死了，换主题不会重算。要支持深色得把每屏的样式换成「按主题生成」的工厂函数，
-   属于独立一次改造，不是改个开关。
+1. 可点区域小于 44 高的**文字链**（例：`Profile visibility`、`Translate`）—— 补 `hitSlop`
+   只能治图标按钮；改行高会动列表密度，属于设计决定，还没动。
+2. 深色模式下 8–10px 小徽标、图片蒙层、第三方内容（头像/封面）未逐一核对。
+3. 600 档同时承担「可读蓝字」与「填充底色」两种用途，深色下靠 class 例外兼得；
+   正解是拆成 `content-brand` / `fill-brand` 两个语义 token。
 
-已完成（2026-11-05）：App 新增 `src/design/tokens.ts`（sizes / radii 两套档位）；
-`Button` 补上 `danger` 变体，注销账号页改用它，不再现场拼样式；网页端任意字号
-从 55 处降到 9 处（其余全部换成 `text-overline/caption/ui/body/heading/title/display`）。
+已完成：
+
+- **字号/圆角**：App 从 14 种字号、17 种圆角收到 7 级 + 5 档（`src/design/tokens.ts`）。
+- **可点区**：6 个 32/40 的图标按钮补 `hitSlop={10}`，实际可点 44；其余同类按钮本来就有。
+- **裸色值**：网页 24 处旧紫蓝换成 brand/accent/neutral token（余下 13 处是注释与
+  `themeColor` 元数据）。
+- **深色模式（两端，跟随系统）**：
+  - 网页：色阶改 CSS 变量（`tailwind.config.ts` 的 `designVars`），
+    `globals.css` 的 `@media (prefers-color-scheme: dark)` 覆盖中性/文字/tint/玻璃。
+  - App：`theme.ts` 的 `colors` 是 Proxy（渲染时取当前配色），48 个样式表改成
+    `themed()` 懒构建（不改调用点）；`userInterfaceStyle: "automatic"`，
+    冷启动用 `Appearance.getColorScheme()` 兜底（`useColorScheme()` 首帧可能为 null）。
+  - 已验证：真机切 `cmd uimode night yes/no` 两端均跟随；冷启动日志 `hook=dark native=dark`；
+    深色下 Me 屏背景中位亮度 38、文字 p95 180（可读）。
 
 ## 禁止项（AI 生成感的来源）
 - 米色/沙色默认底；紫色→蓝色对角渐变当 hero；回弹缓动；卡片里套卡片；
