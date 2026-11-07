@@ -45,7 +45,7 @@
  * 等于天然破缓存，也让用户能对着文件名确认自己装的是哪一版。
  */
 export const ANDROID_APK_URL =
-  "https://talkfirst.ccwu.cc/apk/talkfirst-0.1.17.apk";
+  "https://talkfirst.ccwu.cc/apk/talkfirst-0.1.18.apk";
 
 /** 给用户看的固定入口：永远指向"当前最新版"。 */
 export const ANDROID_APK_PATH = "/download/android";
