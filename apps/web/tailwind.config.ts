@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import plugin from "tailwindcss/plugin";
 import {
   accent,
   border,
@@ -50,25 +51,112 @@ import {
  *   type         →  `text-display | title | heading | body | ui | caption | overline`
  *   motion       →  `duration-instant | fast | base | slow`, `ease-out | in-out`
  */
+/** `#RRGGBB` → Tailwind 可用的「带 alpha 插槽」颜色。 */
+const cssColor = (name: string) => `rgb(var(--${name}) / <alpha-value>)`;
+
+/** 把一个色阶整体映射成 CSS 变量引用（键名不变，`bg-brand-500` 照旧）。 */
+const colorScale = (family: string, scale: Record<string, string>) => {
+  const out: Record<string, string> = {};
+  for (const step of Object.keys(scale)) {
+    out[step] = cssColor(`${family}-${step}`);
+  }
+  return out;
+};
+
+/** hex → `"R G B"`：`rgb(var(--x) / .5)` 需要 triplet，不能直接填 hex。 */
+const hexToTriplet = (value: string): string | null => {
+  if (!value.startsWith("#")) return null;
+  const raw = value.slice(1);
+  const full = raw.length === 3 ? raw.split("").map((c) => c + c).join("") : raw;
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) return null;
+  const n = parseInt(full, 16);
+  return `${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255}`;
+};
+
+const scaleVars = (family: string, scale: Record<string, string>) => {
+  const out: Record<string, string> = {};
+  for (const [step, value] of Object.entries(scale)) {
+    const triplet = hexToTriplet(value);
+    if (triplet) out[`--${family}-${step}`] = triplet;
+  }
+  return out;
+};
+
+/**
+ * 把 tokens 里的色阶写成 `:root` 的 CSS 变量（浅色一套）。
+ *
+ * 深色值不在这里 —— 它写在 `app/globals.css` 的
+ * `@media (prefers-color-scheme: dark)` 里，因为那里能同时看到底 wash、
+ * 玻璃反光和上下文注释。
+ */
+const designVars = plugin(({ addBase }) => {
+  addBase({
+    ":root": {
+      ...scaleVars("brand", brand),
+      ...scaleVars("accent", accent),
+      ...scaleVars("success", success),
+      ...scaleVars("warning", warning),
+      ...scaleVars("danger", danger),
+      ...scaleVars("info", info),
+      ...scaleVars("neutral", neutral),
+      ...scaleVars("content", content),
+      // 以下四个是带 alpha 的 rgba，直接当完整颜色用
+      "--surface": surface.DEFAULT,
+      "--surface-raised": surface.raised,
+      "--surface-frame": surface.frame,
+      "--surface-canvas": surface.canvas,
+      "--surface-sunken": surface.sunken,
+      "--surface-brand": surface.brand,
+      "--surface-scrim": surface.scrim,
+      "--border": border.DEFAULT,
+      "--border-hairline": border.hairline,
+      "--border-strong": border.strong,
+    },
+  });
+});
+
 const config: Config = {
   content: ["./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
       colors: {
-        /* ---- Phase A scale -------------------------------------------- */
-        brand,
-        accent,
-        success,
-        warning,
-        danger,
-        info,
-        neutral,
+        /*
+         * 全部色阶走 CSS 变量（2026-11-06，跟随系统的深色模式）。
+         *
+         * 为什么不再把 hex 直接交给 Tailwind：Tailwind 生成的是**静态色**，
+         * 同一个 `text-content` 没法在深色下变成另一个值。映射成
+         * `rgb(var(--x) / <alpha-value>)` 之后，调用点一个字都不用改；
+         * `<alpha-value>` 还保住了 `/60`、`/80` 这类透明度修饰。
+         *
+         * 变量由文件末尾的 `designVars` 插件从 tokens 生成（不手抄 hex）；
+         * 深色值写在 `app/globals.css` 的 `prefers-color-scheme: dark` 里。
+         */
+        brand: colorScale("brand", brand),
+        accent: colorScale("accent", accent),
+        success: colorScale("success", success),
+        warning: colorScale("warning", warning),
+        danger: colorScale("danger", danger),
+        info: colorScale("info", info),
+        neutral: colorScale("neutral", neutral),
+        content: colorScale("content", content),
 
-        /* Role aliases. `surface.canvas` → `bg-surface-canvas`, and
-           `surface.DEFAULT` → `bg-surface`. */
-        surface,
-        content,
-        border,
+        /* glass 的四个 tint 自带固定 alpha，拆成 triplet 会让 `/80` 覆盖掉
+           原本 0.58 的语义，所以整条颜色走 var（深色只换 var 的值）。 */
+        surface: {
+          DEFAULT: "var(--surface)",
+          raised: "var(--surface-raised)",
+          frame: "var(--surface-frame)",
+          canvas: "var(--surface-canvas)",
+          sunken: "var(--surface-sunken)",
+          brand: "var(--surface-brand)",
+          scrim: "var(--surface-scrim)",
+        },
+        border: {
+          DEFAULT: "var(--border)",
+          hairline: "var(--border-hairline)",
+          strong: "var(--border-strong)",
+          brand: cssColor("brand-300"),
+        },
 
         /* ---- Legacy aliases (DEPRECATED, values unchanged) ------------- */
         /* New code must not use these. Removed once their last caller is
@@ -158,7 +246,7 @@ const config: Config = {
        */
     },
   },
-  plugins: [],
+  plugins: [designVars],
 };
 
 export default config;

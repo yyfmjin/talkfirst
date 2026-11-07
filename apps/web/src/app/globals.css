@@ -386,3 +386,133 @@ button {
     transition: none;
   }
 }
+
+/* --------------------------------------------------------------------------
+ * 深色模式（2026-11-06）
+ *
+ * 跟随系统：不做手动开关，`prefers-color-scheme` 一变就整体换值。
+ * 所有色阶都是 CSS 变量（由 tailwind.config.ts 的 `designVars` 从 tokens 生成），
+ * 所以这里**不需要**改任何一个 `text-content` / `bg-surface` 调用点。
+ *
+ * 只覆盖三类东西：
+ *   1. 中性色与文字色整体反相（深底浅字）；
+ *   2. brand/accent/status 的**浅色 tint**（50/100/200）——不换的话 chip 会是
+ *      一块刺眼的白；
+ *   3. 600 档在深底上当**文字**太暗（`#0063E6` 压 `#0B1118` 只有 3.3），所以这里
+ *      把 600 提亮；作为**填充底色**的 600 由下面几条 class 例外保回原值，
+ *      保证白字仍然 ≥ 4.5。
+ * -------------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    color: #e9eef5;
+    background: #0a1017;
+
+    /* 中性：0–300 当「面」，400–900 当「字」 */
+    --neutral-0: 9 14 22;
+    --neutral-25: 12 18 27;
+    --neutral-50: 15 22 32;
+    --neutral-100: 20 29 41;
+    --neutral-200: 28 39 54;
+    --neutral-300: 40 54 72;
+    --neutral-400: 122 135 154;
+    --neutral-500: 154 166 184;
+    --neutral-600: 178 189 205;
+    --neutral-700: 203 212 226;
+    --neutral-800: 233 238 245;
+    --neutral-900: 246 248 252;
+
+    --content-DEFAULT: 233 238 245;
+    --content-muted: 158 170 188;
+    --content-subtle: 124 137 156;
+    --content-inverse: 9 14 22;
+    --content-brand: 74 166 255;
+    --content-accent: 185 174 247;
+
+    /* tint：只把浅色档换掉，500 以上保持品牌原色 */
+    --brand-50: 12 26 45;
+    --brand-100: 16 37 62;
+    --brand-200: 22 52 86;
+    --brand-600: 74 166 255;
+    --brand-700: 133 196 255;
+
+    --accent-50: 26 22 44;
+    --accent-100: 34 29 58;
+    --accent-300: 140 124 220;
+
+    --success-50: 8 32 24;
+    --success-100: 12 45 34;
+    --success-600: 52 211 153;
+    --success-700: 110 231 183;
+
+    --warning-50: 38 28 8;
+    --warning-100: 52 38 10;
+    --warning-200: 74 54 12;
+    --warning-800: 251 191 36;
+    --warning-900: 253 224 71;
+
+    --danger-50: 40 14 16;
+    --danger-100: 56 18 20;
+    --danger-200: 78 24 26;
+    --danger-600: 248 113 113;
+    --danger-700: 252 165 165;
+
+    --info-50: 10 28 44;
+    --info-100: 14 40 62;
+    --info-700: 125 211 252;
+
+    /* 玻璃：同样的「离屏幕越远越不透」，但换成白色微光 */
+    --surface: rgba(255, 255, 255, 0.06);
+    --surface-raised: rgba(255, 255, 255, 0.10);
+    --surface-frame: rgba(255, 255, 255, 0.03);
+    --surface-sunken: rgba(255, 255, 255, 0.04);
+    --surface-brand: rgba(11, 127, 255, 0.18);
+    --surface-scrim: rgba(2, 6, 12, 0.62);
+
+    --border: rgba(255, 255, 255, 0.10);
+    --border-hairline: 30 41 55;
+    --border-strong: 44 58 76;
+  }
+
+  /* 底 wash：同一套三团光，换到深蓝底上，浓度降一半 */
+  body {
+    background-color: #0a1017;
+    background-image:
+      radial-gradient(900px 620px at 6% -8%, rgba(11, 127, 255, 0.16) 0%, rgba(11, 127, 255, 0) 62%),
+      radial-gradient(760px 520px at 104% 0%, rgba(80, 110, 200, 0.14) 0%, rgba(80, 110, 200, 0) 58%),
+      radial-gradient(900px 700px at 50% 108%, rgba(11, 127, 255, 0.10) 0%, rgba(11, 127, 255, 0) 62%),
+      linear-gradient(180deg, #0b1219 0%, #0a1017 55%, #080d13 100%);
+  }
+
+  /* 反光在深色下要更弱，否则玻璃看着像塑料 */
+  .bg-surface,
+  .bg-surface-raised,
+  .bg-surface-frame,
+  .bg-surface-sunken {
+    background-image: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(255, 255, 255, 0.01) 100%
+    );
+  }
+
+  /*
+   * 填充按钮的底色保持原值（白字要 ≥ 4.5）。
+   * 文字用的 .text-brand-600 走的是提亮后的 --brand-600，两者互不影响。
+   */
+  .bg-brand-600 {
+    background-color: #0063e6;
+  }
+  .bg-brand-500 {
+    background-color: #0b7fff;
+  }
+  .bg-danger-600 {
+    background-color: #dc2626;
+  }
+  .bg-success-600 {
+    background-color: #16a34a;
+  }
+  .bg-warning-600 {
+    background-color: #d97706;
+  }
+}

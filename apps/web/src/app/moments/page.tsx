@@ -895,7 +895,7 @@ function MomentCard({
       </div>
 
       {commentsOpen ? (
-        <div className="border-t border-border bg-surface-sunken/60 px-5 py-3">
+        <div className="border-t border-border bg-surface-sunken px-5 py-3">
           <MomentComments
             comments={comments ?? []}
             max={8}

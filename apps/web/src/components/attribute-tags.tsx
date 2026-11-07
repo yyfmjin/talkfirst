@@ -44,7 +44,7 @@ export function AttributeTagList({
           <span className="min-w-0 truncate">{attributeLabel(attribute)}</span>
           {attribute.value ? <span className="min-w-0 truncate opacity-70">· {attribute.value}</span> : null}
           {showRetired && attribute.definitionActive === false ? (
-            <span className="shrink-0 rounded-full bg-surface/80 px-1.5 text-overline text-warning-800">{t("me.tagRetired")}</span>
+            <span className="shrink-0 rounded-full bg-surface-raised px-1.5 text-overline text-warning-800">{t("me.tagRetired")}</span>
           ) : null}
         </span>
       ))}

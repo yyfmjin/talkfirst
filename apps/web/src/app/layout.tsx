@@ -40,7 +40,12 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#F7F9FC",
+  /* 手机浏览器地址栏的颜色：深色模式跟随系统，两套都要给。 */
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F7F9FC" },
+    { media: "(prefers-color-scheme: dark)", color: "#0A1017" },
+  ],
+  colorScheme: "light dark",
 };
 
 export default function RootLayout({

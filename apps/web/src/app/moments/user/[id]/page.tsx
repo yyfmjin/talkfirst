@@ -379,7 +379,7 @@ export default function UserMomentsPage() {
                     </button>
                   </div>
                   {commenting === item.id ? (
-                    <div className="border-t border-border bg-surface-sunken/60 px-4 py-3">
+                    <div className="border-t border-border bg-surface-sunken px-4 py-3">
                       {(comments[item.id] ?? []).slice(-8).map((comment) => (
                         <p key={comment.id} className="mb-2 break-words text-caption leading-5 text-content">
                           <button
