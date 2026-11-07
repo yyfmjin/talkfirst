@@ -13,6 +13,7 @@ import {
 import { apiFetch, ApiRequestError } from "../lib/api";
 import { useI18n } from "../lib/i18n-context";
 import { Icon } from "../components/Icon";
+import { ModalScrim } from "../components/ModalScrim";
 import { colors, themed } from "../theme";
 
 import { radii, sizes } from "../design/tokens";
@@ -151,6 +152,7 @@ export function GuessSheet({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <ModalScrim />
       <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel={t("guess.close")} />
       <View style={styles.sheet}>
         <View style={styles.grabber} />
@@ -291,9 +293,12 @@ export function GuessSheet({
 }
 
 const styles = themed((c) => StyleSheet.create({
-  scrim: { flex: 1, backgroundColor: "rgba(20,22,40,0.42)" },
+  scrim: { flex: 1 },
   sheet: {
-    backgroundColor: c.glassRaised,
+    /* 实底（2026-11-07）：原来是 glassRaised，背后的页面会透进弹层。 */
+    backgroundColor: c.bgSolid,
+    borderTopWidth: 1,
+    borderColor: c.line,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 18,

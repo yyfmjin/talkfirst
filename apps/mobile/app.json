@@ -2,7 +2,7 @@
   "expo": {
     "name": "TalkFirst",
     "slug": "talkfirst",
-    "version": "0.1.20",
+    "version": "0.1.21",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "scheme": "talkfirst",
@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.talkfirst.app",
-      "versionCode": 20,
+      "versionCode": 21,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0B7FFF"

@@ -4,6 +4,7 @@ import { useI18n } from "../lib/i18n-context";
 import { colors, themed } from "../theme";
 import { DailyFortuneCard } from "./DailyFortuneCard";
 import { Icon } from "./Icon";
+import { ModalScrim } from "./ModalScrim";
 
 import { radii, sizes } from "../design/tokens";
 /* 图标源在 `store/brand/fortune-icon.svg`，PNG 由它渲染而来（手机端不引 react-native-svg）。 */
@@ -48,6 +49,7 @@ export function DailyFortuneEntry() {
         statusBarTranslucent
       >
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)} accessibilityRole="button">
+          <ModalScrim />
           {/* 内层拦住点击：点卡片本身不该关掉它。 */}
           <Pressable style={styles.sheet} onPress={() => undefined} accessibilityRole="none">
             <View style={styles.head}>
@@ -83,8 +85,7 @@ const styles = themed((c) => StyleSheet.create({
   entryIcon: { width: 24, height: 24 },
   backdrop: {
     flex: 1,
-    /* 0.55：再淡一点，背后的头像/文字会透上来把注意力拉走。 */
-    backgroundColor: "rgba(15, 23, 42, 0.55)",
+    /* 遮罩的观感交给 <ModalScrim />（虚化 + 压暗），这里只负责布局与点击。 */
     justifyContent: "center",
     paddingHorizontal: 18,
   },

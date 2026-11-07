@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
+import { ModalScrim } from "../components/ModalScrim";
 import { apiFetch } from "../lib/api";
 import { useI18n } from "../lib/i18n-context";
 import type { PublicProfile } from "../lib/types";
@@ -112,6 +113,7 @@ export function ProfilePreview({
   return (
     <Modal visible={userId !== null} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
+        <ModalScrim />
         <View style={styles.card}>
           <View style={styles.header}>
             <Text style={styles.headerTitle}>{t("profile.title")}</Text>
@@ -243,9 +245,14 @@ function Tag({ children, tone }: { children: ReactNode; tone?: "warm" }) {
 }
 
 const styles = themed((c) => StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
+  backdrop: {
+    flex: 1,
+    /* 遮罩的观感交给 <ModalScrim />（虚化 + 压暗）。 */
+    justifyContent: "flex-end",
+  },
   card: {
-    backgroundColor: c.glassRaised,
+    /* 实底（2026-11-07）：原来是 glassRaised，背后的人像/卡片会透进弹层。 */
+    backgroundColor: c.bgSolid,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     maxHeight: "88%",
