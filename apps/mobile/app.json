@@ -4,7 +4,7 @@
     "slug": "talkfirst",
     "version": "0.1.16",
     "orientation": "portrait",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "scheme": "talkfirst",
     "newArchEnabled": true,
     "icon": "./assets/icon.png",
