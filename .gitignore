@@ -70,3 +70,7 @@ apps/web/public/apk/
 # i18n 扫描的生成物（scripts/i18n-scan.py）
 i18n-leftovers.txt
 api-leftovers.txt
+
+# Play 服务账号密钥（等同发版权限，永不入库）
+service-account*.json
+*play-upload*.json

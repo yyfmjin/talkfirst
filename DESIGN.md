@@ -200,14 +200,15 @@ components:
 2. 可点区域小于 44×44 的图标按钮约 22 处（App）。
 3. 网页端仍有 9 处 8–10px 小徽标字号（刻意保留，见上）与 37 处裸十六进制色
    （`#6572D8` / `#F1F3FF` 这类旧紫蓝残留）。
-4. 无深色模式（`userInterfaceStyle: "light"`，网页也没有 dark token）——是「没做」，
-   不是「做了」。
+4. **App 端还没有深色模式**（网页端已于 2026-11-06 跟随系统上线）。App 的 48 个文件
+   都在模块作用域调 `StyleSheet.create({ color: colors.x })` —— 颜色在模块加载时就
+   定死了，换主题不会重算。要支持深色得把每屏的样式换成「按主题生成」的工厂函数，
+   属于独立一次改造，不是改个开关。
 
 已完成（2026-11-05）：App 新增 `src/design/tokens.ts`（sizes / radii 两套档位）；
 `Button` 补上 `danger` 变体，注销账号页改用它，不再现场拼样式；网页端任意字号
 从 55 处降到 9 处（其余全部换成 `text-overline/caption/ui/body/heading/title/display`）。
 
 ## 禁止项（AI 生成感的来源）
-
 - 米色/沙色默认底；紫色→蓝色对角渐变当 hero；回弹缓动；卡片里套卡片；
   彩色底上的低对比灰字；emoji 当图标。
