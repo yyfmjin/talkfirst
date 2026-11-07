@@ -40,7 +40,7 @@ import type {
   PurposeOption,
   SessionUser,
 } from "../lib/types";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 import { SocialScreen } from "./SocialScreen";
 
 import { radii, sizes } from "../design/tokens";
@@ -668,25 +668,25 @@ export function OnboardingScreen({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+const styles = themed((c) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
   progressWrap: { paddingHorizontal: 20, paddingTop: 12 },
-  progressText: { fontSize: sizes.caption, color: colors.muted },
+  progressText: { fontSize: sizes.caption, color: c.muted },
   progressTrack: {
     marginTop: 6,
     height: 4,
     borderRadius: radii.chip,
-    backgroundColor: colors.line,
+    backgroundColor: c.line,
     overflow: "hidden",
   },
-  progressFill: { height: 4, borderRadius: radii.chip, backgroundColor: colors.primary },
+  progressFill: { height: 4, borderRadius: radii.chip, backgroundColor: c.primary },
   body: { padding: 20, paddingBottom: 32 },
   footer: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20, gap: 6 },
-  hint: { fontSize: sizes.caption, color: colors.muted, marginBottom: 12, lineHeight: 18 },
-  sectionTitle: { fontSize: sizes.ui, fontWeight: "600", color: colors.ink, marginTop: 8, marginBottom: 8 },
+  hint: { fontSize: sizes.caption, color: c.muted, marginBottom: 12, lineHeight: 18 },
+  sectionTitle: { fontSize: sizes.ui, fontWeight: "600", color: c.ink, marginTop: 8, marginBottom: 8 },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  errorText: { fontSize: sizes.ui, color: colors.danger, marginBottom: 12 },
+  errorText: { fontSize: sizes.ui, color: c.danger, marginBottom: 12 },
   avatarStep: { alignItems: "center", paddingTop: 24 },
   avatarTap: { width: 132, height: 132 },
   avatarImage: { width: 132, height: 132, borderRadius: radii.sheet },
@@ -694,7 +694,7 @@ const styles = StyleSheet.create({
     width: 132,
     height: 132,
     borderRadius: radii.sheet,
-    backgroundColor: colors.bgSoft,
+    backgroundColor: c.bgSoft,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -705,32 +705,32 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: radii.control,
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: colors.white,
+    borderColor: c.white,
   },
   skipRow: { alignItems: "center", paddingVertical: 10 },
-  skipLabel: { fontSize: sizes.ui, color: colors.muted },
+  skipLabel: { fontSize: sizes.ui, color: c.muted },
   doneBox: { alignItems: "center", paddingTop: 12 },
   doneBadge: {
     width: 80,
     height: 80,
     borderRadius: radii.sheet,
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
     alignItems: "center",
     justifyContent: "center",
   },
-  doneTitle: { marginTop: 20, fontSize: sizes.title, fontWeight: "600", color: colors.ink },
-  doneSubtitle: { marginTop: 8, fontSize: sizes.ui, color: colors.muted, textAlign: "center" },
+  doneTitle: { marginTop: 20, fontSize: sizes.title, fontWeight: "600", color: c.ink },
+  doneSubtitle: { marginTop: 8, fontSize: sizes.ui, color: c.muted, textAlign: "center" },
   doneCard: {
     alignSelf: "stretch",
     marginTop: 24,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.glass,
+    borderColor: c.line,
+    backgroundColor: c.glass,
     padding: 16,
     gap: 14,
   },
@@ -739,10 +739,10 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: radii.chip,
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
     marginTop: 7,
   },
   doneText: { flex: 1 },
-  doneRowTitle: { fontSize: sizes.ui, fontWeight: "600", color: colors.ink },
-  doneRowBody: { marginTop: 3, fontSize: sizes.caption, color: colors.muted, lineHeight: 18 },
-});
+  doneRowTitle: { fontSize: sizes.ui, fontWeight: "600", color: c.ink },
+  doneRowBody: { marginTop: 3, fontSize: sizes.caption, color: c.muted, lineHeight: 18 },
+}));

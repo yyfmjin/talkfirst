@@ -13,7 +13,7 @@ import { apiFetch } from "../lib/api";
 import { Avatar } from "../components/Avatar";
 import { Icon } from "../components/Icon";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 import type { Moment, VideoFeedPage } from "../lib/types";
 
 import { radii, sizes } from "../design/tokens";
@@ -230,7 +230,7 @@ function VideoPage({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed((c) => StyleSheet.create({
   root: { flex: 1, backgroundColor: "#000000" },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, backgroundColor: "#000000" },
   page: { width: "100%", justifyContent: "center", backgroundColor: "#000000" },
@@ -247,12 +247,12 @@ const styles = StyleSheet.create({
   },
   authorRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   authorText: { flex: 1 },
-  nickname: { fontSize: sizes.body, fontWeight: "700", color: colors.white },
+  nickname: { fontSize: sizes.body, fontWeight: "700", color: c.white },
   country: { fontSize: sizes.caption, color: "rgba(255,255,255,0.75)", marginTop: 1 },
   content: { fontSize: sizes.ui, lineHeight: 20, color: "rgba(255,255,255,0.92)" },
   counts: { flexDirection: "row", alignItems: "center", gap: 14, marginTop: 2 },
   countGroup: { flexDirection: "row", alignItems: "center", gap: 5 },
-  countText: { fontSize: sizes.ui, color: colors.white },
+  countText: { fontSize: sizes.ui, color: c.white },
   emptyText: { fontSize: sizes.ui, color: "rgba(255,255,255,0.8)", textAlign: "center", paddingHorizontal: 40, lineHeight: 21 },
   topLeft: {
     position: "absolute",
@@ -277,4 +277,4 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.45)",
   },
   error: { position: "absolute", left: 16, right: 16, bottom: 40, fontSize: sizes.ui, color: "#FFD8D8", textAlign: "center" },
-});
+}));

@@ -17,7 +17,7 @@ import { apiFetch } from "../lib/api";
 import { useI18n } from "../lib/i18n-context";
 import { ageFromBirthDateInput, MIN_AGE, type GenderValue } from "../lib/profile-options";
 import type { CountryOption, SessionUser } from "../lib/types";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 import { sizes } from "../design/tokens";
 /**
@@ -323,8 +323,8 @@ export function EditProfileScreen({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+const styles = themed((c) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
   body: { padding: 20, paddingBottom: 40 },
   avatarRow: {
     flexDirection: "row",
@@ -333,9 +333,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   avatarText: { flex: 1, gap: 4 },
-  avatarAction: { fontSize: sizes.body, fontWeight: "600", color: colors.primaryDark },
-  avatarHint: { fontSize: sizes.caption, lineHeight: 18, color: colors.muted },
-  errorText: { fontSize: sizes.ui, lineHeight: 19, color: colors.danger },
-  okText: { fontSize: sizes.ui, color: colors.primary },
+  avatarAction: { fontSize: sizes.body, fontWeight: "600", color: c.primaryDark },
+  avatarHint: { fontSize: sizes.caption, lineHeight: 18, color: c.muted },
+  errorText: { fontSize: sizes.ui, lineHeight: 19, color: c.danger },
+  okText: { fontSize: sizes.ui, color: c.primary },
   actions: { marginTop: 8 },
-});
+}));

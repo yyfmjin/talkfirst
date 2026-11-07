@@ -1,5 +1,5 @@
 import { StyleSheet, Text, TextInput, View } from "react-native";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 import { radii, sizes } from "../design/tokens";
 export function Input({
@@ -56,18 +56,18 @@ export function Input({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed((c) => StyleSheet.create({
   field: { marginBottom: 16 },
-  label: { fontSize: sizes.ui, color: colors.ink, marginBottom: 8, fontWeight: "500" },
+  label: { fontSize: sizes.ui, color: c.ink, marginBottom: 8, fontWeight: "500" },
   input: {
     minHeight: 48,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: c.line,
     borderRadius: radii.chip,
     paddingHorizontal: 14,
     fontSize: sizes.body,
-    color: colors.ink,
-    backgroundColor: colors.glassSunken,
+    color: c.ink,
+    backgroundColor: c.glassSunken,
   },
   inputMultiline: { minHeight: 96, paddingTop: 12, textAlignVertical: "top" },
-});
+}));

@@ -18,7 +18,7 @@ import { LikeButton } from "../components/LikeButton";
 import { FlashNotice } from "../components/FlashNotice";
 import { useAuth } from "../lib/auth-context";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 import type { Moment, MomentPage } from "../lib/types";
 
 import { radii, sizes } from "../design/tokens";
@@ -366,8 +366,8 @@ function MomentVideo({ uri }: { uri: string }) {
   return <VideoView player={player} style={styles.video} nativeControls contentFit="contain" />;
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+const styles = themed((c) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 10 },
   header: {
     flexDirection: "row",
@@ -377,7 +377,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 12,
   },
-  headerTitle: { fontSize: sizes.title, fontWeight: "700", color: colors.ink },
+  headerTitle: { fontSize: sizes.title, fontWeight: "700", color: c.ink },
   headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
   watchButton: {
     flexDirection: "row",
@@ -387,10 +387,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: radii.pill,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.glass,
+    borderColor: c.line,
+    backgroundColor: c.glass,
   },
-  watchLabel: { fontSize: sizes.ui, fontWeight: "600", color: colors.primary },
+  watchLabel: { fontSize: sizes.ui, fontWeight: "600", color: c.primary },
   /* 只放一个图标，可点区域撞到 40×40（与另两个胶囊按钮同高）。 */
   iconButton: {
     width: 40,
@@ -399,8 +399,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: radii.card,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.glass,
+    borderColor: c.line,
+    backgroundColor: c.glass,
   },
   composeButton: {
     flexDirection: "row",
@@ -409,26 +409,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: radii.pill,
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
   },
-  composeLabel: { fontSize: sizes.ui, fontWeight: "600", color: colors.white },
+  composeLabel: { fontSize: sizes.ui, fontWeight: "600", color: c.white },
   list: { paddingHorizontal: 16, paddingBottom: 24, gap: 12 },
-  card: { backgroundColor: colors.glass, borderRadius: radii.control, borderWidth: 1, borderColor: colors.line, padding: 14, gap: 10 },
+  card: { backgroundColor: c.glass, borderRadius: radii.control, borderWidth: 1, borderColor: c.line, padding: 14, gap: 10 },
   cardHead: { flexDirection: "row", alignItems: "center", gap: 10 },
   cardHeadText: { flex: 1 },
-  nickname: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
-  meta: { fontSize: sizes.caption, color: colors.muted, marginTop: 2 },
-  content: { fontSize: sizes.body, lineHeight: 22, color: colors.ink },
+  nickname: { fontSize: sizes.body, fontWeight: "600", color: c.ink },
+  meta: { fontSize: sizes.caption, color: c.muted, marginTop: 2 },
+  content: { fontSize: sizes.body, lineHeight: 22, color: c.ink },
   video: { width: "100%", aspectRatio: 16 / 9, borderRadius: radii.chip, backgroundColor: "#0B0B14" },
   imageRow: { flexDirection: "row", gap: 6 },
-  image: { flex: 1, height: 120, borderRadius: radii.chip, backgroundColor: colors.bgSoft },
+  image: { flex: 1, height: 120, borderRadius: radii.chip, backgroundColor: c.bgSoft },
   actions: { flexDirection: "row", alignItems: "center", gap: 20, paddingTop: 2 },
   action: { flexDirection: "row", alignItems: "center", gap: 5 },
-  actionLabel: { fontSize: sizes.ui, color: colors.muted },
-  emptyText: { fontSize: sizes.ui, color: colors.muted, textAlign: "center", lineHeight: 21 },
+  actionLabel: { fontSize: sizes.ui, color: c.muted },
+  emptyText: { fontSize: sizes.ui, color: c.muted, textAlign: "center", lineHeight: 21 },
   footer: { paddingVertical: 18 },
-  error: { position: "absolute", left: 16, right: 16, bottom: 12, fontSize: sizes.ui, color: colors.danger, textAlign: "center" },
-});
+  error: { position: "absolute", left: 16, right: 16, bottom: 12, fontSize: sizes.ui, color: c.danger, textAlign: "center" },
+}));
 
 /** 让 `Button` 在本文件里被用到（发布入口后续接上时复用同一个组件）。 */
 export const __momentsScreenKeepsButtonImport = Button;

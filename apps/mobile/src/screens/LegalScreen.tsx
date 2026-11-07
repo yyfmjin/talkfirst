@@ -4,7 +4,7 @@ import { Icon } from "../components/Icon";
 import { SubHeader } from "../components/SubHeader";
 import { useI18n } from "../lib/i18n-context";
 import { LEGAL_DOCS, legalUrl, SUPPORT_EMAIL } from "../lib/legal";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 import { radii, sizes } from "../design/tokens";
 /**
@@ -74,15 +74,15 @@ export function LegalScreen({ onBack }: { onBack: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+const styles = themed((c) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
   body: { padding: 12, paddingBottom: 32 },
-  intro: { fontSize: sizes.ui, color: colors.muted, lineHeight: 19, marginBottom: 12 },
+  intro: { fontSize: sizes.ui, color: c.muted, lineHeight: 19, marginBottom: 12 },
   card: {
-    backgroundColor: colors.glass,
+    backgroundColor: c.glass,
     borderRadius: radii.chip,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: c.line,
     overflow: "hidden",
     marginBottom: 20,
   },
@@ -95,8 +95,8 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     minHeight: 48,
   },
-  rowDivided: { borderTopWidth: 1, borderTopColor: colors.line },
-  rowLabel: { fontSize: sizes.body, color: colors.ink },
-  sectionTitle: { fontSize: sizes.ui, fontWeight: "600", color: colors.muted, marginBottom: 8 },
-  error: { fontSize: sizes.ui, color: colors.danger },
-});
+  rowDivided: { borderTopWidth: 1, borderTopColor: c.line },
+  rowLabel: { fontSize: sizes.body, color: c.ink },
+  sectionTitle: { fontSize: sizes.ui, fontWeight: "600", color: c.muted, marginBottom: 8 },
+  error: { fontSize: sizes.ui, color: c.danger },
+}));

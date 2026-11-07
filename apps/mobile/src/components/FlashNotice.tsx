@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Animated, StyleSheet, Text } from "react-native";
 import { playSlideIn, playSlideOut, slideInStyle } from "../lib/motion";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 import { radii, sizes } from "../design/tokens";
 /**
@@ -37,7 +37,7 @@ export function FlashNotice({ message, onHidden }: { message: string | null; onH
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed((c) => StyleSheet.create({
   notice: {
     position: "absolute",
     top: 8,
@@ -45,8 +45,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: radii.pill,
-    backgroundColor: colors.ink,
+    backgroundColor: c.ink,
     zIndex: 20,
   },
-  text: { fontSize: sizes.ui, fontWeight: "600", color: colors.white },
-});
+  text: { fontSize: sizes.ui, fontWeight: "600", color: c.white },
+}));

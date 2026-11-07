@@ -1,5 +1,5 @@
 import { Image, StyleSheet, Text, View } from "react-native";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 export function Avatar({
   uri,
@@ -34,11 +34,11 @@ export function Avatar({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed((c) => StyleSheet.create({
   fallback: {
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
     alignItems: "center",
     justifyContent: "center",
   },
-  initial: { color: colors.white, fontWeight: "600" },
-});
+  initial: { color: c.white, fontWeight: "600" },
+}));

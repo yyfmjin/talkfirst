@@ -5,7 +5,7 @@ import { Icon } from "./Icon";
 import { useI18n } from "../lib/i18n-context";
 import { GENDER_VALUES, type GenderValue } from "../lib/profile-options";
 import type { CountryOption } from "../lib/types";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 import { radii, sizes } from "../design/tokens";
 /**
@@ -156,9 +156,9 @@ export function FieldHint({ text, tone = "muted" }: { text: string; tone?: "mute
   return <Text style={tone === "danger" ? styles.hintDanger : styles.hint}>{text}</Text>;
 }
 
-const styles = StyleSheet.create({
+const styles = themed((c) => StyleSheet.create({
   field: { marginBottom: 16 },
-  label: { fontSize: sizes.ui, color: colors.ink, marginBottom: 8, fontWeight: "500" },
+  label: { fontSize: sizes.ui, color: c.ink, marginBottom: 8, fontWeight: "500" },
   selectRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -166,19 +166,19 @@ const styles = StyleSheet.create({
     gap: 8,
     minHeight: 48,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: c.line,
     borderRadius: radii.chip,
     paddingHorizontal: 14,
-    backgroundColor: colors.glassSunken,
+    backgroundColor: c.glassSunken,
   },
-  selectValue: { flex: 1, fontSize: sizes.body, color: colors.ink },
-  selectPlaceholder: { flex: 1, fontSize: sizes.body, color: colors.muted },
+  selectValue: { flex: 1, fontSize: sizes.body, color: c.ink },
+  selectPlaceholder: { flex: 1, fontSize: sizes.body, color: c.muted },
   selectBody: {
     marginTop: 8,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: c.line,
     borderRadius: radii.chip,
-    backgroundColor: colors.glass,
+    backgroundColor: c.glass,
     paddingVertical: 4,
     overflow: "hidden",
   },
@@ -186,11 +186,11 @@ const styles = StyleSheet.create({
     margin: 8,
     minHeight: 40,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: c.line,
     borderRadius: radii.chip,
     paddingHorizontal: 12,
     fontSize: sizes.ui,
-    color: colors.ink,
+    color: c.ink,
   },
   optionRow: {
     flexDirection: "row",
@@ -200,9 +200,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 11,
   },
-  optionLabel: { flex: 1, fontSize: sizes.ui, color: colors.ink },
-  empty: { paddingHorizontal: 14, paddingVertical: 10, fontSize: sizes.ui, color: colors.muted },
+  optionLabel: { flex: 1, fontSize: sizes.ui, color: c.ink },
+  empty: { paddingHorizontal: 14, paddingVertical: 10, fontSize: sizes.ui, color: c.muted },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  hint: { marginTop: 6, fontSize: sizes.caption, color: colors.muted },
-  hintDanger: { marginTop: 6, fontSize: sizes.caption, color: colors.danger },
-});
+  hint: { marginTop: 6, fontSize: sizes.caption, color: c.muted },
+  hintDanger: { marginTop: 6, fontSize: sizes.caption, color: c.danger },
+}));

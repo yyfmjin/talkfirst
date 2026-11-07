@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useI18n } from "../lib/i18n-context";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 import { DailyFortuneCard } from "./DailyFortuneCard";
 import { Icon } from "./Icon";
 
@@ -70,7 +70,7 @@ export function DailyFortuneEntry() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed((c) => StyleSheet.create({
   /* 实底（不再用描边透明款）：淡品牌底 + 自家图标，和旁边两个描边按钮区分开。 */
   entry: {
     width: 40,
@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radii.card,
-    backgroundColor: colors.bgTint,
+    backgroundColor: c.bgTint,
   },
   entryIcon: { width: 24, height: 24 },
   backdrop: {
@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   sheet: {
-    backgroundColor: colors.glassRaised,
+    backgroundColor: c.glassRaised,
     borderRadius: radii.card,
     paddingTop: 14,
     paddingBottom: 6,
@@ -101,6 +101,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 8,
   },
-  title: { fontSize: sizes.body, fontWeight: "700", color: colors.ink },
+  title: { fontSize: sizes.body, fontWeight: "700", color: c.ink },
   close: { padding: 4 },
-});
+}));

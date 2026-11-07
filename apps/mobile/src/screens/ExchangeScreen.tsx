@@ -14,7 +14,7 @@ import { apiFetch } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { useI18n } from "../lib/i18n-context";
 import type { ExchangeEligibility, ExchangePlatformOption, SharedContact } from "../lib/types";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 import { radii, sizes } from "../design/tokens";
 /**
@@ -359,53 +359,53 @@ export function ExchangeScreen({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+const styles = themed((c) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
   body: { padding: 20, paddingTop: 14, paddingBottom: 40 },
-  intro: { fontSize: sizes.ui, lineHeight: 20, color: colors.muted },
+  intro: { fontSize: sizes.ui, lineHeight: 20, color: c.muted },
   center: { alignItems: "center", gap: 10, paddingVertical: 28 },
-  muted: { fontSize: sizes.ui, lineHeight: 19, color: colors.muted },
+  muted: { fontSize: sizes.ui, lineHeight: 19, color: c.muted },
   progressCard: {
     marginTop: 16,
     borderRadius: radii.chip,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.bgSoft,
+    borderColor: c.line,
+    backgroundColor: c.bgSoft,
     padding: 14,
   },
-  progressText: { fontSize: sizes.caption, lineHeight: 18, color: colors.muted },
+  progressText: { fontSize: sizes.caption, lineHeight: 18, color: c.muted },
   section: { marginTop: 22 },
-  sectionTitle: { fontSize: sizes.body, fontWeight: "700", color: colors.ink },
+  sectionTitle: { fontSize: sizes.body, fontWeight: "700", color: c.ink },
   card: {
     marginTop: 10,
     borderRadius: radii.chip,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.glass,
+    borderColor: c.line,
+    backgroundColor: c.glass,
     padding: 14,
   },
-  cardTitle: { fontSize: sizes.body, color: colors.ink, fontWeight: "600" },
-  handle: { marginTop: 6, fontSize: sizes.body, color: colors.primaryDark },
-  note: { marginTop: 8, fontSize: sizes.caption, lineHeight: 18, color: colors.muted },
-  hint: { marginTop: 10, fontSize: sizes.caption, lineHeight: 18, color: colors.muted },
+  cardTitle: { fontSize: sizes.body, color: c.ink, fontWeight: "600" },
+  handle: { marginTop: 6, fontSize: sizes.body, color: c.primaryDark },
+  note: { marginTop: 8, fontSize: sizes.caption, lineHeight: 18, color: c.muted },
+  hint: { marginTop: 10, fontSize: sizes.caption, lineHeight: 18, color: c.muted },
   actionRow: { flexDirection: "row", gap: 8, marginTop: 12 },
   actionItem: { flex: 1 },
   actionItemWide: { flex: 2 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
-  fieldLabel: { marginTop: 16, fontSize: sizes.caption, fontWeight: "600", color: colors.muted },
+  fieldLabel: { marginTop: 16, fontSize: sizes.caption, fontWeight: "600", color: c.muted },
   textarea: {
     marginTop: 6,
     minHeight: 72,
     borderRadius: radii.chip,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.glass,
+    borderColor: c.line,
+    backgroundColor: c.glass,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: sizes.ui,
-    color: colors.ink,
+    color: c.ink,
     textAlignVertical: "top",
   },
   submitRow: { marginTop: 16 },
-  errorText: { marginTop: 16, fontSize: sizes.ui, lineHeight: 19, color: colors.danger },
-});
+  errorText: { marginTop: 16, fontSize: sizes.ui, lineHeight: 19, color: c.danger },
+}));

@@ -14,7 +14,7 @@ import { Button } from "../components/Button";
 import { apiFetch } from "../lib/api";
 import { useI18n } from "../lib/i18n-context";
 import type { PublicProfile } from "../lib/types";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 import { radii, sizes } from "../design/tokens";
 export function ProfilePreview({
@@ -242,10 +242,10 @@ function Tag({ children, tone }: { children: ReactNode; tone?: "warm" }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed((c) => StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
   card: {
-    backgroundColor: colors.glassRaised,
+    backgroundColor: c.glassRaised,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     maxHeight: "88%",
@@ -253,39 +253,39 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  headerTitle: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
+  headerTitle: { fontSize: sizes.body, fontWeight: "600", color: c.ink },
   close: {
     width: 32,
     height: 32,
     borderRadius: radii.control,
-    backgroundColor: colors.bgTint,
+    backgroundColor: c.bgTint,
     alignItems: "center",
     justifyContent: "center",
   },
-  closeText: { color: colors.primaryDark, fontSize: sizes.ui },
+  closeText: { color: c.primaryDark, fontSize: sizes.ui },
   identity: { alignItems: "center", marginTop: 20 },
-  name: { fontSize: sizes.heading, fontWeight: "600", color: colors.ink, marginTop: 12 },
-  age: { fontSize: sizes.ui, fontWeight: "400", color: colors.muted },
-  place: { fontSize: sizes.caption, color: colors.muted, marginTop: 4 },
+  name: { fontSize: sizes.heading, fontWeight: "600", color: c.ink, marginTop: 12 },
+  age: { fontSize: sizes.ui, fontWeight: "400", color: c.muted },
+  place: { fontSize: sizes.caption, color: c.muted, marginTop: 4 },
   bio: {
     fontSize: sizes.ui,
     lineHeight: 20,
-    color: colors.muted,
-    backgroundColor: colors.bgSoft,
+    color: c.muted,
+    backgroundColor: c.bgSoft,
     borderRadius: radii.chip,
     padding: 12,
     marginTop: 16,
   },
   section: { marginTop: 18 },
-  sectionTitle: { fontSize: sizes.overline, fontWeight: "500", color: colors.muted, marginBottom: 8 },
+  sectionTitle: { fontSize: sizes.overline, fontWeight: "500", color: c.muted, marginBottom: 8 },
   tagWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  tag: { backgroundColor: colors.bgTint, borderRadius: radii.control, paddingHorizontal: 12, paddingVertical: 6 },
+  tag: { backgroundColor: c.bgTint, borderRadius: radii.control, paddingHorizontal: 12, paddingVertical: 6 },
   tagWarm: { backgroundColor: "#FFF4E5" },
-  tagText: { fontSize: sizes.overline, color: colors.primaryDark },
+  tagText: { fontSize: sizes.overline, color: c.primaryDark },
   tagTextWarm: { color: "#B26A00" },
   tagSub: { fontSize: 10, opacity: 0.7 },
-  inlineError: { color: colors.danger, fontSize: sizes.caption, textAlign: "center", marginTop: 12 },
+  inlineError: { color: c.danger, fontSize: sizes.caption, textAlign: "center", marginTop: 12 },
   errorBox: { alignItems: "center", marginTop: 24 },
-  errorText: { color: colors.danger, fontSize: sizes.ui, textAlign: "center", marginBottom: 12 },
+  errorText: { color: c.danger, fontSize: sizes.ui, textAlign: "center", marginBottom: 12 },
   actions: { marginTop: 24, gap: 8 },
-});
+}));

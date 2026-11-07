@@ -8,7 +8,7 @@ import { useI18n } from "../lib/i18n-context";
 import type { MsgKey } from "../lib/messages";
 import { saveTokens } from "../lib/storage";
 import type { AccountLoginMethods } from "../lib/types";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 import { radii, sizes } from "../design/tokens";
 type Mode = "loading" | "set" | "change";
@@ -189,24 +189,24 @@ function PasswordField({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+const styles = themed((c) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
   body: { padding: 20, paddingBottom: 40, gap: 16 },
-  hint: { fontSize: sizes.ui, lineHeight: 20, color: colors.muted },
+  hint: { fontSize: sizes.ui, lineHeight: 20, color: c.muted },
   field: { gap: 6 },
-  fieldLabel: { fontSize: sizes.ui, fontWeight: "600", color: colors.muted },
+  fieldLabel: { fontSize: sizes.ui, fontWeight: "600", color: c.muted },
   input: {
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: c.line,
     borderRadius: radii.chip,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: sizes.body,
-    color: colors.ink,
-    backgroundColor: colors.glass,
+    color: c.ink,
+    backgroundColor: c.glass,
   },
-  errorText: { fontSize: sizes.ui, color: colors.danger },
-  okText: { fontSize: sizes.ui, color: colors.primary },
+  errorText: { fontSize: sizes.ui, color: c.danger },
+  okText: { fontSize: sizes.ui, color: c.primary },
   actions: { marginTop: 4 },
-});
+}));

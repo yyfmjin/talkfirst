@@ -25,7 +25,7 @@ import { MeScreen } from "./src/screens/MeScreen";
 import { MessagesScreen } from "./src/screens/MessagesScreen";
 import { MomentsScreen } from "./src/screens/MomentsScreen";
 import { OnboardingScreen } from "./src/screens/OnboardingScreen";
-import { colors } from "./src/theme";
+import { colors, themed, useAppearance } from "./src/theme";
 
 import { radii, sizes } from "./src/design/tokens";
 /**
@@ -272,6 +272,8 @@ function Root() {
 }
 
 export default function App() {
+  /* 跟随系统深浅色：模块级样式表靠这里切换（见 theme.ts 的 themed）。 */
+  useAppearance();
   /*
    * 图标字体：**只加载，不阻塞渲染**。
    *
@@ -325,25 +327,25 @@ export default function App() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
-  splash: { flex: 1, backgroundColor: colors.bg, alignItems: "center", justifyContent: "center" },
+const styles = themed((c) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
+  splash: { flex: 1, backgroundColor: c.bg, alignItems: "center", justifyContent: "center" },
   body: { flex: 1 },
   tabBar: {
     flexDirection: "row",
-    borderTopColor: colors.glassEdge,
-    /* 底下的旧 `backgroundColor: colors.white` 已撤：现在由 <Glass tone="raised"> 给。 */
+    borderTopColor: c.glassEdge,
+    /* 底下的旧 `backgroundColor: c.white` 已撤：现在由 <Glass tone="raised"> 给。 */
     /* paddingBottom 在渲染时按真实安全区取（全面屏手势条会压住 tab 文字）。 */
   },
   tabItem: { flex: 1, alignItems: "center", justifyContent: "center", minHeight: 56, paddingTop: 8 },
-  tabLabel: { fontSize: sizes.overline, color: colors.muted, marginTop: 2 },
-  tabLabelActive: { color: colors.primary, fontWeight: "600" },
+  tabLabel: { fontSize: sizes.overline, color: c.muted, marginTop: 2 },
+  tabLabelActive: { color: c.primary, fontWeight: "600" },
   tabIndicator: {
     position: "absolute",
     top: 0,
     width: 32,
     height: 3,
     borderRadius: radii.chip,
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
   },
-});
+}));

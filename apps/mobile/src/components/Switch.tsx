@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, View } from "react-native";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 import { radii } from "../design/tokens";
 /**
@@ -48,7 +48,7 @@ export function Switch({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed((c) => StyleSheet.create({
   track: {
     width: 48,
     height: 28,
@@ -56,9 +56,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
     justifyContent: "center",
   },
-  trackOn: { backgroundColor: colors.primary, alignItems: "flex-end" },
-  trackOff: { backgroundColor: colors.muted, alignItems: "flex-start" },
+  trackOn: { backgroundColor: c.primary, alignItems: "flex-end" },
+  trackOff: { backgroundColor: c.muted, alignItems: "flex-start" },
   /* 白色的滑块在两种底色上都是 3:1 以上，不靠颜色单独区分开关状态。 */
-  knob: { width: 24, height: 24, borderRadius: radii.chip, backgroundColor: colors.white },
+  knob: { width: 24, height: 24, borderRadius: radii.chip, backgroundColor: c.white },
   disabled: { opacity: 0.5 },
-});
+}));

@@ -4,7 +4,7 @@ import { apiFetch } from "../lib/api";
 import { useI18n } from "../lib/i18n-context";
 import { playPopIn, popInStyle } from "../lib/motion";
 import type { MsgKey } from "../lib/messages";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 import { radii, sizes } from "../design/tokens";
 /**
@@ -244,14 +244,14 @@ export function DailyFortuneCard() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed((c) => StyleSheet.create({
   placeholder: { paddingVertical: 24, alignItems: "center" },
   shell: { maxHeight: 560 },
   card: { paddingHorizontal: 16, paddingBottom: 14, gap: 8 },
-  date: { fontSize: sizes.caption, color: colors.muted },
+  date: { fontSize: sizes.caption, color: c.muted },
   metaRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 10 },
-  meta: { fontSize: sizes.caption, color: colors.muted },
-  sign: { fontSize: sizes.ui, fontWeight: "600", color: colors.primaryDark },
+  meta: { fontSize: sizes.caption, color: c.muted },
+  sign: { fontSize: sizes.ui, fontWeight: "600", color: c.primaryDark },
 
   /* 2×2 类目格：一眼扫完，不用滚。 */
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 2 },
@@ -261,18 +261,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
     borderRadius: radii.chip,
-    backgroundColor: colors.bgSoft,
+    backgroundColor: c.bgSoft,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: c.line,
   },
-  cellGood: { backgroundColor: colors.bgTint, borderColor: colors.bgTint },
-  cellCareful: { backgroundColor: colors.dangerSoft, borderColor: colors.dangerSoft },
+  cellGood: { backgroundColor: c.bgTint, borderColor: c.bgTint },
+  cellCareful: { backgroundColor: c.dangerSoft, borderColor: c.dangerSoft },
   cellHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  cellLabel: { fontSize: sizes.caption, fontWeight: "700", color: colors.ink },
-  cellRating: { fontSize: sizes.overline, fontWeight: "700", color: colors.muted },
-  textGood: { color: colors.primaryDark },
-  textCareful: { color: colors.danger },
-  cellNote: { fontSize: sizes.caption, lineHeight: 17, color: colors.ink },
+  cellLabel: { fontSize: sizes.caption, fontWeight: "700", color: c.ink },
+  cellRating: { fontSize: sizes.overline, fontWeight: "700", color: c.muted },
+  textGood: { color: c.primaryDark },
+  textCareful: { color: c.danger },
+  cellNote: { fontSize: sizes.caption, lineHeight: 17, color: c.ink },
 
   lineRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   badge: {
@@ -285,25 +285,25 @@ const styles = StyleSheet.create({
     borderRadius: radii.chip,
     overflow: "hidden",
   },
-  badgeDo: { color: colors.primaryDark, backgroundColor: colors.bgTint },
-  badgeDont: { color: colors.danger, backgroundColor: colors.dangerSoft },
-  lineText: { flex: 1, fontSize: sizes.ui, lineHeight: 19, color: colors.ink },
+  badgeDo: { color: c.primaryDark, backgroundColor: c.bgTint },
+  badgeDont: { color: c.danger, backgroundColor: c.dangerSoft },
+  lineText: { flex: 1, fontSize: sizes.ui, lineHeight: 19, color: c.ink },
 
   colorChip: { flexDirection: "row", alignItems: "center", gap: 4 },
   colorDot: { width: 8, height: 8, borderRadius: radii.chip },
 
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   chip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: radii.chip },
-  chipGood: { backgroundColor: colors.bgTint },
-  chipJi: { backgroundColor: colors.dangerSoft },
-  chipLabel: { fontSize: sizes.overline, fontWeight: "700", color: colors.primaryDark },
-  chipLabelJi: { color: colors.danger },
-  chipStar: { fontSize: sizes.caption, fontWeight: "600", color: colors.ink },
+  chipGood: { backgroundColor: c.bgTint },
+  chipJi: { backgroundColor: c.dangerSoft },
+  chipLabel: { fontSize: sizes.overline, fontWeight: "700", color: c.primaryDark },
+  chipLabelJi: { color: c.danger },
+  chipStar: { fontSize: sizes.caption, fontWeight: "600", color: c.ink },
 
   moreButton: { alignSelf: "flex-start", paddingVertical: 4 },
-  moreLabel: { fontSize: sizes.caption, fontWeight: "600", color: colors.primaryDark },
+  moreLabel: { fontSize: sizes.caption, fontWeight: "600", color: c.primaryDark },
   more: { gap: 4, paddingTop: 2 },
   periodRow: { flexDirection: "row", alignItems: "baseline", gap: 8, flexWrap: "wrap" },
-  periodLabel: { fontSize: sizes.overline, fontWeight: "700", color: colors.muted, minWidth: 30 },
-  periodText: { fontSize: sizes.caption, color: colors.ink, flexShrink: 1 },
-});
+  periodLabel: { fontSize: sizes.overline, fontWeight: "700", color: c.muted, minWidth: 30 },
+  periodText: { fontSize: sizes.caption, color: c.ink, flexShrink: 1 },
+}));

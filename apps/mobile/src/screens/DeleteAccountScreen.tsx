@@ -6,7 +6,7 @@ import { apiFetch } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { useI18n } from "../lib/i18n-context";
 import { clearTokens } from "../lib/storage";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 import { radii, sizes } from "../design/tokens";
 /**
@@ -74,20 +74,20 @@ export function DeleteAccountScreen({ onBack }: { onBack: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+const styles = themed((c) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
   body: { padding: 20, paddingBottom: 40, gap: 16 },
-  warning: { fontSize: sizes.body, lineHeight: 22, color: colors.danger, fontWeight: "600" },
-  hint: { fontSize: sizes.ui, lineHeight: 20, color: colors.muted },
+  warning: { fontSize: sizes.body, lineHeight: 22, color: c.danger, fontWeight: "600" },
+  hint: { fontSize: sizes.ui, lineHeight: 20, color: c.muted },
   input: {
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: c.line,
     borderRadius: radii.chip,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: sizes.body,
-    color: colors.ink,
-    backgroundColor: colors.glass,
+    color: c.ink,
+    backgroundColor: c.glass,
   },
-  errorText: { fontSize: sizes.ui, color: colors.danger },
-});
+  errorText: { fontSize: sizes.ui, color: c.danger },
+}));

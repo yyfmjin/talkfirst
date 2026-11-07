@@ -13,7 +13,7 @@ import {
 import { apiFetch, ApiRequestError } from "../lib/api";
 import { useI18n } from "../lib/i18n-context";
 import { Icon } from "../components/Icon";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 import { radii, sizes } from "../design/tokens";
 /**
@@ -290,10 +290,10 @@ export function GuessSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed((c) => StyleSheet.create({
   scrim: { flex: 1, backgroundColor: "rgba(20,22,40,0.42)" },
   sheet: {
-    backgroundColor: colors.glassRaised,
+    backgroundColor: c.glassRaised,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 18,
@@ -305,61 +305,61 @@ const styles = StyleSheet.create({
     width: 38,
     height: 4,
     borderRadius: radii.chip,
-    backgroundColor: colors.line,
+    backgroundColor: c.line,
     alignSelf: "center",
     marginBottom: 12,
   },
   body: { paddingBottom: 8 },
   center: { alignItems: "center", justifyContent: "center", paddingVertical: 40, gap: 12 },
-  photo: { width: "100%", aspectRatio: 4 / 5, borderRadius: radii.control, backgroundColor: colors.bgSoft },
-  prompt: { fontSize: sizes.heading, fontWeight: "600", color: colors.ink, marginTop: 16 },
-  hint: { fontSize: sizes.ui, color: colors.muted, marginTop: 4, marginBottom: 12 },
+  photo: { width: "100%", aspectRatio: 4 / 5, borderRadius: radii.control, backgroundColor: c.bgSoft },
+  prompt: { fontSize: sizes.heading, fontWeight: "600", color: c.ink, marginTop: 16 },
+  hint: { fontSize: sizes.ui, color: c.muted, marginTop: 4, marginBottom: 12 },
   options: { gap: 8, marginTop: 4 },
   option: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: c.line,
     borderRadius: radii.chip,
     paddingVertical: 13,
     paddingHorizontal: 14,
-    backgroundColor: colors.glass,
+    backgroundColor: c.glass,
   },
-  optionPicked: { borderColor: colors.primary },
+  optionPicked: { borderColor: c.primary },
   optionFlag: { fontSize: sizes.title },
-  optionName: { flex: 1, fontSize: sizes.body, color: colors.ink, fontWeight: "500" },
+  optionName: { flex: 1, fontSize: sizes.body, color: c.ink, fontWeight: "500" },
   footerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 14 },
-  remainingText: { fontSize: sizes.caption, color: colors.muted },
-  ghost: { fontSize: sizes.ui, color: colors.muted, paddingVertical: 6 },
+  remainingText: { fontSize: sizes.caption, color: c.muted },
+  ghost: { fontSize: sizes.ui, color: c.muted, paddingVertical: 6 },
   resultHead: { flexDirection: "row", gap: 12, alignItems: "center", marginTop: 6 },
-  thumb: { width: 88, height: 88, borderRadius: radii.chip, backgroundColor: colors.bgSoft },
+  thumb: { width: 88, height: 88, borderRadius: radii.chip, backgroundColor: c.bgSoft },
   resultText: { flex: 1, gap: 4 },
-  verdict: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
+  verdict: { fontSize: sizes.body, fontWeight: "600", color: c.ink },
   verdictOk: { color: "#16A34A" },
-  answerLine: { fontSize: sizes.body, color: colors.ink },
-  stat: { fontSize: sizes.caption, color: colors.muted },
+  answerLine: { fontSize: sizes.body, color: c.ink },
+  stat: { fontSize: sizes.caption, color: c.muted },
   primary: {
     marginTop: 16,
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
     borderRadius: radii.chip,
     paddingVertical: 14,
     alignItems: "center",
   },
   primaryDone: { backgroundColor: "#16A34A" },
-  primaryLabel: { color: colors.white, fontSize: sizes.body, fontWeight: "600" },
+  primaryLabel: { color: c.white, fontSize: sizes.body, fontWeight: "600" },
   secondary: {
     marginTop: 8,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.glass,
+    borderColor: c.line,
+    backgroundColor: c.glass,
     borderRadius: radii.chip,
     paddingVertical: 13,
     alignItems: "center",
   },
-  secondaryLabel: { color: colors.ink, fontSize: sizes.body, fontWeight: "500" },
-  emptyTitle: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
-  emptyBody: { fontSize: sizes.ui, color: colors.muted, textAlign: "center", lineHeight: 20, paddingHorizontal: 12 },
-  error: { marginTop: 10, fontSize: sizes.ui, color: colors.danger, textAlign: "center" },
+  secondaryLabel: { color: c.ink, fontSize: sizes.body, fontWeight: "500" },
+  emptyTitle: { fontSize: sizes.body, fontWeight: "600", color: c.ink },
+  emptyBody: { fontSize: sizes.ui, color: c.muted, textAlign: "center", lineHeight: 20, paddingHorizontal: 12 },
+  error: { marginTop: 10, fontSize: sizes.ui, color: c.danger, textAlign: "center" },
   closeButton: { position: "absolute", top: 12, right: 14, padding: 6 },
-});
+}));

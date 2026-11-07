@@ -22,7 +22,7 @@ import { ApiRequestError, apiFetch, apiUploadMultipart } from "../lib/api";
 import { useI18n } from "../lib/i18n-context";
 import { Icon } from "../components/Icon";
 import { KeyboardAware } from "../components/KeyboardAware";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 import { radii, sizes } from "../design/tokens";
 /**
@@ -664,8 +664,8 @@ export function ComposeScreen({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+const styles = themed((c) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
   head: {
     flexDirection: "row",
     alignItems: "center",
@@ -676,11 +676,11 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: colors.line,
+    borderBottomColor: c.line,
   },
   headButton: { minWidth: 64, paddingVertical: 6 },
-  cancel: { fontSize: sizes.body, color: colors.muted },
-  title: { fontSize: sizes.heading, fontWeight: "600", color: colors.ink },
+  cancel: { fontSize: sizes.body, color: c.muted },
+  title: { fontSize: sizes.heading, fontWeight: "600", color: c.ink },
   publish: {
     minWidth: 64,
     alignItems: "center",
@@ -688,10 +688,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: radii.pill,
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
   },
   publishDisabled: { opacity: 0.45 },
-  publishLabel: { fontSize: sizes.ui, fontWeight: "600", color: colors.white },
+  publishLabel: { fontSize: sizes.ui, fontWeight: "600", color: c.white },
   editor: { flex: 1 },
   input: {
     flex: 1,
@@ -699,7 +699,7 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     fontSize: sizes.body,
     lineHeight: 24,
-    color: colors.ink,
+    color: c.ink,
     textAlignVertical: "top",
   },
   imageGrid: {
@@ -713,7 +713,7 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: radii.chip,
-    backgroundColor: colors.bgSoft,
+    backgroundColor: c.bgSoft,
     overflow: "hidden",
   },
   imageThumb: { width: "100%", height: "100%" },
@@ -727,7 +727,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  imageFailedMark: { color: colors.white, fontSize: sizes.title, fontWeight: "700" },
+  imageFailedMark: { color: c.white, fontSize: sizes.title, fontWeight: "700" },
   imageRemove: {
     position: "absolute",
     top: 4,
@@ -739,30 +739,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  imageRemoveMark: { color: colors.white, fontSize: sizes.caption },
+  imageRemoveMark: { color: c.white, fontSize: sizes.caption },
   addTile: {
     width: 96,
     height: 96,
     borderRadius: radii.chip,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: c.line,
     borderStyle: "dashed",
     alignItems: "center",
     justifyContent: "center",
     gap: 2,
   },
-  addTileMark: { fontSize: sizes.title, color: colors.primary, lineHeight: 24 },
-  addTileLabel: { fontSize: sizes.overline, color: colors.muted },
+  addTileMark: { fontSize: sizes.title, color: c.primary, lineHeight: 24 },
+  addTileLabel: { fontSize: sizes.overline, color: c.muted },
   videoTile: {
     width: 96,
     height: 96,
     borderRadius: radii.chip,
-    backgroundColor: colors.bgSoft,
+    backgroundColor: c.bgSoft,
     overflow: "hidden",
   },
   videoThumb: { flex: 1, alignItems: "center", justifyContent: "center", gap: 3, padding: 6 },
-  videoName: { fontSize: 10, color: colors.muted, textAlign: "center" },
-  videoDuration: { fontSize: 10, color: colors.muted },
+  videoName: { fontSize: 10, color: c.muted, textAlign: "center" },
+  videoDuration: { fontSize: 10, color: c.muted },
   footer: {
     flexDirection: "row",
     alignItems: "center",
@@ -771,23 +771,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: colors.line,
+    borderTopColor: c.line,
   },
-  note: { flex: 1, fontSize: sizes.caption, color: colors.muted },
-  counter: { fontSize: sizes.caption, color: colors.muted },
+  note: { flex: 1, fontSize: sizes.caption, color: c.muted },
+  counter: { fontSize: sizes.caption, color: c.muted },
   error: {
     position: "absolute",
     left: 16,
     right: 16,
     bottom: 60,
     fontSize: sizes.ui,
-    color: colors.danger,
+    color: c.danger,
     textAlign: "center",
   },
   audioRow: { paddingHorizontal: 18, paddingBottom: 12 },
   audioBox: { position: "relative" },
-  audioHint: { marginTop: 6, fontSize: sizes.caption, color: colors.muted },
-  audioError: { marginTop: 6, fontSize: sizes.caption, color: colors.danger },
+  audioHint: { marginTop: 6, fontSize: sizes.caption, color: c.muted },
+  audioError: { marginTop: 6, fontSize: sizes.caption, color: c.danger },
   audioRemove: {
     position: "absolute",
     top: -6,
@@ -797,9 +797,9 @@ const styles = StyleSheet.create({
     borderRadius: radii.chip,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.ink,
+    backgroundColor: c.ink,
   },
-  audioRemoveMark: { fontSize: sizes.caption, color: colors.white },
+  audioRemoveMark: { fontSize: sizes.caption, color: c.white },
   recordStop: {
     flexDirection: "row",
     alignItems: "center",
@@ -809,8 +809,8 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     backgroundColor: "#FDE8E8",
   },
-  recordDot: { width: 10, height: 10, borderRadius: radii.chip, backgroundColor: colors.danger },
-  recordStopText: { fontSize: sizes.ui, fontWeight: "600", color: colors.danger },
+  recordDot: { width: 10, height: 10, borderRadius: radii.chip, backgroundColor: c.danger },
+  recordStopText: { fontSize: sizes.ui, fontWeight: "600", color: c.danger },
   previewBackdrop: {
     flex: 1,
     backgroundColor: "rgba(12, 14, 24, 0.94)",
@@ -830,7 +830,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 255, 255, 0.14)",
     zIndex: 2,
   },
-  previewCloseMark: { fontSize: sizes.heading, color: colors.white },
+  previewCloseMark: { fontSize: sizes.heading, color: c.white },
   previewBar: {
     position: "absolute",
     left: 0,
@@ -847,6 +847,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 255, 255, 0.14)",
   },
   previewActionDisabled: { opacity: 0.4 },
-  previewActionText: { fontSize: sizes.ui, fontWeight: "600", color: colors.white },
+  previewActionText: { fontSize: sizes.ui, fontWeight: "600", color: c.white },
   previewDanger: { color: "#FF8A8A" },
-});
+}));

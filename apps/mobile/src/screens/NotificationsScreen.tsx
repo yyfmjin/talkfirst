@@ -12,7 +12,7 @@ import { useBackHandler } from "../lib/back-stack";
 import { useI18n } from "../lib/i18n-context";
 import type { MsgKey } from "../lib/messages";
 import type { NotificationPage, NotificationRecord } from "../lib/types";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 import { radii, sizes } from "../design/tokens";
 /**
@@ -279,9 +279,9 @@ function NotificationRow({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
-  center: { flex: 1, backgroundColor: colors.bg, alignItems: "center", justifyContent: "center", padding: 28 },
+const styles = themed((c) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
+  center: { flex: 1, backgroundColor: c.bg, alignItems: "center", justifyContent: "center", padding: 28 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -290,32 +290,32 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 12,
   },
-  title: { fontSize: sizes.title, fontWeight: "600", color: colors.ink },
-  subtitle: { fontSize: sizes.caption, color: colors.muted, marginTop: 4 },
+  title: { fontSize: sizes.title, fontWeight: "600", color: c.ink },
+  subtitle: { fontSize: sizes.caption, color: c.muted, marginTop: 4 },
   markAll: {
     borderWidth: 1,
-    borderColor: colors.primary,
+    borderColor: c.primary,
     borderRadius: radii.control,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
-  markAllDisabled: { borderColor: colors.line },
-  markAllLabel: { fontSize: sizes.caption, color: colors.primary, fontWeight: "500" },
+  markAllDisabled: { borderColor: c.line },
+  markAllLabel: { fontSize: sizes.caption, color: c.primary, fontWeight: "500" },
   list: { paddingHorizontal: 16, paddingBottom: 24 },
   row: {
-    backgroundColor: colors.glass,
+    backgroundColor: c.glass,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: colors.glassEdge,
+    borderColor: c.glassEdge,
     padding: 16,
     marginBottom: 12,
   },
-  rowUnread: { backgroundColor: colors.bgSoft, borderColor: "#E3E8FF" },
+  rowUnread: { backgroundColor: c.bgSoft, borderColor: "#E3E8FF" },
   rowTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  typeLabel: { fontSize: sizes.overline, color: colors.primary, fontWeight: "500" },
-  time: { fontSize: sizes.overline, color: colors.muted },
-  rowTitle: { fontSize: sizes.body, color: colors.ink, fontWeight: "600", marginTop: 6 },
-  rowBody: { fontSize: sizes.ui, color: colors.muted, lineHeight: 19, marginTop: 4 },
+  typeLabel: { fontSize: sizes.overline, color: c.primary, fontWeight: "500" },
+  time: { fontSize: sizes.overline, color: c.muted },
+  rowTitle: { fontSize: sizes.body, color: c.ink, fontWeight: "600", marginTop: 6 },
+  rowBody: { fontSize: sizes.ui, color: c.muted, lineHeight: 19, marginTop: 4 },
   dot: {
     position: "absolute",
     top: 16,
@@ -323,19 +323,19 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: radii.chip,
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
   },
   loadMore: { paddingVertical: 16, alignItems: "center" },
-  loadMoreLabel: { fontSize: sizes.ui, color: colors.primary, fontWeight: "500" },
-  errorText: { color: colors.danger, fontSize: sizes.ui, textAlign: "center" },
+  loadMoreLabel: { fontSize: sizes.ui, color: c.primary, fontWeight: "500" },
+  errorText: { color: c.danger, fontSize: sizes.ui, textAlign: "center" },
   retry: {
     marginTop: 16,
     borderWidth: 1,
-    borderColor: colors.primary,
+    borderColor: c.primary,
     borderRadius: radii.control,
     paddingHorizontal: 20,
     paddingVertical: 10,
   },
-  retryLabel: { fontSize: sizes.ui, color: colors.primary, fontWeight: "500" },
-  emptyTitle: { fontSize: sizes.body, color: colors.muted },
-});
+  retryLabel: { fontSize: sizes.ui, color: c.primary, fontWeight: "500" },
+  emptyTitle: { fontSize: sizes.body, color: c.muted },
+}));

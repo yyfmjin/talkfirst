@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 import { apiFetch } from "../lib/api";
 import { useI18n } from "../lib/i18n-context";
 import { Icon } from "./Icon";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 import { sizes } from "../design/tokens";
 /**
@@ -81,17 +81,17 @@ export function MomentTranslate({ momentId, content }: { momentId: string; conte
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed((c) => StyleSheet.create({
   wrap: { marginTop: 6, gap: 4 },
   button: { flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start" },
-  label: { fontSize: sizes.caption, fontWeight: "600", color: colors.primaryDark },
+  label: { fontSize: sizes.caption, fontWeight: "600", color: c.primaryDark },
   translation: {
     fontSize: sizes.ui,
     lineHeight: 21,
-    color: colors.ink,
+    color: c.ink,
     paddingLeft: 8,
     borderLeftWidth: 2,
-    borderLeftColor: colors.primary,
+    borderLeftColor: c.primary,
   },
-  failed: { fontSize: sizes.caption, color: colors.danger },
-});
+  failed: { fontSize: sizes.caption, color: c.danger },
+}));

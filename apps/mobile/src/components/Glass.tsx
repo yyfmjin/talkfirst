@@ -2,7 +2,7 @@ import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { type ReactNode } from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 /**
  * 全站毛玻璃的两个积木（2026-11-03，对齐 web 的 `globals.css` 与 `glass` token）。
@@ -75,11 +75,11 @@ export function Glass({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed((c) => StyleSheet.create({
   glass: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.glassEdge,
+    borderColor: c.glassEdge,
     /* 圆角由调用方给；这里只保证裁剪，否则子视图会盖住圆角。 */
     overflow: "hidden",
   },
-});
+}));

@@ -23,7 +23,7 @@ import { MomentTranslate } from "../components/MomentTranslate";
 import { useAuth } from "../lib/auth-context";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
 import type { MsgKey } from "../lib/messages";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 import type { CommentPage, Moment, MomentComment } from "../lib/types";
 import { ProfilePreview } from "./ProfilePreview";
 import { UserMomentsScreen } from "./UserMomentsScreen";
@@ -771,68 +771,68 @@ function relativeTime(iso: string, t: TranslateFn): string {
   return new Date(iso).toLocaleDateString();
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+const styles = themed((c) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 10 },
   list: { paddingHorizontal: 16, paddingBottom: 32 },
   listHeader: { gap: 12 },
 
-  card: { backgroundColor: colors.glass, borderRadius: radii.control, borderWidth: 1, borderColor: colors.line, padding: 14, gap: 10 },
+  card: { backgroundColor: c.glass, borderRadius: radii.control, borderWidth: 1, borderColor: c.line, padding: 14, gap: 10 },
   cardHead: { flexDirection: "row", alignItems: "center", gap: 10 },
   cardHeadText: { flex: 1 },
-  nickname: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
-  meta: { fontSize: sizes.caption, color: colors.muted, marginTop: 2 },
-  content: { fontSize: sizes.body, lineHeight: 22, color: colors.ink },
+  nickname: { fontSize: sizes.body, fontWeight: "600", color: c.ink },
+  meta: { fontSize: sizes.caption, color: c.muted, marginTop: 2 },
+  content: { fontSize: sizes.body, lineHeight: 22, color: c.ink },
   tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  tag: { fontSize: sizes.ui, color: colors.primary },
+  tag: { fontSize: sizes.ui, color: c.primary },
   video: { width: "100%", aspectRatio: 16 / 9, borderRadius: radii.chip, backgroundColor: "#0B0B14" },
-  imageSingle: { width: "100%", aspectRatio: 4 / 3, borderRadius: radii.chip, backgroundColor: colors.bgSoft },
+  imageSingle: { width: "100%", aspectRatio: 4 / 3, borderRadius: radii.chip, backgroundColor: c.bgSoft },
   imageRow: { flexDirection: "row", gap: 6 },
-  image: { flex: 1, height: 100, borderRadius: radii.chip, backgroundColor: colors.bgSoft },
+  image: { flex: 1, height: 100, borderRadius: radii.chip, backgroundColor: c.bgSoft },
   actions: { flexDirection: "row", alignItems: "center", gap: 20, paddingTop: 2 },
   action: { flexDirection: "row", alignItems: "center", gap: 5 },
-  actionLabel: { fontSize: sizes.ui, color: colors.muted },
+  actionLabel: { fontSize: sizes.ui, color: c.muted },
 
   commentsHeader: { paddingTop: 6 },
-  commentsTitle: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
+  commentsTitle: { fontSize: sizes.body, fontWeight: "600", color: c.ink },
   commentsLoading: { paddingVertical: 16 },
   commentsErrorBox: { alignItems: "center", paddingVertical: 16, gap: 8 },
-  commentsEmpty: { fontSize: sizes.ui, color: colors.muted, paddingVertical: 16, textAlign: "center" },
+  commentsEmpty: { fontSize: sizes.ui, color: c.muted, paddingVertical: 16, textAlign: "center" },
 
-  comment: { backgroundColor: colors.glass, borderRadius: radii.chip, borderWidth: 1, borderColor: colors.line, padding: 12, gap: 6 },
+  comment: { backgroundColor: c.glass, borderRadius: radii.chip, borderWidth: 1, borderColor: c.line, padding: 12, gap: 6 },
   commentHead: { flexDirection: "row", alignItems: "center", gap: 8 },
   commentHeadText: { flex: 1 },
-  commentNickname: { fontSize: sizes.ui, fontWeight: "600", color: colors.ink },
-  commentMeta: { fontSize: sizes.overline, color: colors.muted, marginTop: 1 },
-  commentContent: { fontSize: sizes.ui, lineHeight: 20, color: colors.ink },
-  replies: { marginTop: 4, paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: colors.line, gap: 10 },
+  commentNickname: { fontSize: sizes.ui, fontWeight: "600", color: c.ink },
+  commentMeta: { fontSize: sizes.overline, color: c.muted, marginTop: 1 },
+  commentContent: { fontSize: sizes.ui, lineHeight: 20, color: c.ink },
+  replies: { marginTop: 4, paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: c.line, gap: 10 },
   reply: { gap: 4 },
 
   commentActions: { flexDirection: "row", gap: 14, paddingTop: 2 },
   actionTextWrap: { paddingVertical: 2 },
-  actionText: { fontSize: sizes.caption, color: colors.muted, fontWeight: "500" },
-  actionTextDanger: { color: colors.danger },
+  actionText: { fontSize: sizes.caption, color: c.muted, fontWeight: "500" },
+  actionTextDanger: { color: c.danger },
 
-  composer: { backgroundColor: colors.glass, borderRadius: radii.chip, borderWidth: 1, borderColor: colors.line, padding: 12, gap: 10 },
+  composer: { backgroundColor: c.glass, borderRadius: radii.chip, borderWidth: 1, borderColor: c.line, padding: 12, gap: 10 },
   composerContext: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  composerContextText: { fontSize: sizes.ui, fontWeight: "600", color: colors.primary },
+  composerContextText: { fontSize: sizes.ui, fontWeight: "600", color: c.primary },
   composerInput: {
     minHeight: 60,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: c.line,
     borderRadius: radii.chip,
     padding: 12,
     fontSize: sizes.ui,
     lineHeight: 20,
-    color: colors.ink,
+    color: c.ink,
     textAlignVertical: "top",
   },
   composerActions: { flexDirection: "row", justifyContent: "flex-end" },
-  errorText: { fontSize: sizes.ui, color: colors.danger, textAlign: "center" },
-  okText: { fontSize: sizes.ui, color: colors.primary, textAlign: "center" },
+  errorText: { fontSize: sizes.ui, color: c.danger, textAlign: "center" },
+  okText: { fontSize: sizes.ui, color: c.primary, textAlign: "center" },
 
   reportBody: { padding: 20, paddingBottom: 40, gap: 14 },
-  reportHint: { fontSize: sizes.ui, fontWeight: "600", color: colors.muted },
+  reportHint: { fontSize: sizes.ui, fontWeight: "600", color: c.muted },
   reportReasonWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   reportChip: {
     flexDirection: "row",
@@ -842,22 +842,22 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.glass,
+    borderColor: c.line,
+    backgroundColor: c.glass,
   },
-  reportChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  reportChipLabel: { fontSize: sizes.ui, color: colors.ink },
-  reportChipLabelActive: { color: colors.white, fontWeight: "600" },
+  reportChipActive: { backgroundColor: c.primary, borderColor: c.primary },
+  reportChipLabel: { fontSize: sizes.ui, color: c.ink },
+  reportChipLabelActive: { color: c.white, fontWeight: "600" },
   reportInput: {
     minHeight: 80,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: c.line,
     borderRadius: radii.chip,
     padding: 12,
     fontSize: sizes.ui,
     lineHeight: 20,
-    color: colors.ink,
+    color: c.ink,
     textAlignVertical: "top",
   },
   reportActions: { marginTop: 4 },
-});
+}));

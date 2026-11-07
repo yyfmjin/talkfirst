@@ -21,7 +21,7 @@ import { useAuth } from "../lib/auth-context";
 import { useI18n, type LocalePreference } from "../lib/i18n-context";
 import type { MsgKey } from "../lib/messages";
 import type { SessionUser } from "../lib/types";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 import { ConnectionsScreen } from "./ConnectionsScreen";
 import { SafetyScreen } from "./SafetyScreen";
 import { SocialScreen } from "./SocialScreen";
@@ -522,43 +522,43 @@ function FeedbackScreen({ onDone }: { onDone: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+const styles = themed((c) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
   content: { paddingBottom: 40 },
   header: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 12 },
-  title: { fontSize: sizes.title, fontWeight: "600", color: colors.ink },
+  title: { fontSize: sizes.title, fontWeight: "600", color: c.ink },
   card: {
     marginHorizontal: 20,
     marginTop: 8,
     borderRadius: radii.card,
-    backgroundColor: colors.bgSoft,
+    backgroundColor: c.bgSoft,
     alignItems: "center",
     padding: 24,
   },
-  name: { fontSize: sizes.title, fontWeight: "600", color: colors.ink, marginTop: 12 },
-  email: { fontSize: sizes.ui, color: colors.muted, marginTop: 4 },
-  place: { fontSize: sizes.caption, color: colors.muted, marginTop: 4 },
-  bio: { fontSize: sizes.ui, color: colors.muted, lineHeight: 20, textAlign: "center", marginTop: 12 },
+  name: { fontSize: sizes.title, fontWeight: "600", color: c.ink, marginTop: 12 },
+  email: { fontSize: sizes.ui, color: c.muted, marginTop: 4 },
+  place: { fontSize: sizes.caption, color: c.muted, marginTop: 4 },
+  bio: { fontSize: sizes.ui, color: c.muted, lineHeight: 20, textAlign: "center", marginTop: 12 },
   badgeRow: { flexDirection: "row", marginTop: 16 },
   badge: {
-    backgroundColor: colors.bgTint,
+    backgroundColor: c.bgTint,
     borderRadius: radii.control,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  badgeText: { fontSize: sizes.overline, color: colors.primary, fontWeight: "500" },
+  badgeText: { fontSize: sizes.overline, color: c.primary, fontWeight: "500" },
 
   group: { marginTop: 22, paddingHorizontal: 20 },
-  groupTitle: { fontSize: sizes.ui, fontWeight: "600", color: colors.muted, marginBottom: 8 },
+  groupTitle: { fontSize: sizes.ui, fontWeight: "600", color: c.muted, marginBottom: 8 },
   groupCard: {
     borderRadius: radii.control,
-    backgroundColor: colors.glass,
+    backgroundColor: c.glass,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: c.line,
     overflow: "hidden",
   },
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
-  rowLabel: { flex: 1, fontSize: sizes.body, color: colors.ink },
+  rowLabel: { flex: 1, fontSize: sizes.body, color: c.ink },
   /* 版本号行：与上面的可点行同构，但没有箭头、没有按压反馈 —— 它只是信息。 */
   versionRow: {
     flexDirection: "row",
@@ -567,10 +567,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.line,
+    borderTopColor: c.line,
   },
-  versionLabel: { flex: 1, fontSize: sizes.ui, color: colors.muted },
-  moreSoon: { marginTop: 14, paddingHorizontal: 20, fontSize: sizes.caption, color: colors.muted },
+  versionLabel: { flex: 1, fontSize: sizes.ui, color: c.muted },
+  moreSoon: { marginTop: 14, paddingHorizontal: 20, fontSize: sizes.caption, color: c.muted },
   ctaRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -579,59 +579,59 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: colors.primary,
-    backgroundColor: colors.bgTint,
+    borderColor: c.primary,
+    backgroundColor: c.bgTint,
   },
-  ctaLabel: { flex: 1, fontSize: sizes.body, color: colors.primary, fontWeight: "600" },
+  ctaLabel: { flex: 1, fontSize: sizes.body, color: c.primary, fontWeight: "600" },
 
   actions: { paddingHorizontal: 20, marginTop: 24 },
-  sectionTitle: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
+  sectionTitle: { fontSize: sizes.body, fontWeight: "600", color: c.ink },
   languageRow: { flexDirection: "row", gap: 8, marginTop: 10 },
   languageChip: {
     flex: 1,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: c.line,
     borderRadius: radii.control,
     paddingVertical: 9,
   },
-  languageChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  languageLabel: { fontSize: sizes.ui, color: colors.muted },
-  languageLabelActive: { color: colors.white, fontWeight: "600" },
-  languageNote: { fontSize: sizes.caption, color: colors.muted, lineHeight: 18, marginTop: 8 },
+  languageChipActive: { backgroundColor: c.primary, borderColor: c.primary },
+  languageLabel: { fontSize: sizes.ui, color: c.muted },
+  languageLabelActive: { color: c.white, fontWeight: "600" },
+  languageNote: { fontSize: sizes.caption, color: c.muted, lineHeight: 18, marginTop: 8 },
 
-  page: { flex: 1, backgroundColor: colors.bg },
+  page: { flex: 1, backgroundColor: c.bg },
   pageBody: { padding: 20, gap: 16 },
   pageActions: { marginTop: 4 },
   textArea: {
     minHeight: 140,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: c.line,
     borderRadius: radii.chip,
     padding: 14,
     fontSize: sizes.body,
     lineHeight: 22,
-    color: colors.ink,
-    backgroundColor: colors.glass,
+    color: c.ink,
+    backgroundColor: c.glass,
     textAlignVertical: "top",
   },
-  errorText: { fontSize: sizes.ui, color: colors.danger },
-  okText: { fontSize: sizes.ui, color: colors.primary },
-  historyEmpty: { fontSize: sizes.ui, color: colors.muted },
+  errorText: { fontSize: sizes.ui, color: c.danger },
+  okText: { fontSize: sizes.ui, color: c.primary },
+  historyEmpty: { fontSize: sizes.ui, color: c.muted },
   historyItem: {
     borderTopWidth: 1,
-    borderTopColor: colors.line,
+    borderTopColor: c.line,
     paddingTop: 12,
     gap: 6,
   },
-  historyBody: { fontSize: sizes.ui, lineHeight: 21, color: colors.ink },
-  historyMeta: { fontSize: sizes.caption, color: colors.muted },
+  historyBody: { fontSize: sizes.ui, lineHeight: 21, color: c.ink },
+  historyMeta: { fontSize: sizes.caption, color: c.muted },
   historyReply: {
     marginTop: 4,
     padding: 12,
     borderRadius: radii.chip,
-    backgroundColor: colors.bgTint,
+    backgroundColor: c.bgTint,
     gap: 4,
   },
-  historyReplyLabel: { fontSize: sizes.caption, fontWeight: "600", color: colors.primaryDark },
-});
+  historyReplyLabel: { fontSize: sizes.caption, fontWeight: "600", color: c.primaryDark },
+}));

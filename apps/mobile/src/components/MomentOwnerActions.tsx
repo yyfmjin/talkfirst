@@ -3,7 +3,7 @@ import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { apiFetch } from "../lib/api";
 import { useI18n } from "../lib/i18n-context";
 import { ComposeScreen } from "../screens/ComposeScreen";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 import { Icon } from "./Icon";
 
 import { radii, sizes } from "../design/tokens";
@@ -144,7 +144,7 @@ export function MomentOwnerActions({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed((c) => StyleSheet.create({
   menuButton: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
   row: { flexDirection: "row", gap: 8, marginTop: 10 },
   rowButton: {
@@ -154,9 +154,9 @@ const styles = StyleSheet.create({
     borderRadius: radii.chip,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    backgroundColor: colors.bgTint,
+    backgroundColor: c.bgTint,
   },
-  rowButtonDanger: { backgroundColor: colors.dangerSoft },
-  rowLabel: { fontSize: sizes.ui, fontWeight: "600", color: colors.primaryDark },
-  rowLabelDanger: { color: colors.danger },
-});
+  rowButtonDanger: { backgroundColor: c.dangerSoft },
+  rowLabel: { fontSize: sizes.ui, fontWeight: "600", color: c.primaryDark },
+  rowLabelDanger: { color: c.danger },
+}));

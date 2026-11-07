@@ -7,7 +7,7 @@ import { SubHeader } from "../components/SubHeader";
 import { apiFetch } from "../lib/api";
 import { useI18n } from "../lib/i18n-context";
 import type { ConnectionItem } from "../lib/types";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 import { ProfilePreview } from "./ProfilePreview";
 import { UserMomentsScreen } from "./UserMomentsScreen";
 
@@ -170,46 +170,46 @@ function ExchangeState({ item }: { item: ConnectionItem }) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+const styles = themed((c) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
   body: { padding: 20, paddingBottom: 40 },
-  intro: { fontSize: sizes.caption, lineHeight: 18, color: colors.muted },
+  intro: { fontSize: sizes.caption, lineHeight: 18, color: c.muted },
   center: { marginTop: 28 },
   errorBox: { alignItems: "center", marginTop: 24, gap: 10 },
-  errorText: { fontSize: sizes.ui, color: colors.danger, textAlign: "center" },
+  errorText: { fontSize: sizes.ui, color: c.danger, textAlign: "center" },
   emptyBox: { alignItems: "center", marginTop: 36, gap: 8, paddingHorizontal: 12 },
-  emptyTitle: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
-  emptyBody: { fontSize: sizes.ui, lineHeight: 20, color: colors.muted, textAlign: "center" },
+  emptyTitle: { fontSize: sizes.body, fontWeight: "600", color: c.ink },
+  emptyBody: { fontSize: sizes.ui, lineHeight: 20, color: c.muted, textAlign: "center" },
   list: {
     marginTop: 16,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.glass,
+    borderColor: c.line,
+    backgroundColor: c.glass,
     overflow: "hidden",
   },
-  row: { padding: 14, borderBottomWidth: 1, borderBottomColor: colors.line, gap: 10 },
+  row: { padding: 14, borderBottomWidth: 1, borderBottomColor: c.line, gap: 10 },
   rowHead: { flexDirection: "row", alignItems: "center", gap: 12 },
   rowHeadText: { flex: 1 },
-  name: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
-  meta: { fontSize: sizes.caption, color: colors.muted, marginTop: 2 },
-  bio: { fontSize: sizes.caption, lineHeight: 18, color: colors.muted },
+  name: { fontSize: sizes.body, fontWeight: "600", color: c.ink },
+  meta: { fontSize: sizes.caption, color: c.muted, marginTop: 2 },
+  bio: { fontSize: sizes.caption, lineHeight: 18, color: c.muted },
   tagWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   tag: {
-    backgroundColor: colors.bgTint,
+    backgroundColor: c.bgTint,
     borderRadius: radii.chip,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  tagText: { fontSize: sizes.overline, color: colors.primaryDark },
+  tagText: { fontSize: sizes.overline, color: c.primaryDark },
   exchangeStrip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: colors.bgSoft,
+    backgroundColor: c.bgSoft,
     borderRadius: radii.chip,
     paddingHorizontal: 10,
     paddingVertical: 7,
   },
-  exchangeText: { flex: 1, fontSize: sizes.caption, color: colors.muted },
-});
+  exchangeText: { flex: 1, fontSize: sizes.caption, color: c.muted },
+}));

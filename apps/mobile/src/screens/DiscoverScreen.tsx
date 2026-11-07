@@ -15,7 +15,7 @@ import { apiFetch } from "../lib/api";
 import { useI18n } from "../lib/i18n-context";
 import type { MsgKey } from "../lib/messages";
 import type { Recommendation, RecommendationResponse } from "../lib/types";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 import { ProfilePreview } from "./ProfilePreview";
 import { UserMomentsScreen } from "./UserMomentsScreen";
 
@@ -284,7 +284,7 @@ function Bubble({ item, onPress }: { item: Recommendation; onPress: () => void }
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed((c) => StyleSheet.create({
   inviteCard: {
     marginHorizontal: 20,
     marginBottom: 10,
@@ -294,26 +294,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#DCE0FF",
   },
-  inviteTitle: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
-  inviteBody: { marginTop: 4, fontSize: sizes.ui, lineHeight: 19, color: colors.muted },
+  inviteTitle: { fontSize: sizes.body, fontWeight: "600", color: c.ink },
+  inviteBody: { marginTop: 4, fontSize: sizes.ui, lineHeight: 19, color: c.muted },
   inviteActions: { flexDirection: "row", gap: 8, marginTop: 12 },
   inviteAccept: {
     paddingHorizontal: 16,
     paddingVertical: 9,
     borderRadius: radii.pill,
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
   },
-  inviteAcceptLabel: { fontSize: sizes.ui, fontWeight: "600", color: colors.white },
+  inviteAcceptLabel: { fontSize: sizes.ui, fontWeight: "600", color: c.white },
   inviteDecline: {
     paddingHorizontal: 16,
     paddingVertical: 9,
     borderRadius: radii.pill,
     borderWidth: 1,
     borderColor: "#DCE0FF",
-    backgroundColor: colors.glass,
+    backgroundColor: c.glass,
   },
-  inviteDeclineLabel: { fontSize: sizes.ui, fontWeight: "500", color: colors.muted },
-  root: { flex: 1, backgroundColor: colors.bg, paddingTop: 8 },
+  inviteDeclineLabel: { fontSize: sizes.ui, fontWeight: "500", color: c.muted },
+  root: { flex: 1, backgroundColor: c.bg, paddingTop: 8 },
   headerActions: { alignItems: "flex-end", gap: 8 },
   guessButton: {
     flexDirection: "row",
@@ -326,33 +326,33 @@ const styles = StyleSheet.create({
     borderColor: "#DCE0FF",
     backgroundColor: "#F1F2FF",
   },
-  guessLabel: { fontSize: sizes.ui, fontWeight: "600", color: colors.primary },
-  center: { flex: 1, backgroundColor: colors.bg, alignItems: "center", justifyContent: "center", padding: 28 },
+  guessLabel: { fontSize: sizes.ui, fontWeight: "600", color: c.primary },
+  center: { flex: 1, backgroundColor: c.bg, alignItems: "center", justifyContent: "center", padding: 28 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", paddingHorizontal: 20 },
-  title: { fontSize: sizes.title, fontWeight: "600", color: colors.ink },
-  subtitle: { fontSize: sizes.ui, color: colors.muted, marginTop: 4 },
-  badge: { backgroundColor: colors.bgTint, borderRadius: radii.control, paddingHorizontal: 12, paddingVertical: 6 },
-  badgeText: { fontSize: sizes.overline, color: colors.primary, fontWeight: "500" },
+  title: { fontSize: sizes.title, fontWeight: "600", color: c.ink },
+  subtitle: { fontSize: sizes.ui, color: c.muted, marginTop: 4 },
+  badge: { backgroundColor: c.bgTint, borderRadius: radii.control, paddingHorizontal: 12, paddingVertical: 6 },
+  badgeText: { fontSize: sizes.overline, color: c.primary, fontWeight: "500" },
   filters: { flexDirection: "row", gap: 8, paddingHorizontal: 20, marginTop: 16 },
   filterChip: {
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: c.line,
     borderRadius: radii.control,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
-  filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  filterLabel: { fontSize: sizes.caption, color: colors.muted },
-  filterLabelActive: { color: colors.white, fontWeight: "500" },
+  filterChipActive: { backgroundColor: c.primary, borderColor: c.primary },
+  filterLabel: { fontSize: sizes.caption, color: c.muted },
+  filterLabelActive: { color: c.white, fontWeight: "500" },
   switching: { paddingVertical: 12, alignItems: "center" },
   list: { paddingHorizontal: 12, paddingBottom: 24, paddingTop: 16 },
   row: { justifyContent: "space-between", marginBottom: 20 },
   bubble: { flex: 1, alignItems: "center", paddingVertical: 8 },
   bubblePressed: { opacity: 0.7 },
-  bubbleName: { fontSize: sizes.ui, color: colors.ink, fontWeight: "500", marginTop: 8, maxWidth: 100 },
-  bubbleMeta: { fontSize: sizes.overline, color: colors.muted, marginTop: 2, maxWidth: 100 },
-  errorTitle: { fontSize: sizes.body, fontWeight: "600", color: colors.danger, marginBottom: 8 },
+  bubbleName: { fontSize: sizes.ui, color: c.ink, fontWeight: "500", marginTop: 8, maxWidth: 100 },
+  bubbleMeta: { fontSize: sizes.overline, color: c.muted, marginTop: 2, maxWidth: 100 },
+  errorTitle: { fontSize: sizes.body, fontWeight: "600", color: c.danger, marginBottom: 8 },
   emptyEmoji: { fontSize: 40, marginBottom: 12 },
-  emptyTitle: { fontSize: sizes.body, fontWeight: "600", color: colors.ink, marginBottom: 8 },
-  muted: { fontSize: sizes.ui, color: colors.muted, textAlign: "center", marginTop: 8 },
-});
+  emptyTitle: { fontSize: sizes.body, fontWeight: "600", color: c.ink, marginBottom: 8 },
+  muted: { fontSize: sizes.ui, color: c.muted, textAlign: "center", marginTop: 8 },
+}));

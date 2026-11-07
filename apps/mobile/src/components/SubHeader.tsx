@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useI18n } from "../lib/i18n-context";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 import { Icon } from "./Icon";
 
 import { sizes } from "../design/tokens";
@@ -33,7 +33,7 @@ export function SubHeader({ title, onBack }: { title: string; onBack: () => void
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed((c) => StyleSheet.create({
   subHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -42,8 +42,8 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: colors.line,
+    borderBottomColor: c.line,
   },
   subBack: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
-  subTitle: { flex: 1, textAlign: "center", fontSize: sizes.body, fontWeight: "600", color: colors.ink },
-});
+  subTitle: { flex: 1, textAlign: "center", fontSize: sizes.body, fontWeight: "600", color: c.ink },
+}));

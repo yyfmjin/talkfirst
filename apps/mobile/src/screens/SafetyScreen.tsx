@@ -7,7 +7,7 @@ import { apiFetch } from "../lib/api";
 import { useI18n } from "../lib/i18n-context";
 import type { MsgKey } from "../lib/messages";
 import type { BlockItem, ReportItem } from "../lib/types";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 import { radii, sizes } from "../design/tokens";
 /**
@@ -168,27 +168,27 @@ function reportStatusLabel(
   return key ? t(key) : status;
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+const styles = themed((c) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
   body: { padding: 20, paddingBottom: 40 },
   intro: {
     borderRadius: radii.chip,
-    backgroundColor: colors.bgSoft,
+    backgroundColor: c.bgSoft,
     padding: 14,
     fontSize: sizes.caption,
     lineHeight: 18,
-    color: colors.muted,
+    color: c.muted,
   },
   center: { marginTop: 28 },
   section: { marginTop: 22 },
-  sectionTitle: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
-  emptyText: { fontSize: sizes.ui, color: colors.muted, marginTop: 8 },
+  sectionTitle: { fontSize: sizes.body, fontWeight: "600", color: c.ink },
+  emptyText: { fontSize: sizes.ui, color: c.muted, marginTop: 8 },
   blockList: {
     marginTop: 10,
     borderRadius: radii.chip,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.glass,
+    borderColor: c.line,
+    backgroundColor: c.glass,
     overflow: "hidden",
   },
   blockRow: {
@@ -197,33 +197,33 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: colors.line,
+    borderBottomColor: c.line,
   },
   blockRowText: { flex: 1 },
-  blockName: { fontSize: sizes.ui, fontWeight: "500", color: colors.ink },
-  blockMeta: { fontSize: sizes.caption, color: colors.muted, marginTop: 1 },
+  blockName: { fontSize: sizes.ui, fontWeight: "500", color: c.ink },
+  blockMeta: { fontSize: sizes.caption, color: c.muted, marginTop: 1 },
   unblockButton: {
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: c.line,
     paddingHorizontal: 14,
     paddingVertical: 7,
     minWidth: 64,
     alignItems: "center",
   },
-  unblockLabel: { fontSize: sizes.ui, color: colors.primaryDark, fontWeight: "500" },
+  unblockLabel: { fontSize: sizes.ui, color: c.primaryDark, fontWeight: "500" },
   disabled: { opacity: 0.5 },
   reportList: { marginTop: 10, gap: 8 },
   reportRow: {
     borderRadius: radii.chip,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.glass,
+    borderColor: c.line,
+    backgroundColor: c.glass,
     padding: 12,
     gap: 4,
   },
-  reportTitle: { fontSize: sizes.ui, fontWeight: "500", color: colors.ink },
-  reportMeta: { fontSize: sizes.caption, color: colors.muted },
-  errorText: { marginTop: 16, fontSize: sizes.ui, color: colors.danger, textAlign: "center" },
+  reportTitle: { fontSize: sizes.ui, fontWeight: "500", color: c.ink },
+  reportMeta: { fontSize: sizes.caption, color: c.muted },
+  errorText: { marginTop: 16, fontSize: sizes.ui, color: c.danger, textAlign: "center" },
   footer: { marginTop: 24 },
-});
+}));

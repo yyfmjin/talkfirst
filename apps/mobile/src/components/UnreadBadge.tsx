@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Animated, StyleSheet, Text } from "react-native";
 import { EASE, MOTION } from "../lib/motion";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 import { radii, sizes } from "../design/tokens";
 /**
@@ -47,7 +47,7 @@ export function UnreadBadge({ count }: { count: number }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed((c) => StyleSheet.create({
   badge: {
     minWidth: 22,
     height: 22,
@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.danger,
+    backgroundColor: c.danger,
   },
-  text: { fontSize: sizes.caption, fontWeight: "700", color: colors.white },
-});
+  text: { fontSize: sizes.caption, fontWeight: "700", color: c.white },
+}));

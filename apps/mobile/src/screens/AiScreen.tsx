@@ -17,7 +17,7 @@ import { Icon } from "../components/Icon";
 import { KeyboardAware } from "../components/KeyboardAware";
 import { useI18n } from "../lib/i18n-context";
 import type { MsgKey } from "../lib/messages";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 import { radii, sizes } from "../design/tokens";
 /**
@@ -571,10 +571,10 @@ function SetupForm(props: {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+const styles = themed((c) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8 },
-  loadingText: { fontSize: sizes.ui, color: colors.muted },
+  loadingText: { fontSize: sizes.ui, color: c.muted },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -583,36 +583,36 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: colors.line,
+    borderBottomColor: c.line,
   },
   headerButton: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
   headerText: { flex: 1 },
-  headerTitle: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
+  headerTitle: { fontSize: sizes.body, fontWeight: "600", color: c.ink },
   headerTitleCentered: { flex: 1, textAlign: "center" },
-  headerSubtitle: { fontSize: sizes.overline, color: colors.muted, marginTop: 1 },
+  headerSubtitle: { fontSize: sizes.overline, color: c.muted, marginTop: 1 },
   list: { padding: 14, gap: 8 },
   empty: { alignItems: "center", gap: 8, paddingVertical: 48 },
-  emptyText: { fontSize: sizes.ui, color: colors.muted, textAlign: "center" },
+  emptyText: { fontSize: sizes.ui, color: c.muted, textAlign: "center" },
   bubbleRow: { flexDirection: "row" },
   bubbleRowMine: { justifyContent: "flex-end" },
   bubble: { maxWidth: "78%", borderRadius: radii.control, paddingHorizontal: 12, paddingVertical: 9 },
-  bubbleMine: { backgroundColor: colors.primary, borderBottomRightRadius: 5 },
-  bubbleTheirs: { backgroundColor: colors.bgTint, borderBottomLeftRadius: 5 },
-  bubbleTextMine: { fontSize: sizes.body, lineHeight: 21, color: colors.white },
-  bubbleTextTheirs: { fontSize: sizes.body, lineHeight: 21, color: colors.ink },
+  bubbleMine: { backgroundColor: c.primary, borderBottomRightRadius: 5 },
+  bubbleTheirs: { backgroundColor: c.bgTint, borderBottomLeftRadius: 5 },
+  bubbleTextMine: { fontSize: sizes.body, lineHeight: 21, color: c.white },
+  bubbleTextTheirs: { fontSize: sizes.body, lineHeight: 21, color: c.ink },
   typingRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingBottom: 4 },
-  typingText: { fontSize: sizes.caption, color: colors.muted },
+  typingText: { fontSize: sizes.caption, color: c.muted },
   retry: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 6 },
-  retryText: { fontSize: sizes.ui, color: colors.danger, fontWeight: "600" },
-  error: { paddingHorizontal: 16, paddingBottom: 4, fontSize: sizes.ui, color: colors.danger, textAlign: "center" },
+  retryText: { fontSize: sizes.ui, color: c.danger, fontWeight: "600" },
+  error: { paddingHorizontal: 16, paddingBottom: 4, fontSize: sizes.ui, color: c.danger, textAlign: "center" },
   composer: {
     flexDirection: "row",
     alignItems: "flex-end",
     gap: 8,
     padding: 10,
     borderTopWidth: 1,
-    borderTopColor: colors.line,
-    backgroundColor: colors.glass,
+    borderTopColor: c.line,
+    backgroundColor: c.glass,
   },
   input: {
     flex: 1,
@@ -621,8 +621,8 @@ const styles = StyleSheet.create({
     borderRadius: radii.card,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    backgroundColor: colors.bgSoft,
-    color: colors.ink,
+    backgroundColor: c.bgSoft,
+    color: c.ink,
     fontSize: sizes.body,
   },
   sendButton: {
@@ -635,34 +635,34 @@ const styles = StyleSheet.create({
     gap: 6,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
   },
-  sendLabel: { color: colors.white, fontSize: sizes.ui, fontWeight: "600" },
+  sendLabel: { color: c.white, fontSize: sizes.ui, fontWeight: "600" },
   sendDisabled: { opacity: 0.45 },
   form: { padding: 16, gap: 6, paddingBottom: 40 },
-  formHint: { fontSize: sizes.ui, color: colors.muted, lineHeight: 20, marginBottom: 6 },
-  label: { fontSize: sizes.ui, fontWeight: "600", color: colors.ink, marginTop: 10 },
+  formHint: { fontSize: sizes.ui, color: c.muted, lineHeight: 20, marginBottom: 6 },
+  label: { fontSize: sizes.ui, fontWeight: "600", color: c.ink, marginTop: 10 },
   field: {
     borderRadius: radii.chip,
     paddingHorizontal: 14,
     paddingVertical: 11,
-    backgroundColor: colors.bgSoft,
-    color: colors.ink,
+    backgroundColor: c.bgSoft,
+    color: c.ink,
     fontSize: sizes.body,
   },
   fieldMultiline: { minHeight: 92, textAlignVertical: "top" },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 2 },
-  formError: { marginTop: 10, fontSize: sizes.ui, color: colors.danger },
+  formError: { marginTop: 10, fontSize: sizes.ui, color: c.danger },
   primaryButton: {
     marginTop: 18,
     borderRadius: radii.chip,
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
     alignItems: "center",
     justifyContent: "center",
     minHeight: 48,
   },
-  primaryButtonText: { fontSize: sizes.body, fontWeight: "600", color: colors.white },
-  privacy: { marginTop: 12, fontSize: sizes.caption, color: colors.muted, textAlign: "center" },
+  primaryButtonText: { fontSize: sizes.body, fontWeight: "600", color: c.white },
+  privacy: { marginTop: 12, fontSize: sizes.caption, color: c.muted, textAlign: "center" },
   deleteButton: {
     marginTop: 22,
     flexDirection: "row",
@@ -671,7 +671,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 10,
     borderRadius: radii.chip,
-    backgroundColor: colors.dangerSoft,
+    backgroundColor: c.dangerSoft,
   },
-  deleteText: { fontSize: sizes.ui, fontWeight: "600", color: colors.danger },
-});
+  deleteText: { fontSize: sizes.ui, fontWeight: "600", color: c.danger },
+}));

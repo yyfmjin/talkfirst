@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Animated, Pressable, StyleSheet, Text } from "react-native";
 import { EASE, MOTION } from "../lib/motion";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 import { Icon } from "./Icon";
 
 import { sizes } from "../design/tokens";
@@ -71,7 +71,7 @@ export function LikeButton({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed((c) => StyleSheet.create({
   action: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 6, paddingRight: 10 },
-  label: { fontSize: sizes.ui, color: colors.muted },
-});
+  label: { fontSize: sizes.ui, color: c.muted },
+}));

@@ -1,6 +1,6 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text } from "react-native";
 import { radii, sizes } from "../design/tokens";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 export function Button({
   label,
@@ -40,7 +40,7 @@ export function Button({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed((c) => StyleSheet.create({
   base: {
     minHeight: 48,
     borderRadius: radii.card,
@@ -48,11 +48,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 20,
   },
-  primary: { backgroundColor: colors.primary },
-  ghost: { backgroundColor: colors.bgTint },
-  danger: { backgroundColor: colors.danger },
-  solidLabel: { color: colors.white, fontSize: sizes.body, fontWeight: "600" },
-  ghostLabel: { color: colors.primaryDark, fontSize: sizes.body, fontWeight: "600" },
+  primary: { backgroundColor: c.primary },
+  ghost: { backgroundColor: c.bgTint },
+  danger: { backgroundColor: c.danger },
+  solidLabel: { color: c.white, fontSize: sizes.body, fontWeight: "600" },
+  ghostLabel: { color: c.primaryDark, fontSize: sizes.body, fontWeight: "600" },
   pressed: { opacity: 0.85 },
   disabled: { opacity: 0.5 },
-});
+}));

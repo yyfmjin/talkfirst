@@ -6,7 +6,7 @@ import { apiFetch } from "../lib/api";
 import { useI18n } from "../lib/i18n-context";
 import type { MsgKey } from "../lib/messages";
 import type { FieldVisibilityRow, ProfileVisibilityField, VisibilityTier } from "../lib/types";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 import { radii, sizes } from "../design/tokens";
 /**
@@ -165,52 +165,52 @@ export function VisibilityScreen({ onBack }: { onBack: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+const styles = themed((c) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
   body: { padding: 20, paddingBottom: 40 },
-  intro: { fontSize: sizes.ui, lineHeight: 20, color: colors.muted },
+  intro: { fontSize: sizes.ui, lineHeight: 20, color: c.muted },
   blockNote: {
     marginTop: 10,
     borderRadius: radii.chip,
-    backgroundColor: colors.bgSoft,
+    backgroundColor: c.bgSoft,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: sizes.caption,
     lineHeight: 18,
-    color: colors.muted,
+    color: c.muted,
   },
   center: { marginTop: 28 },
   errorBox: { alignItems: "center", marginTop: 24, gap: 10 },
-  errorText: { fontSize: sizes.ui, color: colors.danger, textAlign: "center" },
+  errorText: { fontSize: sizes.ui, color: c.danger, textAlign: "center" },
   list: { marginTop: 16, gap: 10 },
   row: {
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.glass,
+    borderColor: c.line,
+    backgroundColor: c.glass,
     padding: 14,
     gap: 8,
   },
-  fieldLabel: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
-  current: { fontSize: sizes.caption, color: colors.muted },
+  fieldLabel: { fontSize: sizes.body, fontWeight: "600", color: c.ink },
+  current: { fontSize: sizes.caption, color: c.muted },
   chipRow: { flexDirection: "row", gap: 8 },
   chip: {
     flex: 1,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: c.line,
     borderRadius: radii.control,
     paddingVertical: 8,
     paddingHorizontal: 4,
   },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipActive: { backgroundColor: c.primary, borderColor: c.primary },
   chipDisabled: { opacity: 0.5 },
-  chipLabel: { fontSize: sizes.caption, color: colors.muted },
-  chipLabelActive: { color: colors.white, fontWeight: "600" },
+  chipLabel: { fontSize: sizes.caption, color: c.muted },
+  chipLabelActive: { color: c.white, fontWeight: "600" },
   notice: {
     marginTop: 16,
     fontSize: sizes.ui,
-    color: colors.success,
+    color: c.success,
     textAlign: "center",
   },
-});
+}));

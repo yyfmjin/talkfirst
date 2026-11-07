@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text } from "react-native";
 import { Icon } from "./Icon";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 import { radii, sizes } from "../design/tokens";
 /**
@@ -34,7 +34,7 @@ export function Chip({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed((c) => StyleSheet.create({
   chip: {
     flexDirection: "row",
     alignItems: "center",
@@ -43,10 +43,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.glass,
+    borderColor: c.line,
+    backgroundColor: c.glass,
   },
-  chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipLabel: { fontSize: sizes.ui, color: colors.ink },
-  chipLabelSelected: { color: colors.white, fontWeight: "600" },
-});
+  chipSelected: { backgroundColor: c.primary, borderColor: c.primary },
+  chipLabel: { fontSize: sizes.ui, color: c.ink },
+  chipLabelSelected: { color: c.white, fontWeight: "600" },
+}));

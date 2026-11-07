@@ -1,6 +1,6 @@
 import { Image, StyleSheet, View } from "react-native";
 
-import { colors } from "../theme";
+import { themed } from "../theme";
 
 /**
  * 品牌标志（2026-10-28 换成正式图标）。
@@ -17,8 +17,6 @@ import { colors } from "../theme";
  * 方块底色用 `colors.primary`（2026-10-28 起它已经是图标蓝 `#0B7FFF`）——
  * 界面主色与标志同色，不再需要单独写死一个常量。
  */
-const BRAND_BLUE = colors.primary;
-
 export function Logo({ size = 56 }: { size?: number }) {
   return (
     <View
@@ -37,6 +35,6 @@ export function Logo({ size = 56 }: { size?: number }) {
   );
 }
 
-const styles = StyleSheet.create({
-  mark: { backgroundColor: BRAND_BLUE, alignItems: "center", justifyContent: "center", overflow: "hidden" },
-});
+const styles = themed((c) => StyleSheet.create({
+  mark: { backgroundColor: c.primary, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+}));

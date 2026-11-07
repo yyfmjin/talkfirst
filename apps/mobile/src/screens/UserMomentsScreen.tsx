@@ -18,7 +18,7 @@ import { SubHeader } from "../components/SubHeader";
 import { apiFetch } from "../lib/api";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
 import type { UserMomentItem, UserMomentsDetail } from "../lib/types";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 import { MomentDetailScreen } from "./MomentDetailScreen";
 
 import { radii, sizes } from "../design/tokens";
@@ -331,17 +331,17 @@ function relativeTime(iso: string, t: TranslateFn): string {
   return t("common.daysAgo", { n: Math.floor(hours / 24) });
 }
 
-const styles = StyleSheet.create({
-  modalRoot: { flex: 1, backgroundColor: colors.bg },
+const styles = themed((c) => StyleSheet.create({
+  modalRoot: { flex: 1, backgroundColor: c.bg },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 14 },
   list: { padding: 20, paddingBottom: 40 },
   authorCard: { alignItems: "center", paddingVertical: 12 },
-  authorName: { marginTop: 10, fontSize: sizes.heading, fontWeight: "600", color: colors.ink },
-  authorMeta: { marginTop: 4, fontSize: sizes.caption, color: colors.muted },
+  authorName: { marginTop: 10, fontSize: sizes.heading, fontWeight: "600", color: c.ink },
+  authorMeta: { marginTop: 4, fontSize: sizes.caption, color: c.muted },
   authorBio: {
     marginTop: 8,
     fontSize: sizes.ui,
-    color: colors.muted,
+    color: c.muted,
     lineHeight: 20,
     textAlign: "center",
   },
@@ -349,43 +349,43 @@ const styles = StyleSheet.create({
   bindingTag: {
     borderRadius: radii.chip,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.glass,
+    borderColor: c.line,
+    backgroundColor: c.glass,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  bindingText: { fontSize: sizes.caption, color: colors.muted },
+  bindingText: { fontSize: sizes.caption, color: c.muted },
   lockedCard: {
     marginTop: 16,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.glass,
+    borderColor: c.line,
+    backgroundColor: c.glass,
     padding: 18,
     alignItems: "center",
   },
-  lockedTitle: { fontSize: sizes.body, fontWeight: "600", color: colors.ink, textAlign: "center" },
+  lockedTitle: { fontSize: sizes.body, fontWeight: "600", color: c.ink, textAlign: "center" },
   lockedBody: {
     marginTop: 6,
     fontSize: sizes.ui,
-    color: colors.muted,
+    color: c.muted,
     textAlign: "center",
     lineHeight: 20,
   },
   lockedAction: { alignSelf: "stretch", marginTop: 14 },
   emptyCard: { marginTop: 24, alignItems: "center" },
-  emptyTitle: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
-  emptyBody: { marginTop: 6, fontSize: sizes.ui, color: colors.muted, textAlign: "center" },
+  emptyTitle: { fontSize: sizes.body, fontWeight: "600", color: c.ink },
+  emptyBody: { marginTop: 6, fontSize: sizes.ui, color: c.muted, textAlign: "center" },
   card: {
     borderTopWidth: 1,
-    borderTopColor: colors.line,
+    borderTopColor: c.line,
     paddingTop: 14,
     paddingBottom: 10,
   },
-  meta: { fontSize: sizes.caption, color: colors.muted },
-  content: { marginTop: 6, fontSize: sizes.body, color: colors.ink, lineHeight: 22 },
+  meta: { fontSize: sizes.caption, color: c.muted },
+  content: { marginTop: 6, fontSize: sizes.body, color: c.ink, lineHeight: 22 },
   imageRow: { flexDirection: "row", gap: 6, marginTop: 10 },
-  image: { width: 92, height: 92, borderRadius: radii.chip, backgroundColor: colors.bgSoft },
+  image: { width: 92, height: 92, borderRadius: radii.chip, backgroundColor: c.bgSoft },
   videoPlaceholder: {
     flexDirection: "row",
     alignItems: "center",
@@ -393,14 +393,14 @@ const styles = StyleSheet.create({
     marginTop: 10,
     padding: 12,
     borderRadius: radii.chip,
-    backgroundColor: colors.bgSoft,
+    backgroundColor: c.bgSoft,
   },
-  videoHint: { fontSize: sizes.ui, color: colors.muted },
+  videoHint: { fontSize: sizes.ui, color: c.muted },
   actions: { flexDirection: "row", gap: 22, marginTop: 10 },
   action: { flexDirection: "row", alignItems: "center", gap: 5 },
-  actionLabel: { fontSize: sizes.ui, color: colors.muted },
+  actionLabel: { fontSize: sizes.ui, color: c.muted },
   loadMore: { alignItems: "center", paddingVertical: 16 },
-  loadMoreLabel: { fontSize: sizes.ui, color: colors.primary, fontWeight: "600" },
+  loadMoreLabel: { fontSize: sizes.ui, color: c.primary, fontWeight: "600" },
   footer: { marginVertical: 16 },
-  errorText: { fontSize: sizes.ui, color: colors.danger, textAlign: "center" },
-});
+  errorText: { fontSize: sizes.ui, color: c.danger, textAlign: "center" },
+}));

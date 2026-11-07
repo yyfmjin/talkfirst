@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { Icon } from "./Icon";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 import { useI18n } from "../lib/i18n-context";
 import { EASE, MOTION } from "../lib/motion";
 
@@ -200,7 +200,7 @@ export function formatVoiceDuration(value: number) {
     : `${minutes}′${String(seconds).padStart(2, "0")}″`;
 }
 
-const styles = StyleSheet.create({
+const styles = themed((c) => StyleSheet.create({
   bubble: {
     flexDirection: "row",
     alignItems: "center",
@@ -208,10 +208,10 @@ const styles = StyleSheet.create({
     height: 40,
     paddingHorizontal: 14,
     borderRadius: radii.chip,
-    backgroundColor: colors.bgSoft,
+    backgroundColor: c.bgSoft,
   },
-  bubblePlaying: { backgroundColor: colors.bgTint },
-  duration: { fontSize: sizes.ui, fontWeight: "600", color: colors.ink, marginLeft: "auto" },
+  bubblePlaying: { backgroundColor: c.bgTint },
+  duration: { fontSize: sizes.ui, fontWeight: "600", color: c.ink, marginLeft: "auto" },
   waves: { flexDirection: "row", alignItems: "center", gap: 2.5 },
-  wave: { width: 2.5, borderRadius: radii.chip, backgroundColor: colors.primary },
-});
+  wave: { width: 2.5, borderRadius: radii.chip, backgroundColor: c.primary },
+}));

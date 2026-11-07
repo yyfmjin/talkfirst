@@ -21,7 +21,7 @@ import type {
   AttributeView,
   VisibilityTier,
 } from "../lib/types";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 import { radii, sizes } from "../design/tokens";
 /** 镜像 `ATTRIBUTE_MAX_PER_KIND`（profile-attributes.service.ts）。 */
@@ -691,58 +691,58 @@ function Field({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+const styles = themed((c) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
   body: { padding: 20, paddingBottom: 40, gap: 12 },
-  intro: { fontSize: sizes.ui, lineHeight: 20, color: colors.muted },
-  errorText: { fontSize: sizes.ui, color: colors.danger },
-  okText: { fontSize: sizes.ui, color: colors.primary },
+  intro: { fontSize: sizes.ui, lineHeight: 20, color: c.muted },
+  errorText: { fontSize: sizes.ui, color: c.danger },
+  okText: { fontSize: sizes.ui, color: c.primary },
 
   section: {
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.glass,
+    borderColor: c.line,
+    backgroundColor: c.glass,
     padding: 16,
     marginTop: 8,
   },
   sectionHead: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
   sectionHeadText: { flex: 1 },
-  sectionTitle: { fontSize: sizes.body, fontWeight: "700", color: colors.ink },
-  sectionHint: { fontSize: sizes.caption, color: colors.muted, marginTop: 2, lineHeight: 17 },
+  sectionTitle: { fontSize: sizes.body, fontWeight: "700", color: c.ink },
+  sectionHint: { fontSize: sizes.caption, color: c.muted, marginTop: 2, lineHeight: 17 },
   count: {
     borderRadius: radii.chip,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    backgroundColor: colors.bgTint,
+    backgroundColor: c.bgTint,
   },
-  countFull: { backgroundColor: colors.dangerSoft },
-  countText: { fontSize: sizes.caption, color: colors.primary, fontWeight: "600" },
-  countFullText: { color: colors.danger },
+  countFull: { backgroundColor: c.dangerSoft },
+  countText: { fontSize: sizes.caption, color: c.primary, fontWeight: "600" },
+  countFullText: { color: c.danger },
   example: {
     marginTop: 12,
     borderRadius: radii.chip,
-    backgroundColor: colors.bgSoft,
+    backgroundColor: c.bgSoft,
     padding: 12,
     fontSize: sizes.caption,
     lineHeight: 18,
-    color: colors.muted,
+    color: c.muted,
   },
   list: { marginTop: 12, gap: 8 },
   row: {
     flexDirection: "row",
     alignItems: "center",
     borderRadius: radii.chip,
-    backgroundColor: colors.bgSoft,
+    backgroundColor: c.bgSoft,
     paddingVertical: 10,
     paddingLeft: 12,
     paddingRight: 4,
     gap: 4,
   },
   rowMain: { flex: 1 },
-  rowLabel: { fontSize: sizes.body, color: colors.ink },
-  rowMeta: { fontSize: sizes.overline, color: colors.muted, marginTop: 2 },
+  rowLabel: { fontSize: sizes.body, color: c.ink },
+  rowMeta: { fontSize: sizes.overline, color: c.muted, marginTop: 2 },
   rowActions: { flexDirection: "row", alignItems: "center" },
   moveBtn: {
     width: 28,
@@ -760,7 +760,7 @@ const styles = StyleSheet.create({
     gap: 4,
     padding: 4,
     borderRadius: radii.chip,
-    backgroundColor: colors.bgSoft,
+    backgroundColor: c.bgSoft,
   },
   segment: {
     flex: 1,
@@ -768,9 +768,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: radii.chip,
   },
-  segmentActive: { backgroundColor: colors.white },
-  segmentLabel: { fontSize: sizes.ui, color: colors.muted },
-  segmentLabelActive: { color: colors.primary, fontWeight: "600" },
+  segmentActive: { backgroundColor: c.white },
+  segmentLabel: { fontSize: sizes.ui, color: c.muted },
+  segmentLabelActive: { color: c.primary, fontWeight: "600" },
 
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 },
   chip: {
@@ -781,46 +781,46 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.glass,
+    borderColor: c.line,
+    backgroundColor: c.glass,
   },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipLabel: { fontSize: sizes.ui, color: colors.ink },
-  chipLabelActive: { color: colors.white, fontWeight: "600" },
+  chipActive: { backgroundColor: c.primary, borderColor: c.primary },
+  chipLabel: { fontSize: sizes.ui, color: c.ink },
+  chipLabelActive: { color: c.white, fontWeight: "600" },
 
   form: { gap: 12, marginTop: 4 },
   field: { gap: 6 },
-  fieldLabel: { fontSize: sizes.ui, fontWeight: "600", color: colors.muted },
+  fieldLabel: { fontSize: sizes.ui, fontWeight: "600", color: c.muted },
   input: {
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: c.line,
     borderRadius: radii.chip,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: sizes.body,
-    color: colors.ink,
-    backgroundColor: colors.glass,
+    color: c.ink,
+    backgroundColor: c.glass,
   },
 
   currentRow: {
     borderRadius: radii.chip,
-    backgroundColor: colors.bgSoft,
+    backgroundColor: c.bgSoft,
     padding: 12,
   },
-  currentLabel: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
-  currentMeta: { fontSize: sizes.overline, color: colors.muted, marginTop: 2 },
+  currentLabel: { fontSize: sizes.body, fontWeight: "600", color: c.ink },
+  currentMeta: { fontSize: sizes.overline, color: c.muted, marginTop: 2 },
 
   actions: { marginTop: 4 },
 
-  deleteBlock: { marginTop: 20, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 14 },
+  deleteBlock: { marginTop: 20, borderTopWidth: 1, borderTopColor: c.line, paddingTop: 14 },
   deleteLink: { alignItems: "center", paddingVertical: 10 },
-  deleteLinkText: { fontSize: sizes.body, color: colors.danger, fontWeight: "500" },
+  deleteLinkText: { fontSize: sizes.body, color: c.danger, fontWeight: "500" },
   deleteConfirm: {
     borderRadius: radii.chip,
-    backgroundColor: colors.dangerSoft,
+    backgroundColor: c.dangerSoft,
     padding: 14,
   },
-  deleteConfirmText: { fontSize: sizes.ui, color: colors.danger },
+  deleteConfirmText: { fontSize: sizes.ui, color: c.danger },
   deleteConfirmActions: { flexDirection: "row", gap: 8, marginTop: 10 },
   deleteConfirmBtn: { flex: 1 },
-});
+}));

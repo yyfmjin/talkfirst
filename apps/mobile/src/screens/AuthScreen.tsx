@@ -18,7 +18,7 @@ import { legalUrl } from "../lib/legal";
 import { fetchOAuthProviders, startOAuth } from "../lib/oauth";
 import { ResetPasswordScreen } from "./ResetPasswordScreen";
 import { VerifyScreen } from "./VerifyScreen";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 import { radii, sizes } from "../design/tokens";
 /**
@@ -369,25 +369,25 @@ export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {})
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+const styles = themed((c) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
   inner: { flex: 1, justifyContent: "center", padding: 28 },
   header: { alignItems: "center", marginBottom: 40 },
-  title: { fontSize: sizes.display, fontWeight: "600", color: colors.ink, marginTop: 20 },
-  subtitle: { fontSize: sizes.ui, color: colors.muted, marginTop: 8 },
+  title: { fontSize: sizes.display, fontWeight: "600", color: c.ink, marginTop: 20 },
+  subtitle: { fontSize: sizes.ui, color: c.muted, marginTop: 8 },
   form: { width: "100%" },
-  error: { color: colors.danger, fontSize: sizes.caption, marginBottom: 12 },
+  error: { color: c.danger, fontSize: sizes.caption, marginBottom: 12 },
   footer: { flexDirection: "row", justifyContent: "center", marginTop: 28 },
-  footerText: { color: colors.muted, fontSize: sizes.ui },
-  footerLink: { color: colors.primary, fontSize: sizes.ui, fontWeight: "600" },
+  footerText: { color: c.muted, fontSize: sizes.ui },
+  footerLink: { color: c.primary, fontSize: sizes.ui, fontWeight: "600" },
   consent: { marginBottom: 14 },
   consentRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
-  consentText: { flex: 1, fontSize: sizes.caption, color: colors.muted, lineHeight: 17 },
+  consentText: { flex: 1, fontSize: sizes.caption, color: c.muted, lineHeight: 17 },
   consentLinks: { flexDirection: "row", gap: 14, marginTop: 6, marginLeft: 28 },
-  consentLink: { color: colors.primary, fontSize: sizes.caption, fontWeight: "600" },
+  consentLink: { color: c.primary, fontSize: sizes.caption, fontWeight: "600" },
   social: { gap: 10, marginBottom: 20 },
   socialDisabled: { opacity: 0.45 },
-  socialHint: { fontSize: sizes.overline, color: colors.muted, textAlign: "center" },
+  socialHint: { fontSize: sizes.overline, color: c.muted, textAlign: "center" },
   socialButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -396,10 +396,10 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: radii.card,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.glass,
+    borderColor: c.line,
+    backgroundColor: c.glass,
   },
-  socialLabel: { fontSize: sizes.body, fontWeight: "600", color: colors.ink },
+  socialLabel: { fontSize: sizes.body, fontWeight: "600", color: c.ink },
   googleGlyph: { fontSize: sizes.heading, fontWeight: "700", color: "#4285F4" },
   facebookBadge: {
     width: 20,
@@ -409,10 +409,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#1877F2",
   },
-  facebookGlyph: { color: colors.white, fontSize: sizes.ui, fontWeight: "700" },
+  facebookGlyph: { color: c.white, fontSize: sizes.ui, fontWeight: "700" },
   divider: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 6 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: colors.line },
-  dividerText: { fontSize: sizes.caption, color: colors.muted },
+  dividerLine: { flex: 1, height: 1, backgroundColor: c.line },
+  dividerText: { fontSize: sizes.caption, color: c.muted },
   forgot: { alignSelf: "flex-end", marginTop: -4, marginBottom: 12 },
-  forgotText: { color: colors.primary, fontSize: sizes.caption, fontWeight: "600" },
-});
+  forgotText: { color: c.primary, fontSize: sizes.caption, fontWeight: "600" },
+}));

@@ -12,7 +12,7 @@ import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { SubHeader } from "../components/SubHeader";
 import { useI18n } from "../lib/i18n-context";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 import { radii, sizes } from "../design/tokens";
 import type {
   CountryOption,
@@ -348,12 +348,12 @@ function SaveButton({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+const styles = themed((c) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
   body: { padding: 20, paddingBottom: 40, gap: 12 },
-  sectionTitle: { fontSize: sizes.body, fontWeight: "700", color: colors.ink, marginTop: 8 },
-  sectionHint: { fontSize: sizes.caption, color: colors.muted },
+  sectionTitle: { fontSize: sizes.body, fontWeight: "700", color: c.ink, marginTop: 8 },
+  sectionHint: { fontSize: sizes.caption, color: c.muted },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
     flexDirection: "row",
@@ -363,13 +363,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: radii.control,
     borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.glass,
+    borderColor: c.line,
+    backgroundColor: c.glass,
   },
-  chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipLabel: { fontSize: sizes.ui, color: colors.ink },
-  chipLabelSelected: { color: colors.white, fontWeight: "600" },
+  chipSelected: { backgroundColor: c.primary, borderColor: c.primary },
+  chipLabel: { fontSize: sizes.ui, color: c.ink },
+  chipLabelSelected: { color: c.white, fontWeight: "600" },
   saveRow: { marginTop: 4, alignItems: "flex-start" },
-  errorText: { fontSize: sizes.ui, color: colors.danger },
-  okText: { fontSize: sizes.ui, color: colors.primary },
-});
+  errorText: { fontSize: sizes.ui, color: c.danger },
+  okText: { fontSize: sizes.ui, color: c.primary },
+}));

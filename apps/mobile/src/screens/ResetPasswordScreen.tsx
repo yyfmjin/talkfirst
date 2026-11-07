@@ -7,7 +7,7 @@ import { Logo } from "../components/Logo";
 import { ApiRequestError, apiFetch } from "../lib/api";
 import { useBackHandler } from "../lib/back-stack";
 import { useI18n } from "../lib/i18n-context";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 import { sizes } from "../design/tokens";
 /**
@@ -183,16 +183,16 @@ export function ResetPasswordScreen({ initialEmail = "", onBack }: { initialEmai
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
+const styles = themed((c) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: c.bg },
   inner: { flex: 1, justifyContent: "center", padding: 28 },
   header: { alignItems: "center", marginBottom: 24 },
-  title: { fontSize: sizes.title, fontWeight: "600", color: colors.ink, marginTop: 18 },
-  subtitle: { fontSize: sizes.ui, color: colors.muted, marginTop: 8, textAlign: "center", lineHeight: 19 },
+  title: { fontSize: sizes.title, fontWeight: "600", color: c.ink, marginTop: 18 },
+  subtitle: { fontSize: sizes.ui, color: c.muted, marginTop: 8, textAlign: "center", lineHeight: 19 },
   form: { width: "100%" },
-  notice: { color: colors.primaryDark, fontSize: sizes.caption, marginBottom: 10, lineHeight: 18 },
-  error: { color: colors.danger, fontSize: sizes.caption, marginBottom: 10, lineHeight: 18 },
+  notice: { color: c.primaryDark, fontSize: sizes.caption, marginBottom: 10, lineHeight: 18 },
+  error: { color: c.danger, fontSize: sizes.caption, marginBottom: 10, lineHeight: 18 },
   gap: { height: 10 },
   back: { alignSelf: "center", marginTop: 22, paddingVertical: 6 },
-  backText: { color: colors.muted, fontSize: sizes.ui },
-});
+  backText: { color: c.muted, fontSize: sizes.ui },
+}));

@@ -1,7 +1,7 @@
 import { Component, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { t } from "../lib/i18n";
-import { colors } from "../theme";
+import { colors, themed } from "../theme";
 
 import { radii, sizes } from "../design/tokens";
 /**
@@ -85,27 +85,27 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 }
 
-const styles = StyleSheet.create({
+const styles = themed((c) => StyleSheet.create({
   root: { flex: 1, alignItems: "center", justifyContent: "center", padding: 28, gap: 12 },
-  title: { fontSize: sizes.heading, fontWeight: "600", color: colors.ink, textAlign: "center" },
-  body: { fontSize: sizes.ui, lineHeight: 21, color: colors.muted, textAlign: "center" },
-  detail: { fontSize: sizes.caption, lineHeight: 18, color: colors.muted, textAlign: "center" },
+  title: { fontSize: sizes.heading, fontWeight: "600", color: c.ink, textAlign: "center" },
+  body: { fontSize: sizes.ui, lineHeight: 21, color: c.muted, textAlign: "center" },
+  detail: { fontSize: sizes.caption, lineHeight: 18, color: c.muted, textAlign: "center" },
   stack: {
     fontSize: sizes.overline,
     lineHeight: 16,
-    color: colors.ink,
+    color: c.ink,
     textAlign: "left",
     alignSelf: "stretch",
     padding: 10,
     borderRadius: radii.chip,
-    backgroundColor: colors.bgSoft,
+    backgroundColor: c.bgSoft,
   },
   retry: {
     marginTop: 8,
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: radii.pill,
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
   },
-  retryLabel: { fontSize: sizes.ui, fontWeight: "600", color: colors.white },
-});
+  retryLabel: { fontSize: sizes.ui, fontWeight: "600", color: c.white },
+}));
