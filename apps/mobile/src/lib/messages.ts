@@ -350,6 +350,10 @@ export const zh = {
   "messages.voiceTooShort": "说话时间太短了。",
   "messages.voiceTooLong": "语音太长（上限 4MB），请分段发送。",
   "messages.voiceUploadFailed": "语音发送失败，请重试。",
+  "messages.recall": "撤回",
+  "messages.recallConfirm": "撤回这条消息？对方将看不到它。",
+  "messages.recallFailed": "撤回失败，请重试。",
+  "messages.recallExpired": "超过 24 小时的消息不能撤回。",
   "messages.typing": "正在输入…",
 
   /* ───────────────────────── 通知 ───────────────────────── */
@@ -1195,6 +1199,10 @@ export const en: Record<MsgKey, string> = {
   "messages.voiceTooShort": "That was too short to send.",
   "messages.voiceTooLong": "That voice message is too long (4MB max). Try sending it in parts.",
   "messages.voiceUploadFailed": "Couldn't send the voice message. Please try again.",
+  "messages.recall": "Unsend",
+  "messages.recallConfirm": "Unsend this message? The other person will no longer see it.",
+  "messages.recallFailed": "Couldn't unsend it. Please try again.",
+  "messages.recallExpired": "Messages older than 24 hours can't be unsent.",
   "messages.typing": "typing…",
 
   /* notifications */

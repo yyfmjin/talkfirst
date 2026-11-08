@@ -39,6 +39,7 @@ export function VoiceNote({
   durationSec,
   playLabel,
   pauseLabel,
+  onLongPress,
 }: {
   uri: string;
   durationSec?: number | null;
@@ -48,6 +49,8 @@ export function VoiceNote({
    */
   playLabel?: string;
   pauseLabel?: string;
+  /** 长按（聊天里用于撤回）：语音条自己就是可点击区域，外层拿不到这个手势。 */
+  onLongPress?: () => void;
 }) {
   const { t } = useI18n();
   const player = useAudioPlayer({ uri }, { updateInterval: 250 });
@@ -112,6 +115,8 @@ export function VoiceNote({
     <Animated.View style={{ transform: [{ scale: breathe }] }}>
     <Pressable
       onPress={toggle}
+      onLongPress={onLongPress}
+      delayLongPress={400}
       hitSlop={6}
       accessibilityRole="button"
       accessibilityState={{ selected: playing }}

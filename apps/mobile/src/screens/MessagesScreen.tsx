@@ -618,6 +618,37 @@ export function MessagesScreen() {
     }
   }
 
+  /**
+   * 撤回自己的消息：服务端限 24 小时内且只能删自己发的，这里只负责弹确认与本地移除。
+   *
+   * 不做乐观移除：删失败（超时/已过期）时消息已经消失会让人以为什么都没发生，
+   * 保留到服务端确认后再从列表里拿掉。
+   */
+  async function recallMessage(item: ChatMessage) {
+    if (item.id.startsWith("local-") || item.id.startsWith("pending-")) return;
+    Alert.alert(t("messages.recallConfirm"), undefined, [
+      { text: t("common.cancel"), style: "cancel" },
+      {
+        text: t("messages.recall"),
+        style: "destructive",
+        onPress: () => {
+          void (async () => {
+            try {
+              await apiFetch(`/messages/${item.id}`, { method: "DELETE" });
+              setMessages((previous) => previous.filter((message) => message.id !== item.id));
+            } catch (recallError) {
+              setError(
+                recallError instanceof ApiRequestError && recallError.code === "DELETE_EXPIRED"
+                  ? t("messages.recallExpired")
+                  : t("messages.recallFailed"),
+              );
+            }
+          })();
+        },
+      },
+    ]);
+  }
+
   /*
    * 实时状态只在**不健康**时显示一行：正常连着不该占地方。
    * 文案只描述连接状态，不说「发不出去」—— 发送走 REST，与这条长连接无关。
@@ -780,9 +811,14 @@ export function MessagesScreen() {
                     uri={item.content}
                     playLabel={t("messages.voicePlay")}
                     pauseLabel={t("messages.voicePause")}
+                    onLongPress={mine ? () => void recallMessage(item) : undefined}
                   />
                 ) : (
-                <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
+                <Pressable
+                  onLongPress={mine ? () => void recallMessage(item) : undefined}
+                  delayLongPress={400}
+                  style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}
+                >
                   {item.type === "IMAGE" ? (
                     <Image
                       source={{ uri: item.content }}
@@ -826,7 +862,7 @@ export function MessagesScreen() {
                       </Pressable>
                     )
                   ) : null}
-                </View>
+                </Pressable>
                 )}
               </View>
             );
