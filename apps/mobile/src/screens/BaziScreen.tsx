@@ -10,8 +10,17 @@ import { colors, themed } from "../theme";
 
 import { sizes } from "../design/tokens";
 
-/** 外部「按生日起中文名」工具页。 */
-const BAZI_URL = "https://bazi-app-production-b3f8.up.railway.app";
+/**
+ * 起中文名 / 八字工具页（自建部署，2026-11-08）。
+ *
+ * 原先指向 Railway 的 `bazi-app-production-b3f8.up.railway.app`；现在跑在我们自己
+ * 的服务器上（容器 :3100，nginx 挂在主域 `/bazi/` 下），数据在宿主机
+ * `/home/ubuntu/bazi-data/app.db`。
+ *
+ * 结尾的斜杠**不能省**：页面里的接口地址是相对路径 `./actions`，
+ * 少了斜杠会解析到站点根（`/actions`）而不是 `/bazi/actions`。
+ */
+const BAZI_URL = "https://talkfirst.ccwu.cc/bazi/";
 
 /**
  * App 内打开起名工具（2026-11-07）。

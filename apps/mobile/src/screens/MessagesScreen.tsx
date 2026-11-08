@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   FlatList,
   Image,
   Modal,
@@ -26,6 +27,7 @@ import { UnreadBadge } from "../components/UnreadBadge";
 import { ExchangeScreen } from "./ExchangeScreen";
 import { NotificationsScreen } from "./NotificationsScreen";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
+import { playGreetingSound, playMessageSound } from "../lib/notification-sound";
 import { navigateTo } from "../lib/nav-intent";
 import type { MsgKey } from "../lib/messages";
 import { colors, themed } from "../theme";
@@ -106,6 +108,27 @@ export function MessagesScreen() {
   /** 对方正在输入（服务端 `typing` 事件；只关心当前会话与别人）。 */
   const [peerTyping, setPeerTyping] = useState(false);
 
+  /**
+   * 已经见过的打招呼请求 id。
+   *
+   * `null` = 还没加载过。首次加载**不响**：那不是「新请求」，而是整个列表一次性到位。
+   * 之后每次刷新比对差集，只有新增的那几条才触发三音提示。
+   */
+  const knownRequestIds = useRef<Set<string> | null>(null);
+
+  /**
+   * 新请求 → 三音提示音，并把「见过的 id」推进到当前快照。
+   *
+   * 抽成函数是因为有两个入口：列表刷新（拉会话时顺带拉的）和轮询（只拉请求）。
+   * 两边都得判「新」，否则轮询会把历史申请再响一遍。
+   */
+  const applyIncomingRequests = useCallback((requests: IncomingRequest[]) => {
+    setIncoming(requests);
+    const seen = knownRequestIds.current;
+    if (seen && requests.some((item) => !seen.has(item.id))) playGreetingSound();
+    knownRequestIds.current = new Set(requests.map((item) => item.id));
+  }, []);
+
   const loadConversations = useCallback(async () => {
     setError("");
     try {
@@ -118,13 +141,29 @@ export function MessagesScreen() {
         apiFetch<IncomingRequest[]>("/connections/requests/incoming").catch(() => []),
       ]);
       setConversations(chats);
-      setIncoming(requests);
+      applyIncomingRequests(requests);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : t("messages.errorList"));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, applyIncomingRequests]);
+
+  /**
+   * 打招呼请求没有 socket 事件（服务端只给 REST），所以靠轮询补上「实时」。
+   *
+   * 45 秒：打招呼不是聊天，晚半分钟听到并不影响判断；再密只是白烧请求。
+   * 只在 App 处于前台时拉，失败静默 —— 这是背景刷新，不该在页面上留错误。
+   */
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (AppState.currentState !== "active") return;
+      void apiFetch<IncomingRequest[]>("/connections/requests/incoming")
+        .then(applyIncomingRequests)
+        .catch(() => undefined);
+    }, 45_000);
+    return () => clearInterval(timer);
+  }, [applyIncomingRequests]);
 
   /** 接受 / 拒绝一条申请。服务端动作完成后重新拉一遍：会话可能刚建出来。 */
   async function respondRequest(id: string, action: "accept" | "reject") {
@@ -186,6 +225,13 @@ export function MessagesScreen() {
       setPeerTyping(false);
     },
     onActivity: (activity) => {
+      /*
+       * 新消息提示音：别人发来的才响，而且正在看这个会话时不响 ——
+       * 消息已经在眼前出现，再响一声只是多余。
+       */
+      if (activity.senderId !== user?.id && activity.conversationId !== openIdRef.current) {
+        playMessageSound();
+      }
       setConversations((previous) => {
         const index = previous.findIndex((item) => item.id === activity.conversationId);
         // 列表里还没有这个会话（对方第一次发来消息）：重拉列表拿头像/昵称。

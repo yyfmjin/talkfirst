@@ -44,6 +44,15 @@ jest.mock("expo-font", () => {
  */
 jest.mock("expo-audio", () => ({
   RecordingPresets: { HIGH_QUALITY: {} },
+  /* 通知音用的是命令式 API（`createAudioPlayer`），不是 hook —— `useAudioPlayer`
+     在非组件上下文里调不了。两者都在这里给桩，屏幕测试才不会碰到原生模块。 */
+  createAudioPlayer: jest.fn(() => ({
+    play: jest.fn(),
+    pause: jest.fn(),
+    seekTo: jest.fn(async () => undefined),
+    remove: jest.fn(),
+  })),
+  setAudioModeAsync: jest.fn(async () => undefined),
   useAudioPlayer: () => ({
     play: jest.fn(),
     pause: jest.fn(),
