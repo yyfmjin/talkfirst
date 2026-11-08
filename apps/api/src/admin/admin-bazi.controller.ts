@@ -30,8 +30,10 @@ const ALLOWED_ACTIONS = new Set([
   "adminDeleteUser",
   "adminListAllCandidates",
   "adminUpdateCandidate",
+  "adminDeleteCandidate",
   "adminDeleteProfile",
   "adminListAllBindings",
+  "adminDeleteBinding",
   "adminListAllConversations",
   "adminListMessages",
   "adminDeleteConversation",
@@ -39,6 +41,7 @@ const ALLOWED_ACTIONS = new Set([
   "adminListDmConversations",
   "adminListDmMessages",
   "adminDeleteDmMessage",
+  "adminDeleteDmConversation",
 ]);
 
 /**

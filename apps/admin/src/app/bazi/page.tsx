@@ -77,6 +77,14 @@ type Conversation = {
 type ChatMessage = { id: number; sender: string; content: string; createdAt: string };
 type Candidate = { id: number; name: string; ownerName: string; gender: string; birthDate: string };
 type Binding = { id: number; relationType: string; targetName: string; ownerName: string };
+type DmConversation = {
+  id: number;
+  userAName: string;
+  userBName: string;
+  lastMessage: string | null;
+  messageCount: number;
+};
+type DmMessage = { id: number; senderName: string; content: string; createdAt: string };
 
 const TABS: Array<{ key: Tab; label: string }> = [
   { key: "overview", label: "概览" },
@@ -104,6 +112,10 @@ function BaziScreen() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [openConversation, setOpenConversation] = useState<number | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  /** 真实用户之间的私聊（2026-11-08 补上）：与排盘会话是两套表。 */
+  const [dmConversations, setDmConversations] = useState<DmConversation[]>([]);
+  const [openDm, setOpenDm] = useState<number | null>(null);
+  const [dmMessages, setDmMessages] = useState<DmMessage[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [bindings, setBindings] = useState<Binding[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -127,10 +139,16 @@ function BaziScreen() {
         setUsers(data.users);
       }
       if (tab === "chats") {
-        const data = await call<{ conversations: Conversation[] }>("adminListAllConversations");
+        const [data, dm] = await Promise.all([
+          call<{ conversations: Conversation[] }>("adminListAllConversations"),
+          call<{ conversations: DmConversation[] }>("adminListDmConversations"),
+        ]);
         setConversations(data.conversations);
+        setDmConversations(dm.conversations);
         setOpenConversation(null);
         setMessages([]);
+        setOpenDm(null);
+        setDmMessages([]);
       }
       if (tab === "data") {
         const [c, b] = await Promise.all([
@@ -183,6 +201,17 @@ function BaziScreen() {
       setMessages(data.messages);
     } catch (requestError) {
       setError(requestError instanceof ApiRequestError ? requestError.message : "消息读取失败");
+    }
+  }
+
+  async function openDmMessages(conversationId: number) {
+    setOpenDm(conversationId);
+    setDmMessages([]);
+    try {
+      const data = await call<{ messages: DmMessage[] }>("adminListDmMessages", { conversationId });
+      setDmMessages(data.messages);
+    } catch (requestError) {
+      setError(requestError instanceof ApiRequestError ? requestError.message : "私聊读取失败");
     }
   }
 
@@ -427,6 +456,102 @@ function BaziScreen() {
               </ul>
             </div>
           ) : null}
+
+          <div className="rounded-xl border border-neutral-200 bg-white">
+            <h2 className="border-b border-neutral-200 px-4 py-3 text-base font-semibold">
+              私聊（{dmConversations.length}）
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-left text-neutral-500">
+                  <tr>
+                    <th className="px-4 py-2 font-medium">双方</th>
+                    <th className="px-4 py-2 font-medium">消息数</th>
+                    <th className="px-4 py-2 font-medium">最近一条</th>
+                    <th className="px-4 py-2 font-medium">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dmConversations.map((item) => (
+                    <tr key={item.id} className="border-t border-neutral-100">
+                      <td className="px-4 py-2">
+                        {item.userAName} ↔ {item.userBName}
+                      </td>
+                      <td className="px-4 py-2">{item.messageCount}</td>
+                      <td className="max-w-[260px] truncate px-4 py-2 text-neutral-600">
+                        {item.lastMessage ?? "—"}
+                      </td>
+                      <td className="px-4 py-2">
+                        <div className="flex gap-2 text-xs">
+                          <button
+                            type="button"
+                            onClick={() => void openDmMessages(item.id)}
+                            className="rounded border border-neutral-200 px-2 py-1 hover:bg-neutral-50"
+                          >
+                            查看消息
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!canWrite || busy}
+                            onClick={() => {
+                              if (!window.confirm("删除这个私聊会话及其全部消息？")) return;
+                              void run(
+                                "adminDeleteDmConversation",
+                                { conversationId: item.id },
+                                "私聊已删除",
+                              );
+                            }}
+                            className="rounded border border-red-200 px-2 py-1 text-red-600 hover:bg-red-50 disabled:opacity-40"
+                          >
+                            删除会话
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {dmConversations.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-4 text-center text-neutral-500">
+                        还没有私聊
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {openDm !== null ? (
+            <div className="rounded-xl border border-neutral-200 bg-white">
+              <h2 className="border-b border-neutral-200 px-4 py-3 text-base font-semibold">
+                私聊 #{openDm} 的消息（{dmMessages.length}）
+              </h2>
+              <ul className="divide-y divide-neutral-100">
+                {dmMessages.map((message) => (
+                  <li key={message.id} className="flex items-start justify-between gap-3 px-4 py-2 text-sm">
+                    <div>
+                      <span className="mr-2 text-xs text-neutral-500">{message.senderName}</span>
+                      <span className="break-words">{message.content}</span>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!canWrite || busy}
+                      onClick={() => {
+                        if (!window.confirm("删除这条私聊消息？")) return;
+                        void run("adminDeleteDmMessage", { messageId: message.id }, "消息已删除");
+                      }}
+                      className="shrink-0 rounded border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-40"
+                    >
+                      删除
+                    </button>
+                  </li>
+                ))}
+                {dmMessages.length === 0 ? (
+                  <li className="px-4 py-4 text-center text-sm text-neutral-500">没有消息</li>
+                ) : null}
+              </ul>
+            </div>
+          ) : null}
         </section>
       ) : null}
 
@@ -438,10 +563,25 @@ function BaziScreen() {
             </h2>
             <ul className="divide-y divide-neutral-100 text-sm">
               {candidates.slice(0, 50).map((item) => (
-                <li key={item.id} className="flex items-center justify-between px-4 py-2">
+                <li key={item.id} className="flex items-center justify-between gap-3 px-4 py-2">
                   <span>{item.name}</span>
-                  <span className="text-xs text-neutral-500">
+                  <span className="flex items-center gap-3 text-xs text-neutral-500">
                     {item.ownerName} · {item.birthDate}
+                    <button
+                      type="button"
+                      disabled={!canWrite || busy}
+                      onClick={() => {
+                        if (!window.confirm(`删除候选人「${item.name}」及其绑定与聊天？`)) return;
+                        void run(
+                          "adminDeleteCandidate",
+                          { candidateId: item.id },
+                          "候选人已删除",
+                        );
+                      }}
+                      className="rounded border border-red-200 px-2 py-1 text-red-600 hover:bg-red-50 disabled:opacity-40"
+                    >
+                      删除
+                    </button>
                   </span>
                 </li>
               ))}
@@ -456,11 +596,24 @@ function BaziScreen() {
             </h2>
             <ul className="divide-y divide-neutral-100 text-sm">
               {bindings.slice(0, 50).map((item) => (
-                <li key={item.id} className="flex items-center justify-between px-4 py-2">
+                <li key={item.id} className="flex items-center justify-between gap-3 px-4 py-2">
                   <span>
                     {item.ownerName} → {item.targetName}
                   </span>
-                  <span className="text-xs text-neutral-500">{item.relationType}</span>
+                  <span className="flex items-center gap-3 text-xs text-neutral-500">
+                    {item.relationType}
+                    <button
+                      type="button"
+                      disabled={!canWrite || busy}
+                      onClick={() => {
+                        if (!window.confirm("解除这条绑定？")) return;
+                        void run("adminDeleteBinding", { bindingId: item.id }, "绑定已解除");
+                      }}
+                      className="rounded border border-red-200 px-2 py-1 text-red-600 hover:bg-red-50 disabled:opacity-40"
+                    >
+                      解绑
+                    </button>
+                  </span>
                 </li>
               ))}
               {bindings.length === 0 ? (
