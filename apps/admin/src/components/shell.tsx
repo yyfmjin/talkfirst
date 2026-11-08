@@ -86,6 +86,12 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
        * own site configuration, and not for ANALYST (read-only across the console).
        */
       { href: "/discover-categories", label: "发现页类别", permission: "settings:read" },
+      /**
+       * 起名站（Destiny Atlas）—— 独立部署的另一个应用，数据在它自己的库里。
+       * 与站点设置同一道门（settings:read）：它管的是「站点怎么配、有多少人用」，
+       * 不是审核类操作。
+       */
+      { href: "/bazi", label: "起名站", permission: "settings:read" },
     ],
   },
   {
@@ -136,6 +142,7 @@ const NAV_ICONS: Record<string, string> = {
   "/audit": "M12 8v4l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z",
   // Tag/label glyph for the discovery filter tabs.
   "/discover-categories": "M3 12V4h8l10 10-8 8L3 12Zm5-4h.01",
+  "/bazi": "M12 3v18M3 12h18M5 5h14v14H5z",
   // Phase O2 — a server rack / traffic glyph for the operations section.
   "/ops/access-logs": "M4 5h16v5H4V5Zm0 9h16v5H4v-5Zm3-6.5h.01M7 13.5h.01",
   // A shield with a bar through it — blocking, as opposed to the risk shield.

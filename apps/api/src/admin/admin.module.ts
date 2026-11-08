@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { AdminController } from "./admin.controller";
+import { AdminBaziController } from "./admin-bazi.controller";
 import { AdminGuard } from "./admin.guard";
 import { PermissionGuard } from "./permission.guard";
 import { AdminService } from "./admin.service";
@@ -10,7 +11,7 @@ import { FeedbackModule } from "../feedback/feedback.module";
   // services the member-facing endpoints use. A second reader for the support address
   // would be a second chance for the two to disagree about what is configured.
   imports: [FeedbackModule],
-  controllers: [AdminController],
+  controllers: [AdminController, AdminBaziController],
   providers: [AdminService, AdminGuard, PermissionGuard],
   // Exported so `UserStatusScheduler` can record SYSTEM audit entries through
   // `AdminService.recordSystemAudit` — the single entry point for machine
