@@ -179,7 +179,21 @@ export default function MomentsPage() {
         ]);
         if (!platforms.length) setPlatforms(list as Platform[]);
         setTopics(topicList.items);
-        setFeed((current) => (reset ? result.items : [...current, ...result.items]));
+        setFeed((current) =>
+          reset
+            ? result.items
+            : [
+                ...current,
+                /*
+                 * 一人一条：服务端只保证「同一页内每个作者只出现一次」，而游标是按
+                 * 时间走的 —— 同一个人更早的动态会出现在下一页。客户端按作者去重，
+                 * 一次浏览里他就只占一格。「我的」标签页不折叠：那是自己的列表。
+                 */
+                ...result.items.filter(
+                  (item) => tab === "mine" || !current.some((shown) => shown.userId === item.userId),
+                ),
+              ],
+        );
         setCursor(result.nextCursor);
         setHasMore(Boolean(result.nextCursor));
       } catch (requestError) {

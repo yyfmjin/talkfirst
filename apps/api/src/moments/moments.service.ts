@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { NotificationService } from "../notifications/notification.service";
 import { DEFAULT_LOCALE, msg, t, type MessageKey, type SupportedLocale } from "../common/i18n";
-import { keysetFilterAfter, keysetNextCursor, keysetOrderBy, parseKeysetCursor } from "../common/keyset-cursor";
+import { encodeKeysetCursor, keysetFilterAfter, keysetNextCursor, keysetOrderBy, parseKeysetCursor } from "../common/keyset-cursor";
 import { PrismaService } from "../prisma/prisma.service";
 import { SafetyService, type SafetyScan } from "../safety/safety.service";
 
@@ -319,6 +319,20 @@ export class MomentsService {
       if (authorIds.length === 0) return { items: [], nextCursor: null };
     }
 
+    /*
+     * 一人一条（2026-11-08）。
+     *
+     * 之前按时间直接钺：一个人连发十条，整屏就只剩他 —— 别人发的被挤到下面去，
+     * 用户反馈「刷屏」。现在每个作者只保留**最新一条**，其余的到他的动态页看
+     * （`GET /moments/user/:id`）。「我的」标签页不折叠：那本来就是自己的列表。
+     *
+     * 扫描窗口取 limit 的 4 倍：被丢掉的是同一作者的更早条目，多扫几条一定够用。
+     * 游标取「最后一条被消费的行」，而不是窗口末尾 —— 窗口末尾后面可能还有
+     * 没返回过的新作者，从窗口末尾续页会把他们整段跳过。
+     */
+    const dedupeByAuthor = tab !== "mine";
+    const scanSize = dedupeByAuthor ? Math.min(limit * 4 + 1, 200) : limit + 1;
+
     const moments = await this.prisma.moment.findMany({
       where: {
         ...keysetFilterAfter(cursor),
@@ -337,7 +351,7 @@ export class MomentsService {
         ],
       },
       orderBy: keysetOrderBy,
-      take: limit + 1,
+      take: scanSize,
       include: {
         user: { select: { id: true, nickname: true, avatarUrl: true, countryCode: true } },
         likes: { where: { userId: viewerId }, select: { userId: true } },
@@ -360,11 +374,31 @@ export class MomentsService {
     });
 
     const viewerSetting = await this.prisma.momentSetting.findUnique({ where: { userId: viewerId } });
-    const page = visibleMoments.slice(0, limit);
+
+    let page = visibleMoments.slice(0, limit);
+    let hasMore = moments.length > limit;
+    let lastConsumed = page[page.length - 1] ?? null;
+
+    if (dedupeByAuthor) {
+      const deduped: typeof visibleMoments = [];
+      const seenAuthors = new Set<string>();
+      for (const moment of visibleMoments) {
+        lastConsumed = moment;
+        if (seenAuthors.has(moment.userId)) continue;
+        seenAuthors.add(moment.userId);
+        deduped.push(moment);
+        if (deduped.length >= limit) break;
+      }
+      page = deduped;
+      /*
+       * 还有更早的内容，当且仅当：窗口满了（后面可能还有），或者提前停下了
+       * （窗口里还有没返回的行）。两个都不成立才是真的到底了。
+       */
+      hasMore = moments.length === scanSize || deduped.length < visibleMoments.length;
+    }
+
     const items = page.map((moment) => this.feedItem(moment, viewerSetting));
-    // The cursor is the LAST ITEM OF THE RETURNED PAGE (audit P021) — never an
-    // index into the pre-filter array, and never a row the client did not see.
-    const nextCursor = keysetNextCursor(moments.length, limit, page);
+    const nextCursor = hasMore && lastConsumed ? encodeKeysetCursor(lastConsumed) : null;
     return { items, nextCursor };
   }
 

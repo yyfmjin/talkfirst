@@ -5,6 +5,7 @@ import { apiFetch } from "../lib/api";
 import { useBackHandler } from "../lib/back-stack";
 import { ComposeScreen } from "./ComposeScreen";
 import { MomentDetailScreen } from "./MomentDetailScreen";
+import { UserMomentsScreen } from "./UserMomentsScreen";
 import { MomentsSettingsScreen } from "./MomentsSettingsScreen";
 import { VideosScreen } from "./VideosScreen";
 import { Avatar } from "../components/Avatar";
@@ -69,12 +70,20 @@ export function MomentsScreen({
   const [watching, setWatching] = useState(false);
   /** 动态设置（全屏接管，与 web `/moments/settings` 同一页）。 */
   const [settings, setSettings] = useState(false);
+  /**
+   * 某人的动态页（全屏接管）。
+   *
+   * 时间线现在每人只显示最新一条（服务端 `feed` 里折叠），其余的要有个入口 ——
+   * 点卡片头部（头像/昵称）就进这里。
+   */
+  const [openAuthor, setOpenAuthor] = useState<string | null>(null);
 
   /* 系统返回键：每一层全屏子页都有自己的一层（激活后激活的优先）。 */
   useBackHandler(composing, () => setComposing(false));
   useBackHandler(detail !== null, () => setDetail(null));
   useBackHandler(watching, () => setWatching(false));
   useBackHandler(settings, () => setSettings(false));
+  useBackHandler(openAuthor !== null, () => setOpenAuthor(null));
 
   /*
    * 从通知点进一条动态。
@@ -110,7 +119,21 @@ export function MomentsScreen({
     try {
       const suffix = mode === "more" && cursor ? `&cursor=${encodeURIComponent(cursor)}` : "";
       const data = await apiFetch<MomentPage>(`/moments/feed?limit=10${suffix}`);
-      setItems((previous) => (mode === "more" ? [...previous, ...data.items] : data.items));
+      setItems((previous) =>
+        mode === "more"
+          ? [
+              ...previous,
+              /*
+               * 跨页也要一人一条：服务端只保证「同一页内每个作者只出现一次」，
+               * 而游标是按时间走的 —— 同一个作者更早的动态会出现在下一页。
+               * 在客户端按作者去重，一次浏览里他就只占一格。
+               */
+              ...data.items.filter(
+                (item) => !previous.some((shown) => shown.userId === item.userId),
+              ),
+            ]
+          : data.items,
+      );
       setCursor(data.nextCursor);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : t("moments.errorLoading"));
@@ -182,6 +205,19 @@ export function MomentsScreen({
          */
         onBack={() => {
           setDetail(null);
+          void load("refresh");
+        }}
+      />
+    );
+  }
+
+  if (openAuthor) {
+    return (
+      <UserMomentsScreen
+        userId={openAuthor}
+        onClose={() => {
+          setOpenAuthor(null);
+          /* 在他的动态页里可能删除/编辑过，回时间线重拉一页。 */
           void load("refresh");
         }}
       />
@@ -266,13 +302,25 @@ export function MomentsScreen({
         renderItem={({ item }) => (
           <Pressable style={styles.card} onPress={() => setDetail(item)} accessibilityRole="button">
             <View style={styles.cardHead}>
-              <Avatar uri={item.author.avatarUrl} nickname={item.author.nickname} size={40} />
-              <View style={styles.cardHeadText}>
+              <Pressable
+                onPress={() => setOpenAuthor(item.userId)}
+                accessibilityRole="button"
+                accessibilityLabel={item.author.nickname ?? t("common.user")}
+                hitSlop={6}
+              >
+                <Avatar uri={item.author.avatarUrl} nickname={item.author.nickname} size={40} />
+              </Pressable>
+              <Pressable
+                onPress={() => setOpenAuthor(item.userId)}
+                accessibilityRole="button"
+                accessibilityLabel={item.author.nickname ?? t("common.user")}
+                style={styles.cardHeadText}
+              >
                 <Text style={styles.nickname}>{item.author.nickname ?? t("common.user")}</Text>
                 <Text style={styles.meta}>
                   {item.author.countryCode ?? ""} {relativeTime(item.createdAt, t)}
                 </Text>
-              </View>
+              </Pressable>
             </View>
 
             {item.content ? (
