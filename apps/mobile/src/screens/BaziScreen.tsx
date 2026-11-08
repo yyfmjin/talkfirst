@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { WebView, type WebViewNavigation } from "react-native-webview";
 import type WebViewType from "react-native-webview";
 import { Button } from "../components/Button";
@@ -71,6 +71,19 @@ export function BaziScreen({ onClose }: { onClose: () => void }) {
               }}
             />
           </View>
+          {/*
+           * 网页加载失败时总得有条出路：WebView 里的失败（老设备、代理、证书）
+           * 不该把人困在一个只有「重试」的页面上。
+           */}
+          <Pressable
+            onPress={() => void Linking.openURL(BAZI_URL)}
+            accessibilityRole="button"
+            accessibilityLabel={t("me.baziOpenInBrowser")}
+            hitSlop={8}
+            style={styles.browserLink}
+          >
+            <Text style={styles.browserLinkText}>{t("me.baziOpenInBrowser")}</Text>
+          </Pressable>
         </View>
       ) : (
         <WebView
@@ -113,4 +126,6 @@ const styles = themed((c) => StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 28 },
   errorText: { fontSize: sizes.body, color: c.muted, textAlign: "center" },
   retryWrap: { marginTop: 16, minWidth: 120 },
+  browserLink: { marginTop: 14, paddingVertical: 6 },
+  browserLinkText: { fontSize: sizes.ui, color: c.primaryDark, fontWeight: "600" },
 }));

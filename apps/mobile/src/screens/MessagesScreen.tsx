@@ -13,7 +13,11 @@ import {
   View,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
+/*
+ * `expo-image-manipulator` **故意不在这里 import**（见 `uploadImageMessage`）：
+ * 它是 2026-11-08 才加的原生模块，而 OTA 会把这份 JS 推给更早安装的 0.1.21 包 ——
+ * 那些包的 APK 里没有这个模块，顶层 import 会让它们一启动就崩。
+ */
 /*
  * 语音读取用 legacy 入口：SDK 54 的新 API 把 `readAsStringAsync` 换成了 `File` 类，
  * 而动态发布那条链路（ComposeScreen）已经在用 legacy —— 两处保持一致，
@@ -622,11 +626,22 @@ export function MessagesScreen() {
     conversationId: string,
     asset: ImagePicker.ImagePickerAsset,
   ): Promise<ChatMessage> {
+    /*
+     * 懒加载见文件头：早期安装的 APK 没有这个原生模块，顶层 import 会直接崩进程。
+     * 在这里 require 的好处是「新包正常、老包只是发图失败」，而不是整个 App 打不开。
+     */
+    let manipulator: typeof import("expo-image-manipulator");
+    try {
+      manipulator = require("expo-image-manipulator") as typeof import("expo-image-manipulator");
+    } catch {
+      throw new Error(t("messages.imageToolUnavailable"));
+    }
+
     const width = asset.width ?? IMAGE_MAX_EDGE;
     const actions = width > IMAGE_MAX_EDGE ? [{ resize: { width: IMAGE_MAX_EDGE } }] : [];
-    const shrunk = await manipulateAsync(asset.uri, actions, {
+    const shrunk = await manipulator.manipulateAsync(asset.uri, actions, {
       compress: IMAGE_QUALITY,
-      format: SaveFormat.JPEG,
+      format: manipulator.SaveFormat.JPEG,
       base64: true,
     });
     if (!shrunk.base64) throw new Error(t("messages.mediaUploadFailed"));
