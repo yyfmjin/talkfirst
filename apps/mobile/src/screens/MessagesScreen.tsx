@@ -542,6 +542,18 @@ export function MessagesScreen() {
 
   /* ── 语音录制 ─────────────────────────────────────────────── */
 
+  /**
+   * 离开页面时把录到一半的麦关掉。
+   *
+   * 没有这一句，用户录到一半按返回键，麦克风会一直开着直到下次进入再被覆盖 ——
+   * 这是隐私问题，不是体验问题。`stop()` 在未开始录音时会抛，故意吞掉。
+   */
+  useEffect(() => {
+    return () => {
+      void recorder.stop().catch(() => undefined);
+    };
+  }, [recorder]);
+
   useEffect(() => {
     if (!recording) return;
     const timer = setInterval(() => {
