@@ -1,14 +1,45 @@
 import {
   BadGatewayException,
+  BadRequestException,
   Body,
   Controller,
   Get,
   Patch,
+  Post,
   ServiceUnavailableException,
   UseGuards,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AdminGuard } from "./admin.guard";
+
+/**
+ * 允许后台调用的起名站动作。
+ *
+ * 与起名站 `serviceAdmin` 的白名单**必须一致**：这里是唯一入口，多一条意味着
+ * 后台能碰到没审过的动作；少一条只是功能不可用 —— 后者联调时立刻暴露，前者不会。
+ */
+const ALLOWED_ACTIONS = new Set([
+  "adminOverview",
+  "adminGetSettings",
+  "adminSaveSettings",
+  "adminListUsers",
+  "adminGetUserDetail",
+  "adminSetUserStatus",
+  "adminSetUserRole",
+  "adminResetUserPassword",
+  "adminDeleteUser",
+  "adminListAllCandidates",
+  "adminUpdateCandidate",
+  "adminDeleteProfile",
+  "adminListAllBindings",
+  "adminListAllConversations",
+  "adminListMessages",
+  "adminDeleteConversation",
+  "adminDeleteMessage",
+  "adminListDmConversations",
+  "adminListDmMessages",
+  "adminDeleteDmMessage",
+]);
 
 /**
  * 起名站（Destiny Atlas）的后台接口 —— 挂在 TalkFirst 后台的 `/admin/bazi` 下。
@@ -79,6 +110,24 @@ export class AdminBaziController {
   @Get("overview")
   async overview() {
     return { success: true as const, data: await this.call("adminOverview") };
+  }
+
+  /**
+   * 通用动作入口 —— 账号管理、内容管理都走这里。
+   *
+   * 用一条路由而不是十几个具名端点：动作集合与参数由起名站自己的 zod schema
+   * 定义，在这边再镜像一份只会让两边逐渐不一致。安全边界是上面的白名单。
+   */
+  @Post("action")
+  async action(@Body() dto: { action?: string; args?: Record<string, unknown> }) {
+    const action = dto?.action ?? "";
+    if (!ALLOWED_ACTIONS.has(action)) {
+      throw new BadRequestException({
+        success: false,
+        error: { code: "BAZI_ACTION_NOT_ALLOWED", message: `不允许的动作：${action}` },
+      });
+    }
+    return { success: true as const, data: await this.call(action, dto.args ?? {}) };
   }
 
   @Get("users")
