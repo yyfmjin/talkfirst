@@ -281,6 +281,13 @@ export function MessagesScreen() {
         ),
       );
       setPeerTyping(false);
+      /*
+       * 正在看这个会话：把服务端的已读位置也推进到现在。
+       * 只改本地 unreadCount 不够 —— 对方会一直看到「未读」，而你的确已经看到了。
+       */
+      void apiFetch(`/conversations/${message.conversationId}/read`, { method: "POST" }).catch(
+        () => undefined,
+      );
     },
     onPeerRead: (payload) => {
       /* 只有「对方读」才改变这一格；自己的其他设备回显不该把消息标成已读。 */
