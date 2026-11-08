@@ -388,6 +388,21 @@ export type ConversationItem = {
   lastMessage: { content: string; senderId: string; createdAt: string; type?: string } | null;
 };
 
+/**
+ * 被引用消息的最小快照。
+ *
+ * 只带渲染需要的字段：客户端不拉完整被引用消息（那会把历史页的负载放大一倍），
+ * 也不拿它做别的业务 —— 它只是一根引用条。
+ */
+export type MessageQuote = {
+  id: string;
+  senderId: string | null;
+  type: string;
+  content: string;
+  /** 被引用方已撤回：服务端仍返回这一行，客户端只显示「消息已撤回」。 */
+  deletedAt?: string | null;
+};
+
 export type ChatMessage = {
   id: string;
   conversationId: string;
@@ -395,10 +410,20 @@ export type ChatMessage = {
   content: string;
   type: string;
   createdAt: string;
+  replyTo?: MessageQuote | null;
+  /** 本地乐观消息：服务端还没确认，`id` 以 `local-` 开头。 */
+  local?: boolean;
+  /** 乐观消息发送失败：气泡变淡，点一下重发。 */
+  failed?: boolean;
 };
 
 /** `GET /conversations/:id/messages`：**最旧在前**，`nextCursor` 指向更早的一页。 */
-export type MessagePage = { items: ChatMessage[]; nextCursor: string | null };
+export type MessagePage = {
+  items: ChatMessage[];
+  nextCursor: string | null;
+  /** 对方读到哪个时刻（已读回执）；对方从没读过时为 `null`。 */
+  peerLastReadAt?: string | null;
+};
 
 /* ──────────────────────── 某个人的动态（/moments/user/:id） ──────────────────────── */
 

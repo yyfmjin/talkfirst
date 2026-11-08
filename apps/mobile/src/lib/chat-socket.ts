@@ -49,6 +49,13 @@ export type SocketMessage = {
   type: string;
   createdAt: string;
   clientMessageId?: string | null;
+  /** 引用回复（服务端只带渲染需要的四个字段）。 */
+  replyTo?: {
+    id: string;
+    senderId: string | null;
+    type: string;
+    content: string;
+  } | null;
 };
 
 /** 会话列表用的轻量事件（不含正文全文、不含安全扫描那类内部字段）。 */
@@ -68,6 +75,8 @@ export type ChatSocketHandlers = {
   onMessage: (message: SocketMessage) => void;
   onActivity?: (activity: ConversationActivity) => void;
   onTyping?: (payload: { conversationId: string; userId: string; typing: boolean }) => void;
+  /** 对方读到了哪里（已读回执，服务端在 `POST /conversations/:id/read` 后广播）。 */
+  onPeerRead?: (payload: { conversationId: string; userId: string; lastReadAt: string }) => void;
   onState: (state: ChatConnectionState) => void;
   onError?: (message: string) => void;
 };
@@ -157,6 +166,23 @@ function asMessage(payload: unknown): SocketMessage | null {
     type: readString(row, "type") ?? "TEXT",
     createdAt: readString(row, "createdAt") ?? new Date().toISOString(),
     clientMessageId: readString(row, "clientMessageId"),
+    /* 引用条是可选的：没有就是 `null`，客户端按「普通消息」渲染。 */
+    replyTo: readQuote(row.replyTo),
+  };
+}
+
+/** 把 `replyTo` 收成四个字段；形状不对就当作没引用，不让脏数据把气泡渲染炸掉。 */
+function readQuote(payload: unknown): SocketMessage["replyTo"] {
+  const row = readRecord(payload);
+  if (!row) return null;
+  const id = readString(row, "id");
+  const type = readString(row, "type");
+  if (!id || !type) return null;
+  return {
+    id,
+    senderId: readString(row, "senderId"),
+    type,
+    content: readString(row, "content") ?? "",
   };
 }
 
@@ -319,6 +345,19 @@ export function createChatSocket(
     handlers.onActivity?.(activity);
   });
 
+  socket.on("conversation.read", (payload) => {
+    if (stopped) return;
+    const row = readRecord(payload);
+    if (!row) return;
+    const conversationId = readString(row, "conversationId");
+    const userId = readString(row, "userId");
+    const lastReadAt = readString(row, "lastReadAt");
+    if (!conversationId || !userId || !lastReadAt) return;
+    // 只关心当前会话：离开房间后在途的事件与这条列表无关。
+    if (joined && conversationId !== joined) return;
+    handlers.onPeerRead?.({ conversationId, userId, lastReadAt });
+  });
+
   socket.on("typing", (payload) => {
     if (stopped) return;
     const row = readRecord(payload);
@@ -372,6 +411,8 @@ export type UseChatSocketOptions = {
   onMessage: (message: SocketMessage) => void;
   onActivity?: (activity: ConversationActivity) => void;
   onTyping?: (payload: { conversationId: string; userId: string; typing: boolean }) => void;
+  /** 对方读到了哪里（已读回执）。 */
+  onPeerRead?: (payload: { conversationId: string; userId: string; lastReadAt: string }) => void;
 };
 
 /**
@@ -401,6 +442,7 @@ export function useChatSocket(options: UseChatSocketOptions): {
       onMessage: (message) => callbacks.current.onMessage(message),
       onActivity: (activity) => callbacks.current.onActivity?.(activity),
       onTyping: (payload) => callbacks.current.onTyping?.(payload),
+      onPeerRead: (payload) => callbacks.current.onPeerRead?.(payload),
       onState: setState,
       onError: setError,
     });

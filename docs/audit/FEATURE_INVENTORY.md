@@ -61,6 +61,8 @@ Legend: route = frontend route; component = frontend component(s); endpoint = AP
 | Conversation list | `/messages` | `GET /conversations` | (controller inline) | `Conversation`, `ConversationMember` | COMPLETE |
 | Message history | `/messages/[id]` | `GET /conversations/:id/messages` | (controller inline) | `Message` | COMPLETE |
 | Send text (REST) | `/messages/[id]` | `POST /conversations/:id/messages` | (controller inline) | `Message` | COMPLETE |
+| Reply / quote (REST) | `/messages/[id]` | `POST /conversations/:id/messages`（`replyToId`，必须同会话） | (controller inline) | `Message.replyToId` | COMPLETE |
+| Read receipts | `/messages/[id]` | `GET /conversations/:id/messages` 返回 `peerLastReadAt`；`POST /conversations/:id/read` 广播 `conversation.read` | (controller inline) | `ConversationMember.lastReadAt` | COMPLETE |
 | Send image (REST) | `/messages/[id]` | `POST /conversations/:id/messages/image` | (controller inline) | `Message` | COMPLETE |
 | Send video (REST) | `/messages/[id]` | `POST /conversations/:id/messages/video`（先传 `POST /uploads/message-video`，服务端 ffmpeg 转码） | (controller inline) | `Message` | COMPLETE |
 | Send voice (REST) | `/messages/[id]` | `POST /conversations/:id/messages/audio`（先传 `POST /uploads/message-audio`，data URL，≤4MB） | (controller inline) | `Message` | COMPLETE |

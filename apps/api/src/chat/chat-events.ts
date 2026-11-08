@@ -52,6 +52,16 @@ export type MessageEventPayload = {
   clientMessageId?: string | null;
   /** 仅 socket 发送路径带（REST 路径不返回安全扫描的细节）。 */
   safety?: unknown;
+  /**
+   * 引用回复（2026-11-08）。只带渲染需要的字段：客户端不需要拉完整被引用消息，
+   * 否则 30 条一页的会话里每条再嵌一整行，负载白白翻倍。
+   */
+  replyTo?: {
+    id: string;
+    senderId: string | null;
+    type: string;
+    content: string;
+  } | null;
 };
 
 /** 新消息：发给**会话房间**（正在看这个会话的人，也包括发送者自己的其他设备）。 */
@@ -63,6 +73,24 @@ export function emitMessageNew(input: {
   emit(conversationRoom(input.conversationId), "message.new", {
     ...input.message,
     clientMessageId: input.clientMessageId ?? input.message.clientMessageId ?? null,
+  });
+}
+
+/**
+ * 已读回执：谁把会话读到了哪一刻。
+ *
+ * 只发给会话房间 —— 房间里是这条会话的参与者（可能含自己的其他设备），
+ * 不会外泄给列表页或其他会话。客户端拿 `lastReadAt` 与消息时间比，得出「已读/未读」。
+ */
+export function emitConversationRead(input: {
+  conversationId: string;
+  userId: string;
+  lastReadAt: Date;
+}): void {
+  emit(conversationRoom(input.conversationId), "conversation.read", {
+    conversationId: input.conversationId,
+    userId: input.userId,
+    lastReadAt: input.lastReadAt.toISOString(),
   });
 }
 

@@ -354,6 +354,14 @@ export const zh = {
   "messages.recallConfirm": "撤回这条消息？对方将看不到它。",
   "messages.recallFailed": "撤回失败，请重试。",
   "messages.recallExpired": "超过 24 小时的消息不能撤回。",
+  "messages.messageActions": "消息操作",
+  "messages.reply": "回复",
+  "messages.cancelReply": "取消回复",
+  "messages.you": "你",
+  "messages.read": "已读",
+  "messages.unread": "未读",
+  "messages.tapToRetry": "发送失败，点击重发",
+  "messages.recalled": "消息已撤回",
   "messages.typing": "正在输入…",
 
   /* ───────────────────────── 通知 ───────────────────────── */
@@ -1203,6 +1211,14 @@ export const en: Record<MsgKey, string> = {
   "messages.recallConfirm": "Unsend this message? The other person will no longer see it.",
   "messages.recallFailed": "Couldn't unsend it. Please try again.",
   "messages.recallExpired": "Messages older than 24 hours can't be unsent.",
+  "messages.messageActions": "Message",
+  "messages.reply": "Reply",
+  "messages.cancelReply": "Cancel reply",
+  "messages.you": "You",
+  "messages.read": "Read",
+  "messages.unread": "Sent",
+  "messages.tapToRetry": "Not sent — tap to retry",
+  "messages.recalled": "Message unsent",
   "messages.typing": "typing…",
 
   /* notifications */

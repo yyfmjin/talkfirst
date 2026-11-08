@@ -43,7 +43,7 @@ import { playGreetingSound, playMessageSound } from "../lib/notification-sound";
 import { navigateTo } from "../lib/nav-intent";
 import type { MsgKey } from "../lib/messages";
 import { colors, themed } from "../theme";
-import type { ChatMessage, ConversationItem, IncomingRequest, MessagePage } from "../lib/types";
+import type { ChatMessage, ConversationItem, IncomingRequest, MessagePage, MessageQuote } from "../lib/types";
 
 import { radii, sizes } from "../design/tokens";
 
@@ -113,6 +113,10 @@ export function MessagesScreen() {
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  /** 对方读到哪个时刻（已读回执）；只在 1:1 人机会话里有意义。 */
+  const [peerReadAt, setPeerReadAt] = useState<string | null>(null);
+  /** 正在回复的那条消息（引用条）；发出去后清空。 */
+  const [replyTarget, setReplyTarget] = useState<ChatMessage | null>(null);
   /** 附件上传中：按钮转圈，避免连点发出两条。 */
   const [attaching, setAttaching] = useState(false);
   /** 正在全屏播放的视频 URL。 */
@@ -249,7 +253,27 @@ export function MessagesScreen() {
   const { state: liveState, setTyping } = useChatSocket({
     conversationId: openId,
     onMessage: (message) => {
-      setMessages((previous) => appendMessageOnce(previous, message));
+      setMessages((previous) => {
+        /*
+         * 自己发的消息会从两条路到达：REST 返回的那条（由 send 替换本地条目）与
+         * 服务端广播的这条。广播先到时，本地乐观条目还挂着 —— 先按「同文同型」把它
+         * 拿掉，否则屏幕上会同时出现一条灰的本地条目和一条真实消息。
+         * 只对「自己发的」做这个清理：别人的消息不可能有本地副本。
+         */
+        const withoutLocal =
+          message.senderId === user?.id
+            ? previous.filter(
+                (item) =>
+                  !(
+                    item.local &&
+                    item.senderId === message.senderId &&
+                    item.content === message.content &&
+                    item.type === message.type
+                  ),
+              )
+            : previous;
+        return appendMessageOnce(withoutLocal, message);
+      });
       // 正看着这个会话：列表上的未读不该留着。
       setConversations((previous) =>
         previous.map((item) =>
@@ -257,6 +281,12 @@ export function MessagesScreen() {
         ),
       );
       setPeerTyping(false);
+    },
+    onPeerRead: (payload) => {
+      /* 只有「对方读」才改变这一格；自己的其他设备回显不该把消息标成已读。 */
+      if (payload.userId === user?.id) return;
+      if (payload.conversationId !== openIdRef.current) return;
+      setPeerReadAt(payload.lastReadAt);
     },
     onActivity: (activity) => {
       /*
@@ -369,11 +399,14 @@ export function MessagesScreen() {
     setPeerTyping(false);
     setMessages([]);
     setCursor(null);
+    setPeerReadAt(null);
+    setReplyTarget(null);
     setError("");
     try {
       const data = await apiFetch<MessagePage>(`/conversations/${id}/messages?limit=30`);
       setMessages(data.items);
       setCursor(data.nextCursor);
+      setPeerReadAt(data.peerLastReadAt ?? null);
       /*
        * 打开会话就停在最新一条（以前停在最上面，看到的是很早以前的对话）。
        * 等这一帧渲染完再滚：此刻 `contentSize` 才是新会话的高度。
@@ -419,30 +452,113 @@ export function MessagesScreen() {
     }
   }
 
+  /**
+   * 发文字（乐观发送，2026-11-08）。
+   *
+   * 先把一条本地消息插进列表，服务端确认后用真实消息替换；失败则标成可点重发。
+   * 之前是「等服务端返回才出现」—— 弱网下输入框已清空、消息却半天不出来，
+   * 用户会以为没发出去而再打一遍。
+   */
   async function send() {
     const content = draft.trim();
-    if (!openId || !content || sending) return;
+    const conversationId = openId;
+    if (!conversationId || !content || sending) return;
+    const quoted = replyTarget;
+
+    const optimistic: ChatMessage = {
+      id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      conversationId,
+      senderId: user?.id ?? "",
+      content,
+      type: "TEXT",
+      createdAt: new Date().toISOString(),
+      local: true,
+      replyTo: quoted
+        ? {
+            id: quoted.id,
+            senderId: quoted.senderId,
+            type: quoted.type,
+            content: quoted.content.slice(0, 120),
+          }
+        : null,
+    };
+
+    setMessages((previous) => [...previous, optimistic]);
+    setDraft("");
+    setReplyTarget(null);
+    setTyping(false);
     setSending(true);
     setError("");
     try {
-      const created = await apiFetch<ChatMessage>(`/conversations/${openId}/messages`, {
+      const created = await apiFetch<ChatMessage>(`/conversations/${conversationId}/messages`, {
         method: "POST",
-        body: { content },
+        body: {
+          content,
+          /* 引用目标还没被服务端确认（本地条目）时不能当 replyToId 发。 */
+          ...(quoted && !quoted.local ? { replyToId: quoted.id } : {}),
+        },
       });
-      // 直接把服务端返回的那一条接在末尾：不重拉整页，也不做本地猜测（id/时间戳都以服务端为准）。
-      // 同一条还会随 `message.new` 广播回来，由 `appendMessageOnce` 去重。
-      setMessages((previous) => appendMessageOnce(previous, created));
-      setDraft("");
-      setTyping(false);
+      setMessages((previous) =>
+        previous.map((item) => (item.id === optimistic.id ? created : item)),
+      );
       void loadConversations();
-      if (conversationsRef.current.find((item) => item.id === openId)?.type === "AI") {
-        void pollForAiReply(openId);
+      if (conversationsRef.current.find((item) => item.id === conversationId)?.type === "AI") {
+        void pollForAiReply(conversationId);
       }
     } catch (requestError) {
+      setMessages((previous) =>
+        previous.map((item) => (item.id === optimistic.id ? { ...item, failed: true } : item)),
+      );
       setError(requestError instanceof Error ? requestError.message : t("messages.errorSend"));
     } finally {
       setSending(false);
     }
+  }
+
+  /** 点一下失败的消息：原地重发（先把旧条目拿掉，成功再插服务端那条）。 */
+  async function resendMessage(failed: ChatMessage) {
+    const conversationId = openId;
+    if (!conversationId || sending) return;
+    setMessages((previous) => previous.filter((item) => item.id !== failed.id));
+    setSending(true);
+    setError("");
+    try {
+      const created = await apiFetch<ChatMessage>(`/conversations/${conversationId}/messages`, {
+        method: "POST",
+        body: {
+          content: failed.content,
+          ...(failed.replyTo && !failed.replyTo.id.startsWith("local-")
+            ? { replyToId: failed.replyTo.id }
+            : {}),
+        },
+      });
+      setMessages((previous) => appendMessageOnce(previous, created));
+      void loadConversations();
+    } catch (requestError) {
+      setMessages((previous) => [...previous, { ...failed, failed: true }]);
+      setError(requestError instanceof Error ? requestError.message : t("messages.errorSend"));
+    } finally {
+      setSending(false);
+    }
+  }
+
+  /** 长按气泡：回复，以及（自己的消息）撤回。 */
+  function openMessageActions(item: ChatMessage) {
+    if (item.local) return;
+    const options: Array<{
+      text: string;
+      style?: "cancel" | "destructive";
+      onPress?: () => void;
+    }> = [{ text: t("messages.reply"), onPress: () => setReplyTarget(item) }];
+    if (item.senderId === user?.id) {
+      options.push({
+        text: t("messages.recall"),
+        style: "destructive",
+        onPress: () => void recallMessage(item),
+      });
+    }
+    options.push({ text: t("common.cancel"), style: "cancel" });
+    Alert.alert(t("messages.messageActions"), undefined, options);
   }
 
   /** 选图/选视频：一条消息只带一个附件，选完立即上传发送。 */
@@ -743,7 +859,13 @@ export function MessagesScreen() {
   }
 
   if (openId) {
-    const peer = conversations.find((item) => item.id === openId)?.peer ?? null;
+    const conversation = conversations.find((item) => item.id === openId) ?? null;
+    const peer = conversation?.peer ?? null;
+    /** AI 会话没有真正的「对方」，不显示已读回执。 */
+    const isAiConversation = conversation?.type === "AI";
+    /* 最后一条已落库的、我发的消息：已读回执只标在它下面。 */
+    const lastMineId =
+      [...messages].reverse().find((item) => item.senderId === user?.id && !item.local)?.id ?? null;
     return (
       <>
       <KeyboardAware style={styles.root} iosOffset={8}>
@@ -812,7 +934,17 @@ export function MessagesScreen() {
           }
           renderItem={({ item }) => {
             const mine = item.senderId === user?.id;
+            /*
+             * 已读回执只标在「我发出的最后一条」上：每条都标会把列表变成状态栏，
+             * 而人真正关心的只有「对方看到我刚才那句没有」。
+             */
+            const showReceipt =
+              !item.local && mine && item.id === lastMineId && !isAiConversation && peer !== null;
+            const receiptRead = peerReadAt
+              ? new Date(peerReadAt).getTime() >= new Date(item.createdAt).getTime()
+              : false;
             return (
+              <View>
               <View style={[styles.bubbleRow, mine ? styles.bubbleRowMine : null]}>
                 {item.type === "AUDIO" ? (
                   /*
@@ -823,14 +955,37 @@ export function MessagesScreen() {
                     uri={item.content}
                     playLabel={t("messages.voicePlay")}
                     pauseLabel={t("messages.voicePause")}
-                    onLongPress={mine ? () => void recallMessage(item) : undefined}
+                    onLongPress={() => openMessageActions(item)}
                   />
                 ) : (
                 <Pressable
-                  onLongPress={mine ? () => void recallMessage(item) : undefined}
+                  onLongPress={() => openMessageActions(item)}
+                  onPress={item.failed ? () => void resendMessage(item) : undefined}
                   delayLongPress={400}
-                  style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}
+                  style={[
+                    styles.bubble,
+                    mine ? styles.bubbleMine : styles.bubbleTheirs,
+                    item.failed ? styles.bubbleFailed : null,
+                  ]}
                 >
+                  {item.replyTo ? (
+                    <View style={[styles.quote, mine ? styles.quoteMine : styles.quoteTheirs]}>
+                      <Text
+                        style={[styles.quoteName, mine ? styles.quoteNameMine : null]}
+                        numberOfLines={1}
+                      >
+                        {item.replyTo.senderId === user?.id
+                          ? t("messages.you")
+                          : peer?.nickname ?? t("messages.conversationFallback")}
+                      </Text>
+                      <Text
+                        style={[styles.quoteText, mine ? styles.quoteTextMine : null]}
+                        numberOfLines={1}
+                      >
+                        {quotePreview(item.replyTo, t)}
+                      </Text>
+                    </View>
+                  ) : null}
                   {item.type === "IMAGE" ? (
                     <Image
                       source={{ uri: item.content }}
@@ -851,6 +1006,9 @@ export function MessagesScreen() {
                   ) : (
                     <Text style={mine ? styles.bubbleTextMine : styles.bubbleTextTheirs}>{item.content}</Text>
                   )}
+                  {item.failed ? (
+                    <Text style={styles.failedText}>{t("messages.tapToRetry")}</Text>
+                  ) : null}
                   {/*
                    * 翻译（与网页同接口 POST /messages/:id/translate）。
                    * 只给「别人发的、已经落库的」消息加：自己发的不需要翻，
@@ -877,6 +1035,12 @@ export function MessagesScreen() {
                 </Pressable>
                 )}
               </View>
+                {showReceipt ? (
+                  <Text style={[styles.readReceipt, styles.readReceiptMine]}>
+                    {receiptRead ? t("messages.read") : t("messages.unread")}
+                  </Text>
+                ) : null}
+              </View>
             );
           }}
         />
@@ -885,6 +1049,30 @@ export function MessagesScreen() {
 
         {/* 对方正在输入：贴着输入框上沿，不挤压消息列表。 */}
         {peerTyping ? <Text style={styles.typingLine}>{t("messages.typing")}</Text> : null}
+
+        {replyTarget ? (
+          <View style={styles.replyBar}>
+            <View style={styles.replyBarBody}>
+              <Text style={styles.replyBarName} numberOfLines={1}>
+                {replyTarget.senderId === user?.id
+                  ? t("messages.you")
+                  : peer?.nickname ?? t("messages.conversationFallback")}
+              </Text>
+              <Text style={styles.replyBarText} numberOfLines={1}>
+                {quotePreview(replyTarget, t)}
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => setReplyTarget(null)}
+              accessibilityRole="button"
+              accessibilityLabel={t("messages.cancelReply")}
+              hitSlop={8}
+              style={styles.replyBarClose}
+            >
+              <Icon name="close" size={16} color={colors.muted} />
+            </Pressable>
+          </View>
+        ) : null}
 
         {recording ? (
           /* 录音中：整条输入栏换成计时 + 取消/发送。避免边录边打字，也避免误触发送。 */
@@ -1139,14 +1327,20 @@ export function MessagesScreen() {
 }
 
 /**
- * 列表预览：附件消息的 `content` 是文件 URL，不能当预览摆到列表里，
- * 显示本地化的占位（[图片]/[视频]/[语音]）；其余情况就是消息正文。
+ * 附件消息在列表里的占位文案；文字消息直接显示正文。
  */
 const MEDIA_PREVIEW = {
   IMAGE: "messages.imagePreview",
   VIDEO: "messages.videoPreview",
   AUDIO: "messages.voicePreview",
 } as const;
+
+/** 引用条里的一行摘要；被引用方已撤回时只说「消息已撤回」，不把 URL 露出来。 */
+function quotePreview(quote: MessageQuote, t: TranslateFn): string {
+  if (quote.deletedAt) return t("messages.recalled");
+  const key = MEDIA_PREVIEW[quote.type as keyof typeof MEDIA_PREVIEW];
+  return key ? t(key) : quote.content;
+}
 
 function previewText(item: ConversationItem, t: TranslateFn): string {
   if (!item.lastMessage) return t("messages.startChat");
@@ -1411,6 +1605,36 @@ const styles = themed((c) => StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "rgba(0,0,0,0.5)",
   },
+  /* 引用条与已读回执（2026-11-08）。 */
+  quote: { marginBottom: 6, paddingLeft: 8, borderLeftWidth: 3, borderRadius: 2 },
+  quoteMine: { borderLeftColor: "rgba(255,255,255,0.55)" },
+  quoteTheirs: { borderLeftColor: c.primary },
+  quoteName: { fontSize: sizes.caption, fontWeight: "600", color: c.primaryDark },
+  quoteNameMine: { color: "rgba(255,255,255,0.85)" },
+  quoteText: { fontSize: sizes.caption, color: c.muted },
+  quoteTextMine: { color: "rgba(255,255,255,0.8)" },
+  bubbleFailed: { opacity: 0.55 },
+  /* 失败提示只在「我的」气泡里出现（乐观消息总是自己发的），所以用白色。 */
+  failedText: { marginTop: 4, fontSize: sizes.caption, color: c.white, fontWeight: "600" },
+  readReceipt: { marginTop: 2, marginRight: 4, fontSize: sizes.caption, color: c.muted, textAlign: "right" },
+  readReceiptMine: { textAlign: "right" },
+  replyBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginHorizontal: 10,
+    marginBottom: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: radii.chip,
+    backgroundColor: c.bgTint,
+    borderLeftWidth: 3,
+    borderLeftColor: c.primary,
+  },
+  replyBarBody: { flex: 1 },
+  replyBarName: { fontSize: sizes.caption, fontWeight: "600", color: c.primaryDark },
+  replyBarText: { fontSize: sizes.caption, color: c.muted },
+  replyBarClose: { padding: 4 },
   composer: {
     flexDirection: "row",
     alignItems: "flex-end",

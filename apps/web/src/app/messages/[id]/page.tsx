@@ -20,6 +20,14 @@ type ChatMessage = {
   content: string;
   type: string;
   createdAt: string;
+  /** 引用回复：服务端带回的被引用消息快照（只含渲染需要的信息）。 */
+  replyTo?: {
+    id: string;
+    senderId: string | null;
+    type: string;
+    content: string;
+    deletedAt?: string | null;
+  } | null;
 };
 
 /**
@@ -521,6 +529,7 @@ export default function ChatDetailPage() {
                   key={message.id}
                   message={message}
                   mine={mine}
+                  selfId={user?.id ?? ""}
                   translatingId={translatingId}
                   translations={translations}
                   translationError={translationErrors[message.id] ?? ""}
@@ -613,9 +622,26 @@ export default function ChatDetailPage() {
   );
 }
 
+/** 引用条：名字 + 一行摘要；颜色随气泡底色（自己的气泡白字，对方的气泡深字）。 */
+function QuotedMessage({ name, text, mine }: { name: string; text: string; mine: boolean }) {
+  return (
+    <div
+      className={`mb-1.5 border-l-2 pl-2 ${mine ? "border-white/50" : "border-brand-500"}`}
+    >
+      <p className={`truncate text-overline font-semibold ${mine ? "text-white/85" : "text-brand-700"}`}>
+        {name}
+      </p>
+      <p className={`truncate text-overline ${mine ? "text-white/75" : "text-content-muted"}`}>
+        {text}
+      </p>
+    </div>
+  );
+}
+
 function ChatBubble({
   message,
   mine,
+  selfId,
   translatingId,
   translations,
   translationError,
@@ -625,6 +651,7 @@ function ChatBubble({
 }: {
   message: ChatMessage;
   mine: boolean;
+  selfId: string;
   translatingId: string | null;
   translations: Record<string, { text: string; targetLang: string }>;
   /** Scoped to this bubble: a failed translate must not blank the whole thread. */
@@ -634,6 +661,30 @@ function ChatBubble({
   deleting: string | null;
 }) {
   const { t } = useT();
+  /*
+   * 引用条：被引用方已撤回时只说「消息已撤回」—— 图片/语音的 content 是 URL，
+   * 直接显示等于把地址糊在气泡上。
+   *
+   * 放在分发之前：媒体气泡与文字气泡都要用到它，而 JS 的 `const` 有暂时性死区。
+   */
+  const quote = message.replyTo;
+  const quoted = quote ? (
+    <QuotedMessage
+      mine={mine}
+      name={quote.senderId === selfId ? t("messages.you") : t("mc.peerFallback")}
+      text={
+        quote.deletedAt
+          ? t("messages.recalled")
+          : quote.type === "IMAGE"
+            ? t("messages.imagePreview")
+            : quote.type === "VIDEO"
+              ? t("messages.videoPreview")
+              : quote.type === "AUDIO"
+                ? t("messages.voicePreview")
+                : quote.content
+      }
+    />
+  ) : null;
   if (message.type === "SYSTEM") {
     return (
       /* A system note is neither "mine" nor "theirs", so it gets the neutral
@@ -647,6 +698,7 @@ function ChatBubble({
   if (message.type === "IMAGE" || message.type === "VIDEO" || message.type === "AUDIO") {
     return (
       <div className={mine ? "ml-auto max-w-[80%]" : "mr-auto max-w-[80%]"}>
+        {quoted}
         {message.type === "IMAGE" ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -706,6 +758,7 @@ function ChatBubble({
           : "mr-auto max-w-[80%] rounded-row rounded-bl-md bg-brand-50 px-4 py-2.5 text-ui leading-5 text-content"
       }
     >
+      {quoted}
       <p className="break-words">{message.content}</p>
       {translated ? (
         <p className={mine ? "mt-2 border-t border-white/30 pt-2 text-caption opacity-90" : "mt-2 border-t border-border pt-2 text-caption text-content-muted"}>

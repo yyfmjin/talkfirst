@@ -697,6 +697,8 @@ export const zh = {
   "messages.imagePreview": "[图片]",
   "messages.videoPreview": "[视频]",
   "messages.voicePreview": "[语音]",
+  "messages.you": "你",
+  "messages.recalled": "消息已撤回",
   "messages.actionFailed": "操作失败",
 
   /* ───────────────────────── 我的 ───────────────────────── */
@@ -2284,6 +2286,8 @@ export const en: Record<MsgKey, string> = {
   "messages.imagePreview": "[Image]",
   "messages.videoPreview": "[Video]",
   "messages.voicePreview": "[Voice]",
+  "messages.you": "You",
+  "messages.recalled": "Message unsent",
   "messages.actionFailed": "Couldn't complete that action",
 
   /* ───────────────────────── me ───────────────────────── */

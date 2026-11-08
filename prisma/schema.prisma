@@ -1256,9 +1256,19 @@ model Message {
   type           MessageType          @default(TEXT)
   createdAt      DateTime             @default(now())
   deletedAt      DateTime?
+  /**
+   * 引用回复（2026-11-08）：指向同一条会话里的另一条消息。
+   *
+   * 被引用的消息被撤回时不删这条回复（那会把对方的话也一起弄没），所以用
+   * `SetNull` —— 回复变成普通消息，而不是跟着消失。
+   */
+  replyToId      String?              @db.Uuid
+  replyTo        Message?             @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies        Message[]            @relation("MessageReplies")
   translations   MessageTranslation[]
 
   @@index([conversationId, createdAt])
+  @@index([replyToId])
 }
 
 model AiCompanion {

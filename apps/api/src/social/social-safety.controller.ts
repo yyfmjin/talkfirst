@@ -14,7 +14,7 @@ import {
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { NotificationService } from "../notifications/notification.service";
-import { emitConversationActivity, emitMessageNew } from "../chat/chat-events";
+import { emitConversationActivity, emitConversationRead, emitMessageNew } from "../chat/chat-events";
 import { msg, resolveLocale, t } from "../common/i18n";
 import { PrismaService } from "../prisma/prisma.service";
 import { SafetyService } from "../safety/safety.service";
@@ -33,6 +33,13 @@ class SendMessageDto {
   @IsString()
   @MaxLength(2000)
   content!: string;
+  /**
+   * 引用回复（2026-11-08）：被引用消息的 id，必须属于同一条会话。
+   * 不传就是普通消息；传一条别处/已删除的 id 会被 400 拒掉。
+   */
+  @IsOptional()
+  @IsUUID()
+  replyToId?: string;
 }
 
 class SendImageDto {
@@ -283,6 +290,12 @@ export class SocialSafetyController {
     // 只合并不清，用户会看到「12 条新消息」永远挂在那里。
     await this.notificationService.markConversationMessageNotificationsRead(user.id, id);
 
+    /*
+     * 告诉会话里的其他人「我读到哪儿了」。对方靠这条把自己的消息标成已读；
+     * 广播是尽力而为，失败不影响接口本身（已读位置已经落库）。
+     */
+    emitConversationRead({ conversationId: id, userId: user.id, lastReadAt });
+
     return { success: true as const, data: { conversationId: id, lastReadAt, unreadCount: 0 } };
   }
 
@@ -333,14 +346,29 @@ export class SocialSafetyController {
       },
       orderBy: keysetOrderBy,
       take: limit + 1,
+      /* 引用回复要把被引用的那条一起带回来，否则客户端只能显示一个 id。 */
+      include: {
+        replyTo: {
+          select: { id: true, senderId: true, type: true, content: true, deletedAt: true },
+        },
+      },
     });
     const page = rows.slice(0, limit);
     const items = [...page].reverse();
+    /*
+     * 已读回执：对方读到哪了。外面是 1:1 会话，所以“非我”的那一行就是对方。
+     * 不返回昵称/头像：客户端已经从会话列表里有了，这里只需要时间戳。
+     */
+    const peer = await this.prisma.conversationMember.findFirst({
+      where: { conversationId: id, userId: { not: user.id } },
+      select: { lastReadAt: true },
+    });
     return {
       success: true as const,
       data: {
         items,
         nextCursor: keysetNextCursor(rows.length, limit, items),
+        peerLastReadAt: peer?.lastReadAt ?? null,
       },
     };
   }
@@ -380,9 +408,36 @@ export class SocialSafetyController {
     // text path cannot drift from the image path.
     const { peerId } = await this.assertCanSendInConversation(user.id, id);
 
+    /*
+     * 引用回复：只接受**同一条会话里、未删除**的消息。
+     * 不做这一步的话，客户端可以把任意 message id 塞进来，从而引用到别的会话 ——
+     * 那等于绕过会话隔离读出别人的原话。
+     */
+    const replyTo = dto.replyToId
+      ? await this.prisma.message.findFirst({
+          where: { id: dto.replyToId, conversationId: id, deletedAt: null },
+          select: { id: true, senderId: true, type: true, content: true },
+        })
+      : null;
+    if (dto.replyToId && !replyTo) {
+      throw new BadRequestException({
+        success: false,
+        error: {
+          code: "REPLY_TARGET_NOT_FOUND",
+          message: "The message being replied to is not available",
+        },
+      });
+    }
+
     const message = await this.prisma.$transaction(async (tx) => {
       const created = await tx.message.create({
-        data: { conversationId: id, senderId: user.id, type: "TEXT", content: dto.content.trim() },
+        data: {
+          conversationId: id,
+          senderId: user.id,
+          type: "TEXT",
+          content: dto.content.trim(),
+          replyToId: replyTo?.id ?? null,
+        },
       });
       await tx.conversation.update({ where: { id }, data: { updatedAt: new Date() } });
       /**
@@ -437,6 +492,14 @@ export class SocialSafetyController {
           content: message.content,
           type: message.type,
           createdAt: message.createdAt.toISOString(),
+          replyTo: replyTo
+            ? {
+                id: replyTo.id,
+                senderId: replyTo.senderId,
+                type: replyTo.type,
+                content: replyTo.content.slice(0, 120),
+              }
+            : null,
         },
       });
       emitConversationActivity({
