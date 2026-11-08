@@ -99,3 +99,23 @@ jest.mock("expo-image-manipulator", () => ({
   SaveFormat: { JPEG: "jpeg", PNG: "png", WEBP: "webp" },
 }));
 
+
+/**
+ * react-native-webview 的桩（2026-11-08）。
+ *
+ * `screens.test.tsx` 从 `BaziScreen` 间接 import 了 webview，而它的原生模块在 jsdom
+ * 里加载即崩：
+ *
+ *     Invariant Violation: TurboModuleRegistry.getEnforcing(...):
+ *     'RNCWebViewModule' could not be found
+ *
+ * 整个套件因此一条用例都没跑（`Test suite failed to run`）。屏幕冒烟测试要验的是
+ * 「界面能渲染」，不是真的加载网页；给一个透传的 View 就够了 —— 需要验 WebView
+ * 行为的场景本来也只能在真机上跑。
+ */
+jest.mock("react-native-webview", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  const WebView = (props: Record<string, unknown>) => React.createElement(View, props);
+  return { __esModule: true, WebView, default: WebView };
+});
