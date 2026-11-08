@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { WebView, type WebViewNavigation } from "react-native-webview";
 import type WebViewType from "react-native-webview";
@@ -6,6 +6,7 @@ import { Button } from "../components/Button";
 import { SubHeader } from "../components/SubHeader";
 import { useBackHandler } from "../lib/back-stack";
 import { useI18n } from "../lib/i18n-context";
+import { getAccessToken } from "../lib/storage";
 import { colors, themed } from "../theme";
 
 import { sizes } from "../design/tokens";
@@ -44,6 +45,26 @@ export function BaziScreen({ onClose }: { onClose: () => void }) {
   const [canGoBack, setCanGoBack] = useState(false);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+
+  /*
+   * 把 TalkFirst 的登录态带进去（2026-11-08）。
+   *
+   * 令牌放在 URL fragment（`#tf=`）而不是 query：fragment 不会发给服务器，
+   * 也就不会出现在 nginx 访问日志里。起名站用它对 TalkFirst 的 `/users/me` 验明
+   * 身份，换自己的 30 天会话 —— 用户不需要在那边再注册一次。
+   */
+  const [webUrl, setWebUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const token = await getAccessToken();
+      if (cancelled) return;
+      setWebUrl(token ? `${BAZI_URL}#tf=${encodeURIComponent(token)}` : BAZI_URL);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useBackHandler(true, () => {
     if (canGoBack) {
@@ -85,10 +106,10 @@ export function BaziScreen({ onClose }: { onClose: () => void }) {
             <Text style={styles.browserLinkText}>{t("me.baziOpenInBrowser")}</Text>
           </Pressable>
         </View>
-      ) : (
+      ) : webUrl ? (
         <WebView
           ref={webRef}
-          source={{ uri: BAZI_URL }}
+          source={{ uri: webUrl }}
           style={styles.web}
           originWhitelist={["https://*"]}
           setSupportMultipleWindows={false}
@@ -104,7 +125,7 @@ export function BaziScreen({ onClose }: { onClose: () => void }) {
           }}
           onNavigationStateChange={(state: WebViewNavigation) => setCanGoBack(state.canGoBack)}
         />
-      )}
+      ) : null}
 
       {loading && !failed ? (
         <View style={styles.loading} pointerEvents="none">
