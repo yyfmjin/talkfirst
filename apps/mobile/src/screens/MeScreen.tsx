@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { Avatar } from "../components/Avatar";
 import { Button } from "../components/Button";
-import { Icon } from "../components/Icon";
+import { Icon, type IconName } from "../components/Icon";
 import { SubHeader } from "../components/SubHeader";
 import { applyUpdate, checkForUpdate } from "../lib/update-check";
 import { formatAppVersion } from "../lib/app-info";
@@ -81,7 +81,7 @@ type MeEntry = {
        （与 web `/me/social` → `/moments/settings` 同一条路径），不是「我的」下的一行。 */
     | "momentsSettings";
   labelKey: MsgKey;
-  icon: string;
+  icon: IconName;
 };
 type MeGroup = { titleKey: MsgKey; entries: MeEntry[] };
 

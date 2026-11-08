@@ -11,7 +11,7 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFonts } from "expo-font";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Icon } from "./src/components/Icon";
+import { Icon, type IconName } from "./src/components/Icon";
 import { Glass, Wash } from "./src/components/Glass";
 import { AuthProvider, useAuth } from "./src/lib/auth-context";
 import { ErrorBoundary } from "./src/components/error-boundary";
@@ -34,8 +34,22 @@ import { radii, sizes } from "./src/design/tokens";
  * 不取 `Ionicons.font`：那个静态字段在本仓库的依赖布局下可能是 undefined，
  * 而 undefined 一旦传进 `useFonts({})`，字体会从来不被加载 —— 图标就成了
  * “画不出来的空位”，再叠加 Metro 没把 ttf 打进包，真机上永远看不到字形。
- * 直接 require 后：打包器必定包含该资源，`useFonts` 用 `Ionicons` 这个族名注册，
- * 正好等于 `createIconSet` 取字形时用的名字。
+ * 直接 require 后：打包器必定包含该资源，`useFonts` 用下面那个族名注册。
+ *
+ * ## 族名必须是 `ionicons`（全小写）
+ *
+ * 2026-10-15 运营方报「发送、加号、录音三个按钮是白的，里面什么都没有」。
+ * 模拟器逐像素比对发现**全 App 的图标都是空的**：底部导航只剩文字，返回箭头只剩一个浅蓝圆。
+ * 真因是 `@expo/vector-icons/build/Ionicons.js` 里写的是
+ *
+ *     createIconSet(glyphMap, 'ionicons', font)   // 小写
+ *
+ * 而这里以前注册的是 `Ionicons`（大写 I）。Android 的字体族名**大小写敏感**，
+ * 对不上就回退到系统字体；图标的码位在私用区（PUA），系统字体没有这些字形，
+ * 于是「什么都不画」——不报错也不崩，正是一次次被当成“显示问题”的原因。
+ *
+ * 开发时看不出来：Expo Go 预装了全部图标字体，`ionicons` 是现成的。
+ * 只有独立 APK 才会暴露，所以这条只能靠出包后的真机/模拟器验证。
  */
 const IONICONS_TTF = require("@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf");
 
@@ -80,8 +94,8 @@ type Tab = "discover" | "moments" | "messages" | "me";
 type TabSpec = {
   id: Tab;
   labelKey: MsgKey;
-  icon: keyof typeof Ionicons.glyphMap;
-  iconActive: keyof typeof Ionicons.glyphMap;
+  icon: IconName;
+  iconActive: IconName;
 };
 
 const TABS: TabSpec[] = [
@@ -310,9 +324,9 @@ export default function App() {
    *   2. 字体不再从 `Ionicons.font` 取，而是**直接 require 那个 .ttf**。`.font` 缺失时
    *      以前会传空对象（什么都不加载），而 10-09 查真机包时里面确实一个 .ttf 都没有：
    *      图标因此一直是“画不出来的空位”。直接 require 后 Metro 一定会把资源打进包，
-   *      族名必须是 `Ionicons` —— `createIconSet` 就是按这个名字取字形。
+   *      族名必须和 `createIconSet` 用的完全一致（`ionicons`，全小写）。
   */
-  useFonts({ Ionicons: IONICONS_TTF });
+  useFonts({ ionicons: IONICONS_TTF });
 
   return (
     // I18nProvider 在最外层：未登录时的 AuthScreen 也要能翻译。

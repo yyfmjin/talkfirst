@@ -26,10 +26,16 @@ import path from "path";
  * 而运行时真实表现由出包后的真机/模拟器确认。
  */
 describe("图标字体", () => {
-  it("Icon.tsx 从逐字入口取 Ionicons，而不是包根", () => {
+  it("Icon.tsx 只依赖字形表 JSON，不依赖运行时为 undefined 的组件模块", () => {
     const source = fs.readFileSync(path.join(__dirname, "Icon.tsx"), "utf8");
-    expect(source).toContain('from "@expo/vector-icons/Ionicons"');
-    expect(source).not.toContain('from "@expo/vector-icons"');
+    /*
+     * 2026-10-15 模拟器打点确认：`import Ionicons from "@expo/vector-icons/Ionicons"`
+     * 在这套依赖布局下拿到的是 `undefined`（屏幕上读出了 `cmp=undefined`）。
+     * 所以字形的码位只能从 JSON 里取，字体族名照 `createIconSet` 的小写写法。
+     */
+    expect(source).toContain("glyphmaps/Ionicons.json");
+    expect(source).not.toMatch(/from "@expo\/vector-icons\/Ionicons"/);
+    expect(source).toContain('const FONT_FAMILY = "ionicons"');
   });
 
   it("Ionicons.ttf 真实存在且不是空壳", () => {
@@ -43,13 +49,29 @@ describe("图标字体", () => {
     expect(fs.statSync(ttf).size).toBeGreaterThan(100_000);
   });
 
-  it("App.tsx 用族名 Ionicons 把它注册给 useFonts", () => {
+  it("App.tsx 用 createIconSet 要求的那个族名注册字体", () => {
     // 以测试文件自身定位 App.tsx：从仓库根或 apps/mobile 里跑都成立。
     const source = fs.readFileSync(path.join(__dirname, "../../App.tsx"), "utf8");
     // 直接 require 资源，打包器才会把 ttf 放进 APK；从 Ionicons.font 取可能拿到 undefined。
     expect(source).toContain(
       'require("@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf")',
     );
-    expect(source).toContain("useFonts({ Ionicons: IONICONS_TTF })");
+
+    /*
+     * 族名不再写死断言。
+     *
+     * 2026-10-15 的教训：这里曾经断言 `useFonts({ Ionicons: ... })` —— 而组件真正
+     * 用的是 `createIconSet(glyphMap, 'ionicons', font)` 里那个**全小写**的名字。
+     * 两边不一致时 Android 会静默回退到系统字体，图标变成一片空白：不报错、不崩、
+     * 测试全绿，只有真机截图能看出来。
+     *
+     * 所以现在从依赖源码里把族名读出来，再断言 App.tsx 注册的正是它 —— 依赖升级
+     * 改名时这条会红，而不是继续绿着骗人。
+     */
+    const packageDir = path.dirname(require.resolve("@expo/vector-icons/package.json"));
+    const iconSource = fs.readFileSync(path.join(packageDir, "build/Ionicons.js"), "utf8");
+    const family = iconSource.match(/createIconSet\(glyphMap,\s*'([^']+)'/)?.[1];
+    expect(family).toBeTruthy();
+    expect(source).toContain(`useFonts({ ${family}: IONICONS_TTF })`);
   });
 });
