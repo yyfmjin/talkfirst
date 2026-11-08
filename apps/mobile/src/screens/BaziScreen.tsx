@@ -109,6 +109,8 @@ export function BaziScreen({ onClose }: { onClose: () => void }) {
       {loading && !failed ? (
         <View style={styles.loading} pointerEvents="none">
           <ActivityIndicator color={colors.primary} />
+          {/* 只有转圈时，网络慢的几秒看起来和「白屏」没区别 —— 给一行字。 */}
+          <Text style={styles.loadingText}>{t("me.baziLoading")}</Text>
         </View>
       ) : null}
     </View>
@@ -122,7 +124,9 @@ const styles = themed((c) => StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
+    gap: 10,
   },
+  loadingText: { fontSize: sizes.ui, color: c.muted },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 28 },
   errorText: { fontSize: sizes.body, color: c.muted, textAlign: "center" },
   retryWrap: { marginTop: 16, minWidth: 120 },
