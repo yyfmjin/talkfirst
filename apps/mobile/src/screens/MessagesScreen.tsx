@@ -35,6 +35,8 @@ import { useAuth } from "../lib/auth-context";
 import { appendMessageOnce, mergeMessages, useChatSocket } from "../lib/chat-socket";
 import { useBackHandler } from "../lib/back-stack";
 import { Avatar } from "../components/Avatar";
+import { AttachmentSheet } from "../components/AttachmentSheet";
+import { MediaPreviewBar } from "../components/MediaPreviewBar";
 import { Icon } from "../components/Icon";
 import { VoiceNote, formatVoiceDuration } from "../components/VoiceNote";
 import { KeyboardAware } from "../components/KeyboardAware";
@@ -123,6 +125,17 @@ export function MessagesScreen() {
   const [replyTarget, setReplyTarget] = useState<ChatMessage | null>(null);
   /** 附件上传中：按钮转圈，避免连点发出两条。 */
   const [attaching, setAttaching] = useState(false);
+  /** 「+」打开的底部面板。 */
+  const [attachOpen, setAttachOpen] = useState(false);
+  /**
+   * 选好、还没发出去的媒体。
+   *
+   * 保留原始的 `ImagePickerAsset`：压缩/转码要用它的宽高与 mime，
+   * 预览条只需要从里面取 uri / fileSize / duration。
+   */
+  const [pending, setPending] = useState<{ kind: "image" | "video"; asset: ImagePicker.ImagePickerAsset } | null>(
+    null,
+  );
   /** 正在全屏播放的视频 URL。 */
   const [playingVideo, setPlayingVideo] = useState<string | null>(null);
 
@@ -575,16 +588,17 @@ export function MessagesScreen() {
   /** 选图/选视频：一条消息只带一个附件，选完立即上传发送。 */
   function pickAttachment() {
     if (!openId || attaching) return;
-    Alert.alert(t("messages.attachTitle"), undefined, [
-      { text: t("messages.attachImage"), onPress: () => void sendPicked("image") },
-      { text: t("messages.attachVideo"), onPress: () => void sendPicked("video") },
-      { text: t("common.cancel"), style: "cancel" },
-    ]);
+    setAttachOpen(true);
   }
 
+  /**
+   * 选媒体：**只选，不上传**。
+   *
+   * 选完先进预览条（缩略图 + 体积 + 发送/取消），确认了才真正上传 —— 这样选错一张图
+   * 不会先发出去再撤回，也给了「看一眼再决定」的余地。
+   */
   async function sendPicked(kind: "image" | "video") {
-    const conversationId = openId;
-    if (!conversationId || attaching) return;
+    setAttachOpen(false);
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
@@ -598,16 +612,31 @@ export function MessagesScreen() {
         ...(kind === "video" ? { videoMaxDuration: MAX_VIDEO_SECONDS } : {}),
       });
       if (result.canceled || result.assets.length === 0) return;
-
-      setAttaching(true);
       setError("");
+      setPending({ kind, asset: result.assets[0] });
+    } catch (mediaError) {
+      setError(
+        mediaError instanceof Error ? mediaError.message : t("messages.mediaUploadFailed"),
+      );
+    }
+  }
+
+  /** 预览条上的「发送」：这一步才真的上传。 */
+  async function sendPendingMedia() {
+    const conversationId = openId;
+    const chosen = pending;
+    if (!conversationId || !chosen || attaching) return;
+    setAttaching(true);
+    setError("");
+    try {
       const created =
-        kind === "image"
-          ? await uploadImageMessage(conversationId, result.assets[0])
-          : await uploadVideoMessage(conversationId, result.assets[0]);
+        chosen.kind === "image"
+          ? await uploadImageMessage(conversationId, chosen.asset)
+          : await uploadVideoMessage(conversationId, chosen.asset);
       // 与文字消息一致：服务端返回的那一条直接接在末尾，广播回来的由 appendMessageOnce 去重。
       setMessages((previous) => appendMessageOnce(previous, created));
       void loadConversations();
+      setPending(null);
     } catch (mediaError) {
       setError(
         mediaError instanceof ApiRequestError && mediaError.code === "IMAGE_TOO_LARGE"
@@ -1096,6 +1125,23 @@ export function MessagesScreen() {
           </View>
         ) : null}
 
+        {/* 选好的媒体贴在输入框上方：输入框还能继续用来补一句话。 */}
+        {pending ? (
+          <MediaPreviewBar
+            media={{
+              kind: pending.kind,
+              uri: pending.asset.uri,
+              width: pending.asset.width,
+              height: pending.asset.height,
+              sizeBytes: pending.asset.fileSize,
+              durationSec: pending.asset.duration ? pending.asset.duration / 1000 : undefined,
+            }}
+            uploading={attaching}
+            onCancel={() => setPending(null)}
+            onSend={() => void sendPendingMedia()}
+          />
+        ) : null}
+
         {recording ? (
           /* 录音中：整条输入栏换成计时 + 取消/发送。避免边录边打字，也避免误触发送。 */
           <View style={styles.composer} accessibilityLiveRegion="polite">
@@ -1193,6 +1239,12 @@ export function MessagesScreen() {
         </View>
         )}
       </KeyboardAware>
+      <AttachmentSheet
+        visible={attachOpen}
+        onClose={() => setAttachOpen(false)}
+        onPickImage={() => void sendPicked("image")}
+        onPickVideo={() => void sendPicked("video")}
+      />
       {playingVideo ? (
         <ChatVideoPlayer uri={playingVideo} onClose={() => setPlayingVideo(null)} />
       ) : null}

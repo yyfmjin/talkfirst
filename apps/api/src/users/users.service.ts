@@ -47,6 +47,13 @@ export type PublicProfile = {
    */
   flowerCount: number;
   flowerFromViewer: boolean;
+  /**
+   * 资料卡上要不要显示「个人动态」入口。
+   *
+   * 由**被看的人**决定（`User.showMomentsOnProfile`），但自己看自己永远是 true ——
+   * 关掉开关的意思是「别出现在别人那儿」，不是「我也进不去自己的动态」。
+   */
+  momentsVisible: boolean;
 };
 
 export type PublicCard = {
@@ -69,6 +76,7 @@ export type PublicCard = {
   preferredCountries: Array<{ code: string; name: string; flag: string | null }>;
   attributes: AttributeGroups;
   profileCompleted: boolean;
+  showMomentsOnProfile: boolean;
 };
 
 @Injectable()
@@ -135,6 +143,7 @@ export class UsersService {
       })),
       attributes: groupAttributeViews(toAttributeViews(user.attributes as UserAttributeRecord[])),
       profileCompleted: isProfileComplete(user),
+      showMomentsOnProfile: user.showMomentsOnProfile,
     };
   }
 
@@ -258,6 +267,7 @@ export class UsersService {
       // 计数来自 `User.flowerCount`（与 `Moment.likeCount` 同一取向：读时不聚合）。
       flowerCount: Math.max(0, user.flowerCount),
       flowerFromViewer: Boolean(flower),
+      momentsVisible: isSelf || user.showMomentsOnProfile,
     };
   }
 
@@ -365,6 +375,7 @@ export class UsersService {
       gender?: "UNKNOWN" | "MALE" | "FEMALE" | "OTHER";
       bio?: string;
       locale?: SupportedLocale;
+      showMomentsOnProfile?: boolean;
     },
   ) {
     // PC-1.3 22: `region` is normalized to null when blank. `undefined` still
@@ -385,6 +396,7 @@ export class UsersService {
         // 与其余字段一样：`undefined` 表示不改。服务端下发的文案（通知、邮件）
         // 从这里取语言，见 `common/locale.ts`。
         locale: dto.locale,
+        showMomentsOnProfile: dto.showMomentsOnProfile,
       },
     });
     return this.getFullCard(user.id);

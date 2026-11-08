@@ -636,6 +636,15 @@ model User {
   gender      Gender    @default(UNKNOWN)
   bio         String?   @db.VarChar(500)
   /**
+   * 资料卡上是否展示「个人动态」入口（2026-11-08）。
+   *
+   * 默认展示：动态本来就是公开内容，多一个入口不泄露任何东西。
+   * 关掉之后，**别人**在你头像点开的资料卡里看不到这一行；你自己仍然看得到，
+   * 否则连自己都找不到入口（"关掉"被理解成"我也不能看"就错了）。
+   * 判断只在这里做一次，见 `UsersService.getPublicProfile` 的 `momentsVisible`。
+   */
+  showMomentsOnProfile Boolean @default(true)
+  /**
    * 用户选择的**界面语言**（`zh` / `en`），由客户端在切换语言时上报。
    *
    * 只影响服务端下发的文案（通知、邮件），不承担界面责任 —— 界面语言仍是

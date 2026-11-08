@@ -10,6 +10,8 @@ import {
   View,
 } from "react-native";
 import { Avatar } from "../components/Avatar";
+import { AvatarViewer } from "../components/AvatarViewer";
+import { Icon } from "../components/Icon";
 import { Button } from "../components/Button";
 import { ModalScrim } from "../components/ModalScrim";
 import { apiFetch } from "../lib/api";
@@ -44,6 +46,8 @@ export function ProfilePreview({
   const [flowerSent, setFlowerSent] = useState(false);
   const [flowerCount, setFlowerCount] = useState(0);
   const [flowerSending, setFlowerSending] = useState(false);
+  /** 点头像看大图。别人的只有查看，自己的（isSelf）调用方可以再给「更换头像」。 */
+  const [avatarOpen, setAvatarOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -138,7 +142,14 @@ export function ProfilePreview({
           ) : profile ? (
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={styles.identity}>
-                <Avatar uri={profile.avatarUrl} nickname={profile.nickname} size={84} />
+                <Pressable
+                  onPress={() => setAvatarOpen(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("profile.openAvatar")}
+                  hitSlop={6}
+                >
+                  <Avatar uri={profile.avatarUrl} nickname={profile.nickname} size={84} />
+                </Pressable>
                 <Text style={styles.name}>
                   {profile.nickname ?? t("common.talkfirstUser")}
                   {profile.age !== null ? (
@@ -175,6 +186,28 @@ export function ProfilePreview({
                 ))}
               </TagSection>
 
+              {/*
+                个人动态入口做成**一行**，而不是按钮。
+                按钮混在「打招呼 / 送花」里会被当成第三个社交动作；
+                这里是「去他的主页看看」，读起来是一行导航。
+                对方关掉这个入口时（momentsVisible === false）整行不出现 ——
+                自己看自己服务端永远给 true，所以不会连自己都找不到。
+              */}
+              {onOpenMoments && profile.momentsVisible !== false ? (
+                <Pressable
+                  onPress={() => onOpenMoments(profile.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("profile.myMoments")}
+                  style={styles.momentsRow}
+                >
+                  <View style={styles.momentsRowIcon}>
+                    <Icon name="images-outline" size={16} color={colors.primary} />
+                  </View>
+                  <Text style={styles.momentsRowLabel}>{t("profile.myMoments")}</Text>
+                  <Icon name="chevron-forward" size={16} color={colors.muted} />
+                </Pressable>
+              ) : null}
+
               {error ? <Text style={styles.inlineError}>{error}</Text> : null}
 
               {/*
@@ -183,13 +216,6 @@ export function ProfilePreview({
               */}
               {showActions ? (
                 <View style={styles.actions}>
-                  {onOpenMoments ? (
-                    <Button
-                      label={t("profile.viewMoments")}
-                      variant="ghost"
-                      onPress={() => onOpenMoments(profile.id)}
-                    />
-                  ) : null}
                   {profile.relationship.isConnected ? (
                     <Button label={t("profile.connected")} onPress={() => undefined} disabled variant="ghost" />
                   ) : (
@@ -222,6 +248,15 @@ export function ProfilePreview({
           ) : null}
         </View>
       </View>
+
+      {profile ? (
+        <AvatarViewer
+          visible={avatarOpen}
+          uri={profile.avatarUrl}
+          nickname={profile.nickname}
+          onClose={() => setAvatarOpen(false)}
+        />
+      ) : null}
     </Modal>
   );
 }
@@ -283,6 +318,32 @@ const styles = themed((c) => StyleSheet.create({
     padding: 12,
     marginTop: 16,
   },
+  /*
+   * 个人动态：一行导航，不是按钮。
+   * 视觉与 Me 页的分组行一致（左侧浅底图标 + 文字 + 右侧箭头），
+   * 让「资料卡」和「我的」两处点起来手感相同。
+   */
+  momentsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: radii.control,
+    backgroundColor: c.bgSoft,
+    borderWidth: 1,
+    borderColor: c.line,
+  },
+  momentsRowIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: c.bgTint,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  momentsRowLabel: { flex: 1, fontSize: sizes.body, fontWeight: "500", color: c.ink },
   section: { marginTop: 18 },
   sectionTitle: { fontSize: sizes.overline, fontWeight: "500", color: c.muted, marginBottom: 8 },
   tagWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },

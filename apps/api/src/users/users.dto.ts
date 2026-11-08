@@ -1,6 +1,7 @@
 import { Type } from "class-transformer";
 import { SUPPORTED_LOCALES, type SupportedLocale } from "../common/i18n";
 import {
+  IsBoolean,
   IsEmail,
   IsIn,
   IsOptional,
@@ -91,6 +92,16 @@ export class UpdateProfileDto {
   @IsString()
   @MaxLength(500)
   bio?: string;
+
+  /**
+   * 资料卡上要不要展示「个人动态」入口。
+   *
+   * 默认开；关掉只影响**别人**看到的资料卡 —— 自己仍然看得到（见
+   * `UsersService.getPublicProfile` 的 `momentsVisible`）。
+   */
+  @IsOptional()
+  @IsBoolean()
+  showMomentsOnProfile?: boolean;
 }
 
 export class LanguageItemDto {

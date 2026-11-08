@@ -10,6 +10,8 @@ import {
   View,
 } from "react-native";
 import { Avatar } from "../components/Avatar";
+import { AvatarViewer } from "../components/AvatarViewer";
+import { Switch } from "../components/Switch";
 import { Button } from "../components/Button";
 import { Icon, type IconName } from "../components/Icon";
 import { SubHeader } from "../components/SubHeader";
@@ -136,6 +138,11 @@ export function MeScreen() {
   const [onboarding, setOnboarding] = useState(false);
   /** 正在检查/下载更新（按钮期间转圈，避免连点）。 */
   const [updating, setUpdating] = useState(false);
+  /** 点头像看大图（自己的这张还能直接换）。 */
+  const [avatarOpen, setAvatarOpen] = useState(false);
+  /** 「资料卡展示个人动态」的开关状态：以服务端为准，点下去先乐观更新。 */
+  const [momentsOn, setMomentsOn] = useState(user?.showMomentsOnProfile ?? true);
+  const [savingMoments, setSavingMoments] = useState(false);
 
   /* 系统返回键：引导 → 子页 → （没有任何子页时退出 app，交由系统默认）。 */
   useBackHandler(open !== null, () => setOpen(null));
@@ -148,6 +155,32 @@ export function MeScreen() {
    * 四种结果都要说清楚，尤其是 **unsupported**：那是「安装包本身不支持」，
    * 重试多少次都没用，只能重新装一次包（说法在 `update-check.ts` 文件头）。
    */
+  /**
+   * 「资料卡展示个人动态」开关。
+   *
+   * 乐观更新：点下去先动，失败再翻回来并说明原因 —— 一个开关如果点完要等 1 秒
+   * 才动，用户会以为没点上而连点。服务端是唯一的真相来源，所以失败时以它为准。
+   */
+  async function toggleMoments(next: boolean) {
+    if (savingMoments) return;
+    const previous = momentsOn;
+    setMomentsOn(next);
+    setSavingMoments(true);
+    try {
+      const updated = await apiFetch<SessionUser>("/users/me", {
+        method: "PATCH",
+        body: { showMomentsOnProfile: next },
+      });
+      setUser(updated);
+      setMomentsOn(updated.showMomentsOnProfile ?? next);
+    } catch {
+      setMomentsOn(previous);
+      Alert.alert(t("me.showMomentsFailedTitle"), t("me.showMomentsFailedBody"));
+    } finally {
+      setSavingMoments(false);
+    }
+  }
+
   async function runUpdateCheck() {
     if (updating) return;
     setUpdating(true);
@@ -297,7 +330,14 @@ export function MeScreen() {
       ) : null}
 
       <View style={styles.card}>
-        <Avatar uri={user.avatarUrl} nickname={user.nickname} size={72} />
+        <Pressable
+          onPress={() => setAvatarOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel={t("me.avatarChange")}
+          hitSlop={6}
+        >
+          <Avatar uri={user.avatarUrl} nickname={user.nickname} size={72} />
+        </Pressable>
         <Text style={styles.name}>{user.nickname ?? t("common.talkfirstUser")}</Text>
         <Text style={styles.email}>{user.email}</Text>
         {place ? <Text style={styles.place}>{place}</Text> : null}
@@ -325,6 +365,32 @@ export function MeScreen() {
             <Text style={styles.rowLabel}>{t("me.baziEntry")}</Text>
             <Icon name="chevron-forward" size={16} color={colors.muted} />
           </Pressable>
+        </View>
+      </View>
+
+      {/*
+        资料卡上的「个人动态」入口开关。
+
+        放在「我的」而不是「隐私」子页里：它只影响别人点开你头像时看到的那一行，
+        不是一个需要进二级页才能理解的权限；而且和资料卡就在同一屏，改了立刻能
+        回到上面点头像验证。
+      */}
+      <View style={styles.group}>
+        <Text style={styles.groupTitle}>{t("me.groupMomentsCard")}</Text>
+        <View style={styles.groupCard}>
+          <View style={styles.switchRow}>
+            <Icon name="images-outline" size={18} color={colors.primary} />
+            <View style={styles.switchText}>
+              <Text style={styles.rowLabel}>{t("me.showMomentsTitle")}</Text>
+              <Text style={styles.rowHint}>{t("me.showMomentsHint")}</Text>
+            </View>
+            <Switch
+              checked={momentsOn}
+              label={t("me.showMomentsTitle")}
+              disabled={savingMoments}
+              onChange={(next) => void toggleMoments(next)}
+            />
+          </View>
         </View>
       </View>
 
@@ -428,6 +494,18 @@ export function MeScreen() {
       <View style={styles.actions}>
         <Button label={t("me.signOut")} onPress={() => void signOut()} variant="ghost" />
       </View>
+
+      <AvatarViewer
+        visible={avatarOpen}
+        uri={user.avatarUrl}
+        nickname={user.nickname}
+        onClose={() => setAvatarOpen(false)}
+        actionLabel={t("me.avatarChange")}
+        onAction={() => {
+          setAvatarOpen(false);
+          setOpen("edit");
+        }}
+      />
     </ScrollView>
   );
 }
@@ -580,6 +658,16 @@ const styles = themed((c) => StyleSheet.create({
     borderColor: c.line,
     overflow: "hidden",
   },
+  /* 开关行：图标 + 两行文字 + 右侧开关。文字区 flex:1，短屏也不会把开关挤出去。 */
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  switchText: { flex: 1, gap: 2 },
+  rowHint: { fontSize: sizes.caption, color: c.muted, lineHeight: 16 },
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
   rowLabel: { flex: 1, fontSize: sizes.body, color: c.ink },
   /* 版本号行：与上面的可点行同构，但没有箭头、没有按压反馈 —— 它只是信息。 */

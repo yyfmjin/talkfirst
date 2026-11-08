@@ -21,6 +21,11 @@ export type SessionUser = {
   gender: string | null;
   bio: string | null;
   profileCompleted: boolean;
+  /**
+   * 资料卡上是否展示「个人动态」入口（自己看自己永远可见，服务端已折算好）。
+   * 没下发时按 true 处理 —— 老版本服务端不该让入口凭空消失。
+   */
+  showMomentsOnProfile?: boolean;
   isAdmin?: boolean;
   status?: string;
 };
@@ -44,6 +49,13 @@ export type PublicProfile = {
   /** 我给他送过花没有；以及他收到的花总数（与 web 同一份服务端字段）。 */
   flowerFromViewer?: boolean;
   flowerCount?: number;
+  /**
+   * 资料卡上是否显示「个人动态」。
+   *
+   * `false` = 对方关掉了入口（或服务端未下发）；自己看自己服务端永远给 true。
+   * 缺省按可见处理：老版本 API 没这个字段时，入口不该凭空消失。
+   */
+  momentsVisible?: boolean;
 };
 
 export type Recommendation = {
