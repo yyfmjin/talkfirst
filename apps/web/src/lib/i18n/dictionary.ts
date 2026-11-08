@@ -694,6 +694,9 @@ export const zh = {
   "messages.noChats": "接受认识请求后，这里会出现实时聊天。",
   "messages.unreadCount": "{n} 未读",
   "messages.startChat": "开始聊天吧",
+  "messages.imagePreview": "[图片]",
+  "messages.videoPreview": "[视频]",
+  "messages.voicePreview": "[语音]",
   "messages.actionFailed": "操作失败",
 
   /* ───────────────────────── 我的 ───────────────────────── */
@@ -2278,6 +2281,9 @@ export const en: Record<MsgKey, string> = {
   "messages.noChats": "Once you accept a connection request, your live chat shows up here.",
   "messages.unreadCount": "{n} unread",
   "messages.startChat": "Start chatting",
+  "messages.imagePreview": "[Image]",
+  "messages.videoPreview": "[Video]",
+  "messages.voicePreview": "[Voice]",
   "messages.actionFailed": "Couldn't complete that action",
 
   /* ───────────────────────── me ───────────────────────── */

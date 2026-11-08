@@ -644,7 +644,7 @@ function ChatBubble({
       </div>
     );
   }
-  if (message.type === "IMAGE" || message.type === "VIDEO") {
+  if (message.type === "IMAGE" || message.type === "VIDEO" || message.type === "AUDIO") {
     return (
       <div className={mine ? "ml-auto max-w-[80%]" : "mr-auto max-w-[80%]"}>
         {message.type === "IMAGE" ? (
@@ -657,7 +657,7 @@ function ChatBubble({
               loading="lazy"
             />
           </>
-        ) : (
+        ) : message.type === "VIDEO" ? (
           /* 视频消息：`controls` 用浏览器原生控件 —— 自定义播放器在移动端 Safari
              里全屏行为不一致，聊天场景没必要重写一套。 */
           <video
@@ -666,6 +666,15 @@ function ChatBubble({
             playsInline
             preload="metadata"
             className="block h-auto w-full rounded-row border border-border bg-black"
+          />
+        ) : (
+          /* 语音消息：同理用原生 `controls`。宽度跟气泡一样满，不另外画波形 ——
+             网页端没有麦克风录制入口，这里只负责「收到就能播」。 */
+          <audio
+            src={message.content}
+            controls
+            preload="metadata"
+            className="w-full min-w-[220px]"
           />
         )}
         {!message.id.startsWith("local-") && mine ? (

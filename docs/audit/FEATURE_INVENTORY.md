@@ -63,6 +63,7 @@ Legend: route = frontend route; component = frontend component(s); endpoint = AP
 | Send text (REST) | `/messages/[id]` | `POST /conversations/:id/messages` | (controller inline) | `Message` | COMPLETE |
 | Send image (REST) | `/messages/[id]` | `POST /conversations/:id/messages/image` | (controller inline) | `Message` | COMPLETE |
 | Send video (REST) | `/messages/[id]` | `POST /conversations/:id/messages/video`（先传 `POST /uploads/message-video`，服务端 ffmpeg 转码） | (controller inline) | `Message` | COMPLETE |
+| Send voice (REST) | `/messages/[id]` | `POST /conversations/:id/messages/audio`（先传 `POST /uploads/message-audio`，data URL，≤4MB） | (controller inline) | `Message` | COMPLETE |
 | Send (WS) | `/messages/[id]` | `/chat` ns: `conversation.join/leave`, `message.send`, `typing` | `ChatGateway` | `Message` | COMPLETE |
 | Delete (24h) | `/messages/[id]` | `DELETE /messages/:id` | (controller inline) | `Message` | COMPLETE |
 | Translate | `/messages/[id]` | `POST /messages/:id/translate` | `TranslateService` | `MessageTranslation` | PARTIAL (demo fallback) |

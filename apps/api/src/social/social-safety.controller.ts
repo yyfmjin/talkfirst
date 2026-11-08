@@ -47,6 +47,37 @@ class SendVideoDto {
   videoUrl!: string;
 }
 
+class SendAudioDto {
+  @IsString()
+  @MaxLength(2000)
+  audioUrl!: string;
+}
+
+/**
+ * 媒体消息的三种类型，各自只差「错误码 + 推送文案」—— 所以做成表，而不是嵌套三元。
+ * 加第四种（比如文件）时，只需要在这里添一行，不用再碰守卫和落库逻辑。
+ */
+const MEDIA_MESSAGE = {
+  IMAGE: {
+    code: "INVALID_IMAGE",
+    message: "Image must be an https URL",
+    title: "notify.newMessage.imageTitle",
+    body: "notify.newMessage.imageBody",
+  },
+  VIDEO: {
+    code: "INVALID_VIDEO",
+    message: "Video must be an https URL",
+    title: "notify.newMessage.videoTitle",
+    body: "notify.newMessage.videoBody",
+  },
+  AUDIO: {
+    code: "INVALID_AUDIO",
+    message: "Audio must be an https URL",
+    title: "notify.newMessage.audioTitle",
+    body: "notify.newMessage.audioBody",
+  },
+} as const;
+
 class ReportDto {
   /**
    * Exactly one target per request: `userId` reports a person, `momentId`
@@ -464,16 +495,31 @@ export class SocialSafetyController {
   }
 
   /**
-   * 图片 / 视频消息的共用路径。
+   * 语音消息（2026-11-08）。
    *
-   * 抽出来的原因：两者的守卫完全一样（成员 → 封禁 → 账号状态 → 连接状态）。
+   * URL 来自 `POST /uploads/message-audio`（data URL 上传后落盘成 m4a）。
+   * 时长不落库：播放器从文件里读，免得和实际音频对不上。
+   */
+  @Post("conversations/:id/messages/audio")
+  async sendAudioMessage(
+    @CurrentUser() user: AuthUser,
+    @Param("id", UuidParamPipe) id: string,
+    @Body(new ValidationPipe()) dto: SendAudioDto,
+  ) {
+    return this.sendMediaMessage(user, id, dto.audioUrl, "AUDIO");
+  }
+
+  /**
+   * 图片 / 视频 / 语音消息的共用路径。
+   *
+   * 抽出来的原因：三者的守卫完全一样（成员 → 封禁 → 账号状态 → 连接状态）。
    * 复制一份的话，下次改守卫必然漏掉一处 —— 而这条路承载的正是「谁能给谁发东西」。
    */
   private async sendMediaMessage(
     user: AuthUser,
     id: string,
     url: string,
-    type: "IMAGE" | "VIDEO",
+    type: "IMAGE" | "VIDEO" | "AUDIO",
   ) {
     const membership = await this.prisma.conversationMember.findUnique({
       where: { conversationId_userId: { conversationId: id, userId: user.id } },
@@ -487,10 +533,7 @@ export class SocialSafetyController {
     if (!this.isAllowedImageUrl(url)) {
       throw new ForbiddenException({
         success: false,
-        error: {
-          code: type === "IMAGE" ? "INVALID_IMAGE" : "INVALID_VIDEO",
-          message: type === "IMAGE" ? "Image must be an https URL" : "Video must be an https URL",
-        },
+        error: { code: MEDIA_MESSAGE[type].code, message: MEDIA_MESSAGE[type].message },
       });
     }
     const conversation = await this.prisma.conversation.findUnique({
@@ -517,8 +560,8 @@ export class SocialSafetyController {
         userId: peerId,
         actorId: user.id,
         conversationId: id,
-        title: msg(type === "IMAGE" ? "notify.newMessage.imageTitle" : "notify.newMessage.videoTitle"),
-        body: msg(type === "IMAGE" ? "notify.newMessage.imageBody" : "notify.newMessage.videoBody"),
+        title: msg(MEDIA_MESSAGE[type].title),
+        body: msg(MEDIA_MESSAGE[type].body),
       });
     }
     return { success: true as const, data: message };

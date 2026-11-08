@@ -14,6 +14,17 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
+/*
+ * 语音读取用 legacy 入口：SDK 54 的新 API 把 `readAsStringAsync` 换成了 `File` 类，
+ * 而动态发布那条链路（ComposeScreen）已经在用 legacy —— 两处保持一致，
+ * 免得同一个功能在 `expo-file-system` 的两套 API 之间来回。
+ */
+import * as FileSystem from "expo-file-system/legacy";
+import {
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  useAudioRecorder,
+} from "expo-audio";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { apiFetch, ApiRequestError, apiUploadMultipart } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
@@ -21,6 +32,7 @@ import { appendMessageOnce, mergeMessages, useChatSocket } from "../lib/chat-soc
 import { useBackHandler } from "../lib/back-stack";
 import { Avatar } from "../components/Avatar";
 import { Icon } from "../components/Icon";
+import { VoiceNote, formatVoiceDuration } from "../components/VoiceNote";
 import { KeyboardAware } from "../components/KeyboardAware";
 import { AiScreen } from "./AiScreen";
 import { UnreadBadge } from "../components/UnreadBadge";
@@ -49,6 +61,15 @@ const IMAGE_MAX_EDGE = 1600;
 const IMAGE_QUALITY = 0.72;
 const MAX_VIDEO_UPLOAD_BYTES = 90 * 1024 * 1024;
 const MAX_VIDEO_SECONDS = 60;
+
+/**
+ * 语音消息（2026-11-08）。
+ *
+ * 60 秒封顶：微信/WhatsApp 的单条语音都是这个量级 —— 再长就该用视频或分段发。
+ * 4MB 是服务端 `MAX_AUDIO_BYTES`；AAC 60 秒约 400KB，这道闸只有在采样率异常时才碰得到。
+ */
+const MAX_VOICE_SECONDS = 60;
+const MAX_VOICE_BYTES = 4 * 1024 * 1024;
 /**
  * 消息（2026-10-07；实时 2026-10-16）—— 会话列表 + 会话内对话。
  *
@@ -96,6 +117,19 @@ export function MessagesScreen() {
   const [attaching, setAttaching] = useState(false);
   /** 正在全屏播放的视频 URL。 */
   const [playingVideo, setPlayingVideo] = useState<string | null>(null);
+
+  /**
+   * 语音录制（2026-11-08）。
+   *
+   * 交互取微信/Telegram 的「点一下开始、再点发送」而不是长按：长按在 RN 里要靠
+   * onPressIn/onPressOut 配滑动取消，手势一乱就变成误发或录不停；显式两个按钮
+   * （取消 / 发送）在小屏幕上也更好点。
+   */
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const [recording, setRecording] = useState(false);
+  const [recordSec, setRecordSec] = useState(0);
+  const [voiceSending, setVoiceSending] = useState(false);
+  const recordStartedAt = useRef(0);
   const [error, setError] = useState("");
   /**
    * 会话 / 通知两个分段。
@@ -506,6 +540,84 @@ export function MessagesScreen() {
     });
   }
 
+  /* ── 语音录制 ─────────────────────────────────────────────── */
+
+  useEffect(() => {
+    if (!recording) return;
+    const timer = setInterval(() => {
+      setRecordSec((previous) => Math.min(MAX_VOICE_SECONDS, previous + 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [recording]);
+
+  async function startRecording() {
+    if (recording || voiceSending || !openId) return;
+    setError("");
+    const permission = await requestRecordingPermissionsAsync();
+    if (!permission.granted) {
+      setError(t("messages.micDenied"));
+      return;
+    }
+    try {
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+      recordStartedAt.current = Date.now();
+      setRecordSec(0);
+      setRecording(true);
+      // 到点自动发：忘关麦会把整段环境音录进去，而服务端也只收 60 秒。
+      setTimeout(() => void stopRecording(true), MAX_VOICE_SECONDS * 1000);
+    } catch {
+      setError(t("messages.recordFailed"));
+    }
+  }
+
+  /** `send=false` 即取消：停掉录音并丢掉临时文件，不产生消息。 */
+  async function stopRecording(send: boolean) {
+    if (!recording) return;
+    setRecording(false);
+    try {
+      await recorder.stop();
+    } catch {
+      // 停不下来也要往下走：下面按 uri 是否可读决定能不能发
+    }
+    const uri = recorder.uri;
+    const conversationId = openId;
+    // 用起止时间算时长：切后台时 interval 会被节流，计数的秒数会偏短。
+    const elapsed = recordStartedAt.current
+      ? Math.round((Date.now() - recordStartedAt.current) / 1000)
+      : recordSec;
+    if (!send || !uri || !conversationId) return;
+    if (elapsed < 1) {
+      setError(t("messages.voiceTooShort"));
+      return;
+    }
+    setVoiceSending(true);
+    try {
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      if (base64.length * 0.75 > MAX_VOICE_BYTES) throw new Error("AUDIO_TOO_LARGE");
+      const uploaded = await apiFetch<{ url: string }>("/uploads/message-audio", {
+        method: "POST",
+        body: { audio: `data:audio/m4a;base64,${base64}` },
+      });
+      const created = await apiFetch<ChatMessage>(
+        `/conversations/${conversationId}/messages/audio`,
+        { method: "POST", body: { audioUrl: uploaded.url } },
+      );
+      setMessages((previous) => appendMessageOnce(previous, created));
+      void loadConversations();
+    } catch (voiceError) {
+      setError(
+        voiceError instanceof Error && voiceError.message === "AUDIO_TOO_LARGE"
+          ? t("messages.voiceTooLong")
+          : t("messages.voiceUploadFailed"),
+      );
+    } finally {
+      setVoiceSending(false);
+    }
+  }
+
   /*
    * 实时状态只在**不健康**时显示一行：正常连着不该占地方。
    * 文案只描述连接状态，不说「发不出去」—— 发送走 REST，与这条长连接无关。
@@ -659,6 +771,17 @@ export function MessagesScreen() {
             const mine = item.senderId === user?.id;
             return (
               <View style={[styles.bubbleRow, mine ? styles.bubbleRowMine : null]}>
+                {item.type === "AUDIO" ? (
+                  /*
+                   * 语音不自带气泡底：`VoiceNote` 本身就是一条带底色的语音条（微信那种），
+                   * 再套一层聊天气泡就变成「气泡里装气泡」。
+                   */
+                  <VoiceNote
+                    uri={item.content}
+                    playLabel={t("messages.voicePlay")}
+                    pauseLabel={t("messages.voicePause")}
+                  />
+                ) : (
                 <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
                   {item.type === "IMAGE" ? (
                     <Image
@@ -704,6 +827,7 @@ export function MessagesScreen() {
                     )
                   ) : null}
                 </View>
+                )}
               </View>
             );
           }}
@@ -714,6 +838,33 @@ export function MessagesScreen() {
         {/* 对方正在输入：贴着输入框上沿，不挤压消息列表。 */}
         {peerTyping ? <Text style={styles.typingLine}>{t("messages.typing")}</Text> : null}
 
+        {recording ? (
+          /* 录音中：整条输入栏换成计时 + 取消/发送。避免边录边打字，也避免误触发送。 */
+          <View style={styles.composer} accessibilityLiveRegion="polite">
+            <View style={styles.recordingDot} />
+            <Text style={styles.recordingTime}>{formatVoiceDuration(Math.max(1, recordSec))}</Text>
+            <Text style={styles.recordingHint} numberOfLines={1}>
+              {t("messages.recordingHint")}
+            </Text>
+            <Pressable
+              onPress={() => void stopRecording(false)}
+              accessibilityRole="button"
+              accessibilityLabel={t("messages.voiceCancel")}
+              hitSlop={8}
+              style={styles.voiceCancel}
+            >
+              <Text style={styles.voiceCancelText}>{t("common.cancel")}</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => void stopRecording(true)}
+              accessibilityRole="button"
+              accessibilityLabel={t("messages.voiceSend")}
+              style={styles.sendButton}
+            >
+              <Text style={styles.sendLabel}>{t("messages.send")}</Text>
+            </Pressable>
+          </View>
+        ) : (
         <View style={styles.composer}>
           <Pressable
             onPress={pickAttachment}
@@ -743,24 +894,46 @@ export function MessagesScreen() {
             multiline
             accessibilityLabel={t("messages.composerLabel")}
           />
-          <Pressable
-            onPress={() => void send()}
-            disabled={!draft.trim() || sending}
-            accessibilityRole="button"
-            accessibilityLabel={t("messages.send")}
-            style={[styles.sendButton, !draft.trim() || sending ? styles.sendDisabled : null]}
-          >
-            {sending ? (
-              <ActivityIndicator color={colors.white} size="small" />
-            ) : (
-              <>
-                <Icon name="arrow-up" size={16} color={colors.white} />
-                {/* 文字一定在：图标字体没就位时，这枚按钮也不该只剩一个色块。 */}
-                <Text style={styles.sendLabel}>{t("messages.send")}</Text>
-              </>
-            )}
-          </Pressable>
+          {draft.trim() ? (
+            <Pressable
+              onPress={() => void send()}
+              disabled={sending}
+              accessibilityRole="button"
+              accessibilityLabel={t("messages.send")}
+              style={[styles.sendButton, sending ? styles.sendDisabled : null]}
+            >
+              {sending ? (
+                <ActivityIndicator color={colors.white} size="small" />
+              ) : (
+                <>
+                  <Icon name="arrow-up" size={16} color={colors.white} />
+                  {/* 文字一定在：图标字体没就位时，这枚按钮也不该只剩一个色块。 */}
+                  <Text style={styles.sendLabel}>{t("messages.send")}</Text>
+                </>
+              )}
+            </Pressable>
+          ) : (
+            /*
+             * 输入框空着时，右侧是「录音」而不是「发送」—— 同一个位置只放一个
+             * 主操作：有字就发字，没字就发语音。这是微信/Telegram 的默认心智，
+             * 也省掉了在窄屏上再塞一个按钮。
+             */
+            <Pressable
+              onPress={() => void startRecording()}
+              disabled={voiceSending}
+              accessibilityRole="button"
+              accessibilityLabel={t("messages.voiceRecord")}
+              style={[styles.micButton, voiceSending ? styles.sendDisabled : null]}
+            >
+              {voiceSending ? (
+                <ActivityIndicator color={colors.primary} size="small" />
+              ) : (
+                <Icon name="mic" size={20} color={colors.primary} />
+              )}
+            </Pressable>
+          )}
         </View>
+        )}
       </KeyboardAware>
       {playingVideo ? (
         <ChatVideoPlayer uri={playingVideo} onClose={() => setPlayingVideo(null)} />
@@ -918,16 +1091,19 @@ export function MessagesScreen() {
 }
 
 /**
- * 列表预览：图片消息的 `content` 是图片 URL，不能当预览摆到列表里，
- * 显示本地化的「[图片]」。其余情况就是消息正文。
+ * 列表预览：附件消息的 `content` 是文件 URL，不能当预览摆到列表里，
+ * 显示本地化的占位（[图片]/[视频]/[语音]）；其余情况就是消息正文。
  */
+const MEDIA_PREVIEW = {
+  IMAGE: "messages.imagePreview",
+  VIDEO: "messages.videoPreview",
+  AUDIO: "messages.voicePreview",
+} as const;
+
 function previewText(item: ConversationItem, t: TranslateFn): string {
   if (!item.lastMessage) return t("messages.startChat");
-  return item.lastMessage.type === "IMAGE"
-    ? t("messages.imagePreview")
-    : item.lastMessage.type === "VIDEO"
-      ? t("messages.videoPreview")
-      : item.lastMessage.content;
+  const key = MEDIA_PREVIEW[item.lastMessage.type as keyof typeof MEDIA_PREVIEW];
+  return key ? t(key) : item.lastMessage.content;
 }
 
 /**
@@ -1158,6 +1334,22 @@ const styles = themed((c) => StyleSheet.create({
     borderWidth: 1,
     borderColor: c.line,
   },
+  /* 录音态：一个红点 + 计时 + 取消/发送，占满整条输入栏。 */
+  micButton: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.card,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: c.bgSoft,
+    borderWidth: 1,
+    borderColor: c.line,
+  },
+  recordingDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: c.danger },
+  recordingTime: { fontSize: sizes.ui, fontWeight: "600", color: c.ink, fontVariant: ["tabular-nums"] },
+  recordingHint: { flex: 1, fontSize: sizes.caption, color: c.muted },
+  voiceCancel: { paddingHorizontal: 8, paddingVertical: 8 },
+  voiceCancelText: { fontSize: sizes.ui, fontWeight: "600", color: c.muted },
   videoRoot: { flex: 1, backgroundColor: "#000" },
   videoFull: { flex: 1 },
   videoClose: {

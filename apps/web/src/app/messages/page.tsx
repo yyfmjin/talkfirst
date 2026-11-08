@@ -34,7 +34,7 @@ type ConversationItem = {
   updatedAt: string;
   unreadCount?: number;
   peer: { id: string; nickname: string | null; avatarUrl: string | null; countryCode: string | null } | null;
-  lastMessage: { content: string; senderId: string; createdAt: string } | null;
+  lastMessage: { content: string; senderId: string; createdAt: string; type?: string } | null;
 };
 
 type NoticeSummary = { items: Array<{ id: string }>; unread: number };
@@ -47,6 +47,19 @@ export default function MessagesPage() {
   const [error, setError] = useState("");
   const [actingId, setActingId] = useState<string | null>(null);
   const [unreadTotal, setUnreadTotal] = useState(0);
+
+  /**
+   * 列表预览：附件消息的 `content` 是文件 URL，直接摆出来就是一条几十字符的地址。
+   * 与 App 端 `previewText` 同一套规则（图/视频/语音）。
+   */
+  const previewOf = (conversation: ConversationItem) => {
+    const last = conversation.lastMessage;
+    if (!last) return t("messages.startChat");
+    if (last.type === "IMAGE") return t("messages.imagePreview");
+    if (last.type === "VIDEO") return t("messages.videoPreview");
+    if (last.type === "AUDIO") return t("messages.voicePreview");
+    return last.content;
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -263,7 +276,7 @@ export default function MessagesPage() {
                         <p
                           className={`truncate text-caption ${conversation.unreadCount ? "text-content" : "text-content-subtle"}`}
                         >
-                          {conversation.lastMessage?.content ?? t("messages.startChat")}
+                          {previewOf(conversation)}
                         </p>
                       </div>
                       <span

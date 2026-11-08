@@ -37,9 +37,17 @@ const WIDTH_CAP_SECONDS = 60;
 export function VoiceNote({
   uri,
   durationSec,
+  playLabel,
+  pauseLabel,
 }: {
   uri: string;
   durationSec?: number | null;
+  /**
+   * 无障碍朗读文字。默认用动态里的文案；聊天里的语音条是两个不同产品面上的一句话，
+   * 但它们是同一段控件，所以只在这里留个口，而不是在聊天里再写一个 VoiceNote。
+   */
+  playLabel?: string;
+  pauseLabel?: string;
 }) {
   const { t } = useI18n();
   const player = useAudioPlayer({ uri }, { updateInterval: 250 });
@@ -107,7 +115,7 @@ export function VoiceNote({
       hitSlop={6}
       accessibilityRole="button"
       accessibilityState={{ selected: playing }}
-      accessibilityLabel={t(playing ? "moments.voicePause" : "moments.voicePlay")}
+      accessibilityLabel={playing ? (pauseLabel ?? t("moments.voicePause")) : (playLabel ?? t("moments.voicePlay"))}
       style={[styles.bubble, { width }, playing ? styles.bubblePlaying : null]}
     >
       <Icon name="volume-medium" size={17} color={colors.primary} />

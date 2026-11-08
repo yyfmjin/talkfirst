@@ -494,6 +494,8 @@ enum MessageType {
   IMAGE
   /** 视频消息（2026-11-08）：`content` 存服务端转码后的 mp4 URL。 */
   VIDEO
+  /** 语音消息（2026-11-08）：`content` 存 m4a URL，时长由客户端播放器读出。 */
+  AUDIO
   SYSTEM
 }
 

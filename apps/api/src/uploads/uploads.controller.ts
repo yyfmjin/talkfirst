@@ -44,6 +44,11 @@ class MessageImageDto {
   image!: string;
 }
 
+class MessageAudioDto {
+  @IsString()
+  audio!: string;
+}
+
 /**
  * PC-3.6 — the moment composer picks a file straight off the device, so the
  * same two checks the avatar/chat endpoints run (mime allow-list plus a magic
@@ -146,6 +151,30 @@ export class UploadsController {
     }
     const imageUrl = this.uploads.saveLocal("messages", parsed.buffer, parsed.ext);
     return { success: true as const, data: { imageUrl, mime: parsed.mime } };
+  }
+
+  /**
+   * 聊天语音（2026-11-08）。
+   *
+   * 走与图片相同的 data URL 通道：客户端录完直接读成 base64 上传，省掉一次
+   * multipart 的临时文件落盘。`parseAudioDataUrl` 已经做了 mime 白名单与文件头
+   * 嗅探（不只看 Content-Type），上限 4MB（约 10 分钟 AAC）。
+   */
+  @Post("message-audio")
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  async uploadMessageAudio(@Body(new ValidationPipe()) dto: MessageAudioDto) {
+    const audio = this.uploads.parseAudioDataUrl(dto.audio);
+    if (!audio) {
+      throw new ForbiddenException({
+        success: false,
+        error: {
+          code: "INVALID_AUDIO",
+          message: "Audio must be a supported m4a/mp3/aac/ogg data URL (max 4MB)",
+        },
+      });
+    }
+    const url = this.uploads.saveLocal("messages", audio.buffer, audio.ext);
+    return { success: true as const, data: { url, mime: audio.mime } };
   }
 
   @Post("moment-media")

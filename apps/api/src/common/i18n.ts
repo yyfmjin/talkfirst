@@ -94,6 +94,8 @@ const ZH = {
   "notify.newMessage.imageBody": "对方发来一张图片",
   "notify.newMessage.videoTitle": "新视频",
   "notify.newMessage.videoBody": "对方发来一段视频",
+  "notify.newMessage.audioTitle": "新语音",
+  "notify.newMessage.audioBody": "对方发来一段语音",
 
   // —— 打招呼与连接 ——
   "notify.sayHello.title": "{name} 想和你打个招呼",
@@ -173,6 +175,8 @@ const EN: Record<MessageKey, string> = {
   "notify.newMessage.imageBody": "You received an image",
   "notify.newMessage.videoTitle": "New video",
   "notify.newMessage.videoBody": "You received a video",
+  "notify.newMessage.audioTitle": "New voice message",
+  "notify.newMessage.audioBody": "You received a voice message",
 
   "notify.sayHello.title": "{name} said hello",
   "notify.sayHello.anonymousTitle": "Someone said hello",
