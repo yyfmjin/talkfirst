@@ -57,6 +57,34 @@ sudo docker run -d --name bazi-app --restart unless-stopped \
 - `ctx.inference.complete` 没接推理服务；AI 命理助手走确定性兜底文案，不崩但不会真的「推理」。
 - `ctx.invalidateQueries` 是 no-op（单进程 SQLite，没有跨客户端失效需要）。
 
+## 4.1 与 TalkFirst 的集成（2026-11-08）
+
+**登录（SSO）**
+
+App 打开 `…/bazi/#tf=<TalkFirst access token>`，页面把 token 交给 `loginWithTalkFirst`，
+起名站拿它向 `GET /api/v1/users/me` 校验身份，按 `users.talkfirst_id` 找本地账号（没有就自动建），
+换发自己的 30 天会话后**立即从地址栏抹掉 token**。fragment 不会发给服务器，不进访问日志。
+
+**后台管理**
+
+TalkFirst 后台新增 `/bazi` 页（`apps/admin/src/app/bazi/page.tsx`），通过
+`GET/PATCH /api/v1/admin/bazi/{overview,users,settings}` 读写起名站数据。
+TalkFirst API 侧是 `AdminBaziController`，带 `BAZI_SERVICE_SECRET` 调起名站的
+`serviceAdmin` 动作；后者只放行白名单（概览 / 用户列表 / 读设置 / 存设置），
+校验通过后临时借一个管理员会话执行、用完即删 —— 不绕过它自己的 `requireAdmin`。
+
+两个环境变量：
+
+| 变量 | 所在位置 | 说明 |
+|---|---|---|
+| `BAZI_BASE_URL` | TalkFirst `.env` | 默认 `http://127.0.0.1:3100` |
+| `BAZI_SERVICE_SECRET` | 两边都要 | 共享密钥；起名站以容器 `-e` 传入 |
+
+**日期选择器**
+
+`<input type="date">` 在 Android WebView 里命中区偏移一行（点 2 号选到下面的数），
+已换成三个原生下拉（年/月/日）。缺日/月时表单仍然提示「请选择出生日期」，不会默默补 1 月 1 日。
+
 ## 5. 验证清单
 
 ```bash
