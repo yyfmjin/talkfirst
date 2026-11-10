@@ -1,8 +1,8 @@
 -- 好友分组 + 每个用户对每个好友的分类（2026-11-10）
 
 CREATE TABLE "FriendGroup" (
-  "id" TEXT NOT NULL,
-  "userId" TEXT NOT NULL,
+  "id" UUID NOT NULL,
+  "userId" UUID NOT NULL,
   "name" VARCHAR(24) NOT NULL,
   "kind" VARCHAR(16) NOT NULL DEFAULT 'CUSTOM',
   "sortOrder" INTEGER NOT NULL DEFAULT 0,
@@ -18,10 +18,10 @@ ALTER TABLE "FriendGroup"
   FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 CREATE TABLE "FriendTag" (
-  "connectionId" TEXT NOT NULL,
-  "userId" TEXT NOT NULL,
+  "connectionId" UUID NOT NULL,
+  "userId" UUID NOT NULL,
   "kind" VARCHAR(16) NOT NULL DEFAULT 'FRIEND',
-  "groupId" TEXT,
+  "groupId" UUID,
   "updatedAt" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "FriendTag_pkey" PRIMARY KEY ("connectionId", "userId")
 );
