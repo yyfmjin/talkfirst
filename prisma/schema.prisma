@@ -691,6 +691,8 @@ model User {
    * **它是派生值** —— 万一与 `flowersReceived` 的行数不一致，以行数为准。
    */
   flowerCount              Int                     @default(0)
+  friendGroups             FriendGroup[]           @relation("FriendGroups")
+  friendTags               FriendTag[]             @relation("FriendTags")
   momentBookmarks          MomentBookmark[]
   momentComments           MomentComment[]
   refreshTokens            RefreshToken[]
@@ -1205,6 +1207,9 @@ model Connection {
   status         ConnectionStatus @default(ACTIVE)
   createdAt      DateTime         @default(now())
 
+  /** 每一侧对这个好友的分类（见 FriendTag）：同一条连接，两个人可以分到不同组。 */
+  tags           FriendTag[]
+
   @@unique([userAId, userBId])
   @@index([userAId])
   @@index([userBId])
@@ -1697,4 +1702,47 @@ model DeviceUser {
 
   @@id([deviceHash, userId])
   @@index([userId])
+}
+
+/**
+ * 好友分组（2026-11-10）。
+ *
+ * 每个用户自己的一套：默认给「朋友 / 恋人 / 合作」三个内置分组，用户可以再建自定义的。
+ * 分组挂在**用户**上而不是连接上——否则一个人改分组，另一个人也跟着变。
+ */
+model FriendGroup {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation("FriendGroups", fields: [userId], references: [id], onDelete: Cascade)
+  /** 分组名，同一用户内唯一。内置的三个用 kind 标记，自定义的 kind = CUSTOM。 */
+  name      String   @db.VarChar(24)
+  kind      String   @default("CUSTOM") @db.VarChar(16)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  tags      FriendTag[]
+
+  @@unique([userId, name])
+  @@index([userId, sortOrder])
+}
+
+/**
+ * 「我把这个好友归到哪一类」。
+ *
+ * 主键是 (connectionId, userId)：一条连接有两个人，各有一行，互不影响。
+ * `kind` 是内置关系类型（朋友/恋人/合作/家人），`groupId` 指向自定义分组（可空）。
+ */
+model FriendTag {
+  connectionId String      @db.Uuid
+  connection   Connection  @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  userId       String      @db.Uuid
+  user         User        @relation("FriendTags", fields: [userId], references: [id], onDelete: Cascade)
+  kind         String      @default("FRIEND") @db.VarChar(16)
+  groupId      String?     @db.Uuid
+  group        FriendGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  updatedAt    DateTime    @updatedAt
+
+  @@id([connectionId, userId])
+  @@index([userId])
+  @@index([groupId])
 }

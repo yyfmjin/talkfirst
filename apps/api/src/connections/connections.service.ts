@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -378,6 +379,8 @@ export class ConnectionsService {
       },
       orderBy: { createdAt: "desc" },
       include: {
+        /* 只取「我」这一侧的分类：同一条连接，两个人各有一行，互不影响。 */
+        tags: { where: { userId }, select: { kind: true, groupId: true } },
         conversation: {
           include: {
             exchanges: {
@@ -442,6 +445,98 @@ export class ConnectionsService {
           })),
         },
       };
+    });
+  }
+
+  /* ───────────── 好友分组（2026-11-10） ───────────── */
+
+  /** 内置的三个关系类型。第一次打开分组列表时补齐，用户不用手工建。 */
+  private static readonly DEFAULT_GROUPS = [
+    { name: "朋友", kind: "FRIEND", sortOrder: 0 },
+    { name: "恋人", kind: "LOVER", sortOrder: 1 },
+    { name: "合作", kind: "PARTNER", sortOrder: 2 },
+  ];
+
+  async listFriendGroups(userId: string) {
+    const existing = await this.prisma.friendGroup.findMany({
+      where: { userId },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    });
+    if (existing.length > 0) return existing;
+    await this.prisma.friendGroup.createMany({
+      data: ConnectionsService.DEFAULT_GROUPS.map((group) => ({ ...group, userId })),
+      skipDuplicates: true,
+    });
+    return this.prisma.friendGroup.findMany({
+      where: { userId },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    });
+  }
+
+  async createFriendGroup(userId: string, name: string) {
+    const trimmed = name.trim().slice(0, 24);
+    if (!trimmed) {
+      throw new BadRequestException({
+        success: false,
+        error: { code: "EMPTY_GROUP_NAME", message: "Group name is required" },
+      });
+    }
+    const count = await this.prisma.friendGroup.count({ where: { userId } });
+    try {
+      return await this.prisma.friendGroup.create({
+        data: { userId, name: trimmed, kind: "CUSTOM", sortOrder: count },
+      });
+    } catch {
+      throw new BadRequestException({
+        success: false,
+        error: { code: "GROUP_EXISTS", message: "A group with this name already exists" },
+      });
+    }
+  }
+
+  async deleteFriendGroup(userId: string, groupId: string) {
+    /* 只删自己的分组；组里的好友回到「未分组」，不会被删掉。 */
+    const deleted = await this.prisma.friendGroup.deleteMany({ where: { id: groupId, userId } });
+    if (deleted.count === 0) {
+      throw new NotFoundException({
+        success: false,
+        error: { code: "GROUP_NOT_FOUND", message: "Group not found" },
+      });
+    }
+    return { id: groupId, deleted: true };
+  }
+
+  async tagConnection(userId: string, connectionId: string, kind: string, groupId: string | null) {
+    const connection = await this.prisma.connection.findFirst({
+      where: {
+        id: connectionId,
+        status: "ACTIVE",
+        OR: [{ userAId: userId }, { userBId: userId }],
+      },
+      select: { id: true },
+    });
+    if (!connection) {
+      throw new NotFoundException({
+        success: false,
+        error: { code: "CONNECTION_NOT_FOUND", message: "Connection not found" },
+      });
+    }
+    if (groupId) {
+      const group = await this.prisma.friendGroup.findFirst({
+        where: { id: groupId, userId },
+        select: { id: true },
+      });
+      if (!group) {
+        throw new BadRequestException({
+          success: false,
+          error: { code: "GROUP_NOT_FOUND", message: "Group not found" },
+        });
+      }
+    }
+    return this.prisma.friendTag.upsert({
+      where: { connectionId_userId: { connectionId, userId } },
+      create: { connectionId, userId, kind, groupId },
+      update: { kind, groupId },
     });
   }
 

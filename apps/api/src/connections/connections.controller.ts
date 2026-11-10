@@ -1,4 +1,5 @@
 import {
+  Put,
   Body,
   Controller,
   Delete,
@@ -75,6 +76,48 @@ export class ConnectionsController {
   list(@CurrentUser() user: AuthUser) {
     return this.connectionsService
       .listConnections(user.id)
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  /* ───────── 好友分组（2026-11-10） ───────── */
+
+  @Get("groups")
+  @UseGuards(JwtAuthGuard)
+  groups(@CurrentUser() user: AuthUser) {
+    return this.connectionsService
+      .listFriendGroups(user.id)
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  @Post("groups")
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  createGroup(@CurrentUser() user: AuthUser, @Body() body: { name?: string }) {
+    return this.connectionsService
+      .createFriendGroup(user.id, String(body?.name ?? ""))
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  @Delete("groups/:id")
+  @UseGuards(JwtAuthGuard)
+  deleteGroup(@CurrentUser() user: AuthUser, @Param("id", UuidParamPipe) id: string) {
+    return this.connectionsService
+      .deleteFriendGroup(user.id, id)
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  /** 给一个好友打分类：内置关系类型 + 自定义分组（可空）。 */
+  @Put(":id/tag")
+  @UseGuards(JwtAuthGuard)
+  tag(
+    @CurrentUser() user: AuthUser,
+    @Param("id", UuidParamPipe) id: string,
+    @Body() body: { kind?: string; groupId?: string | null },
+  ) {
+    const allowed = ["FRIEND", "LOVER", "PARTNER", "FAMILY"];
+    const kind = allowed.includes(String(body?.kind)) ? String(body.kind) : "FRIEND";
+    return this.connectionsService
+      .tagConnection(user.id, id, kind, body?.groupId ?? null)
       .then((data) => ({ success: true as const, data }));
   }
 
