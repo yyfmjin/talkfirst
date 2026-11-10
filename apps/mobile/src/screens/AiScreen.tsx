@@ -93,6 +93,18 @@ export function AiScreen({ onBack }: { onBack: () => void }) {
   const listRef = useRef<FlatList<AiMessage>>(null);
   /** 贴在底部？用户往上翻历史（离开底部超过 80px）后，新消息就不该把他拽回来。 */
   const pinnedRef = useRef(true);
+  /**
+   * 用户是否正在用手指拖列表。
+   *
+   * 2026-11-10 线上反馈「最后一条看不到」：FlatList 在首屏布局时会自己发一次
+   * onScroll（offset 0、contentSize 还没算全），那一帧算出来"离底部很远"，
+   * 把 pinned 置成 false；之后新消息到达时 `scrollToLatest` 直接 return，
+   * 列表就永远停在最上面。
+   *
+   * 现在只认**用户的手**：只有拖动/惯性滚动期间才更新 pinned，
+   * 程序滚动与首屏布局都不参与判断。
+   */
+  const userScrollingRef = useRef(false);
 
   // 表单（创建/设置共用）
   const [name, setName] = useState("");
@@ -140,6 +152,11 @@ export function AiScreen({ onBack }: { onBack: () => void }) {
       listRef.current?.scrollToEnd({ animated });
     });
   }, []);
+
+  /* 换会话（或第一次进到某个 AI 朋友）：一定是最新那条在最下面。 */
+  useEffect(() => {
+    pinnedRef.current = true;
+  }, [state?.conversationId]);
 
   useEffect(() => {
     const hasMessages = (state?.messages.length ?? 0) > 0;
@@ -366,6 +383,18 @@ export function AiScreen({ onBack }: { onBack: () => void }) {
         contentContainerStyle={styles.list}
         onContentSizeChange={() => scrollToLatest(false)}
         onScroll={(event) => {
+          if (!userScrollingRef.current) return;
+          const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+          pinnedRef.current = contentSize.height - contentOffset.y - layoutMeasurement.height < 80;
+        }}
+        onScrollBeginDrag={() => {
+          userScrollingRef.current = true;
+        }}
+        onScrollEndDrag={() => {
+          userScrollingRef.current = false;
+        }}
+        onMomentumScrollEnd={(event) => {
+          userScrollingRef.current = false;
           const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
           pinnedRef.current = contentSize.height - contentOffset.y - layoutMeasurement.height < 80;
         }}

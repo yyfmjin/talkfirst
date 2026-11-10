@@ -413,6 +413,45 @@ export function MessagesScreen() {
     setAi(true);
   }, []);
 
+  /**
+   * 删除聊天框（长按触发）。
+   *
+   * 语义是「从我的列表里删掉」，不是销毁证据：服务端只把**我这一行**成员记录
+   * 打个 hiddenAt，对方仍能看到会话与历史；对方再发消息时它会自动回来。
+   * 所以文案不能写「清空聊天记录」——那会让人以为对方也看不到了。
+   */
+  function confirmDeleteChat(conversationId: string, nickname: string | null) {
+    Alert.alert(
+      t("messages.deleteChatTitle"),
+      nickname
+        ? t("messages.deleteChatBody", { name: nickname })
+        : t("messages.deleteChatBodyFallback"),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("messages.deleteChatConfirm"),
+          style: "destructive",
+          onPress: () => void deleteChat(conversationId),
+        },
+      ],
+    );
+  }
+
+  async function deleteChat(conversationId: string) {
+    try {
+      await apiFetch(`/conversations/${conversationId}`, { method: "DELETE" });
+      setConversations((previous) => previous.filter((item) => item.id !== conversationId));
+    } catch (requestError) {
+      setError(
+        requestError instanceof ApiRequestError && requestError.code === "NOT_FOUND"
+          ? t("messages.deleteChatGone")
+          : requestError instanceof Error
+            ? requestError.message
+            : t("messages.deleteChatFailed"),
+      );
+    }
+  }
+
   const openConversation = useCallback(async (id: string) => {
     /*
      * AI 会话不在这一层打开：它的消息只能走 `/ai-companion`，普通会话接口对它一律
@@ -1390,7 +1429,11 @@ export function MessagesScreen() {
           return (
             <Pressable
               onPress={() => void openConversation(item.id)}
+              /* 长按删除聊天框：只隐藏自己这一侧，对方那边照旧（服务端 hiddenAt）。 */
+              onLongPress={() => confirmDeleteChat(item.id, item.peer?.nickname ?? null)}
+              delayLongPress={420}
               accessibilityRole="button"
+              accessibilityHint={t("messages.deleteChatHint")}
               style={styles.row}
             >
               <Avatar uri={item.peer?.avatarUrl ?? null} nickname={item.peer?.nickname ?? null} size={48} />

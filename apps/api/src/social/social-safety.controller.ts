@@ -191,8 +191,17 @@ export class SocialSafetyController {
      *   · 你读完之后**不会归零** —— 已读与未读在数据上没有任何区别。
      * 现在每个成员一行 `lastReadAt`，未读数才成为一个能被「打开会话」消掉的量。
      */
+    /*
+     * 「删掉的聊天框」只隐藏自己这一侧：`hiddenAt` 之后对方又发来消息
+     * （会话 updatedAt 被顶上来）就重新出现，和微信/iMessage 一致。
+     * 这样所有发消息路径（WS、REST、媒体）都不用各自记得"取消隐藏"。
+     */
+    const visible = memberships.filter(
+      (membership) => !membership.hiddenAt || membership.conversation.updatedAt > membership.hiddenAt,
+    );
+
     const data = await Promise.all(
-      memberships.map(async (membership) => {
+      visible.map(async (membership) => {
         const peer = membership.conversation.members.find((member) => member.userId !== user.id);
         const lastMessage = membership.conversation.messages[0];
         const unreadCount = await this.unreadCountFor(user.id, membership);
@@ -264,6 +273,32 @@ export class SocialSafetyController {
    * 幂等：重复调用只是继续把 `lastReadAt` 往后推，结果一样是「读完了」。
    * 非成员一律 404，与消息列表同一口径 —— 不拿状态码泄漏会话是否存在。
    */
+  /**
+   * 从我的列表里删掉一个聊天框（2026-11-10）。
+   *
+   * 只写自己那一行成员记录的 `hiddenAt`：对方仍能在列表里看到这个会话，
+   * 历史消息也不删（撤回单条消息走 DELETE /messages/:id）。
+   * 对方之后再发消息，会话的 updatedAt 会超过 hiddenAt，它自动回到列表里。
+   */
+  @Delete("conversations/:id")
+  async hideConversation(@CurrentUser() user: AuthUser, @Param("id", UuidParamPipe) id: string) {
+    const member = await this.prisma.conversationMember.findUnique({
+      where: { conversationId_userId: { conversationId: id, userId: user.id } },
+      select: { userId: true },
+    });
+    if (!member) {
+      throw new NotFoundException({
+        success: false,
+        error: { code: "CONVERSATION_NOT_FOUND", message: "Conversation not found" },
+      });
+    }
+    await this.prisma.conversationMember.update({
+      where: { conversationId_userId: { conversationId: id, userId: user.id } },
+      data: { hiddenAt: new Date() },
+    });
+    return { success: true as const, data: { id, hidden: true } };
+  }
+
   @Post("conversations/:id/read")
   @Throttle({ default: { limit: 120, ttl: 60000 } })
   async markConversationRead(

@@ -1247,6 +1247,15 @@ model ConversationMember {
    */
   lastReadAt     DateTime?
 
+  /**
+   * 「从我的列表里删掉」（2026-11-10）。
+   *
+   * 聊天框删除是**按人**的：只隐藏自己这一侧，对方那边照旧，历史消息也不删
+   * （删消息另有 DELETE /messages/:id 的撤回）。对方再发来一条时自动恢复显示，
+   * 与微信/iMessage 的「删除对话」一致。
+   */
+  hiddenAt       DateTime?
+
   @@id([conversationId, userId])
 }
 
