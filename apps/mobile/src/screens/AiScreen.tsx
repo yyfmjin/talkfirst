@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   AppState,
+  Keyboard,
   Alert,
   FlatList,
   Pressable,
@@ -120,7 +121,25 @@ export function AiScreen({ onBack }: { onBack: () => void }) {
     setLoadError("");
     try {
       const data = await apiFetch<AiState | null>("/ai-companion");
-      setState(data ?? null);
+      /*
+       * 合并而不是覆盖（2026-11-10）。
+       *
+       * 后台轮询与「发送后立刻刷新」会并发，先发的请求可能后到；直接 setState 会把
+       * 新消息回退成上一次的快照 —— 屏幕上的聊天记录会突然消失。这里按 id 取并集，
+       * 任何一次响应都不会让已经看到的消息变少。
+       */
+      setState((previous) => {
+        if (!data) return data ?? null;
+        if (!previous) return data;
+        const byId = new Map(previous.messages.map((message) => [message.id, message]));
+        for (const message of data.messages) byId.set(message.id, message);
+        const messages = [...byId.values()].sort((left, right) =>
+          left.createdAt === right.createdAt
+            ? left.id.localeCompare(right.id)
+            : left.createdAt.localeCompare(right.createdAt),
+        );
+        return { ...data, messages };
+      });
       if (data) {
         setName(data.companion.name);
         setUserNickname(data.companion.userNickname);
@@ -149,6 +168,15 @@ export function AiScreen({ onBack }: { onBack: () => void }) {
    *   - 每 4 秒重拉一次（正在发送时跳过，别覆盖乐观插入的那条）；
    *   - App 回到前台立刻拉一次（切出去聊别的再回来）。
    */
+  /* 键盘弹出/收起会改变列表可视高度：贴底的人应该继续看到最新一条。 */
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", () => {
+      pinnedRef.current = true;
+      requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+    });
+    return () => show.remove();
+  }, []);
+
   useEffect(() => {
     const timer = setInterval(() => {
       if (!sending) void load();
@@ -401,8 +429,13 @@ export function AiScreen({ onBack }: { onBack: () => void }) {
 
       <FlatList
         ref={listRef}
+        /* 必须有 flex:1：聊天列表是这一列里唯一可伸缩的孩子。
+           不写的话高度跟着内容长，长到超过屏幕后输入栏被顶出去，
+           `scrollToEnd` 也在错误的参考系里 —— 表现就是"聊着聊着什么都不显示"。 */
+        style={{ flex: 1 }}
         data={state?.messages ?? []}
         keyExtractor={(item) => item.id}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.list}
         onContentSizeChange={() => scrollToLatest(false)}
         onScroll={(event) => {

@@ -373,6 +373,8 @@ export function MessagesScreen() {
   openIdRef.current = openId;
   /** 消息列表本体：打开会话、来新消息时用它滚到最新一条。 */
   const threadListRef = useRef<FlatList<ChatMessage>>(null);
+  /** 用户是否正在拖消息列表（见 onScroll 上方注释）。 */
+  const threadScrolling = useRef(false);
   /**
    * 是否「贴着底部」。
    *
@@ -1012,8 +1014,11 @@ export function MessagesScreen() {
 
         <FlatList
           ref={threadListRef}
+          /* 同 AI 页：不给 flex 的话列表会按内容长高，输入栏被顶出屏幕。 */
+          style={{ flex: 1 }}
           data={messages}
           keyExtractor={(item) => item.id}
+          keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.threadList}
           onStartReached={loadOlder}
           onStartReachedThreshold={0.3}
@@ -1025,9 +1030,24 @@ export function MessagesScreen() {
             if (stickToBottom.current) threadListRef.current?.scrollToEnd({ animated: false });
           }}
           onScroll={(event) => {
+            /* 只认用户的手：键盘弹出会改变 layoutMeasurement，那一帧的"距离"没有意义，
+               以前会把它当成"用户翻到上面了"，于是之后再也不跟随新消息。 */
+            if (!threadScrolling.current) return;
             const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
             const distanceToBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
             stickToBottom.current = distanceToBottom < 80;
+          }}
+          onScrollBeginDrag={() => {
+            threadScrolling.current = true;
+          }}
+          onScrollEndDrag={() => {
+            threadScrolling.current = false;
+          }}
+          onMomentumScrollEnd={(event) => {
+            threadScrolling.current = false;
+            const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+            stickToBottom.current =
+              contentSize.height - contentOffset.y - layoutMeasurement.height < 80;
           }}
           scrollEventThrottle={100}
           /* 往上加载更早的消息时保持可见位置，不跳。 */
