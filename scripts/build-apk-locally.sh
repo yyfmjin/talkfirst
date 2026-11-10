@@ -169,6 +169,12 @@ if grep -q "^reactNativeArchitectures=" "$GP"; then
 fi
 log "gradle assembleRelease（arm64+v7a，首次 15-30 分钟）…"
 cd "$DEST/apps/mobile/android" || exit 1
+# 2026-11-08 事故：JS 包和 APK 的打包顺序错位，APK 里塞的是**上一次**的
+# index.android.bundle（源码改了、APK 没变），装到手机上就是「改了没生效」，
+# 而且所有静态检查都发现不了。删掉生成物与合并后的资产，逼这两步一定重跑。
+rm -rf app/build/generated/assets/createBundleReleaseJsAndAssets
+rm -rf app/build/intermediates/assets
+rm -rf app/build/outputs/apk
 ./gradlew assembleRelease --no-daemon >/tmp/local-gradle.log 2>&1
 STATUS=$?
 if [ $STATUS -ne 0 ]; then
