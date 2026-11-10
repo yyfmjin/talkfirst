@@ -417,8 +417,11 @@ export class ConnectionsService {
     return connections.map((connection) => {
       const peer = connection.userAId === userId ? connection.userB : connection.userA;
       const latestExchange = connection.conversation?.exchanges?.[0];
+      /* 我这侧的分类：没打过分就是 null（界面显示「未分组」）。 */
+      const tag = connection.tags[0];
       return {
         id: connection.id,
+        tag: tag ? { kind: tag.kind, groupId: tag.groupId } : null,
         conversationId: connection.conversationId,
         createdAt: connection.createdAt,
         exchange: latestExchange

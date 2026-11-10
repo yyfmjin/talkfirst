@@ -43,6 +43,7 @@ import { KeyboardAware } from "../components/KeyboardAware";
 import { AiScreen } from "./AiScreen";
 import { UnreadBadge } from "../components/UnreadBadge";
 import { ExchangeScreen } from "./ExchangeScreen";
+import { FriendsScreen } from "./FriendsScreen";
 import { NotificationsScreen } from "./NotificationsScreen";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
 import { playGreetingSound, playMessageSound } from "../lib/notification-sound";
@@ -112,6 +113,8 @@ export function MessagesScreen() {
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const [translatingId, setTranslatingId] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  /** 「我的好友」子页：好友 + 分组都在那里，不再塞进会话列表。 */
+  const [showFriends, setShowFriends] = useState(false);
   /** 会话里的「交换联系方式」全屏子页（对齐 web 的 `/messages/[id]/connect`）。 */
   const [exchange, setExchange] = useState(false);
   /** AI 朋友全屏子页（对齐 web 的 `/ai`，入口在列表顶部）。 */
@@ -1320,10 +1323,23 @@ export function MessagesScreen() {
    */
   const { ai: aiChat, humans: humanChats } = splitConversations(conversations);
 
+  if (showFriends) {
+    return <FriendsScreen onBack={() => setShowFriends(false)} />;
+  }
+
   return (
     <View style={styles.root}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{t("messages.title")}</Text>
+        <Pressable
+          onPress={() => setShowFriends(true)}
+          accessibilityRole="button"
+          accessibilityLabel={t("friends.title")}
+          hitSlop={10}
+          style={styles.headerAction}
+        >
+          <Icon name="people-outline" size={22} color={colors.ink} />
+        </Pressable>
       </View>
       <Segments value={segment} onChange={setSegment} />
       {liveBanner}
@@ -1624,6 +1640,12 @@ function ChatVideoPlayer({ uri, onClose }: { uri: string; onClose: () => void })
 }
 
 const styles = themed((c) => StyleSheet.create({
+  headerAction: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   root: { flex: 1, backgroundColor: c.bg },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 10 },
   header: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 },
