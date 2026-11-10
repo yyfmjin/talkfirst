@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X } from "lucide-react";
+import { ChevronRight, X } from "lucide-react";
 import { AttributeTagList } from "@/components/attribute-tags";
 import {
   TFAvatar,
@@ -244,6 +244,28 @@ export function ProfilePreviewCard({
                   ))}
                 </div>
               </div>
+            ) : null}
+
+            {/*
+              个人动态：和 App 的 ProfilePreview 同一行同一个位置。
+              对方关掉这个入口时（momentsVisible === false）整行不出现；
+              自己看自己服务端永远给 true。
+            */}
+            {profile.momentsVisible !== false ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  router.push(localePath(locale, `/moments/user/${profile.id}`));
+                }}
+                className="mt-4 flex w-full items-center gap-3 rounded-xl border border-line bg-surface-alt px-3 py-2.5 text-left transition hover:border-brand-300"
+              >
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-50 text-brand-600">
+                  <ChevronRight className="h-4 w-4" aria-hidden />
+                </span>
+                <span className="flex-1 text-body font-medium text-content">{t("profileCard.myMoments")}</span>
+                <ChevronRight className="h-4 w-4 text-content-muted" aria-hidden />
+              </button>
             ) : null}
 
             {error ? (

@@ -94,6 +94,13 @@ export type PublicProfile = {
    */
   flowerCount: number;
   flowerFromViewer: boolean;
+  /**
+   * 资料卡要不要显示「个人动态」入口。
+   *
+   * 由被看的人决定（`User.showMomentsOnProfile`）；自己看自己永远 true。
+   * 镜像 `apps/api/src/users/users.service.ts` 的同名字段。
+   */
+  momentsVisible: boolean;
 };
 
 /**

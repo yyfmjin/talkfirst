@@ -287,13 +287,16 @@ export default function ProfileDetailPage() {
             {!isSelf ? (
               <>
                 <div className="mt-6 flex gap-2">
-                  <TFButton
-                    variant="secondary"
-                    href={localePath(locale, `/moments/user/${profile.id}`)}
-                    className="flex-1"
-                  >
-                    {t("pf.viewMoments")}
-                  </TFButton>
+                  {/* 与资料卡同一规则：对方关掉「个人动态」入口时这里也不出现。 */}
+                  {profile.momentsVisible !== false ? (
+                    <TFButton
+                      variant="secondary"
+                      href={localePath(locale, `/moments/user/${profile.id}`)}
+                      className="flex-1"
+                    >
+                      {t("pf.viewMoments")}
+                    </TFButton>
+                  ) : null}
                   {profile.relationship.isConnected ? (
                     <TFButton variant="secondary" className="flex-[2]" disabled>
                       {t("pf.connected")}

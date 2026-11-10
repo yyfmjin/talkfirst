@@ -67,6 +67,8 @@ const IMAGE_MAX_EDGE = 1600;
 const IMAGE_QUALITY = 0.72;
 const MAX_VIDEO_UPLOAD_BYTES = 90 * 1024 * 1024;
 const MAX_VIDEO_SECONDS = 60;
+/** 一次最多发几张图（九宫格）。 */
+const MAX_IMAGES = 9;
 
 /**
  * 语音消息（2026-11-08）。
@@ -133,9 +135,12 @@ export function MessagesScreen() {
    * 保留原始的 `ImagePickerAsset`：压缩/转码要用它的宽高与 mime，
    * 预览条只需要从里面取 uri / fileSize / duration。
    */
-  const [pending, setPending] = useState<{ kind: "image" | "video"; asset: ImagePicker.ImagePickerAsset } | null>(
-    null,
-  );
+  const [pending, setPending] = useState<{
+    kind: "image" | "video";
+    assets: ImagePicker.ImagePickerAsset[];
+  } | null>(null);
+  /** 正在发送第几张（1 起）；0 表示没在发。 */
+  const [sendingIndex, setSendingIndex] = useState(0);
   /** 正在全屏播放的视频 URL。 */
   const [playingVideo, setPlayingVideo] = useState<string | null>(null);
 
@@ -607,13 +612,15 @@ export function MessagesScreen() {
       }
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: kind === "image" ? ["images"] : ["videos"],
-        allowsMultipleSelection: false,
+        /* 一次最多九张：相册里挑一排，预览条里能逐张去掉。视频一次一个更符合预期。 */
+        allowsMultipleSelection: kind === "image",
+        selectionLimit: kind === "image" ? MAX_IMAGES : 1,
         quality: 1,
         ...(kind === "video" ? { videoMaxDuration: MAX_VIDEO_SECONDS } : {}),
       });
       if (result.canceled || result.assets.length === 0) return;
       setError("");
-      setPending({ kind, asset: result.assets[0] });
+      setPending({ kind, assets: result.assets.slice(0, kind === "image" ? MAX_IMAGES : 1) });
     } catch (mediaError) {
       setError(
         mediaError instanceof Error ? mediaError.message : t("messages.mediaUploadFailed"),
@@ -625,19 +632,25 @@ export function MessagesScreen() {
   async function sendPendingMedia() {
     const conversationId = openId;
     const chosen = pending;
-    if (!conversationId || !chosen || attaching) return;
+    if (!conversationId || !chosen || chosen.assets.length === 0 || attaching) return;
     setAttaching(true);
     setError("");
+    let sent = 0;
     try {
-      const created =
-        chosen.kind === "image"
-          ? await uploadImageMessage(conversationId, chosen.asset)
-          : await uploadVideoMessage(conversationId, chosen.asset);
-      // 与文字消息一致：服务端返回的那一条直接接在末尾，广播回来的由 appendMessageOnce 去重。
-      setMessages((previous) => appendMessageOnce(previous, created));
+      /* 逐张发（服务端一次一条消息）。中途失败时已发出去的保留，剩下的留在预览条里。 */
+      for (const asset of chosen.assets) {
+        setSendingIndex(sent + 1);
+        const created =
+          chosen.kind === "image"
+            ? await uploadImageMessage(conversationId, asset)
+            : await uploadVideoMessage(conversationId, asset);
+        setMessages((previous) => appendMessageOnce(previous, created));
+        sent += 1;
+      }
       void loadConversations();
       setPending(null);
     } catch (mediaError) {
+      setPending((current) => (current ? { ...current, assets: current.assets.slice(sent) } : null));
       setError(
         mediaError instanceof ApiRequestError && mediaError.code === "IMAGE_TOO_LARGE"
           ? t("messages.imageTooLarge")
@@ -647,6 +660,7 @@ export function MessagesScreen() {
       );
     } finally {
       setAttaching(false);
+      setSendingIndex(0);
     }
   }
 
@@ -1128,15 +1142,21 @@ export function MessagesScreen() {
         {/* 选好的媒体贴在输入框上方：输入框还能继续用来补一句话。 */}
         {pending ? (
           <MediaPreviewBar
-            media={{
+            items={pending.assets.map((asset) => ({
               kind: pending.kind,
-              uri: pending.asset.uri,
-              width: pending.asset.width,
-              height: pending.asset.height,
-              sizeBytes: pending.asset.fileSize,
-              durationSec: pending.asset.duration ? pending.asset.duration / 1000 : undefined,
-            }}
+              uri: asset.uri,
+              width: asset.width,
+              height: asset.height,
+              sizeBytes: asset.fileSize,
+              durationSec: asset.duration ? asset.duration / 1000 : undefined,
+            }))}
             uploading={attaching}
+            sendIndex={sendingIndex}
+            onRemove={(index) =>
+              setPending((current) =>
+                current ? { ...current, assets: current.assets.filter((_, i) => i !== index) } : null,
+              )
+            }
             onCancel={() => setPending(null)}
             onSend={() => void sendPendingMedia()}
           />

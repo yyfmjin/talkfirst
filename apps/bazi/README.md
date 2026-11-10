@@ -26,9 +26,24 @@
 `docker build` 新镜像，`docker rm -f bazi-app` 后用**同样的环境变量**
 （尤其是 `BAZI_SERVICE_SECRET`）重新 `docker run`。
 
+## 2026-11-10 第二轮
+
+`client/src/App.tsx`
+- 账号：访客的「登录 / 注册」表单整块撤掉，换成「账号由 TalkFirst 统一管理」说明卡；
+  账号页显示从 TalkFirst 同步来的昵称与头像。
+- 导航仍是 4 + 「更多」（上一轮）。
+
+`server/src/actions.ts` / `schema.ts` / `standalone.ts`
+- `register` / `login` 两个动作直接返回「请从 TalkFirst 打开」，不再产生本地账号。
+- SSO 登录时同步 TalkFirst 的 nickname / email / avatarUrl / birthDate / gender，
+  每次登录覆盖刷新（以 TalkFirst 为准）；启动时幂等补列，不需要手工迁移。
+
+`server/src/naming.ts`
+- 字库 80 → 100 字（每个五行补 3–8 个常用字，含拼音、声调、笔画、字义、寓意），
+  仍坚持「不编典故」：只写字义与寓意短语。
+
 ## 待办
 
 - 把整个 `client/` 与 `server/` 纳入本仓库并接上 CI，才有真正的 code review；
   当前这种「服务器上直接改」的方式只能算过渡。
-- 账号合并的第二半：起名站自己的注册/登录表单在**非** TalkFirst 入口下仍然存在，
-  需要产品决定是保留（站外访问）还是彻底关掉。
+- 字库还想要更大：目前 100 字，做「备选字库」章节够用，但离"每个五行 24 字"还有距离。

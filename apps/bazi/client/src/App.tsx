@@ -2782,37 +2782,24 @@ function AppInner() {
           )}
           {tab === "bonds" && gatePrompt("featureBonds")}
 
-          {/* 访客 · 登录 / 注册 */}
+          {/*
+            访客 · 账号（2026-11-10）
+            本应用不再有自己的注册/登录：账号只来自 TalkFirst 单点登录
+            （App 打开本页时用 `#tf=<token>` 换会话）。所以这里只说明怎么进来，
+            不再摆一套用户名字段 —— 两套账号正是之前"串线"的来源。
+          */}
           {tab === "account" && (
-            <article className="plate-frame mx-auto mt-3 w-full max-w-md rounded-[var(--radius)] bg-[var(--surface)] p-5">
-              <div className="grid grid-cols-2 gap-1 rounded-full border border-[var(--border)] bg-[var(--bg)] p-1" role="group" aria-label={t("loginTab")}>
-                <button type="button" aria-pressed={authMode === "login"} onClick={() => { setAuthMode("login"); setAuthError(""); }} className={`rounded-full py-2 text-sm ${authMode === "login" ? "bg-[var(--accent)] font-semibold text-[var(--accent-ink)]" : "text-[var(--dim)]"}`}>{t("loginTab")}</button>
-                <button type="button" aria-pressed={authMode === "register"} disabled={!allowReg} onClick={() => { setAuthMode("register"); setAuthError(""); }} className={`rounded-full py-2 text-sm ${authMode === "register" ? "bg-[var(--accent)] font-semibold text-[var(--accent-ink)]" : "text-[var(--dim)]"} disabled:opacity-40`}>{t("registerTab")}</button>
-              </div>
-              {!allowReg && <p className="mt-2 text-center text-xs text-[var(--dim)]">{t("regClosed")}</p>}
-              <form
-                className="mt-4 space-y-3"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  setAuthError("");
-                  if (authMode === "register") registerM.mutate();
-                  else loginM.mutate();
-                }}
+            <article className="plate-frame mx-auto mt-3 w-full max-w-md rounded-[var(--radius)] bg-[var(--surface)] p-6 text-center">
+              <p aria-hidden className="font-display text-3xl">✦</p>
+              <h2 className="font-display mt-2 text-xl font-bold">{t("tfOnlyTitle")}</h2>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--dim)]">{t("tfOnlyBody")}</p>
+              <a
+                href="https://talkfirst.ccwu.cc"
+                className="mt-5 inline-block w-full rounded-lg bg-[var(--accent)] px-4 py-2.5 text-base font-bold text-[var(--accent-ink)]"
               >
-                <div>
-                  <label htmlFor="auth-username" className="mb-1 block text-sm font-medium">{t("username")}</label>
-                  <input id="auth-username" aria-label={t("username")} autoComplete="username" className={inputCls} value={authUsername} maxLength={20} onChange={(e) => setAuthUsername(e.target.value)} placeholder={t("usernamePlaceholder")} />
-                </div>
-                <div>
-                  <label htmlFor="auth-password" className="mb-1 block text-sm font-medium">{t("password")}</label>
-                  <input id="auth-password" aria-label={t("password")} type="password" autoComplete={authMode === "register" ? "new-password" : "current-password"} className={inputCls} value={authPassword} maxLength={64} onChange={(e) => setAuthPassword(e.target.value)} placeholder={authMode === "register" ? t("passwordPlaceholderReg") : t("passwordPlaceholderLogin")} />
-                </div>
-                {authError && <p role="alert" className="text-sm text-[var(--seal)]">{authError}</p>}
-                <button type="submit" disabled={!authUsername.trim() || !authPassword || loginM.isPending || registerM.isPending} className="w-full rounded-lg bg-[var(--accent)] py-2.5 text-base font-bold text-[var(--accent-ink)] disabled:opacity-50">
-                  {loginM.isPending || registerM.isPending ? t("pleaseWait") : authMode === "register" ? t("registerAndLogin") : t("loginTab")}
-                </button>
-              </form>
-              <p className="mt-4 text-xs leading-relaxed text-[var(--dim)]">{t("authPrivacyNote")}</p>
+                {t("tfOnlyCta")}
+              </a>
+              <p className="mt-3 text-xs leading-relaxed text-[var(--dim)]">{t("tfOnlyHint")}</p>
             </article>
           )}
         </main>
@@ -2836,7 +2823,7 @@ function AppInner() {
             <p className="flex shrink-0 items-center gap-2 text-xs">
               <LangSwitch />
               <button type="button" onClick={() => setTab("account")} className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 font-medium">
-                {me.username}{isAdmin ? ` · ${t("adminBadge")}` : ""}
+                {me.nickname ?? me.username}{isAdmin ? ` · ${t("adminBadge")}` : ""}
               </button>
               <button type="button" onClick={() => logoutM.mutate()} className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-[var(--dim)]">{t("signOut")}</button>
             </p>
@@ -3696,9 +3683,13 @@ function AppInner() {
           <section className="mt-3 space-y-3">
             <article className="plate-frame rounded-[var(--radius)] bg-[var(--surface)] p-4">
               <div className="flex items-center gap-3">
-                <span aria-hidden className="font-display flex h-12 w-12 items-center justify-center rounded-full bg-[var(--surface-alt)] text-xl italic">{me.username.slice(0, 1)}</span>
+                {me.avatarUrl ? (
+                <img src={me.avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
+              ) : (
+                <span aria-hidden className="font-display flex h-12 w-12 items-center justify-center rounded-full bg-[var(--surface-alt)] text-xl italic">{(me.nickname ?? me.username).slice(0, 1)}</span>
+              )}
                 <div className="min-w-0">
-                  <h2 className="font-display truncate text-2xl font-black">{me.username}</h2>
+                  <h2 className="font-display truncate text-2xl font-black">{me.nickname ?? me.username}</h2>
                   <p className="text-sm text-[var(--dim)]">
                     {isAdmin ? t("adminBadge") : t("userRole")} · {me.status === "active" ? t("statusActive") : t("statusDisabled")}
                   </p>

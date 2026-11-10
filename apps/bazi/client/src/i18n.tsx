@@ -20,6 +20,16 @@ const D = {
   tabBonds: ["绑定", "Bonds"],
   tabAccount: ["账号", "Account"],
   tabMore: ["更多", "More"],
+  tfOnlyTitle: ["账号由 TalkFirst 统一管理", "Accounts live in TalkFirst"],
+  tfOnlyBody: [
+    "灵游空间已并入 TalkFirst，不再单独注册或登录。从 TalkFirst App 里打开「我的 → 灵游空间」，会自动以你的 TalkFirst 账号进入。",
+    "Lingyou Space is now part of TalkFirst. There is no separate sign-up or sign-in here: open it from the TalkFirst app (Me → Lingyou Space) and you are signed in automatically.",
+  ],
+  tfOnlyCta: ["打开 TalkFirst", "Open TalkFirst"],
+  tfOnlyHint: [
+    "还没装 App？先用下面的试用功能，盘和起名都能算，只是不会保存。",
+    "No app yet? The trial below still works — charts and naming are computed, they just are not saved.",
+  ],
   tfAccountManaged: [
     "账号由 TalkFirst 统一管理：改密码、退出、注销都在 TalkFirst App 的「我的」里完成，这里不再重复一套。",
     "Your account is managed by TalkFirst — change your password, sign out or delete it in the TalkFirst app under Me. There is no second account here.",

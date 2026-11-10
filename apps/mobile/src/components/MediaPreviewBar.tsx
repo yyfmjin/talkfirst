@@ -1,10 +1,10 @@
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Icon } from "./Icon";
 import { useI18n } from "../lib/i18n-context";
 import { colors, themed } from "../theme";
 import { radii, sizes } from "../design/tokens";
 
-/** 选好但还没发出去的媒体。图片会在发送时压缩，视频由服务端转码。 */
+/** 选好但还没发出去的一项媒体。图片在发送时压缩，视频由服务端转码。 */
 export type PendingMedia = {
   kind: "image" | "video";
   uri: string;
@@ -31,95 +31,123 @@ function formatDuration(seconds?: number): string {
 }
 
 /**
- * 发送前的媒体预览条（贴在输入栏上方）。
+ * 发送前的媒体预览（贴在输入栏上方），一次可以多选。
  *
- * ## 解决什么
+ * ## 为什么从「一张」改成一排
  *
- * 以前选完图就直接上传：用户没有「确认」这一步，选错了只能等它发出去再撤回；
- * 上传期间只知道按钮在转圈，不知道在传什么、多大、要多久。成熟的 IM 都会先
- * 给一张缩略图 + 体积 + 明确的「发送 / 取消」。
+ * 之前选完一张就直接上传，选三张要点三次「+」，选错了只能等它发出去再撤回。
+ * 成熟的 IM 都是：相册里多选 → 一排缩略图 → 一次发出去。这里沿用同一个心智：
+ *
+ *   - 每张右上角有 ✕，可以只去掉其中一张，不用整批取消；
+ *   - 上传是逐张串行（服务端一次一条消息），所以显示「正在发送 3 / 9」，
+ *     比一根算不出进度的进度条诚实。
  *
  * ## 为什么放在输入栏上方而不是弹窗
  *
- * 选完图之后用户往往还想补一句话。预览条贴在输入框上沿，输入框仍然可点，
+ * 选完图之后用户往往还想补一句话。预览条贴着输入框上沿，输入框仍然可点，
  * 两边不抢焦点；弹窗会把输入框整个盖住。
  */
 export function MediaPreviewBar({
-  media,
+  items,
   uploading,
+  sendIndex,
+  onRemove,
   onCancel,
   onSend,
 }: {
-  media: PendingMedia;
+  items: PendingMedia[];
   uploading: boolean;
+  /** 正在发送第几张（从 1 开始）；没在发就是 0。 */
+  sendIndex?: number;
+  onRemove: (index: number) => void;
   onCancel: () => void;
   onSend: () => void;
 }) {
   const { t } = useI18n();
-  const meta = [formatSize(media.sizeBytes), formatDuration(media.durationSec)].filter(Boolean).join(" · ");
+  if (items.length === 0) return null;
+
+  const totalBytes = items.reduce((sum, item) => sum + (item.sizeBytes ?? 0), 0);
+  const summary = [t("messages.previewCount", { n: items.length }), formatSize(totalBytes)]
+    .filter(Boolean)
+    .join("  ·  ");
 
   return (
     <View style={styles.bar}>
-      <View style={styles.thumbWrap}>
-        {media.kind === "image" ? (
-          <Image source={{ uri: media.uri }} style={styles.thumb} resizeMode="cover" />
-        ) : (
-          <View style={[styles.thumb, styles.videoThumb]}>
-            <Icon name="play" size={18} color={colors.white} />
-            {formatDuration(media.durationSec) ? (
-              <Text style={styles.videoDuration}>{formatDuration(media.durationSec)}</Text>
-            ) : null}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.track}>
+        {items.map((media, index) => (
+          <View key={`${media.uri}-${index}`} style={styles.thumbWrap}>
+            {media.kind === "image" ? (
+              <Image source={{ uri: media.uri }} style={styles.thumb} resizeMode="cover" />
+            ) : (
+              <View style={[styles.thumb, styles.videoThumb]}>
+                <Icon name="play" size={18} color={colors.white} />
+                {formatDuration(media.durationSec) ? (
+                  <Text style={styles.videoDuration}>{formatDuration(media.durationSec)}</Text>
+                ) : null}
+              </View>
+            )}
+            {uploading ? null : (
+              <Pressable
+                onPress={() => onRemove(index)}
+                accessibilityRole="button"
+                accessibilityLabel={t("messages.previewRemove")}
+                hitSlop={8}
+                style={styles.removeBadge}
+              >
+                <Icon name="close" size={12} color={colors.white} />
+              </Pressable>
+            )}
           </View>
-        )}
+        ))}
+      </ScrollView>
+
+      <View style={styles.footer}>
+        <View style={styles.footerText}>
+          <Text style={styles.title} numberOfLines={1}>
+            {uploading
+              ? t("messages.previewUploadingCount", { i: sendIndex || 1, n: items.length })
+              : summary}
+          </Text>
+          <Text style={styles.hint} numberOfLines={1}>
+            {items.length > 1
+              ? t("messages.previewMultiHint")
+              : items[0].kind === "image"
+                ? t("messages.previewImageHint")
+                : t("messages.previewVideoHint")}
+          </Text>
+        </View>
+
+        <Pressable
+          onPress={onCancel}
+          disabled={uploading}
+          accessibilityRole="button"
+          accessibilityLabel={t("common.cancel")}
+          hitSlop={8}
+          style={styles.cancel}
+        >
+          <Icon name="close" size={18} color={colors.muted} />
+        </Pressable>
+
+        <Pressable
+          onPress={onSend}
+          disabled={uploading}
+          accessibilityRole="button"
+          accessibilityLabel={t("messages.send")}
+          style={[styles.send, uploading ? styles.sendDisabled : null]}
+        >
+          {uploading ? (
+            <ActivityIndicator color={colors.white} size="small" />
+          ) : (
+            <Icon name="arrow-up" size={18} color={colors.white} />
+          )}
+        </Pressable>
       </View>
-
-      <View style={styles.body}>
-        <Text style={styles.title} numberOfLines={1}>
-          {media.kind === "image" ? t("messages.previewImage") : t("messages.previewVideo")}
-          {meta ? <Text style={styles.meta}>{`  ${meta}`}</Text> : null}
-        </Text>
-        <Text style={styles.hint} numberOfLines={1}>
-          {uploading
-            ? t("messages.previewUploading")
-            : media.kind === "image"
-              ? t("messages.previewImageHint")
-              : t("messages.previewVideoHint")}
-        </Text>
-      </View>
-
-      <Pressable
-        onPress={onCancel}
-        disabled={uploading}
-        accessibilityRole="button"
-        accessibilityLabel={t("common.cancel")}
-        hitSlop={8}
-        style={styles.cancel}
-      >
-        <Icon name="close" size={18} color={colors.muted} />
-      </Pressable>
-
-      <Pressable
-        onPress={onSend}
-        disabled={uploading}
-        accessibilityRole="button"
-        accessibilityLabel={t("messages.send")}
-        style={[styles.send, uploading ? styles.sendDisabled : null]}
-      >
-        {uploading ? (
-          <ActivityIndicator color={colors.white} size="small" />
-        ) : (
-          <Icon name="arrow-up" size={18} color={colors.white} />
-        )}
-      </Pressable>
     </View>
   );
 }
 
 const styles = themed((c) => StyleSheet.create({
   bar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
     marginHorizontal: 12,
     marginBottom: 8,
     padding: 10,
@@ -127,9 +155,11 @@ const styles = themed((c) => StyleSheet.create({
     backgroundColor: c.bgSoft,
     borderWidth: 1,
     borderColor: c.line,
+    gap: 8,
   },
-  thumbWrap: { borderRadius: 12, overflow: "hidden" },
-  thumb: { width: 52, height: 52, borderRadius: 12, backgroundColor: c.bgTint },
+  track: { flexDirection: "row", gap: 8 },
+  thumbWrap: { width: 56, height: 56 },
+  thumb: { width: 56, height: 56, borderRadius: 10, backgroundColor: c.bgTint },
   videoThumb: {
     backgroundColor: "#0F1A2B",
     alignItems: "center",
@@ -137,15 +167,26 @@ const styles = themed((c) => StyleSheet.create({
   },
   videoDuration: {
     position: "absolute",
-    bottom: 4,
-    right: 6,
-    fontSize: 10,
+    bottom: 3,
+    right: 4,
+    fontSize: 9,
     color: c.white,
     fontVariant: ["tabular-nums"],
   },
-  body: { flex: 1, gap: 3 },
+  removeBadge: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "rgba(15,26,43,0.86)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  footer: { flexDirection: "row", alignItems: "center", gap: 10 },
+  footerText: { flex: 1, gap: 2 },
   title: { fontSize: sizes.ui, fontWeight: "600", color: c.ink },
-  meta: { fontSize: sizes.caption, fontWeight: "400", color: c.muted },
   hint: { fontSize: sizes.caption, color: c.muted },
   cancel: {
     width: 32,
