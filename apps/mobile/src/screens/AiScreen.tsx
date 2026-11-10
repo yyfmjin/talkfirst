@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  AppState,
   Alert,
   FlatList,
   Pressable,
@@ -138,6 +139,28 @@ export function AiScreen({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  /**
+   * 页面可见期间持续刷新（2026-11-10 线上反馈：**进去看不到最新消息，退出来再进才有一部分**）。
+   *
+   * 原因是 AI 的回复由服务端异步写入：首次 `/ai-companion` 很可能还是「上一轮」，
+   * 而页面只在挂载时拉一次 —— 于是新消息要等下次进来才出现。这里：
+   *
+   *   - 每 4 秒重拉一次（正在发送时跳过，别覆盖乐观插入的那条）；
+   *   - App 回到前台立刻拉一次（切出去聊别的再回来）。
+   */
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (!sending) void load();
+    }, 4000);
+    const subscription = AppState.addEventListener("change", (next) => {
+      if (next === "active") void load();
+    });
+    return () => {
+      clearInterval(timer);
+      subscription.remove();
+    };
+  }, [load, sending]);
 
   /**
    * 滚到最新一条（2026-10-29）。
