@@ -749,6 +749,8 @@ export const zh = {
   "profile.openAvatar": "查看头像",
 
   /* ── 动态设置（/moments/settings）── */
+  "moments.demo": "示例",
+  "moments.demoTitle": "这条内容不是从平台真实同步的，仅用于预览界面效果",
   "momentsSettings.title": "我的动态设置",
   "momentsSettings.saved": "已保存",
   "momentsSettings.demoTitle": "示例内容说明",
@@ -1662,6 +1664,8 @@ export const en: Record<MsgKey, string> = {
   "profile.openAvatar": "View photo",
 
   /* Moments settings (/moments/settings) */
+  "moments.demo": "Sample",
+  "moments.demoTitle": "This post was not synced from the platform — it's sample content shown to preview the interface",
   "momentsSettings.title": "My moments settings",
   "momentsSettings.saved": "Saved",
   "momentsSettings.demoTitle": "About the sample content",

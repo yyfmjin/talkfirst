@@ -316,7 +316,17 @@ export function MomentsScreen({
                 accessibilityLabel={item.author.nickname ?? t("common.user")}
                 style={styles.cardHeadText}
               >
-                <Text style={styles.nickname}>{item.author.nickname ?? t("common.user")}</Text>
+                <View style={styles.nameRow}>
+                  <Text style={styles.nickname} numberOfLines={1}>
+                    {item.author.nickname ?? t("common.user")}
+                  </Text>
+                  {/* 平台绑定后生成的占位内容（source=DEMO）。设置页写着「均标注为示例」，这里必须真的标。 */}
+                  {item.isDemo ? (
+                    <View style={styles.demoChip} accessibilityLabel={t("moments.demoTitle")}>
+                      <Text style={styles.demoChipText}>{t("moments.demo")}</Text>
+                    </View>
+                  ) : null}
+                </View>
                 <Text style={styles.meta}>
                   {item.author.countryCode ?? ""} {relativeTime(item.createdAt, t)}
                 </Text>
@@ -465,6 +475,15 @@ const styles = themed((c) => StyleSheet.create({
   cardHead: { flexDirection: "row", alignItems: "center", gap: 10 },
   cardHeadText: { flex: 1 },
   nickname: { fontSize: sizes.body, fontWeight: "600", color: c.ink },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  demoChip: {
+    borderWidth: 1,
+    borderColor: c.line,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  demoChipText: { fontSize: sizes.caption, color: c.muted },
   meta: { fontSize: sizes.caption, color: c.muted, marginTop: 2 },
   content: { fontSize: sizes.body, lineHeight: 22, color: c.ink },
   video: { width: "100%", aspectRatio: 16 / 9, borderRadius: radii.chip, backgroundColor: "#0B0B14" },

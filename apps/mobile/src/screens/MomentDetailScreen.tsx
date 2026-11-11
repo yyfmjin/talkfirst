@@ -674,7 +674,17 @@ function MomentCard({
       <Pressable onPress={onAuthorPress} style={styles.cardHead} accessibilityRole="button">
         <Avatar uri={moment.author.avatarUrl} nickname={moment.author.nickname} size={40} />
         <View style={styles.cardHeadText}>
-          <Text style={styles.nickname}>{moment.author.nickname ?? t("common.user")}</Text>
+          <View style={styles.nameRow}>
+            <Text style={styles.nickname} numberOfLines={1}>
+              {moment.author.nickname ?? t("common.user")}
+            </Text>
+            {/* 与信息流卡片一致：source=DEMO 必须看得见地标成「示例」。 */}
+            {moment.isDemo ? (
+              <View style={styles.demoChip} accessibilityLabel={t("moments.demoTitle")}>
+                <Text style={styles.demoChipText}>{t("moments.demo")}</Text>
+              </View>
+            ) : null}
+          </View>
           <Text style={styles.meta}>
             {moment.author.countryCode ?? ""} {relativeTime(moment.createdAt, t)}
           </Text>
@@ -781,6 +791,15 @@ const styles = themed((c) => StyleSheet.create({
   cardHead: { flexDirection: "row", alignItems: "center", gap: 10 },
   cardHeadText: { flex: 1 },
   nickname: { fontSize: sizes.body, fontWeight: "600", color: c.ink },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  demoChip: {
+    borderWidth: 1,
+    borderColor: c.line,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  demoChipText: { fontSize: sizes.caption, color: c.muted },
   meta: { fontSize: sizes.caption, color: c.muted, marginTop: 2 },
   content: { fontSize: sizes.body, lineHeight: 22, color: c.ink },
   tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
