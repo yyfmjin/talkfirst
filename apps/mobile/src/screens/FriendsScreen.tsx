@@ -109,10 +109,15 @@ export function FriendsScreen({ onBack }: { onBack: () => void }) {
     try {
       await apiFetch(`/connections/${friend.id}/tag`, {
         method: "PUT",
-        body: JSON.stringify({
+        /*
+         * 传对象，不传 JSON.stringify(...)：`apiFetch` 自己会序列化（见 `lib/api.ts`）。
+         * 这里多编一次，请求体就变成了一个 JSON **字符串**，服务端 `body.kind` 全是
+         * undefined —— 于是「把好友放进分组」永远存不进去（2026-11-11 修）。
+         */
+        body: {
           kind: patch.kind ?? friend.tag?.kind ?? "FRIEND",
-          groupId: patch.groupId === undefined ? friend.tag?.groupId ?? null : patch.groupId,
-        }),
+          groupId: patch.groupId === undefined ? (friend.tag?.groupId ?? null) : patch.groupId,
+        },
       });
       setActionFor(null);
       await load();
@@ -157,7 +162,8 @@ export function FriendsScreen({ onBack }: { onBack: () => void }) {
     try {
       await apiFetch("/connections/groups", {
         method: "POST",
-        body: JSON.stringify({ name }),
+        /* 同上：不重复序列化，否则服务端拿到的 `name` 是 undefined → EMPTY_GROUP_NAME。 */
+        body: { name },
       });
       setCreating(false);
       setNewGroupName("");

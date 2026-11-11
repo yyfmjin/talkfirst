@@ -43,11 +43,22 @@ export class AiCompanionService {
     });
     if (!conversation) return { companion, conversationId: null, messages: [] };
 
-    const messages = await this.prisma.message.findMany({
+    /**
+     * 取**最后** 50 条，再翻回时间正序（2026-11-11 修）。
+     *
+     * 原来是 `orderBy: createdAt asc` + `take: 50` —— 拿的是**最早**的 50 条。
+     * 一段对话超过 50 条之后，退出再进来看到的就是 50 条之前的旧记录，刚聊过的
+     * 整段消失（用户会描述为「聊天记录丢了」）。
+     *
+     * `desc + take + reverse` 才是「最近 N 条」；直接对 asc 用 `skip` 要先数总数，
+     * 多一次查询，而且中间来新消息时位置会错。
+     */
+    const latest = await this.prisma.message.findMany({
       where: { conversationId: conversation.id, deletedAt: null },
-      orderBy: { createdAt: "asc" },
+      orderBy: { createdAt: "desc" },
       take: MESSAGE_PAGE,
     });
+    const messages = latest.reverse();
     return {
       companion,
       conversationId: conversation.id,

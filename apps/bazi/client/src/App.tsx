@@ -612,9 +612,29 @@ function BirthdaySelect({
 }) {
   const { t } = useLang();
   const parsed = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  const year = parsed ? Number(parsed[1]) : 0;
-  const month = parsed ? Number(parsed[2]) : 0;
-  const day = parsed ? Number(parsed[3]) : 0;
+  const resolvedYear = parsed ? Number(parsed[1]) : 0;
+  const resolvedMonth = parsed ? Number(parsed[2]) : 0;
+  const resolvedDay = parsed ? Number(parsed[3]) : 0;
+
+  /**
+   * 三格各自的选择**先落在本地**（2026-11-11 修）。
+   *
+   * 以前是「三格选齐才向外发值」，而三个 select 又都是受控的（`value` 来自 props）：
+   * 用户选完年 → 不发值 → props 没变 → select 立即回弹到「年」。界面上看起来就是
+   * 「选了，但什么都没改」。半成品必须有个地方待着 —— 待在这里。
+   */
+  const [draft, setDraft] = useState({
+    year: resolvedYear,
+    month: resolvedMonth,
+    day: resolvedDay,
+  });
+
+  /** 外部值变了（比如切换命盘档案、或被动回填）时，把草稿重新对齐。 */
+  useEffect(() => {
+    setDraft({ year: resolvedYear, month: resolvedMonth, day: resolvedDay });
+  }, [resolvedYear, resolvedMonth, resolvedDay]);
+
+  const { year, month, day } = draft;
 
   const thisYear = new Date().getFullYear();
   const years: number[] = [];
@@ -626,11 +646,23 @@ function BirthdaySelect({
   const cls =
     "w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-2 text-base text-[var(--text)]";
 
-  const emit = (nextYear: number, nextMonth: number, nextDay: number) => {
-    if (!nextYear || !nextMonth || !nextDay) return;
-    const maxDay = new Date(nextYear, nextMonth, 0).getDate();
-    const safeDay = Math.min(nextDay, maxDay);
-    onChange(`${nextYear}-${String(nextMonth).padStart(2, "0")}-${String(safeDay).padStart(2, "0")}`);
+  /**
+   * 只改一格，其余保持草稿里的值；三格齐了才向外发。
+   *
+   * 向外的值仍然要「完整」—— 只选了年/月时表单依旧提示「请选择出生日期」，
+   * 不会偷偷用 1 月 1 日代替真实生日。区别在于：现在界面能看见你刚选的那一格。
+   */
+  const update = (nextYear: number, nextMonth: number, nextDay: number) => {
+    const merged = { year: nextYear, month: nextMonth, day: nextDay };
+    if (merged.year && merged.month && merged.day) {
+      const maxDay = new Date(merged.year, merged.month, 0).getDate();
+      merged.day = Math.min(merged.day, maxDay);
+    }
+    setDraft(merged);
+    if (!merged.year || !merged.month || !merged.day) return;
+    onChange(
+      `${merged.year}-${String(merged.month).padStart(2, "0")}-${String(merged.day).padStart(2, "0")}`,
+    );
   };
 
   return (
@@ -640,7 +672,7 @@ function BirthdaySelect({
         aria-label={`${ariaLabel} ${t("birthYear")}`}
         className={cls}
         value={year || ""}
-        onChange={(e) => emit(Number(e.target.value), month, day)}
+        onChange={(e) => update(Number(e.target.value), month, day)}
       >
         <option value="">{t("birthYear")}</option>
         {years.map((y) => (
@@ -652,7 +684,7 @@ function BirthdaySelect({
         aria-label={`${ariaLabel} ${t("birthMonth")}`}
         className={cls}
         value={month || ""}
-        onChange={(e) => emit(year, Number(e.target.value), day)}
+        onChange={(e) => update(year, Number(e.target.value), day)}
       >
         <option value="">{t("birthMonth")}</option>
         {Array.from({ length: 12 }, (_, index) => index + 1).map((m) => (
@@ -664,7 +696,7 @@ function BirthdaySelect({
         aria-label={`${ariaLabel} ${t("birthDay")}`}
         className={cls}
         value={day || ""}
-        onChange={(e) => emit(year, month, Number(e.target.value))}
+        onChange={(e) => update(year, month, Number(e.target.value))}
       >
         <option value="">{t("birthDay")}</option>
         {days.map((d) => (
