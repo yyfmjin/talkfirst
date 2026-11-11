@@ -198,10 +198,18 @@ export function AiScreen({ onBack }: { onBack: () => void }) {
    * 键盘动画跨帧的那几十毫秒也靠这一帧吃掉。
    */
   const scrollToLatest = useCallback((animated: boolean) => {
-    requestAnimationFrame(() => {
+    /*
+     * 为什么滚两次（2026-11-10）：`onContentSizeChange` 触发时新气泡的布局还没完成，
+     * 这一帧 `scrollToEnd` 用的是**旧**内容高度，滚完差一截 —— 也就是用户看到的
+     * 「不自动跳到最新消息」。补一帧 + 80ms 各滚一次，覆盖布局完成的时刻；
+     * 两次都先看 pinned，用户主动往上翻时不会被拽回来。
+     */
+    const run = () => {
       if (!pinnedRef.current) return;
       listRef.current?.scrollToEnd({ animated });
-    });
+    };
+    requestAnimationFrame(run);
+    setTimeout(run, 80);
   }, []);
 
   /* 换会话（或第一次进到某个 AI 朋友）：一定是最新那条在最下面。 */
@@ -369,7 +377,6 @@ export function AiScreen({ onBack }: { onBack: () => void }) {
     return (
       <View style={styles.center}>
         <ActivityIndicator color={colors.primary} />
-        <Text style={styles.loadingText}>{t("ai.loading")}</Text>
       </View>
     );
   }
@@ -480,7 +487,6 @@ export function AiScreen({ onBack }: { onBack: () => void }) {
       {sending ? (
         <View style={styles.typingRow}>
           <ActivityIndicator size="small" color={colors.muted} />
-          <Text style={styles.typingText}>{t("ai.typing")}</Text>
         </View>
       ) : null}
 
