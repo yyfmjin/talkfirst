@@ -11,7 +11,7 @@ import { Icon } from "../components/Icon";
 import { Input } from "../components/Input";
 import { KeyboardAware } from "../components/KeyboardAware";
 import { Logo } from "../components/Logo";
-import { ApiRequestError } from "../lib/api";
+import { apiFetch, ApiRequestError } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { useI18n } from "../lib/i18n-context";
 import { legalUrl } from "../lib/legal";
@@ -58,6 +58,14 @@ export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {})
   const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
   const [email, setEmail] = useState("");
+  /**
+   * 注册时实时问一句「这个邮箱注册过吗」（2026-11-11）。
+   *
+   * 用户反馈：用一个早就注册过的邮箱重新注册，验证码始终收不到，也不知道自己
+   * 本来就有账号。服务端已改成不再给已验证邮箱发注册码（会回 EMAIL_TAKEN），
+   * 这里再把结论提到输入框下面：在提交之前就告诉他是「已注册，去登录」。
+   */
+  const [emailStatus, setEmailStatus] = useState<"idle" | "registered" | "unverified">("idle");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -116,6 +124,11 @@ export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {})
       setError(t("auth.errorInvalidEmail"));
       return;
     }
+    // 已经查出来注册过就不必再跑一趟注册请求（服务端也会拒）。
+    if (mode === "register" && emailStatus === "registered") {
+      setError(t("auth.errorEmailTaken"));
+      return;
+    }
     if (mode === "register" && password.length < PASSWORD_MIN_LENGTH) {
       setError(t("auth.errorPasswordTooShort", { n: PASSWORD_MIN_LENGTH }));
       return;
@@ -170,6 +183,42 @@ export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {})
     setMode(mode === "login" ? "register" : "login");
     setError("");
   }
+
+  /**
+   * 停 500ms 查一次。只在注册模式、且邮箱格式合法时查；`alive` 守卫防慢响应
+   * 覆盖新输入。查不到就回 idle——不下结论，让用户照常提交，由服务端给最终答案。
+   */
+  useEffect(() => {
+    if (mode !== "register") {
+      setEmailStatus("idle");
+      return undefined;
+    }
+    const trimmed = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setEmailStatus("idle");
+      return undefined;
+    }
+    let alive = true;
+    const timer = setTimeout(() => {
+      void apiFetch<{ status: "AVAILABLE" | "REGISTERED" | "UNVERIFIED" }>("/auth/email-check", {
+        method: "POST",
+        body: { email: trimmed },
+      })
+        .then((data) => {
+          if (!alive) return;
+          setEmailStatus(
+            data.status === "REGISTERED" ? "registered" : data.status === "UNVERIFIED" ? "unverified" : "idle",
+          );
+        })
+        .catch(() => {
+          if (alive) setEmailStatus("idle");
+        });
+    }, 500);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [email, mode]);
 
   if (resetting) {
     return (
@@ -268,6 +317,18 @@ export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {})
             keyboardType="email-address"
             maxLength={254}
           />
+          {mode === "register" && emailStatus !== "idle" ? (
+            <View style={styles.emailHintRow}>
+              <Text style={[styles.emailHint, emailStatus === "registered" && styles.emailHintDanger]}>
+                {t(emailStatus === "registered" ? "auth.emailRegisteredInline" : "auth.emailUnverifiedInline")}
+              </Text>
+              {emailStatus === "registered" ? (
+                <Pressable onPress={toggleMode} accessibilityRole="button" hitSlop={8}>
+                  <Text style={styles.emailHintAction}>{t("auth.toLogin")}</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
           <Input
             label={t("auth.password")}
             value={password}
@@ -376,6 +437,10 @@ const styles = themed((c) => StyleSheet.create({
   title: { fontSize: sizes.display, fontWeight: "600", color: c.ink, marginTop: 20 },
   subtitle: { fontSize: sizes.ui, color: c.muted, marginTop: 8 },
   form: { width: "100%" },
+  emailHintRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: -6 },
+  emailHint: { fontSize: sizes.caption, color: c.muted, flexShrink: 1 },
+  emailHintDanger: { color: c.danger },
+  emailHintAction: { fontSize: sizes.caption, fontWeight: "600", color: c.primary },
   error: { color: c.danger, fontSize: sizes.caption, marginBottom: 12 },
   footer: { flexDirection: "row", justifyContent: "center", marginTop: 28 },
   footerText: { color: c.muted, fontSize: sizes.ui },

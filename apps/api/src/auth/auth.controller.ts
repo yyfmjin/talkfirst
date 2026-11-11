@@ -1,5 +1,6 @@
 import {
   Body,
+  ConflictException,
   Controller,
   Get,
   Headers,
@@ -185,6 +186,22 @@ export class AuthController {
     return { success: true as const, data: result };
   }
 
+  /**
+   * 注册前先问一句「这个邮箱注册过吗」（2026-11-11）。
+   *
+   * 返回 `AVAILABLE` / `REGISTERED` / `UNVERIFIED`。前端据此在提交前就给出
+   * 「已注册，去登录」或「继续验证」，而不是让用户提交完才发现。
+   *
+   * 独立限流：它能被当成枚举工具刷，不能占注册接口的额度。
+   */
+  @Post("email-check")
+  @HttpCode(200)
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  async checkEmail(@Body(new ValidationPipe()) dto: SendVerificationCodeDto) {
+    const result = await this.authService.checkEmailAvailability(dto.email);
+    return { success: true as const, data: result };
+  }
+
   @Post("send-verification-code")
   @HttpCode(200)
   @Throttle({ default: { limit: 20, ttl: 60000 } })
@@ -193,6 +210,23 @@ export class AuthController {
     // 注册时账号还不存在，请求头是唯一能表达「这个人想看什么语言」的信号。
     @Headers("accept-language") acceptLanguage?: string,
   ) {
+    /**
+     * 已注册且已验证的邮箱不再发「注册验证码」。
+     *
+     * 以前这里照常发：如果这个邮箱还留着一封没用掉的旧码，`sendCode` 会短路返回
+     * 「已发送」而**一封邮件都不发** —— 用户等一封永远不会来的信，也不知道自己
+     * 其实早就有账号。这就是「重新注册收不到验证码」的真相。
+     *
+     * 只拦 `REGISTERED`。`UNVERIFIED` 必须放行：登录页的「重新发送验证码」走的正是
+     * 这条路，拦掉就等于把没验证完的人锁在门外。
+     */
+    const availability = await this.authService.checkEmailAvailability(dto.email);
+    if (availability.status === "REGISTERED") {
+      throw new ConflictException({
+        success: false,
+        error: { code: "EMAIL_TAKEN", message: "Email is already registered" },
+      });
+    }
     const result = await this.verificationService.sendCode(dto.email, "REGISTER", {
       acceptLanguage,
     });

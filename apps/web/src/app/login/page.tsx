@@ -118,8 +118,17 @@ export default function LoginPage() {
         body: { email: normalizedIdentifier },
       });
       setNotice(t("auth.noticeCodeSent"));
-    } catch {
-      setError(t("auth.errorCodeSendFailed"));
+    } catch (requestError) {
+      /**
+       * 2026-11-11：已验证的邮箱不再发注册码（服务端回 EMAIL_TAKEN）。
+       * 这里原本一律说「发送失败」—— 对一个其实早就注册好、只是忘了的人来说，
+       * 那句话是错的，而且把他往错的方向推。
+       */
+      setError(
+        requestError instanceof ApiRequestError && requestError.code === "EMAIL_TAKEN"
+          ? t("auth.errorEmailTaken")
+          : t("auth.errorCodeSendFailed"),
+      );
     }
   }
 

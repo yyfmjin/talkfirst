@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LogoMark } from "@/components/brand";
@@ -73,6 +73,54 @@ export default function RegisterPage() {
    * 有没有可核查的年龄确认；移动端一开始就是勾选框，web 端这里补齐。
    */
   const [adult, setAdult] = useState(false);
+  /**
+   * 「这个邮箱注册过吗」的实时结论（2026-11-11）。
+   *
+   * 背景：有用户用早就注册过的邮箱重新注册，结果验证码收不到、也不知道自己本来就有
+   * 账号。后端已改成拒绝给已验证邮箱发注册码（见 `auth.controller.ts`），但前端也不该
+   * 等到提交后才说 —— 输入停下来就问一次，结果直接摆在输入框下面。
+   */
+  const [emailStatus, setEmailStatus] = useState<
+    "idle" | "checking" | "available" | "registered" | "unverified"
+  >("idle");
+
+  /**
+   * 停 500ms 就问一次。只在邮箱格式合法时问，避免把半截地址打成请求；
+   * `alive` 守卫防慢响应覆盖新输入的结果；查不到就回到 idle —— 不下结论，
+   * 让用户照常提交，由注册接口给出最终答案。
+   */
+  useEffect(() => {
+    const trimmed = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setEmailStatus("idle");
+      return;
+    }
+    let alive = true;
+    setEmailStatus("checking");
+    const timer = window.setTimeout(() => {
+      void apiFetch<{ status: "AVAILABLE" | "REGISTERED" | "UNVERIFIED" }>("/auth/email-check", {
+        method: "POST",
+        body: { email: trimmed },
+      })
+        .then((data) => {
+          if (!alive) return;
+          setEmailStatus(
+            data.status === "AVAILABLE"
+              ? "available"
+              : data.status === "REGISTERED"
+                ? "registered"
+                : "unverified",
+          );
+        })
+        .catch(() => {
+          if (alive) setEmailStatus("idle");
+        });
+    }, 500);
+    return () => {
+      alive = false;
+      window.clearTimeout(timer);
+    };
+  }, [email]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -82,6 +130,11 @@ export default function RegisterPage() {
     const trimmed = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       setError(t("auth.errorInvalidEmail"));
+      return;
+    }
+    // 已经查出来是注册过的，就别再让请求跑一趟（后端也会拒，但没必要来回）。
+    if (emailStatus === "registered") {
+      setError(t("auth.errorEmailTaken"));
       return;
     }
     if (password.length < 8) {
@@ -163,6 +216,26 @@ export default function RegisterPage() {
               describedBy={error ? "register-error" : "register-hint"}
               onChange={(event) => setEmail(event.target.value)}
             />
+            {emailStatus === "registered" ? (
+              <p data-testid="email-registered" className="mt-1.5 text-caption leading-5 text-danger-600">
+                {t("auth.emailRegisteredInline")}{" "}
+                <Link href={localePath(locale, "/login")} className="underline underline-offset-2">
+                  {t("auth.login")}
+                </Link>
+                {" · "}
+                <Link href={localePath(locale, "/reset")} className="underline underline-offset-2">
+                  {t("auth.forgotPassword")}
+                </Link>
+              </p>
+            ) : null}
+            {emailStatus === "unverified" ? (
+              <p data-testid="email-unverified" className="mt-1.5 text-caption leading-5 text-content-muted">
+                {t("auth.emailUnverifiedInline")}{" "}
+                <Link href={localePath(locale, "/verify")} className="underline underline-offset-2">
+                  {t("auth.continueVerify")}
+                </Link>
+              </p>
+            ) : null}
           </div>
 
           <div>

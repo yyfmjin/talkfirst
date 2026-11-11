@@ -134,6 +134,29 @@ export class AuthService {
     });
   }
 
+  /**
+   * 注册前的邮箱可用性（2026-11-11）。
+   *
+   * 三种结果，客户端据此给出不同的下一步：
+   *  - `AVAILABLE`  可以注册；
+   *  - `REGISTERED` 已有账号且已验证 —— 应该去登录或找回密码，不该再收一次注册验证码；
+   *  - `UNVERIFIED` 注册过但没完成验证 —— 应该继续验证（登录页的「重新发送验证码」就是这条路）。
+   *
+   * ## 关于枚举
+   *
+   * 它确实能问出「某邮箱是否注册」，但注册接口本来就返回 `EMAIL_TAKEN`，所以没有新增
+   * 泄露面；不同的是它把这个信号变成一次廉价查询，因此在 controller 上单独限流。
+   */
+  async checkEmailAvailability(rawEmail: string) {
+    const email = rawEmail.trim().toLowerCase();
+    const existing = await this.prisma.user.findUnique({
+      where: { email },
+      select: { emailVerified: true },
+    });
+    if (!existing) return { status: "AVAILABLE" as const };
+    return { status: existing.emailVerified ? ("REGISTERED" as const) : ("UNVERIFIED" as const) };
+  }
+
   async register(dto: RegisterDto) {
     const email = dto.email.trim().toLowerCase();
     /**

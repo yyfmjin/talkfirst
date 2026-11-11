@@ -51,6 +51,16 @@ export const SECONDARY_BAN_ALLOWED_PATHS: readonly string[] = [
    * in — and it would do so invisibly, as a signup form that always fails.
    */
   "/auth/register",
+  /**
+   * 注册前先问「这个邮箱注册过吗」（2026-11-11）。
+   *
+   * 它属于注册流程的开头：注册页在用户输完邮箱就会调它。若在这里拦下，被封 IP 背后的
+   * 家人会在填第一步就看到一个说不清的错误，而 `/auth/register` 本身是放行的 —— 两个
+   * 端点一个放一个拦，只会让人以为「这个邮箱坏了」。
+   *
+   * 它是只读查询，不创建也不修改任何东西，放行不扩大封禁面的代价。
+   */
+  "/auth/email-check",
   // Email verification, which registration cannot complete without.
   "/auth/send-verification-code",
   "/auth/verify-email",

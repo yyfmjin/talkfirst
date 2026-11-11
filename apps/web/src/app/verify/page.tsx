@@ -6,7 +6,7 @@ import { PhoneShell } from "@/components/phone-shell";
 import { TFButton } from "@/components/tf";
 import { ScreenHeader } from "@/components/screen-header";
 import { cn } from "@/lib/cn";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, ApiRequestError } from "@/lib/api";
 import { localePath, useT } from "@/lib/i18n";
 import { useSession, type SessionUser } from "@/lib/session";
 
@@ -62,6 +62,15 @@ export default function VerifyPage() {
       setInfo(t("verify.sent"));
       setSecondsLeft(RESEND_SECONDS);
     } catch (requestError) {
+      /**
+       * 2026-11-11：已注册且已验证的邮箱不再发注册码（服务端回 EMAIL_TAKEN）。
+       * 不映射的话，这里会把 API 的英文原句直接摆到中文页面上，而用户真正
+       * 需要的信息是「你本来就有账号」—— 登录页就在隔壁。
+       */
+      if (requestError instanceof ApiRequestError && requestError.code === "EMAIL_TAKEN") {
+        setError(t("auth.errorEmailTaken"));
+        return;
+      }
       setError(requestError instanceof Error ? requestError.message : t("verify.errSend"));
     }
   }
