@@ -155,6 +155,9 @@ export class VerificationService {
         to: normalized,
         code,
         expiresInSeconds: EMAIL_VERIFICATION_POLICY.codeTtlMs / 1000,
+        // 用途一路传到模板：同一套模板服务注册 / 重置密码 / 改密码三种场景，
+        // 正文必须说得对。见 `smtp-mail.provider.ts` 的 `introKeyFor`。
+        purpose,
         locale: await localeForEmail(this.prisma, normalized, options.acceptLanguage),
       });
     } catch (error) {

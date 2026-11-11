@@ -1,5 +1,6 @@
 import * as nodemailer from "nodemailer";
 import {
+  type MessageKey,
   type SupportedLocale,
   localeOrDefault,
   t,
@@ -45,8 +46,30 @@ export class SmtpMailProvider implements MailProvider {
       // (see the merge note below) because a bare code in a plain-text body is
       // easy to mistake for spam, and the styled box is what makes the 6 digits
       // readable at a glance on a phone.
-      html: verificationEmailHtml(locale, message.code, minutes),
+      html: verificationEmailHtml(locale, message.code, minutes, introKeyFor(message.purpose)),
     });
+  }
+}
+
+/**
+ * 按用途挑一句「你正在做什么」（2026-11-11）。
+ *
+ * 这段正文曾经硬编码成注册文案，而同一个模板同时服务于注册、重置密码、改密码三种
+ * 场景 —— 于是一个正在改密码的人会收到「你正在注册 TalkFirst 账号」。内容本身无害
+ * （码是真的、有效期是真的），但一封说自己「不是这个用途」的信，正是钓鱼邮件的特征。
+ *
+ * 未知用途落到中性句：宁少说一句，不猜错一句。
+ */
+function introKeyFor(purpose?: string): MessageKey {
+  switch (purpose) {
+    case "REGISTER":
+      return "mail.verification.intro";
+    case "PASSWORD_RESET":
+      return "mail.verification.introReset";
+    case "PASSWORD_CHANGE":
+      return "mail.verification.introChange";
+    default:
+      return "mail.verification.introGeneric";
   }
 }
 
@@ -76,12 +99,17 @@ export class SmtpMailProvider implements MailProvider {
  * `EMAIL_VERIFICATION_POLICY`, not to a template. `locale` 同理来自调用方：
  * 语言是**收件人**的属性，不是模板的属性。
  */
-function verificationEmailHtml(locale: SupportedLocale, code: string, minutes: number): string {
+function verificationEmailHtml(
+  locale: SupportedLocale,
+  code: string,
+  minutes: number,
+  introKey: MessageKey,
+): string {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 20px; color: #222;">
       <h2 style="margin-bottom: 24px;">${t(locale, "mail.verification.heading")}</h2>
       <p>${t(locale, "mail.verification.greeting")}</p>
-      <p>${t(locale, "mail.verification.intro")}</p>
+      <p>${t(locale, introKey)}</p>
 
       <div style="margin: 28px 0; padding: 18px; background: #f5f6ff; border-radius: 12px; text-align: center;">
         <span style="font-size: 32px; font-weight: 700; letter-spacing: 8px;">

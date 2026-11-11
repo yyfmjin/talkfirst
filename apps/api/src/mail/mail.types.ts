@@ -17,6 +17,14 @@ export interface EmailVerificationMessage {
   code: string;
   expiresInSeconds: number;
   /**
+   * 这封码是为了什么发的（2026-11-11）。
+   *
+   * 正文原来固定写着「你正在注册 TalkFirst 账号」—— 于是重置密码、改密码的人收到的
+   * 也是这一句。三句文案都不长，但把用途写错，读起来就像一封钓鱼邮件。
+   * 可选：缺省时模板用中性句，不猜。
+   */
+  purpose?: string;
+  /**
    * 收件人的语言，由调用方（`VerificationService`）解析后传进来 ——
    * 模板层不查数据库。
    *

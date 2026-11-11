@@ -102,6 +102,8 @@ describe("SEC-005 — sendCode 生命周期", () => {
       to: "alice@example.com",
       code: result.devCode,
       expiresInSeconds: 600,
+      // 用途必须一路传到模板（2026-11-11）：正文靠它决定说「注册」还是「改密码」。
+      purpose: "REGISTER",
       // 账号还不存在时的兑底语言（见 `common/locale.ts`）。
       locale: "zh",
     });
