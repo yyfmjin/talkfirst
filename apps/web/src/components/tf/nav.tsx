@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
+import { defaultPrefetch } from "@/lib/network-profile";
 
 /**
  * TFTabs — the segmented control and the underline tab row.
@@ -226,7 +227,7 @@ export function TFListRow({
        which triggers a full page reload and throws away the session state the
        client is holding. */
     return (
-      <Link href={href} className={classes}>
+      <Link href={href} prefetch={defaultPrefetch()} className={classes}>
         {content}
       </Link>
     );

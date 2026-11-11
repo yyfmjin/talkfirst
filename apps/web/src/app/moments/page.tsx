@@ -26,6 +26,7 @@ import { DailyFortuneEntry } from "@/components/daily-fortune-card";
 import { MomentTranslate } from "@/components/moment-translate";
 import { apiFetch } from "@/lib/api";
 import { useSession } from "@/lib/session";
+import { defaultPrefetch } from "@/lib/network-profile";
 import { formatCount, formatDuration, relativeTime } from "@/lib/moments";
 import { localePath } from "@/lib/i18n";
 import { useT } from "@/lib/i18n/use-locale";
@@ -409,6 +410,7 @@ export default function MomentsPage() {
             <DailyFortuneEntry />
             <Link
               href={localePath(locale, "/moments/settings")}
+              prefetch={defaultPrefetch()}
               aria-label={t("moments.settings")}
               className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border bg-surface text-content-muted transition-colors duration-instant hover:bg-surface-sunken focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
             >
@@ -416,6 +418,7 @@ export default function MomentsPage() {
             </Link>
             <Link
               href={localePath(locale, "/moments/compose")}
+              prefetch={defaultPrefetch()}
               aria-label={t("moments.compose")}
               className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-500 text-white shadow-brand transition-transform duration-instant active:scale-95 motion-reduce:transition-none"
             >

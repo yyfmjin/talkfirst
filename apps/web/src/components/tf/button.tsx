@@ -4,6 +4,7 @@ import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { defaultPrefetch } from "@/lib/network-profile";
 
 /**
  * TFButton — the one button in the member app.
@@ -139,8 +140,17 @@ export const TFButton = forwardRef<HTMLButtonElement, TFButtonProps>(function TF
   /* `aria-busy` is what tells assistive tech the control is working; the label
      itself is deliberately NOT swapped to "loading…" alone. */
   if (href && !isDisabled) {
+    /**
+     * `prefetch` 不传时按当前链路决定（2026-11-11）：慢链路上预取会跟当前页抢带宽，
+     * 全球访客里这类链路占比不低。调用方显式传了就以调用方为准。
+     */
     return (
-      <Link href={href} prefetch={prefetch} className={classes} aria-busy={loading || undefined}>
+      <Link
+        href={href}
+        prefetch={prefetch ?? defaultPrefetch()}
+        className={classes}
+        aria-busy={loading || undefined}
+      >
         {body}
       </Link>
     );

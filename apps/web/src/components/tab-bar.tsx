@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 import { apiFetch } from "@/lib/api";
 import { localePath, type MsgKey } from "@/lib/i18n";
 import { useT } from "@/lib/i18n/use-locale";
+import { defaultPrefetch } from "@/lib/network-profile";
 
 /**
  * TabBar — the bottom navigation.
@@ -85,14 +86,21 @@ export function TabBar({ active }: { active?: string }) {
         if (!cancelled) setUnread(0);
       }
     }
-    void load();
-    /* Polling rather than a socket subscription: the badge must be right on a
-     * cold load, and notifications have no push channel yet. 30s is the interval
-     * this already used; it is cleared on unmount so a client-side navigation
-     * cannot accumulate timers (the status-bar suite asserts exactly that). */
+    /**
+     * 首次拉取推到首屏之后（2026-11-11，全球/慢链路）。
+     *
+     * 这个红点一次要问两个接口（`notifications` + `conversations`）—— 在慢链路上
+     * 就是两次往返，而用户此刻要看的是列表内容。600ms 对「红点晚一点出现」无感。
+     */
+    const firstTimer = setTimeout(() => void load(), 600);
+    /* Polling rather than a socket subscription: notifications have no push
+     * channel yet, so the badge is refreshed on a timer. 30s is the interval
+     * this already used; both timers are cleared on unmount so a client-side
+     * navigation cannot accumulate them (the status-bar suite asserts that). */
     const timer = setInterval(() => void load(), 30000);
     return () => {
       cancelled = true;
+      clearTimeout(firstTimer);
       clearInterval(timer);
     };
   }, []);
@@ -116,6 +124,7 @@ export function TabBar({ active }: { active?: string }) {
         <div className="flex justify-center">
           <Link
             href={localePath(locale, "/moments/compose")}
+            prefetch={defaultPrefetch()}
             aria-label={t("nav.compose")}
             aria-current={composeActive ? "page" : undefined}
             className={cn(
@@ -163,6 +172,7 @@ function TabLink({
   return (
     <Link
       href={localePath(locale, tab.href)}
+      prefetch={defaultPrefetch()}
       aria-current={active ? "page" : undefined}
       aria-label={badge ? t("nav.unreadBadge", { label, count: badge }) : label}
       className={cn(
