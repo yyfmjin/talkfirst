@@ -48,13 +48,59 @@ export const viewport: Viewport = {
   colorScheme: "light dark",
 };
 
+/**
+ * `"https://api.example.com/api/v1"` → `"https://api.example.com"`。
+ *
+ * 取不出来（未配置、写错）就返回 `null`，不猜：预热一个不存在的域名只是白开一条连接。
+ */
+function originOf(url: string | undefined): string | null {
+  if (!url) return null;
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  /**
+   * 预热到 API 与 WebSocket 的连接（2026-11-11，针对国内访问慢）。
+   *
+   * 这两个域名跟页面不同源，所以首次请求要额外付一次 DNS + TLS。实测（国内线）
+   * 一次 TLS 握手 1.3–2.3s，而 `GET /users/me` 又在 JS 水合之后才发出 —— 用户看到的是
+   * 「HTML → JS → 新连接 → 接口」四段串起来。
+   *
+   * `preconnect` 让浏览器在解析头部时就把握手做掉，与下载 HTML/JS 重叠。
+   * 这里写两种 credentials 模式（带 / 不带 `crossorigin`）：浏览器按
+   * (origin, credentials mode) 分开维护连接，而本项目用
+   * `fetch(..., { credentials: "include" })` 调接口，与普通导航不是同一条。
+   *
+   * `dns-prefetch` 兜底：preconnect 被丢弃时，至少 DNS 已经缓存住。
+   */
+  const apiOrigin = originOf(process.env.NEXT_PUBLIC_API_BASE_URL);
+  const socketOrigin = originOf(process.env.NEXT_PUBLIC_SOCKET_BASE_URL);
+
   return (
     <html lang="zh-CN">
+      <head>
+        {apiOrigin ? (
+          <>
+            <link rel="dns-prefetch" href={apiOrigin} />
+            <link rel="preconnect" href={apiOrigin} crossOrigin="anonymous" />
+            <link rel="preconnect" href={apiOrigin} />
+          </>
+        ) : null}
+        {socketOrigin && socketOrigin !== apiOrigin ? (
+          <>
+            <link rel="dns-prefetch" href={socketOrigin} />
+            <link rel="preconnect" href={socketOrigin} />
+          </>
+        ) : null}
+      </head>
       {/*
         `bg-surface-canvas` is the page canvas token. The toast provider is mounted
         here, above every page, because a confirmation must survive a route change

@@ -74,6 +74,13 @@ export type TFButtonProps = {
   size?: Size;
   /** Renders as a `Link` when set, so navigation stays client-side. */
   href?: string;
+  /**
+   * 仅当有 `href` 时有意义。`false` 关掉 Next 的路由预取。
+   *
+   * 给营销页（官网）用：那里把整个登录页的 JS 预取下来，会和访客正在等的首屏资源
+   * 抢同一条带宽 —— 在 **国内慢链路** 上尤其明显（实测这一现预取占了 2s）。
+   */
+  prefetch?: boolean;
   /** Shows a spinner, keeps the label, blocks re-entry. */
   loading?: boolean;
   /** Replaces the label while `loading`. Falls back to the children. */
@@ -106,6 +113,7 @@ export const TFButton = forwardRef<HTMLButtonElement, TFButtonProps>(function TF
     variant = "primary",
     size = "md",
     href,
+    prefetch,
     loading = false,
     loadingLabel,
     fullWidth = false,
@@ -132,7 +140,7 @@ export const TFButton = forwardRef<HTMLButtonElement, TFButtonProps>(function TF
      itself is deliberately NOT swapped to "loading…" alone. */
   if (href && !isDisabled) {
     return (
-      <Link href={href} className={classes} aria-busy={loading || undefined}>
+      <Link href={href} prefetch={prefetch} className={classes} aria-busy={loading || undefined}>
         {body}
       </Link>
     );

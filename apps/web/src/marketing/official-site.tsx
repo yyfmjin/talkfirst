@@ -86,6 +86,7 @@ export function OfficialSite({ locale }: { locale: Locale }) {
             {/* 顶栏不放主按钮：整页只允许一个 primary（见 tf/index.ts 的规则）。 */}
             <Link
               href={localePath(locale, "/login")}
+              prefetch={false}
               className="text-ui font-medium text-brand-600 underline-offset-4 hover:underline"
             >
               {t(locale, "site.signIn")}
@@ -108,7 +109,7 @@ export function OfficialSite({ locale }: { locale: Locale }) {
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
               {hasApk ? (
-                <TFButton variant="primary" size="lg" href={ANDROID_APK_PATH}>
+                <TFButton variant="primary" size="lg" href={ANDROID_APK_PATH} prefetch={false}>
                   {t(locale, "site.downloadApk")}
                 </TFButton>
               ) : (
@@ -116,7 +117,7 @@ export function OfficialSite({ locale }: { locale: Locale }) {
                   {t(locale, "site.apkBuilding")}
                 </TFButton>
               )}
-              <TFButton variant="secondary" size="lg" href={localePath(locale, "/login")}>
+              <TFButton variant="secondary" size="lg" href={localePath(locale, "/login")} prefetch={false}>
                 {t(locale, "site.tryWeb")}
               </TFButton>
             </div>
@@ -213,7 +214,7 @@ export function OfficialSite({ locale }: { locale: Locale }) {
                 </div>
                 <p className="mt-2 text-body text-content-muted">{t(locale, "site.iosBody")}</p>
                 <div className="mt-5">
-                  <TFButton variant="secondary" href={localePath(locale, "/login")}>
+                  <TFButton variant="secondary" href={localePath(locale, "/login")} prefetch={false}>
                     {t(locale, "site.useWeb")}
                   </TFButton>
                 </div>

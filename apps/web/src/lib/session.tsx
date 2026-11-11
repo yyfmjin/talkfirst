@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { UNAUTHORIZED_EVENT, apiFetch } from "@/lib/api";
 import { currentLocale, localePath, t, useLocale } from "@/lib/i18n";
@@ -90,6 +90,15 @@ function withoutLocalePrefix(pathname: string): string {
   return pathname.startsWith("/en/") ? pathname.slice("/en".length) : pathname;
 }
 
+/**
+ * `requestIdleCallback` / `cancelIdleCallback` 在旧 Safari 与部分 WebView 里不存在。
+ * lib.dom 在较新的 TS 里已经声明了它们，这里用交集只为了在缺失时能安全回退。
+ */
+type IdleWindow = Window & {
+  requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number;
+  cancelIdleCallback?: (handle: number) => void;
+};
+
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -112,8 +121,51 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  /**
+   * 首屏探测 `/users/me` 的时机（2026-11-11，针对国内访问慢）。
+   *
+   * 公开页（官网首页、登录、条款…）不需要「用户是谁」就能渲染；而这次请求在国内线上
+   * 实测要 2.6s，并且要另开一条到 API 域名的连接。首页 TTFB 1.3s 叠上它就是用户
+   * 感受到的「打开很慢」。
+   *
+   * 所以公开页把它推到 **`load` 事件之后**：此刻首屏的 JS/CSS/字体都已下完，探测不会
+   * 和它们抢带宽。不用 `requestIdleCallback` 当唯一条件 —— 页面空闲可能在首屏资源还
+   * 在下载时就发生（实测本地 219ms 就发出去了），那等于没推迟。
+   *
+   * 只在**挂载时**判一次：原来的 `[refresh]` 就是「一次」的语义，若把 `pathname` 加进
+   * 依赖，站内每跳一页都会重发这次探测 —— 那是把优化变成回退。
+   */
+  const initialPath = useRef(pathname);
   useEffect(() => {
-    void refresh();
+    const firstPath = initialPath.current;
+    const isPublicPage = firstPath ? PUBLIC_PATHS.has(withoutLocalePrefix(firstPath)) : false;
+    if (!isPublicPage) {
+      void refresh();
+      return;
+    }
+
+    let cancelled = false;
+    const probe = () => {
+      if (cancelled) return;
+      const idleWindow = window as IdleWindow;
+      if (typeof idleWindow.requestIdleCallback === "function") {
+        idleWindow.requestIdleCallback(() => void refresh(), { timeout: 2000 });
+        return;
+      }
+      void refresh();
+    };
+
+    if (document.readyState === "complete") {
+      probe();
+      return () => {
+        cancelled = true;
+      };
+    }
+    window.addEventListener("load", probe, { once: true });
+    return () => {
+      cancelled = true;
+      window.removeEventListener("load", probe);
+    };
   }, [refresh]);
 
   /**
