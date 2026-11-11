@@ -1,4 +1,4 @@
-import { makeAuthService } from "./auth-service.fixture";
+import { acceptingVerificationService, makeAuthService } from "./auth-service.fixture";
 import * as bcrypt from "bcryptjs";
 
 /**
@@ -62,7 +62,13 @@ function makeService(user: Record<string, unknown> = makeUser()) {
     $transaction: jest.fn(async (ops: unknown[]) => Promise.all(ops as Promise<unknown>[])),
   };
   const jwtService = { signAsync: jest.fn().mockResolvedValue("access-token") };
-  return { service: makeAuthService(prisma as never, jwtService as never), prisma };
+  return {
+    service: makeAuthService(prisma as never, jwtService as never, {
+      // 改密码要邮箱验证码（2026-11-11）：这里只关心密码规则，码一律放行。
+      verificationService: acceptingVerificationService(),
+    }),
+    prisma,
+  };
 }
 
 describe("AuthService.login — 无密码账号（Google 注册）", () => {
@@ -145,6 +151,7 @@ describe("AuthService.changePassword — 首次设置密码", () => {
       currentPassword: " ",
       newPassword: "newpassword1",
       confirmPassword: "newpassword1",
+      code: "123456",
     });
 
     expect(bcrypt.compare).not.toHaveBeenCalled();
@@ -164,6 +171,7 @@ describe("AuthService.changePassword — 首次设置密码", () => {
         currentPassword: " ",
         newPassword: "newpassword1",
         confirmPassword: "newpassword1",
+        code: "123456",
       }),
     ).resolves.toMatchObject({ accessToken: "access-token" });
   });
@@ -177,6 +185,7 @@ describe("AuthService.changePassword — 首次设置密码", () => {
         currentPassword: "wrong",
         newPassword: "newpassword1",
         confirmPassword: "newpassword1",
+        code: "123456",
       }),
     ).rejects.toMatchObject({ response: { error: { code: "INVALID_CREDENTIALS" } } });
 
@@ -191,6 +200,7 @@ describe("AuthService.changePassword — 首次设置密码", () => {
         currentPassword: "samepass1",
         newPassword: "samepass1",
         confirmPassword: "samepass1",
+        code: "123456",
       }),
     ).rejects.toMatchObject({ response: { error: { code: "PASSWORD_UNCHANGED" } } });
 
@@ -208,6 +218,7 @@ describe("AuthService.changePassword — 首次设置密码", () => {
         currentPassword: " ",
         newPassword: "newpassword1",
         confirmPassword: "different1",
+        code: "123456",
       }),
     ).rejects.toMatchObject({ response: { error: { code: "PASSWORD_MISMATCH" } } });
   });

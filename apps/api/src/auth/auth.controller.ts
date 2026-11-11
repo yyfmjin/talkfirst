@@ -165,6 +165,26 @@ export class AuthController {
     };
   }
 
+  /**
+   * 发送改密码验证码（2026-11-11）。
+   *
+   * 需要登录：收件人取自会话，**不取请求体**。否则这个端点就是一台任意发信机 ——
+   * 而且用的还是我们自己的 Gmail 额度。
+   *
+   * 节流比注册发码更紧（5/min）：它只服务一个已经登录的人，正常操作一两次就够。
+   */
+  @Post("password/verification-code")
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  async sendPasswordChangeCode(
+    @CurrentUser() user: AuthUser,
+    @Headers("accept-language") acceptLanguage?: string,
+  ) {
+    const result = await this.authService.sendPasswordChangeCode(user.id, acceptLanguage);
+    return { success: true as const, data: result };
+  }
+
   @Post("send-verification-code")
   @HttpCode(200)
   @Throttle({ default: { limit: 20, ttl: 60000 } })

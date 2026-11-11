@@ -1,5 +1,5 @@
 import * as bcrypt from "bcryptjs";
-import { makeAuthService } from "./auth-service.fixture";
+import { acceptingVerificationService, makeAuthService } from "./auth-service.fixture";
 import { sha256Hex } from "../common/crypto";
 
 jest.mock("bcryptjs", () => ({
@@ -177,6 +177,8 @@ function makeHarness() {
           events.push(event);
         }),
       },
+      // 改密码要邮箱验证码（2026-11-11）。
+      verificationService: acceptingVerificationService(),
     },
   );
 
@@ -258,6 +260,7 @@ describe("SEC-003-B — refresh token rotation and reuse detection", () => {
       currentPassword: "oldpassword",
       newPassword: "newpassword1",
       confirmPassword: "newpassword1",
+      code: "123456",
     });
 
     const aRow = rows.get(a.id) as Row;

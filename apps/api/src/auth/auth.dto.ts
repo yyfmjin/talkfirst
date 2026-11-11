@@ -86,6 +86,20 @@ export class ChangePasswordDto {
   @MinLength(8, { message: "Password must be 8-72 characters" })
   @MaxLength(72, { message: "Password must be 8-72 characters" })
   confirmPassword!: string;
+
+  /**
+   * 发到账号邮箱的 6 位验证码（2026-11-11）。
+   *
+   * 必填：光拿到一个未过期的 session 不应该就够把主人锁在门外。码由
+   * `POST /auth/password/verification-code` 发到**当前登录账号的邮箱**，那边不接受
+   * 客户端指定邮箱 —— 否则这个端点就成了发信机。
+   *
+   * `@Matches` 只卡形状，不卡对错：格式不对直接是 `VALIDATION_ERROR`，值错了才是
+   * `CODE_MISMATCH`，前端按两种码分别提示。
+   */
+  @IsString()
+  @Matches(/^\d{6}$/, { message: "Verification code must be 6 digits" })
+  code!: string;
 }
 
 /**

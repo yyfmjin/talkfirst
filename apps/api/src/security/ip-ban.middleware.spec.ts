@@ -311,8 +311,17 @@ describe("白名单与 AuthController 路由的漂移防护", () => {
      * every real route was made deliberately". A route the list omits is a route a
      * SECONDARY-banned member cannot reach — which for a recovery route is a lockout.
      * Recording the expectation per route forces a conscious choice when one is added.
+     *
+     * `/auth/password/verification-code`（2026-11-11）也是**故意封的**：它是改密码的
+     * 第一步，本身就会发信。允许一个被限流的地址反复调它，等于给这个端点留下一个
+     * 不受登录限制的发信入口 —— 而改密码那条主路径 (`/auth/password`) 本来就不对
+     * 被封地址开放，单独放行它的前半步没有任何意义。
      */
-    const deliberatelyDenied = ["/auth/password", "/auth/logout"];
+    const deliberatelyDenied = [
+      "/auth/password",
+      "/auth/password/verification-code",
+      "/auth/logout",
+    ];
     const routes = declaredAuthRoutes();
 
     const unexpected: string[] = [];

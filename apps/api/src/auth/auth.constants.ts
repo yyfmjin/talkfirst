@@ -18,6 +18,18 @@ export const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
 export const REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 /**
+ * 改密码的邮箱验证码用途（2026-11-11）。
+ *
+ * `VerificationCode.purpose` 是冷却与每小时上限的计数维度，不同用途各算各的，所以
+ * 它必须是一个独立值，不能复用 `REGISTER`：否则注册时发过的那条码会占掉改密码的
+ * 额度，反过来也说不通。
+ *
+ * 写入方（`AuthService.sendPasswordChangeCode`）与校验方
+ * （`AuthService.changePassword`）共用这个常量 —— 两边字符串对不上，码就永远校验不过。
+ */
+export const PASSWORD_CHANGE_CODE_PURPOSE = "PASSWORD_CHANGE";
+
+/**
  * `secure` used to be `process.env.NODE_ENV === "production"`, which silently
  * shipped session cookies over plain HTTP in any deployment that forgot to set
  * the variable (FIX, audit P007). It is now driven by the same

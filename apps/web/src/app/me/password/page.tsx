@@ -54,6 +54,15 @@ const PASSWORD_ERROR_KEY: Record<string, MsgKey> = {
   USER_SUSPENDED: "me.pwErrSuspended",
   USER_BANNED: "me.pwErrBanned",
   UNAUTHORIZED: "me.pwErrExpired",
+  /*
+   * 邮箱验证码那几种失败（2026-11-11）。分得很细是故意的：用户手里那张纸上
+   * 只有 6 个数字，「错了」和「过期了」对下一步动作的指引完全不同 —— 前者重输，
+   * 后者重发。
+   */
+  CODE_MISMATCH: "me.pwErrCode",
+  CODE_INVALID: "me.pwErrCode",
+  CODE_LOCKED: "me.pwErrCodeLocked",
+  SERVICE_UNAVAILABLE: "me.pwErrService",
 };
 
 function passwordErrorMessage(error: unknown, t: (key: MsgKey) => string): string {
@@ -73,6 +82,16 @@ export default function ChangePasswordPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  /**
+   * 邮箱验证码（2026-11-11）。
+   *
+   * `code` 是用户从邮箱抄过来的 6 位数字，提交时必须非空 —— 服务端同样会再校验
+   * 一次，这里的检查只是为了让用户在本地就得到反馈，而不是白跑一趟邮箱。
+   */
+  const [code, setCode] = useState("");
+  const [sendingCode, setSendingCode] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
     let alive = true;
@@ -100,6 +119,36 @@ export default function ChangePasswordPage() {
 
   const settingFirstPassword = mode === "set";
 
+  // 重发冷却与服务端 60 秒/地址的预算对齐，否则按钮只是在邀请一次必定被拒的请求。
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = window.setTimeout(() => setCooldown((value) => value - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [cooldown]);
+
+  async function sendCode() {
+    setError("");
+    setNotice("");
+    setSendingCode(true);
+    try {
+      /**
+       * 收件人不传：服务端取当前会话的邮箱。这个端点因此不可能被用来给任意地址
+       * 发信，前端也就没有理由知道（或伪造）它是哪一个。
+       */
+      await apiFetch("/auth/password/verification-code", { method: "POST" });
+      setNotice(t("me.pwCodeSent"));
+      setCooldown(60);
+    } catch (requestError) {
+      setError(
+        requestError instanceof ApiRequestError && requestError.code === "SERVICE_UNAVAILABLE"
+          ? t("me.pwErrService")
+          : t("me.pwErrSendCode"),
+      );
+    } finally {
+      setSendingCode(false);
+    }
+  }
+
   async function handleSubmit() {
     setError("");
     setSuccess("");
@@ -118,6 +167,14 @@ export default function ChangePasswordPage() {
     }
     if (newPassword !== confirmPassword) {
       setError(t("me.pwErrMismatch"));
+      return;
+    }
+    /**
+     * 验证码在客户端只卡「填没填」，不判对错 —— 对错是服务端与那张纸的事情。
+     * 这里拦住的只是「压根没去看邮箱就点确认」这一种。
+     */
+    if (!/^\d{6}$/.test(code.trim())) {
+      setError(t("me.pwErrEnterCode"));
       return;
     }
     setLoading(true);
@@ -139,6 +196,7 @@ export default function ChangePasswordPage() {
           currentPassword: currentPassword || "-",
           newPassword,
           confirmPassword,
+          code: code.trim(),
         },
       });
       /**
@@ -151,6 +209,10 @@ export default function ChangePasswordPage() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      // 一条码只用一次：服务端已经把它消耗掉了，留着只会让用户以为还能再用。
+      setCode("");
+      setNotice("");
+      setCooldown(0);
     } catch (requestError) {
       setError(passwordErrorMessage(requestError, t));
     } finally {
@@ -231,6 +293,52 @@ export default function ChangePasswordPage() {
           <p id="pw-hint" className="text-caption leading-4 text-content-subtle">
             {t("me.pwHint")}
           </p>
+
+          {/*
+            邮箱验证码（2026-11-11）。
+
+            放在表单末尾而不是开头：前面的密码字段是用户此刻能立刻填的，验证码要等
+            一封邮件。让他先把密码想完，再去看邮箱，比先发码、然后对着一个空框等信
+            更顺 —— 也少一次「码送到了，人还没想好新密码，于是码先过期了」。
+          */}
+          <div className="rounded-card border border-border bg-surface p-4">
+            <div className="mb-1.5 flex items-baseline justify-between gap-3">
+              <label htmlFor="pw-code" className="block text-caption font-medium text-content-muted">
+                {t("me.pwCode")}
+              </label>
+              <button
+                type="button"
+                data-testid="password-send-code"
+                onClick={() => void sendCode()}
+                disabled={sendingCode || cooldown > 0}
+                className="rounded-full px-2 py-1 text-caption font-medium text-brand-600 transition-colors duration-instant hover:bg-surface-sunken disabled:text-content-subtle"
+              >
+                {sendingCode
+                  ? t("me.pwSendingCode")
+                  : cooldown > 0
+                    ? t("me.pwResendIn", { n: cooldown })
+                    : t("me.pwSendCode")}
+              </button>
+            </div>
+            <TFInput
+              id="pw-code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              placeholder={t("me.pwCodePlaceholder")}
+              value={code}
+              invalid={Boolean(error)}
+              onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+            />
+            <p className="mt-2 text-caption leading-4 text-content-subtle">
+              {t("me.pwCodeIntro")}
+            </p>
+            {notice ? (
+              <p data-testid="password-code-notice" role="status" className="mt-2 text-caption text-success-600">
+                {notice}
+              </p>
+            ) : null}
+          </div>
 
           {success ? (
             <p data-testid="password-success" role="status" className="text-caption text-success-600">

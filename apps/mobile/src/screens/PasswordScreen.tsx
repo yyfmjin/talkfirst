@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Button } from "../components/Button";
 import { SubHeader } from "../components/SubHeader";
 import { apiFetch, apiFetchEnvelope, ApiRequestError } from "../lib/api";
@@ -22,6 +22,14 @@ const PASSWORD_ERROR_KEYS: Record<string, MsgKey> = {
   PASSWORD_UNCHANGED: "me.passwordErrorUnchanged",
   INVALID_CREDENTIALS: "me.passwordErrorCurrent",
   VALIDATION_ERROR: "me.passwordErrorValidation",
+  /*
+   * 邮箱验证码（2026-11-11）。「错了」和「过期/锁了」对用户的下一步不再是同一件事
+   * —— 前者重输，后者重发 —— 所以两种提示分开。
+   */
+  CODE_MISMATCH: "me.passwordErrorCode",
+  CODE_INVALID: "me.passwordErrorCode",
+  CODE_LOCKED: "me.passwordErrorCodeLocked",
+  SERVICE_UNAVAILABLE: "me.passwordErrorService",
 };
 
 /**
@@ -45,6 +53,18 @@ export function PasswordScreen({ onBack }: { onBack: () => void }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [saving, setSaving] = useState(false);
+  /** 邮箱验证码（2026-11-11）：拿到码才能改密码，码由服务端发到账号邮箱。 */
+  const [code, setCode] = useState("");
+  const [sendingCode, setSendingCode] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const [notice, setNotice] = useState("");
+
+  // 重发冷却对齐服务端 60s/地址的预算，否则按钮只是在邀请一次必被拒的请求。
+  useEffect(() => {
+    if (cooldown <= 0) return undefined;
+    const timer = setTimeout(() => setCooldown((value) => value - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
 
   useEffect(() => {
     let alive = true;
@@ -66,6 +86,29 @@ export function PasswordScreen({ onBack }: { onBack: () => void }) {
 
   const settingFirstPassword = mode === "set";
 
+  async function sendCode() {
+    setError("");
+    setNotice("");
+    setSendingCode(true);
+    try {
+      /**
+       * 不传收件人：服务端取当前会话的邮箱。手机端因此连「知道是哪个邮箱」都不需要
+       * —— 也就无法被用来给任意地址发信。
+       */
+      await apiFetch("/auth/password/verification-code", { method: "POST" });
+      setNotice(t("me.passwordCodeSent"));
+      setCooldown(60);
+    } catch (requestError) {
+      setError(
+        requestError instanceof ApiRequestError && requestError.code === "SERVICE_UNAVAILABLE"
+          ? t("me.passwordErrorService")
+          : t("me.passwordErrorSend"),
+      );
+    } finally {
+      setSendingCode(false);
+    }
+  }
+
   async function submit() {
     if (!settingFirstPassword && !currentPassword) {
       setError(t("me.passwordCurrentRequired"));
@@ -79,6 +122,11 @@ export function PasswordScreen({ onBack }: { onBack: () => void }) {
       setError(t("me.passwordMismatch"));
       return;
     }
+    // 客户端只卡「填没填」，对错交给服务端 —— 但它必须先拦一道，不然用户会白跑一次。
+    if (!/^\d{6}$/.test(code.trim())) {
+      setError(t("me.passwordCodeRequired"));
+      return;
+    }
     setSaving(true);
     setError("");
     setSuccess("");
@@ -89,6 +137,7 @@ export function PasswordScreen({ onBack }: { onBack: () => void }) {
           currentPassword: settingFirstPassword ? "-" : currentPassword,
           newPassword,
           confirmPassword,
+          code: code.trim(),
         },
       });
       await saveTokens(session.accessToken, session.refreshToken);
@@ -98,6 +147,10 @@ export function PasswordScreen({ onBack }: { onBack: () => void }) {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      // 码已服务端消耗，留着只会让人以为还能再用。
+      setCode("");
+      setNotice("");
+      setCooldown(0);
     } catch (requestError) {
       if (requestError instanceof ApiRequestError) {
         const key = PASSWORD_ERROR_KEYS[requestError.code];
@@ -148,6 +201,46 @@ export function PasswordScreen({ onBack }: { onBack: () => void }) {
           value={confirmPassword}
           onChange={setConfirmPassword}
         />
+
+        {/* 邮箱验证码（2026-11-11）。放在表单末尾：密码是用户现在就能填的，码要等一封信。 */}
+        <View style={styles.field}>
+          <View style={styles.codeHeader}>
+            <Text style={styles.fieldLabel}>{t("me.passwordCode")}</Text>
+            <Pressable
+              onPress={() => void sendCode()}
+              disabled={sendingCode || cooldown > 0}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: sendingCode || cooldown > 0 }}
+              hitSlop={8}
+            >
+              <Text
+                style={[
+                  styles.codeAction,
+                  (sendingCode || cooldown > 0) && styles.codeActionDisabled,
+                ]}
+              >
+                {sendingCode
+                  ? `${t("me.passwordSendCode")}…`
+                  : cooldown > 0
+                    ? `${t("me.passwordSendCode")}（${cooldown}s）`
+                    : t("me.passwordSendCode")}
+              </Text>
+            </Pressable>
+          </View>
+          <TextInput
+            value={code}
+            onChangeText={(next) => setCode(next.replace(/\D/g, "").slice(0, 6))}
+            keyboardType="number-pad"
+            textContentType="oneTimeCode"
+            maxLength={6}
+            placeholder={t("me.passwordCodePlaceholder")}
+            accessibilityLabel={t("me.passwordCode")}
+            placeholderTextColor={colors.muted}
+            style={styles.input}
+          />
+          <Text style={styles.codeHint}>{t("me.passwordCodeHint")}</Text>
+          {notice ? <Text style={styles.okText}>{notice}</Text> : null}
+        </View>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
         {success ? <Text style={styles.okText}>{success}</Text> : null}
@@ -206,6 +299,10 @@ const styles = themed((c) => StyleSheet.create({
     color: c.ink,
     backgroundColor: c.glass,
   },
+  codeHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  codeAction: { fontSize: sizes.ui, fontWeight: "600", color: c.primary },
+  codeActionDisabled: { color: c.muted },
+  codeHint: { fontSize: sizes.caption, lineHeight: 17, color: c.muted },
   errorText: { fontSize: sizes.ui, color: c.danger },
   okText: { fontSize: sizes.ui, color: c.primary },
   actions: { marginTop: 4 },

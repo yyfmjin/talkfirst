@@ -16,6 +16,7 @@ import { isProfileComplete } from "../users/profile-completion";
 import {
   ACCESS_TOKEN_TTL_SECONDS,
   JWT_ACCESS_SECRET,
+  PASSWORD_CHANGE_CODE_PURPOSE,
   REFRESH_TOKEN_TTL_SECONDS,
 } from "./auth.constants";
 import { newRawToken, sha256Hex } from "../common/crypto";
@@ -630,6 +631,29 @@ export class AuthService {
   }
 
   /**
+   * 发送「改密码」验证码（2026-11-11）。
+   *
+   * 收件地址取自**当前登录账号**，不接受客户端传入 —— 这个端点带 JwtAuthGuard，
+   * 一旦允许指定 email，它就变成一台任意发信机，而代价由我们的 Gmail 额度承担。
+   *
+   * 冷却与每小时上限不在这里做：`VerificationService.sendCode` 已按
+   * `(email, purpose)` 计了 60 秒冷却 + 每小时 5 封；purpose 用的是独立值，所以
+   * 不会和注册、找回密码互相占额度。
+   */
+  async sendPasswordChangeCode(userId: string, acceptLanguage?: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException({
+        success: false,
+        error: { code: "USER_NOT_FOUND", message: "User not found" },
+      });
+    }
+    return this.requireVerificationService().sendCode(user.email, PASSWORD_CHANGE_CODE_PURPOSE, {
+      acceptLanguage,
+    });
+  }
+
+  /**
    * Change the password — or, for an account that has none, SET the first one.
    *
    * Google-only accounts have `passwordHash === null` and no way to prove a
@@ -688,6 +712,25 @@ export class AuthService {
           });
         }
       }
+
+      /**
+       * 邮箱验证码是这一步真正的闸门（2026-11-11）。
+       *
+       * 到上一行为止，客户端证明的只是「知道当前密码」—— 而那正是拿到一条未过期
+       * session、或装了键盘记录的人同样能提供的东西。验证码走另一条通道（邮箱），
+       * 于是「把密码改成自己的、把主人锁在门外」不再只靠一条被偷的会话就能完成。
+       *
+       * 位置在密码校验**之后**：先判 INVALID_CREDENTIALS 再判 CODE_*。反过来就会
+       * 让一个猜码的人从错误码里反推出当前密码对不对。
+       *
+       * `verifyCode` 会消耗这条码（并把邮箱标为已验证），所以一次改密码就是一次码。
+       * 失败重试要重新发码 —— 这是对的，别在这里加「验证过就缓存」。
+       */
+      await this.requireVerificationService().verifyCode(
+        user.email,
+        dto.code,
+        PASSWORD_CHANGE_CODE_PURPOSE,
+      );
 
       const passwordHash = await bcrypt.hash(dto.newPassword, 12);
       await this.prisma.$transaction([
@@ -929,7 +972,7 @@ export class AuthService {
         success: false,
         error: {
           code: "SERVICE_UNAVAILABLE",
-          message: "Password reset is not available right now",
+          message: "Password operations are not available right now",
         },
       });
     }

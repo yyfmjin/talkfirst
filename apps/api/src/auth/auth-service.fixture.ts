@@ -55,3 +55,20 @@ export function makeAuthService(
     sessions,
   );
 }
+
+/**
+ * 一份「任何码都放行」的验证服务桩（2026-11-11）。
+ *
+ * 改密码从这天起要求邮箱验证码，于是**每一个碰 changePassword 的用例**都需要一个
+ * 验证服务 —— 不给就是 503（那是有意为之的 fail-closed）。形状放在这里，免得
+ * 五个 spec 各写一遍、然后某天在其中一个里写错字段名。
+ *
+ * 不用 `jest.fn()`：这个文件不是 spec，不该依赖测试全局。需要断言的用例
+ * （如 `auth-change-password.spec.ts`）自己建 spy。
+ */
+export function acceptingVerificationService() {
+  return {
+    verifyCode: async () => ({ verified: true }),
+    sendCode: async () => ({ sent: true }),
+  };
+}

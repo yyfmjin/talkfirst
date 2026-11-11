@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import * as bcrypt from "bcryptjs";
-import { makeAuthService } from "./auth-service.fixture";
+import { acceptingVerificationService, makeAuthService } from "./auth-service.fixture";
 import { VerificationService } from "./verification.service";
 import { SecurityEventService } from "../security/security-event.service";
 
@@ -89,6 +89,8 @@ function makeAuth(overrides: Record<string, unknown> = {}) {
   const record = makeRecorder();
   const service = makeAuthService(prisma as never, jwtService as never, {
     securityEvents: { record },
+    // 改密码要邮箱验证码（2026-11-11）；本文件断言的是安全事件，不是码的真假。
+    verificationService: acceptingVerificationService(),
   });
   return { service, prisma, record };
 }
@@ -286,6 +288,7 @@ describe("AuthService — token / 登出 / 改密", () => {
       currentPassword: "oldpassword",
       newPassword: "newpassword1",
       confirmPassword: "newpassword1",
+      code: "123456",
     });
 
     expect(firstEvent(record)).toMatchObject({
@@ -304,6 +307,7 @@ describe("AuthService — token / 登出 / 改密", () => {
         currentPassword: "wrong",
         newPassword: "newpassword1",
         confirmPassword: "newpassword1",
+        code: "123456",
       }),
     ).rejects.toBeDefined();
 
