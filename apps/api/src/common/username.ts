@@ -200,6 +200,26 @@ export function isUsernameConflict(error: unknown): boolean {
 }
 
 /**
+ * 同一个邮箱在「查询」与「写入」之间被另一个请求抢先注册了（P2002 on email）。
+ *
+ * 与 `isUsernameConflict` 放在相邻位置是有意的：两者都在从同一个 P2002 里读「撞的是哪
+ * 一列」，而**分不清的代价是真实的** —— 把邮箱冲突报成 `USERNAME_TAKEN`，会让用户去改
+ * 一个跟他无关的名字。
+ *
+ * 它只在并发下才会命中：`register` 先 `findUnique` 一次，两个并发请求（双击、重试、
+ * 两个标签页）可能都看到「没有」，于是都由数据库来定轮。唯一约束拦住了重复账号，
+ * 剩下的事就是把这次失败翻译成用户能看懂的那句话。
+ */
+export function isEmailConflict(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const typed = error as { code?: string; meta?: { target?: unknown } };
+  if (typed.code !== "P2002") return false;
+  const target = typed.meta?.target;
+  const parts = Array.isArray(target) ? target.map(String) : [String(target ?? "")];
+  return parts.some((entry) => entry.includes("email"));
+}
+
+/**
  * The SQL used by the migration that backfills existing accounts.
  *
  * Kept beside the TypeScript generator so the two cannot drift: same alphabet,

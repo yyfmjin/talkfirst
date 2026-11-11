@@ -31,7 +31,12 @@ import {
 import { reasonCodeOf } from "../security/error-reason";
 import { getRequestContext } from "../security/request-context";
 import { hashEmail, hashUsername, maskEmail, maskUsername } from "../security/privacy";
-import { checkUsername, generateUsername, isUsernameConflict } from "../common/username";
+import {
+  checkUsername,
+  generateUsername,
+  isEmailConflict,
+  isUsernameConflict,
+} from "../common/username";
 import { ChangePasswordDto, LoginDto, RegisterDto, ResetPasswordDto } from "./auth.dto";
 import { emailVerificationEnforced } from "./email-verification.policy";
 import { LoginAttemptService } from "./login-attempt.service";
@@ -257,6 +262,20 @@ export class AuthService {
           },
         });
       } catch (error) {
+        /**
+         * 撞的是**邮箱**：同一个邮箱在「上面的查」与「这里的写」之间被另一个请求抢先
+         * 注册了（双击、重试、开了两个标签页）。
+         *
+         * 数据库已经拦住了重复账号，但这里必须把它翻译成与预检完全一样的 EMAIL_TAKEN：
+         * 否则客户端拿到一个 500，只会在界面上说「注册失败，请重试」—— 而真相是
+         * 「这个邮箱早就是你的账号了」。用户看到的正是「同一个邮箱可以反复注册」。
+         */
+        if (isEmailConflict(error)) {
+          throw new ConflictException({
+            success: false,
+            error: { code: "EMAIL_TAKEN", message: "Email is already registered" },
+          });
+        }
         if (!isUsernameConflict(error)) throw error;
         if (input.preferredUsername) {
           throw new ConflictException({

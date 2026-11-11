@@ -203,7 +203,7 @@ describe("P0-02 — 注册时的账户名", () => {
     ).toMatchObject({ code: "USERNAME_TAKEN", status: 409 });
   });
 
-  it("邮箱本身的唯一约束不会被误当成账户名冲突", async () => {
+  it("并发写进同一个邮箱时，报的是 EMAIL_TAKEN 而不是账户名冲突", async () => {
     const { service } = makeAuth({
       rows: () => null,
       createImpl: async () => {
@@ -211,10 +211,17 @@ describe("P0-02 — 注册时的账户名", () => {
       },
     });
 
-    // 原样抛出：这是调用方（外层 catch）记账的一部分，不是账户名的问题。
+    /**
+     * 以前这里断言的是「原样抛出 P2002」—— 想表达的其实是「别把它当成账户名冲突」，
+     * 但后果是：双击注册、两个标签页同时提交时，第二个请求得到 500，客户端只能提示
+     * 「注册失败，请重试」，用户于是反复重试，感受就是「同一个邮箱能无限注册」。
+     *
+     * 现在两者都满足了：不是 USERNAME_TAKEN（用户不需要改名），而是 EMAIL_TAKEN
+     * （他已有的账号就在那儿）。
+     */
     await expect(
       service.register({ email: "new@example.com", password: "password123" }),
-    ).rejects.toMatchObject({ code: "P2002" });
+    ).rejects.toMatchObject({ response: { error: { code: "EMAIL_TAKEN" } } });
   });
 });
 

@@ -129,6 +129,11 @@ export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {})
       setError(t("auth.errorEmailTaken"));
       return;
     }
+    // 注册过但没验证：同样拦下，并指向「继续验证」而不是「去登录」。
+    if (mode === "register" && emailStatus === "unverified") {
+      setError(t("auth.emailUnverifiedInline"));
+      return;
+    }
     if (mode === "register" && password.length < PASSWORD_MIN_LENGTH) {
       setError(t("auth.errorPasswordTooShort", { n: PASSWORD_MIN_LENGTH }));
       return;

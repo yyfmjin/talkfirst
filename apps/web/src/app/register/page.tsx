@@ -137,6 +137,14 @@ export default function RegisterPage() {
       setError(t("auth.errorEmailTaken"));
       return;
     }
+    /**
+     * 注册过但没验证：同样在本地拦下。否则会被服务端拒成 EMAIL_TAKEN，而这个账号
+     * 其实还等着他去验证 —— 提示「直接登录」会把他送到一个他还进不去的门口。
+     */
+    if (emailStatus === "unverified") {
+      setError(t("auth.emailUnverifiedInline"));
+      return;
+    }
     if (password.length < 8) {
       setError(t("auth.errorPasswordMin8"));
       return;
