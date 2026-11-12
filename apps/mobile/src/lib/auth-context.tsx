@@ -7,8 +7,10 @@ import type { AuthSession, SessionUser } from "./types";
 type AuthState = {
   user: SessionUser | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  /** 登录标识：邮箱或账户名（2026-11-12 起不再只收邮箱）。 */
+  signIn: (identifier: string, password: string) => Promise<void>;
+  /** `username` 省略 = 由服务端生成一个。 */
+  signUp: (email: string, password: string, username?: string) => Promise<void>;
   /** OAuth（Google/Facebook）交换回来的会话直接生效。 */
   signInWithSession: (session: AuthSession) => Promise<void>;
   signOut: () => Promise<void>;
@@ -86,19 +88,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(session.data);
   }, []);
 
+  /**
+   * 登录。参数是「标识符」，不再只收邮箱（2026-11-12）。
+   *
+   * 服务端 `POST /auth/login` 一直收 `identifier`（邮箱或账户名都行），但手机端
+   * 以前只发 `{ email }` —— 于是在手机上「用户名 + 密码」根本登不了，而国内用户
+   * 普遍更习惯用户名。现在直接把用户输的那串原样交给服务端的同一套判定。
+   */
   const signIn = useCallback(
-    async (email: string, password: string) => {
+    async (identifier: string, password: string) => {
       await applySession(
-        await apiFetchEnvelope("/auth/login", { method: "POST", body: { email, password } }),
+        await apiFetchEnvelope("/auth/login", { method: "POST", body: { identifier, password } }),
       );
     },
     [applySession],
   );
 
   const signUp = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string, username?: string) => {
       await applySession(
-        await apiFetchEnvelope("/auth/register", { method: "POST", body: { email, password } }),
+        await apiFetchEnvelope("/auth/register", {
+          method: "POST",
+          /*
+           * `username` 省略时不传，而不是传空串：服务端把空串当成一个非法的名字，
+           * 而「不传」才是「帮我生成一个」。（RegisterDto 里它是可选的。）
+           */
+          body: { email, password, ...(username ? { username } : {}) },
+        }),
       );
     },
     [applySession],

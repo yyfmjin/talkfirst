@@ -9,6 +9,12 @@
 export type SessionUser = {
   id: string;
   email: string;
+  /**
+   * 登录账户名（唯一，小写字母/数字，8–30 位）。
+   * 2026-11-12：手机端现在也支持「用户名 + 密码」登录，所以会话里必须带上它 ——
+   * 否则用户注册完根本不知道自己能用什么用户名登录。
+   */
+  username: string;
   emailVerified: boolean;
   nickname: string | null;
   avatarUrl: string | null;

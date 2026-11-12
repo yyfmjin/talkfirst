@@ -58,6 +58,8 @@ export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {})
   const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
   const [email, setEmail] = useState("");
+  /** 注册时可选填的账户名（2026-11-12）。留空由服务端生成。 */
+  const [username, setUsername] = useState("");
   /**
    * 注册时实时问一句「这个邮箱注册过吗」（2026-11-11）。
    *
@@ -115,12 +117,18 @@ export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {})
 
   async function handleSubmit() {
     setError("");
-    const trimmed = email.trim().toLowerCase();
-    if (!trimmed || !password) {
+    /*
+     * 输入框按模式承担两种含义（2026-11-12）：
+     *  - 登录：邮箱或账户名都行。只去空格、去掉开头的 `@`、转小写；长度/字母/保留字
+     *    这些形状规则只有服务端一份，在这里再写一份迟早分叉；
+     *  - 注册：必须是邮箱 —— 验证码要发到这里。
+     */
+    const identifier = email.trim().replace(/^@+/, "").toLowerCase();
+    if (!identifier || !password) {
       setError(t("auth.errorMissingFields"));
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    if (mode === "register" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier)) {
       setError(t("auth.errorInvalidEmail"));
       return;
     }
@@ -143,15 +151,26 @@ export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {})
       return;
     }
     /* 同意闸门放在最后一道：格式都不对时先说格式，别让用户先去勾一个空表单。 */
+    /*
+     * 用户自己选的账户名要过一道形状校验（8–30 位字母/数字）。
+     * 留空就是「帮我生成一个」，不校验。
+     */
+    if (mode === "register") {
+      const wanted = username.trim();
+      if (wanted && !/^[A-Za-z0-9]{8,30}$/.test(wanted)) {
+        setError(t("auth.errorUsernameFormat"));
+        return;
+      }
+    }
     if (mode === "register" && !consent) {
       setError(t("auth.errorConsentRequired"));
       return;
     }
     setLoading(true);
     try {
-      if (mode === "login") await signIn(trimmed, password);
+      if (mode === "login") await signIn(identifier, password);
       else {
-        await signUp(trimmed, password);
+        await signUp(identifier, password, username.trim() || undefined);
         /*
          * 注册后**必须**先验证邮箱，不能直接进引导。
          *
@@ -159,12 +178,12 @@ export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {})
          * 和几个 auth 接口，其它一律 403 —— 直接放进主界面的话，用户看到的是
          * 「每个页面都报错」，而屏幕上没有任何地方能补验证码。
          */
-        setVerifyEmail(trimmed);
+        setVerifyEmail(identifier);
       }
     } catch (requestError) {
       if (requestError instanceof ApiRequestError && requestError.code === "EMAIL_NOT_VERIFIED") {
         // 老账号（在网页注册但没验证，或者验证状态丢失）：直接推验证屏。
-        setVerifyEmail(trimmed);
+        setVerifyEmail(identifier);
         setError(t("auth.errorEmailNotVerified"));
         return;
       }
@@ -315,11 +334,12 @@ export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {})
 
         <View style={styles.form}>
           <Input
-            label={t("auth.email")}
+            label={mode === "login" ? t("auth.identifierLabel") : t("auth.email")}
             value={email}
             onChangeText={setEmail}
-            placeholder={t("auth.emailPlaceholder")}
-            keyboardType="email-address"
+            placeholder={mode === "login" ? t("auth.identifierPlaceholder") : t("auth.emailPlaceholder")}
+            keyboardType={mode === "login" ? "default" : "email-address"}
+            autoCapitalize="none"
             maxLength={254}
           />
           {mode === "register" && emailStatus !== "idle" ? (
@@ -333,6 +353,16 @@ export function AuthScreen({ onRegistered }: { onRegistered?: () => void } = {})
                 </Pressable>
               ) : null}
             </View>
+          ) : null}
+          {mode === "register" ? (
+            <Input
+              label={t("auth.usernameOptional")}
+              value={username}
+              onChangeText={setUsername}
+              placeholder={t("auth.usernamePlaceholder")}
+              autoCapitalize="none"
+              maxLength={30}
+            />
           ) : null}
           <Input
             label={t("auth.password")}

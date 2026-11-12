@@ -339,6 +339,8 @@ export function MeScreen() {
           <Avatar uri={user.avatarUrl} nickname={user.nickname} size={72} />
         </Pressable>
         <Text style={styles.name}>{user.nickname ?? t("common.talkfirstUser")}</Text>
+        {/* 登录账户名（2026-11-12）。用户名登录上线后，这里是用户能看见自己登录名的唯一位置。 */}
+        <Text style={styles.username}>@{user.username}</Text>
         <Text style={styles.email}>{user.email}</Text>
         {place ? <Text style={styles.place}>{place}</Text> : null}
         {user.bio ? <Text style={styles.bio}>{user.bio}</Text> : null}
@@ -638,6 +640,7 @@ const styles = themed((c) => StyleSheet.create({
   },
   name: { fontSize: sizes.title, fontWeight: "600", color: c.ink, marginTop: 12 },
   email: { fontSize: sizes.ui, color: c.muted, marginTop: 4 },
+  username: { fontSize: sizes.ui, fontWeight: "600", color: c.ink, marginTop: 4 },
   place: { fontSize: sizes.caption, color: c.muted, marginTop: 4 },
   bio: { fontSize: sizes.ui, color: c.muted, lineHeight: 20, textAlign: "center", marginTop: 12 },
   badgeRow: { flexDirection: "row", marginTop: 16 },
