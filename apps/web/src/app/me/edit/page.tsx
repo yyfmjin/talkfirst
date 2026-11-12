@@ -24,6 +24,8 @@ type Country = { code: string; name: string; flag: string | null };
 /** The subset of `GET /users/me` this form edits. */
 type FullCard = {
   nickname: string | null;
+  /** 登录账户名（2026-11-12）：可改。 */
+  username: string;
   avatarUrl: string | null;
   birthDate: string | null;
   countryCode: string | null;
@@ -53,6 +55,8 @@ export default function EditProfilePage() {
   const { user, setUser } = useSession();
   const [countries, setCountries] = useState<Country[]>([]);
   const [nickname, setNickname] = useState("");
+  /** 登录账户名（2026-11-12）：可改，改完就能用新名字登录。 */
+  const [username, setUsername] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
   const [birthDate, setBirthDate] = useState("");
@@ -83,6 +87,7 @@ export default function EditProfilePage() {
     try {
       const profile = await apiFetch<FullCard>("/users/me");
       setNickname(profile.nickname ?? "");
+      setUsername(profile.username ?? "");
       setAvatarUrl(profile.avatarUrl ?? "");
       setBirthDate(profile.birthDate ? profile.birthDate.slice(0, 10) : "");
       setCountryCode(profile.countryCode ?? "");
@@ -115,6 +120,16 @@ export default function EditProfilePage() {
     }
     if (trimmedNickname.length > NICKNAME_MAX) {
       setError(t("ed.nicknameTooLong", { max: NICKNAME_MAX }));
+      return;
+    }
+    /**
+     * 登录账户名：留空就不改（存量账号的名字是随机生成的，用户可能懒得改）。
+     * 形状规则（字母数字/长度/保留字）的权威在服务端——这里只掣住一个本地提示，
+     * 让人不用白跑一次就看见格式不对。
+     */
+    const trimmedUsername = username.trim();
+    if (trimmedUsername && !/^[A-Za-z0-9]{8,30}$/.test(trimmedUsername)) {
+      setError(t("ed.usernameFormat"));
       return;
     }
     const age = ageOf(birthDate);
@@ -151,6 +166,8 @@ export default function EditProfilePage() {
           city: trimmedCity,
           gender,
           bio: bio.trim(),
+          // 留空 = 不改；传空串会被服务端当成「名字为空」而报错。
+          ...(trimmedUsername ? { username: trimmedUsername } : {}),
         },
       });
       // Re-read instead of trusting the PATCH response: this is what proves the
@@ -212,6 +229,25 @@ export default function EditProfilePage() {
                 value={nickname}
                 onChange={(event) => setNickname(event.target.value)}
               />
+            </div>
+
+            {/* 登录账户名（2026-11-12）：这里能改，改完用新名字登录；邮箱仍然可用。 */}
+            <div className="mt-4">
+              <label htmlFor="edit-username" className="mb-1.5 block text-caption font-medium text-content-muted">
+                {t("ed.username")}
+              </label>
+              <TFInput
+                id="edit-username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                placeholder={t("ed.usernamePlaceholder")}
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                describedBy="edit-username-hint"
+              />
+              <p id="edit-username-hint" className="mt-1 text-caption leading-4 text-content-subtle">
+                {t("ed.usernameHint")}
+              </p>
             </div>
 
             <div className="mt-4">

@@ -1,4 +1,11 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import { checkUsername, isUsernameConflict } from "../common/username";
 import { msg, type SupportedLocale } from "../common/i18n";
 import { NotificationService } from "../notifications/notification.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -376,6 +383,7 @@ export class UsersService {
       bio?: string;
       locale?: SupportedLocale;
       showMomentsOnProfile?: boolean;
+      username?: string;
     },
   ) {
     // PC-1.3 22: `region` is normalized to null when blank. `undefined` still
@@ -383,22 +391,67 @@ export class UsersService {
     const region =
       dto.region === undefined ? undefined : dto.region.normalize("NFKC").trim() || null;
 
-    const user = await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        nickname: dto.nickname,
-        birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
-        countryCode: dto.countryCode ? dto.countryCode.toUpperCase() : undefined,
-        city: dto.city,
-        region,
-        gender: dto.gender,
-        bio: dto.bio,
-        // 与其余字段一样：`undefined` 表示不改。服务端下发的文案（通知、邮件）
-        // 从这里取语言，见 `common/locale.ts`。
-        locale: dto.locale,
-        showMomentsOnProfile: dto.showMomentsOnProfile,
-      },
-    });
+    /**
+     * 改登录名（2026-11-12）。
+     *
+     * 形状规则只有一份（`common/username.ts`），这里不再写一遍 —— 写两遍的那份
+     * 迟早跟生成器分叉，症状是「注册说合法、改名说非法」。
+     *
+     * 唯一性先做一次预检（好让客户端拿到 `USERNAME_TAKEN`），但真正的裁判是数据库：
+     * 两个并发改名可能都看到「这个名字没人用」，所以下面还要把 P2002 翻译成同一句话。
+     */
+    let requestedUsername: string | undefined;
+    if (dto.username !== undefined) {
+      const checked = checkUsername(dto.username);
+      if (!checked.ok) {
+        throw new BadRequestException({
+          success: false,
+          error: { code: checked.code, message: checked.message },
+        });
+      }
+      requestedUsername = checked.value;
+
+      const owner = await this.prisma.user.findUnique({
+        where: { username: requestedUsername },
+        select: { id: true },
+      });
+      if (owner && owner.id !== userId) {
+        throw new ConflictException({
+          success: false,
+          error: { code: "USERNAME_TAKEN", message: "Username is already taken" },
+        });
+      }
+    }
+
+    let user;
+    try {
+      user = await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          nickname: dto.nickname,
+          birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
+          countryCode: dto.countryCode ? dto.countryCode.toUpperCase() : undefined,
+          city: dto.city,
+          region,
+          gender: dto.gender,
+          bio: dto.bio,
+          username: requestedUsername,
+          // 与其余字段一样：`undefined` 表示不改。服务端下发的文案（通知、邮件）
+          // 从这里取语言，见 `common/locale.ts`。
+          locale: dto.locale,
+          showMomentsOnProfile: dto.showMomentsOnProfile,
+        },
+      });
+    } catch (error) {
+      // 并发改名抢先占了同一个名字：翻译成和预检一样的错误码。
+      if (isUsernameConflict(error)) {
+        throw new ConflictException({
+          success: false,
+          error: { code: "USERNAME_TAKEN", message: "Username is already taken" },
+        });
+      }
+      throw error;
+    }
     return this.getFullCard(user.id);
   }
 

@@ -31,6 +31,7 @@ import { VisibilityScreen } from "./VisibilityScreen";
 import { InterestsScreen } from "./InterestsScreen";
 import { AttributesScreen } from "./AttributesScreen";
 import { BaziScreen } from "./BaziScreen";
+import { TreeHoleScreen } from "./TreeHoleScreen";
 import { PasswordScreen } from "./PasswordScreen";
 import { DeleteAccountScreen } from "./DeleteAccountScreen";
 import { OnboardingScreen } from "./OnboardingScreen";
@@ -79,6 +80,8 @@ type MeEntry = {
     | "legal"
     /* 不在 `ME_GROUPS` 里：入口是自定义的「小工具」那一行。 */
     | "bazi"
+    /* 小工具：树洞（匿名吐槽板，2026-11-12）。 */
+    | "treehole"
     /* 不在 `ME_GROUPS` 里：它的入口是「管理社交账号」页底部那一个按钮
        （与 web `/me/social` → `/moments/settings` 同一条路径），不是「我的」下的一行。 */
     | "momentsSettings";
@@ -274,6 +277,9 @@ export function MeScreen() {
   if (open === "bazi") {
     return <BaziScreen onClose={() => setOpen(null)} />;
   }
+  if (open === "treehole") {
+    return <TreeHoleScreen onBack={() => setOpen(null)} />;
+  }
   if (open === "connections") {
     return <ConnectionsScreen onBack={() => setOpen(null)} />;
   }
@@ -365,6 +371,17 @@ export function MeScreen() {
           >
             <Icon name="brush-outline" size={18} color={colors.primary} />
             <Text style={styles.rowLabel}>{t("me.baziEntry")}</Text>
+            <Icon name="chevron-forward" size={16} color={colors.muted} />
+          </Pressable>
+          {/* 树洞（2026-11-12）：匿名吐槽板，可以回复。 */}
+          <Pressable
+            onPress={() => setOpen("treehole")}
+            accessibilityRole="button"
+            accessibilityLabel={t("me.treeHoleEntry")}
+            style={styles.row}
+          >
+            <Icon name="chatbubble-ellipses-outline" size={18} color={colors.primary} />
+            <Text style={styles.rowLabel}>{t("me.treeHoleEntry")}</Text>
             <Icon name="chevron-forward" size={16} color={colors.muted} />
           </Pressable>
         </View>

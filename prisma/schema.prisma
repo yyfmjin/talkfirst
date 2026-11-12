@@ -692,6 +692,8 @@ model User {
    */
   flowerCount              Int                     @default(0)
   friendGroups             FriendGroup[]           @relation("FriendGroups")
+  /** 树洞帖子（2026-11-12）。对外匿名；这条关系只用于注销时级联清理。 */
+  treeHolePosts            TreeHolePost[]
   friendTags               FriendTag[]             @relation("FriendTags")
   momentBookmarks          MomentBookmark[]
   momentComments           MomentComment[]
@@ -1745,4 +1747,38 @@ model FriendTag {
   @@id([connectionId, userId])
   @@index([userId])
   @@index([groupId])
+}
+
+/// 树洞：匿名吐槽板（2026-11-12）。
+///
+/// 匿名是**产品承诺**，不是顺手：`userId` 只用于审核、限流与注销级联，任何接口都不
+/// 返回它；对外的身份是 `alias`（每帖一个；同一人在同一帖下的评论沿用同一个 alias，
+/// 这样「楼主回复」看得出来是楼主，但看不出来是谁）。
+model TreeHolePost {
+  id           String            @id @default(uuid()) @db.Uuid
+  userId       String            @db.Uuid
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  alias        String            @db.VarChar(24)
+  content      String            @db.VarChar(500)
+  commentCount Int               @default(0)
+  createdAt    DateTime          @default(now())
+  deletedAt    DateTime?
+  comments     TreeHoleComment[]
+
+  @@index([createdAt])
+  @@index([userId])
+}
+
+/// 树洞评论。与帖子一样：对外只有 alias，没有 userId。
+model TreeHoleComment {
+  id        String       @id @default(uuid()) @db.Uuid
+  postId    String       @db.Uuid
+  post      TreeHolePost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String       @db.Uuid
+  alias     String       @db.VarChar(24)
+  content   String       @db.VarChar(300)
+  createdAt DateTime     @default(now())
+  deletedAt DateTime?
+
+  @@index([postId, createdAt])
 }

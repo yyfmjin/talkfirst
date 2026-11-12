@@ -94,6 +94,17 @@ export class UpdateProfileDto {
   bio?: string;
 
   /**
+   * 登录账户名（2026-11-12）。不传 = 不改。
+   *
+   * 这里只卡一个上限；「8–30 位字母数字、不能是保留字」这些规则住在
+   * `common/username.ts`，由服务层调用 —— 在 DTO 里再写一份就会跟生成器分叉。
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  username?: string;
+
+  /**
    * 资料卡上要不要展示「个人动态」入口。
    *
    * 默认开；关掉只影响**别人**看到的资料卡 —— 自己仍然看得到（见

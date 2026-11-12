@@ -74,6 +74,8 @@ export function EditProfileScreen({
   const { t } = useI18n();
   const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl ?? "");
   const [nickname, setNickname] = useState(user.nickname ?? "");
+  /** 登录账户名（2026-11-12）。留空 = 不改。 */
+  const [username, setUsername] = useState(user.username ?? "");
   /* 服务端存的是时间戳，输入框要的是 `YYYY-MM-DD`（与 web 同一切片方式）。 */
   const [birthDate, setBirthDate] = useState(user.birthDate ? user.birthDate.slice(0, 10) : "");
   const [countryCode, setCountryCode] = useState(user.countryCode ?? "");
@@ -91,6 +93,7 @@ export function EditProfileScreen({
   /* 把一份资料填进表单 —— 预填与保存后的回读共用，两处口径不会漂。 */
   function applyProfile(source: SessionUser) {
     setNickname(source.nickname ?? "");
+    setUsername(source.username ?? "");
     setBio(source.bio ?? "");
     setCity(source.city ?? "");
     setRegion(source.region ?? "");
@@ -176,6 +179,12 @@ export function EditProfileScreen({
       setError(t("me.errNicknameMax", { n: NICKNAME_MAX }));
       return;
     }
+    /* 登录账户名：留空不改；填了就必须是 8–30 位字母/数字（服务端会再判一遍）。 */
+    const trimmedUsername = username.trim();
+    if (trimmedUsername && !/^[A-Za-z0-9]{8,30}$/.test(trimmedUsername)) {
+      setError(t("me.errUsernameFormat"));
+      return;
+    }
     /* 生日可以留空（编辑不是注册，不能把人卡在「必须填生日」），但一旦填了就得是
        一个真的够岁数的日期。 */
     const trimmedBirthDate = birthDate.trim();
@@ -199,6 +208,8 @@ export function EditProfileScreen({
         method: "PATCH",
         body: {
           nickname: trimmedNickname,
+          // 留空 = 不改（传空串会被服务端当成「名字为空」而报错）。
+          ...(trimmedUsername ? { username: trimmedUsername } : {}),
           bio: bio.trim(),
           city: city.trim(),
           region: region.trim(),
@@ -255,6 +266,16 @@ export function EditProfileScreen({
           placeholder={t("me.nicknamePlaceholder")}
           autoCapitalize="words"
           maxLength={NICKNAME_MAX}
+        />
+
+        {/* 登录账户名（2026-11-12）：改完用新名字 + 密码登录，邮箱仍然可用。 */}
+        <Input
+          label={t("me.username")}
+          value={username}
+          onChangeText={setUsername}
+          placeholder={t("me.usernamePlaceholder")}
+          autoCapitalize="none"
+          maxLength={30}
         />
 
         <Input

@@ -25,6 +25,7 @@ import { MomentsModule } from "./moments/moments.module";
 import { FeedbackModule } from "./feedback/feedback.module";
 import { SocialSyncModule } from "./social-sync/social-sync.module";
 import { NotificationsModule } from "./notifications/notification.module";
+import { TreeHoleModule } from "./tree-hole/tree-hole.module";
 import { AiCompanionModule } from "./ai-companion/ai-companion.module";
 
 @Module({
@@ -49,6 +50,8 @@ import { AiCompanionModule } from "./ai-companion/ai-companion.module";
     GuessModule,
     ConnectionsModule,
     SocialModule,
+    // 树洞（2026-11-12）：匿名吐槽板，小工具入口。
+    TreeHoleModule,
     ChatModule,
     ExchangeModule,
     SafetyModule,
