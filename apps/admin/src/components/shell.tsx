@@ -66,6 +66,12 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
        */
       { href: "/moderation-moments", label: "内容审核", permission: "moderation:read" },
       /**
+       * 树洞（2026-11-13）。匿名吐槽板——会员侧看不见作者，后台看得见，
+       * 否则出了辱骂/违法内容就只能删帖、找不到人。闸门用 `moderation:read`，
+       * 删帖需要 `moderation:write`（与内容审核同一套域）。
+       */
+      { href: "/tree-hole", label: "树洞管理", permission: "moderation:read" },
+      /**
        * Member feedback. Gated on `moderation:read` — the same domain that answers the
        * members, since a reply IS content moderation work. `reports:read` would be wrong
        * here: ANALYST holds it but not `moderation:read`, and the reply write needs
@@ -138,6 +144,7 @@ const NAV_ICONS: Record<string, string> = {
   "/feedback": "M21 12a8 8 0 0 1-8 8H7l-4 3v-6.5A8 8 0 0 1 11 4h2a8 8 0 0 1 8 8Z",
   // A document with a check, for content the scanner flagged.
   "/moderation-moments": "M7 3h7l5 5v13H7V3Zm7 0v5h5M9.5 14l2 2 3.5-3.5",
+  "/tree-hole": "M12 3a9 9 0 0 1 7 14.4L21 21l-4.6-1.5A9 9 0 1 1 12 3Z",
   "/risk": "M12 3 3 7v6c0 5 3.8 8.4 9 9 5.2-.6 9-4 9-9V7l-9-4Z",
   "/audit": "M12 8v4l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z",
   // Tag/label glyph for the discovery filter tabs.

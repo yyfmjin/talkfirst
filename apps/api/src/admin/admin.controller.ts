@@ -619,6 +619,50 @@ export class AdminController {
       .then((data) => ({ success: true as const, data }));
   }
 
+  /* ------------------------------------------------------------------ */
+  /* 树洞（2026-11-13）                                                  */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * 树洞管理 —— 与内容审核工作台并列的**独立类目**。
+   *
+   * 树洞没有「待审队列」：它是「最近都说了什么」，所以按时间倒序、不限状态。
+   */
+  @Get("tree-hole/posts")
+  @RequirePermission("moderation:read")
+  treeHolePosts(@Query("page") page?: string, @Query("pageSize") pageSize?: string) {
+    return this.adminService
+      .listTreeHolePosts({
+        page: page ? Number(page) : undefined,
+        pageSize: pageSize ? Number(pageSize) : undefined,
+      })
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  @Get("tree-hole/posts/:id/comments")
+  @RequirePermission("moderation:read")
+  treeHoleComments(@Param("id", UuidParamPipe) id: string) {
+    return this.adminService
+      .listTreeHoleComments(id)
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  @Delete("tree-hole/posts/:id")
+  @RequirePermission("moderation:write")
+  removeTreeHolePost(@Param("id", UuidParamPipe) id: string) {
+    return this.adminService
+      .deleteTreeHolePost(id)
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  @Delete("tree-hole/comments/:id")
+  @RequirePermission("moderation:write")
+  removeTreeHoleComment(@Param("id", UuidParamPipe) id: string) {
+    return this.adminService
+      .deleteTreeHoleComment(id)
+      .then((data) => ({ success: true as const, data }));
+  }
+
   /**
    * Content moderation ("内容审核").
    *

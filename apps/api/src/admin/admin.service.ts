@@ -4186,6 +4186,109 @@ export class AdminService {
     }
   }
 
+  /* ------------------------------------------------------------------ */
+  /* 树洞（2026-11-13）                                                  */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * 树洞内容列表 —— 后台「树洞管理」类目的数据源。
+   *
+   * 树洞对会员是匿名的，对管理员**不是**：看不到作者就处理不了辱骂和违法内容，
+   * 「删帖」只是把问题挪走。所以这里带作者的 id / 邮箱 / 昵称与账号状态，
+   * 而前台接口（`tree-hole.controller`）依然只给 alias —— 两边的形状不同是故意的。
+   */
+  async listTreeHolePosts(query: { page?: number; pageSize?: number } = {}) {
+    const page = Number.isFinite(query.page) && (query.page as number) > 0 ? (query.page as number) : 1;
+    const pageSize = Math.min(
+      Number.isFinite(query.pageSize) && (query.pageSize as number) > 0
+        ? (query.pageSize as number)
+        : 50,
+      200,
+    );
+    const where: Prisma.TreeHolePostWhereInput = { deletedAt: null };
+    const [rows, total] = await Promise.all([
+      this.prisma.treeHolePost.findMany({
+        where,
+        // 最新优先：树洞是「刚刚有人说了句什么」的场景，不是按时间倒着清的队列。
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true,
+          alias: true,
+          content: true,
+          commentCount: true,
+          createdAt: true,
+          user: { select: { id: true, email: true, nickname: true, status: true } },
+        },
+      }),
+      this.prisma.treeHolePost.count({ where }),
+    ]);
+    return { items: rows, total, page, pageSize };
+  }
+
+  async listTreeHoleComments(postId: string) {
+    const post = await this.prisma.treeHolePost.findUnique({
+      where: { id: postId },
+      select: {
+        id: true,
+        alias: true,
+        content: true,
+        createdAt: true,
+        user: { select: { id: true, email: true } },
+      },
+    });
+    if (!post) {
+      throw new NotFoundException({
+        success: false,
+        error: { code: "TREE_HOLE_NOT_FOUND", message: "Post not found" },
+      });
+    }
+    const items = await this.prisma.treeHoleComment.findMany({
+      where: { postId, deletedAt: null },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, alias: true, content: true, createdAt: true, userId: true },
+    });
+    return { post, items };
+  }
+
+  /** 软删帖：保留行，便于后续复核与申诉。 */
+  async deleteTreeHolePost(id: string) {
+    const deleted = await this.prisma.treeHolePost.updateMany({
+      where: { id, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+    if (deleted.count === 0) {
+      throw new NotFoundException({
+        success: false,
+        error: { code: "TREE_HOLE_NOT_FOUND", message: "Post not found" },
+      });
+    }
+    return { id, deleted: true };
+  }
+
+  /** 删评论：同时把帖子的 commentCount 减一，否则列表上的数字会越删越大。 */
+  async deleteTreeHoleComment(id: string) {
+    const comment = await this.prisma.treeHoleComment.findFirst({
+      where: { id, deletedAt: null },
+      select: { id: true, postId: true },
+    });
+    if (!comment) {
+      throw new NotFoundException({
+        success: false,
+        error: { code: "TREE_HOLE_COMMENT_NOT_FOUND", message: "Comment not found" },
+      });
+    }
+    await this.prisma.$transaction([
+      this.prisma.treeHoleComment.update({ where: { id }, data: { deletedAt: new Date() } }),
+      this.prisma.treeHolePost.update({
+        where: { id: comment.postId },
+        data: { commentCount: { decrement: 1 } },
+      }),
+    ]);
+    return { id, deleted: true };
+  }
+
   private dayStart() {
     const date = new Date();
     date.setHours(0, 0, 0, 0);
