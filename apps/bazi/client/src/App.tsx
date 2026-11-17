@@ -578,6 +578,96 @@ function NamingPanel({
   );
 }
 
+/* ---------------- 起名页签：出生信息卡（2026-11-13） ---------------- */
+
+type NameBirth = { gender: "male" | "female"; birthDate: string; birthTime: string };
+
+const NAME_BIRTH_KEY = "destiny-atlas-name-birth";
+
+/** 读本机存过的出生信息；坏数据当没存过，不让它把整页打挂。 */
+function readNameBirth(): NameBirth {
+  try {
+    const raw = localStorage.getItem(NAME_BIRTH_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<NameBirth>;
+      return {
+        gender: parsed.gender === "male" ? "male" : "female",
+        birthDate: typeof parsed.birthDate === "string" ? parsed.birthDate : "",
+        birthTime: typeof parsed.birthTime === "string" ? parsed.birthTime : "",
+      };
+    }
+  } catch {
+    /* 落在默认值上 */
+  }
+  return { gender: "female", birthDate: "", birthTime: "" };
+}
+
+/**
+ * 起名页签的出生信息卡。
+ *
+ * 只要两个字段：性别决定「字意取向」，出生日期决定四柱五行 —— 起名真正需要的
+ * 就这两样。姓名、性格标签、备注那些是交友档案要的东西，这里一个都不要：
+ * 多问一项，就多一个人觉得「起个名还得填一堆」。
+ */
+function NameBirthCard({
+  value,
+  onChange,
+}: {
+  value: NameBirth;
+  onChange: (next: NameBirth) => void;
+}) {
+  const { t } = useLang();
+  const uid = useRef(`nb-${Math.random().toString(36).slice(2, 8)}`).current;
+  return (
+    <article className="plate-frame rounded-[var(--radius)] bg-[var(--surface)] p-4">
+      <h2 className="font-display text-xl font-bold">{t("namingBirthTitle")}</h2>
+      <p className="mt-1 text-sm leading-relaxed text-[var(--dim)]">{t("namingNoChartNeeded")}</p>
+
+      <div className="mt-3 grid grid-cols-2 gap-2" role="group" aria-label={t("genderLabel")}>
+        {(["female", "male"] as const).map((g) => (
+          <button
+            key={g}
+            type="button"
+            aria-pressed={value.gender === g}
+            onClick={() => onChange({ ...value, gender: g })}
+            className={`rounded-lg border py-2 text-base ${
+              value.gender === g
+                ? "border-[var(--accent)] bg-[var(--surface-alt)] font-bold"
+                : "border-[var(--border)]"
+            }`}
+          >
+            {g === "female" ? t("female") : t("male")}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3">
+        <span className="mb-1 block text-sm font-medium">{t("birthDateLabel")}</span>
+        <BirthdaySelect
+          idPrefix={`${uid}-date`}
+          value={value.birthDate}
+          onChange={(next) => onChange({ ...value, birthDate: next })}
+          ariaLabel={t("birthDateLabel")}
+        />
+      </div>
+
+      <div className="mt-3">
+        <label htmlFor={`${uid}-time`} className="mb-1 block text-sm font-medium">
+          {t("birthTimeLabel")}
+        </label>
+        <input
+          id={`${uid}-time`}
+          type="time"
+          className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-base"
+          value={value.birthTime}
+          onChange={(e) => onChange({ ...value, birthTime: e.target.value })}
+        />
+        <p className="mt-1 text-xs text-[var(--dim)]">{t("birthTimeOptional")}</p>
+      </div>
+    </article>
+  );
+}
+
 /* ---------------- 档案表单（本人 / 候选人共用） ---------------- */
 
 interface PersonValues {
@@ -1144,7 +1234,7 @@ function SettingsForm({ settings, pending, onSave }: { settings: SettingsData; p
 /** TalkFirst 单点登录成功过的痕迹：有它就不再显示「改密码 / 注销」这类本机账号操作。 */
 const TF_LINKED_KEY = "bazi.tfLinked";
 
-type Tab = "today" | "chart" | "match" | "people" | "friends" | "chat" | "bonds" | "admin" | "account";
+type Tab = "today" | "chart" | "naming" | "match" | "people" | "friends" | "chat" | "bonds" | "admin" | "account";
 type AdminSection = "overview" | "users" | "profile" | "candidates" | "bonds" | "chats" | "settings" | "data";
 type SettingsData = ApiResponse<typeof api, "adminGetSettings">["settings"];
 type OverviewData = ApiResponse<typeof api, "adminOverview">;
@@ -1165,18 +1255,19 @@ const GUEST_KEY = "destiny-atlas-guest-profile";
 const GUEST_AI_KEY = "destiny-atlas-guest-ai-key";
 
 
-/** 主导航：4 个主入口 + 「更多」。
+/** 主导航：5 个主入口 + 「更多」。
  *
- * ## 为什么收起来
+ * 「起名」是 2026-11-13 加进来的：它以前是命盘页签里的一个面板，要先排盘才能用。
+ * 但「给朋友起个中文名」是个能独立成立的需求（商店里也是这么写的），
+ * 放进主入口，登不登录都能一条路走到。
  *
- * 之前是 8 个胶囊平铺（今日 / 命盘 / 合盘 / 候选 / 好友 / 私聊 / 关系 / 账号），
- * 在 390px 的屏上会折成两行，每次找东西都要先扫一遍全部标签；「账号」这种
- * 一年点两次的入口和「今日」抢同一个视觉层级。
+ * ## 为什么其余收起来
  *
- * 现在：最常用的四个常驻，其余收进「更多」。选中了里面的某项时，「更多」按钮
- * 显示那一项的名字 —— 不然用户会不知道自己现在在哪一页。
+ * 之前是 8 个胶囊平铺，在 390px 的屏上会折成两行；「账号」这种一年点两次的入口
+ * 不该和「今日」抢同一个视觉层级。选中的是「更多」里的某项时，那个按钮会显示
+ * 当前页的名字 —— 不然用户会不知道自己现在在哪。
  */
-const PRIMARY_TABS: Tab[] = ["today", "chart", "match", "chat"];
+const PRIMARY_TABS: Tab[] = ["today", "chart", "naming", "match", "chat"];
 
 function TabNav({
   tabs,
@@ -1371,12 +1462,28 @@ function AppInner() {
   const [focusCandidate, setFocusCandidate] = useState<Candidate | null>(null);
   const [matchData, setMatchData] = useState<MatchData | null>(null);
 
-  // 中文起名状态（命盘页签内，按本人命盘生成）
+  /**
+   * 中文起名（2026-11-13 从命盘页签里拆出来，独立成一页）。
+   *
+   * 出生信息存在本机：这一页免登录就能用，没登录就没有账号可存 ——
+   * 与访客试用同一条规矩。
+   */
   const [cnSurname, setCnSurname] = useState("");
   const [cnStyle, setCnStyle] = useState("any");
   const [cnBatch, setCnBatch] = useState(0);
   const [cnData, setCnData] = useState<NameData | null>(null);
   const [cnError, setCnError] = useState("");
+  const [nmInput, setNmInput] = useState<NameBirth>(readNameBirth);
+  const [nmUseMine, setNmUseMine] = useState(true);
+
+  /** 起名的出生信息写回本机；写不进去就算了，不能因为隐私模式把页面打挂。 */
+  useEffect(() => {
+    try {
+      localStorage.setItem(NAME_BIRTH_KEY, JSON.stringify(nmInput));
+    } catch {
+      /* ignore */
+    }
+  }, [nmInput]);
 
   // 访客试用状态（只存本机 localStorage，不写服务器）
   const [guestInput, setGuestInput] = useState<PersonValues | null>(() => {
@@ -1390,8 +1497,6 @@ function AppInner() {
     }
   });
   const [guestEditing, setGuestEditing] = useState(false);
-  const [guestCnData, setGuestCnData] = useState<NameData | null>(null);
-  const [guestCnError, setGuestCnError] = useState("");
   const [guestThem, setGuestThem] = useState<PersonValues | null>(null);
   const [guestThemEditing, setGuestThemEditing] = useState(true);
   const [guestMeEditing, setGuestMeEditing] = useState(false);
@@ -1801,15 +1906,37 @@ function AppInner() {
     },
   });
 
-  const suggestNamesM = useMutation({
-    mutationFn: (batch: number) =>
-      api.suggestChineseNames({
-        token: authToken,
+  /**
+   * 起名：两种数据源，同一个结果形状（2026-11-13）。
+   *
+   * - 勾了「用我的命盘」且账号里有档案 → `suggestChineseNames`（服务端按档案算）；
+   * - 否则 → `guestNames`，用这一页填的出生信息，不写库、不需要登录。
+   *
+   * 两条路都只回「五行依据 + 名字列表」，所以界面不用分叉。这也正是
+   * 「起名能独立跑」的全部含义：它只需要出生信息，不需要先有一张命盘。
+   */
+  const nameM = useMutation({
+    mutationFn: async (batch: number): Promise<NameData> => {
+      const style = cnStyle as "any" | "文雅" | "大气" | "清新" | "稳重" | "灵动";
+      if (nmUseMine && loggedIn && profileQ.data) {
+        return api.suggestChineseNames({
+          token: authToken,
+          surname: cnSurname.trim(),
+          style,
+          batch,
+          lang,
+        });
+      }
+      return api.guestNames({
+        gender: nmInput.gender,
+        birthDate: nmInput.birthDate,
+        birthTime: nmInput.birthTime || null,
         surname: cnSurname.trim(),
-        style: cnStyle as "any" | "文雅" | "大气" | "清新" | "稳重" | "灵动",
+        style,
         batch,
         lang,
-      }),
+      });
+    },
     onSuccess: (d, batch) => {
       if (!d.ok) {
         setCnError(d.message);
@@ -1820,30 +1947,6 @@ function AppInner() {
       setCnBatch(batch);
     },
     onError: () => setCnError(t("namingFail")),
-  });
-
-  // 访客试用 mutations（不带 token、不写库）
-  const guestNamesM = useMutation({
-    mutationFn: (batch: number) =>
-      api.guestNames({
-        gender: guestInput?.gender ?? "female",
-        birthDate: guestInput?.birthDate ?? "",
-        birthTime: guestInput?.birthTime ?? null,
-        surname: cnSurname.trim(),
-        style: cnStyle as "any" | "文雅" | "大气" | "清新" | "稳重" | "灵动",
-        batch,
-        lang,
-      }),
-    onSuccess: (d, batch) => {
-      if (!d.ok) {
-        setGuestCnError(d.message);
-        return;
-      }
-      setGuestCnError("");
-      setGuestCnData(d);
-      setCnBatch(batch);
-    },
-    onError: () => setGuestCnError(t("namingFail")),
   });
 
   const guestMatchM = useMutation({
@@ -2045,6 +2148,7 @@ function AppInner() {
     ? [
         { key: "today", label: t("tabToday") },
         { key: "chart", label: t("tabChart") },
+        { key: "naming", label: t("tabNaming") },
         { key: "match", label: t("tabMatch") },
         { key: "people", label: `${t("tabPeople")}${candidates.length ? ` ${candidates.length}` : ""}` },
         { key: "friends", label: `${t("tabFriends")}${candidates.length ? ` ${candidates.length}` : ""}` },
@@ -2056,6 +2160,7 @@ function AppInner() {
     : [
         { key: "today" as Tab, label: t("tabToday") },
         { key: "chart" as Tab, label: t("tabChart") },
+        { key: "naming" as Tab, label: t("tabNaming") },
         { key: "match" as Tab, label: t("tabMatch") },
         { key: "people" as Tab, label: t("tabPeople") },
         { key: "friends" as Tab, label: t("tabFriends") },
@@ -2592,18 +2697,16 @@ function AppInner() {
                     <p className="relative mt-2 text-center text-xs text-[var(--dim)]">{t("savedOnDevice")}</p>
                   </article>
                   <p className="px-1 text-xs leading-relaxed text-[var(--dim)]">{t("chartMethodNote")}</p>
-                  <NamingPanel
-                    data={guestCnData}
-                    pending={guestNamesM.isPending}
-                    error={guestCnError}
-                    surname={cnSurname}
-                    setSurname={setCnSurname}
-                    style={cnStyle}
-                    setStyle={setCnStyle}
-                    batch={cnBatch}
-                    onGenerate={(b) => guestNamesM.mutate(b)}
-                    siteTitle={siteTitleText}
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setTab("naming")}
+                    className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] p-4 text-left"
+                  >
+                    <span className="font-display text-base font-bold">{t("namingTitle")}</span>
+                    <span className="mt-1 block text-sm leading-relaxed text-[var(--dim)]">
+                      {t("namingOpenFromChart")}
+                    </span>
+                  </button>
                   <article className="rounded-[var(--radius)] border border-[var(--gold-line)] bg-[var(--surface)] p-4">
                     <h3 className="font-display text-lg font-bold">{t("saveThisChartTitle")}</h3>
                     <p className="mt-1 text-sm leading-relaxed text-[var(--dim)]">{t("saveThisChartText")}</p>
@@ -2617,6 +2720,51 @@ function AppInner() {
                   </article>
                 </>
               )}
+            </section>
+          )}
+
+          {/* 起名（2026-11-13：从命盘里独立出来，不再要求先排盘） */}
+          {tab === "naming" && (
+            <section className="mt-3 space-y-4">
+              <NameBirthCard value={nmInput} onChange={setNmInput} />
+
+              {loggedIn && profileQ.data ? (
+                <label className="flex items-start gap-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] p-3 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={nmUseMine}
+                    onChange={(e) => setNmUseMine(e.target.checked)}
+                    className="mt-1"
+                  />
+                  <span>
+                    <span className="font-medium">{t("namingUseMine")}</span>
+                    <span className="mt-0.5 block leading-relaxed text-[var(--dim)]">
+                      {t("namingUseMineHint")}
+                    </span>
+                  </span>
+                </label>
+              ) : null}
+
+              <NamingPanel
+                data={cnData}
+                pending={nameM.isPending}
+                error={cnError}
+                surname={cnSurname}
+                setSurname={setCnSurname}
+                style={cnStyle}
+                setStyle={setCnStyle}
+                batch={cnBatch}
+                onGenerate={(b) => {
+                  const useMine = nmUseMine && loggedIn && Boolean(profileQ.data);
+                  if (!useMine && !/^\d{4}-\d{2}-\d{2}$/.test(nmInput.birthDate)) {
+                    setCnError(t("errDate"));
+                    return;
+                  }
+                  setCnError("");
+                  nameM.mutate(b);
+                }}
+                siteTitle={siteTitleText}
+              />
             </section>
           )}
 
@@ -2914,18 +3062,16 @@ function AppInner() {
                   )}
                 </article>
                 <p className="px-1 text-xs leading-relaxed text-[var(--dim)]">{t("chartMethodNote")}</p>
-                <NamingPanel
-                  data={cnData}
-                  pending={suggestNamesM.isPending}
-                  error={cnError}
-                  surname={cnSurname}
-                  setSurname={setCnSurname}
-                  style={cnStyle}
-                  setStyle={setCnStyle}
-                  batch={cnBatch}
-                  onGenerate={(b) => suggestNamesM.mutate(b)}
-                  siteTitle={siteTitleText}
-                />
+                <button
+                  type="button"
+                  onClick={() => setTab("naming")}
+                  className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] p-4 text-left"
+                >
+                  <span className="font-display text-base font-bold">{t("namingTitle")}</span>
+                  <span className="mt-1 block text-sm leading-relaxed text-[var(--dim)]">
+                    {t("namingOpenFromChart")}
+                  </span>
+                </button>
               </>
             ) : (
               <article className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] p-4">

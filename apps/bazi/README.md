@@ -42,6 +42,25 @@
 - 字库 80 → 100 字（每个五行补 3–8 个常用字，含拼音、声调、笔画、字义、寓意），
   仍坚持「不编典故」：只写字义与寓意短语。
 
+## 2026-11-17 第三轮：起名从命盘里拆出来
+
+`client/src/App.tsx`
+- 起名独立成页签（主导航 4 → 5 个主入口：今日 / 命盘 / **起名** / 匹配 / 聊天）。
+  以前它只是命盘页签里的一个面板，必须先排盘（未登录还得先建档）才能用；
+  而「给朋友起个中文名」只要出生五行 + 姓氏风格，两件事不该绑在一起。
+- 新页签自带出生信息卡（性别 + 出生日期 + 可选时间），走 `guestNames`：
+  免登录、不写库。账号里已有档案的人多一个「用我的命盘」勾选，走 `suggestChineseNames`。
+- 命盘页里那两处 `NamingPanel` 换成一行入口，点一下跳到「起名」页签。
+- 起名的出生信息存本机 `destiny-atlas-name-birth`，与访客档案（`destiny-atlas-guest-profile`）
+  分开存 —— 两件事混一个 key，会变成「改了起名的生日，命盘也跟着变」。
+- `suggestNamesM` / `guestNamesM` 合成一个 `nameM`：两条数据源、一个结果形状。
+
+`client/src/i18n.tsx`
+- 新增 `tabNaming`、`namingBirthTitle`、`namingNoChartNeeded`、`namingUseMine`、
+  `namingUseMineHint`、`namingOpenFromChart`、`birthTimeOptional`（中英）。
+
+已发布：`bazi-app:20261117`（回滚镜像：`bazi-app:20261112`）。
+
 ## 待办
 
 - 把整个 `client/` 与 `server/` 纳入本仓库并接上 CI，才有真正的 code review；

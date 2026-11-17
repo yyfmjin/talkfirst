@@ -13,6 +13,22 @@ const D = {
   // 通用 / 页签
   mainNav: ["主要功能", "Main sections"],
   tabChart: ["命盘", "Chart"],
+  tabNaming: ["起名", "Names"],
+  namingBirthTitle: ["出生信息", "Birth details"],
+  namingNoChartNeeded: [
+    "填出生日期就能起名 —— 不用先排盘，也不用登录。想要名字和你自己的五行对齐，登录后勾「用我的命盘」。",
+    "Fill in a birth date and go — no chart, no sign-in. Have a TalkFirst-linked profile? Tick “Use my chart” to line the names up with your own BaZi.",
+  ],
+  namingUseMine: ["用我的命盘", "Use my chart"],
+  namingUseMineHint: [
+    "按账号里存的档案算，不用在这一页重填出生信息。",
+    "Uses the profile saved in your account — nothing to retype here.",
+  ],
+  namingOpenFromChart: [
+    "起名已经独立成一页，这里不再重复。点一下去「起名」。",
+    "Naming has its own tab now — tap to open it.",
+  ],
+  birthTimeOptional: ["没把握就留空。", "Not sure? Leave it empty."],
   tabMatch: ["匹配", "Match"],
   tabPeople: ["候选", "Candidates"],
   tabFriends: ["好友", "Friends"],
