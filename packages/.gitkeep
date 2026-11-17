@@ -1,0 +1,6 @@
+# 占位目录
+#
+# 根 package.json 的 workspaces 声明了 `packages/*`，三个 Dockerfile 也都有
+# `COPY packages ./packages`。目录本身在仓库里不存在时，docker build 会在这一行
+# 直接失败（failed to compute cache key: "/packages": not found），本地就再也
+# 构不出镜像。留一个 .gitkeep 让这两处声明都成立；真要放共享包时把文件加进这里即可。
