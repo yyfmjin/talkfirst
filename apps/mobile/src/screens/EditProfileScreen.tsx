@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,7 +14,7 @@ import { Button } from "../components/Button";
 import { Input } from "../components/Input";
 import { CountryField, FieldHint, GenderField } from "../components/ProfileFields";
 import { SubHeader } from "../components/SubHeader";
-import { apiFetch } from "../lib/api";
+import { apiFetch, JSON_UPLOAD_TIMEOUT_MS } from "../lib/api";
 import { useI18n } from "../lib/i18n-context";
 import { ageFromBirthDateInput, MIN_AGE, type GenderValue } from "../lib/profile-options";
 import type { CountryOption, SessionUser } from "../lib/types";
@@ -136,6 +137,16 @@ export function EditProfileScreen({
     setError("");
     setMessage("");
     try {
+      /*
+       * 先要权限（2026-11-18）。iOS 上不申请就直接 launch，系统会把结果回成
+       * `canceled: true` —— 用户看到的是「点了没反应」，而不是「没有相册权限」。
+       * Android 13+ 走系统选图器、不需要这项权限，所以只在 iOS 上拦。
+       */
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted && Platform.OS === "ios") {
+        setError(t("me.avatarPermissionDenied"));
+        return;
+      }
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
         allowsEditing: true,
@@ -157,12 +168,19 @@ export function EditProfileScreen({
       const updated = await apiFetch<{ avatarUrl: string }>("/uploads/avatar", {
         method: "POST",
         body: { image: dataUrl },
+        // 这次请求要带上整张图片，15 秒不够（见 JSON_UPLOAD_TIMEOUT_MS）。
+        timeoutMs: JSON_UPLOAD_TIMEOUT_MS,
       });
       setAvatarUrl(updated.avatarUrl);
       onUserChange({ ...user, avatarUrl: updated.avatarUrl });
       setMessage(t("me.avatarUpdated"));
-    } catch {
-      setError(t("me.avatarUploadFailed"));
+    } catch (requestError) {
+      // 区分「太慢」和「失败」：前者换网络就能过，后者要去查服务端。
+      setError(
+        requestError instanceof Error && requestError.name === "RequestTimeoutError"
+          ? t("common.timeout")
+          : t("me.avatarUploadFailed"),
+      );
     } finally {
       setPicking(false);
     }

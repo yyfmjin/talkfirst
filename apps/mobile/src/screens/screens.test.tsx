@@ -159,6 +159,14 @@ jest.mock("expo-video", () => ({
 jest.mock("expo-image-picker", () => ({
   /* 默认「用户取消了选图」：没安排返回值的用例就不会意外把图传上去。 */
   launchImageLibraryAsync: jest.fn(async () => ({ canceled: true, assets: [] })),
+  /*
+   * 2026-11-18：换头像前要先申请相册权限（不申请，iOS 会直接回 canceled）。
+   * 默认放行 —— 否则所有换头像的用例都会撞到「没权限」那条分支。
+   */
+  requestMediaLibraryPermissionsAsync: jest.fn(async () => ({
+    granted: true,
+    status: "granted",
+  })),
 }));
 
 const SCREENS: [string, ComponentType][] = [

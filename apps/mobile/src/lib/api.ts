@@ -194,6 +194,14 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
 const UPLOAD_REQUEST_TIMEOUT_MS = 600_000;
 
 /**
+ * 「把整张图塞进 JSON」这类上传（头像）的时限（2026-11-18）。
+ *
+ * 比普通接口宽松、比视频短：一张手机照片转成 base64 是 1–4MB，默认 15 秒在弱网下
+ * 会被掐断 —— 视频那条路早就是这个理由单独放宽的，头像一直在用默认值。
+ */
+export const JSON_UPLOAD_TIMEOUT_MS = 120_000;
+
+/**
  * 用 multipart/form-data 上传（目前只有 `/uploads/moment-video` 用）。
  *
  * 与 `apiFetch` 的区别：

@@ -15,7 +15,7 @@ import { CountryField, FieldHint, GenderField } from "../components/ProfileField
 import { Icon } from "../components/Icon";
 import { Input } from "../components/Input";
 import { SubHeader } from "../components/SubHeader";
-import { apiFetch } from "../lib/api";
+import { apiFetch, JSON_UPLOAD_TIMEOUT_MS } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
 import { useBackHandler } from "../lib/back-stack";
 import { useI18n } from "../lib/i18n-context";
@@ -270,6 +270,8 @@ export function OnboardingScreen({
       const updated = await apiFetch<{ avatarUrl: string }>("/uploads/avatar", {
         method: "POST",
         body: { image: avatar },
+        // 与编辑资料页同一个理由：整张图进 JSON，默认 15 秒会被弱网掐断。
+        timeoutMs: JSON_UPLOAD_TIMEOUT_MS,
       });
       if (user) setUser({ ...user, avatarUrl: updated.avatarUrl });
     });
