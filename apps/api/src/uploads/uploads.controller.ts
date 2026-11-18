@@ -105,8 +105,12 @@ export class UploadsController {
       });
     }
     const avatarUrl = parsed
-      ? this.uploads.saveLocal("avatars", parsed.buffer, parsed.ext)
+      ? await this.uploads.saveImage("avatars", parsed.buffer, parsed.ext)
       : (url as string);
+    /*
+     * 尺寸按**原图**记（见下）：猜猜看的「合格真人头像」门槛（≥400×400）说的是
+     * 来源照片够不够清，不是我们存下来的缩略图 ——— 落盘那张一律 512 封顶。
+     */
     const normalized = this.uploads.normalizeUploadUrl(avatarUrl);
     if (!normalized) {
       throw new ForbiddenException({
@@ -188,7 +192,7 @@ export class UploadsController {
     }
     const image = this.uploads.parseDataUrl(dto.media);
     if (image) {
-      const url = this.uploads.saveLocal("moments", image.buffer, image.ext);
+      const url = await this.uploads.saveImage("moments", image.buffer, image.ext);
       return { success: true as const, data: { url, mime: image.mime, kind: "image" as const } };
     }
     const video = this.uploads.parseVideoDataUrl(dto.media);

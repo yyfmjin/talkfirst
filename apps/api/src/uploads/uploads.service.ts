@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { createHmac, randomBytes, randomUUID } from "crypto";
 import { copyFileSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
+import sharp from "sharp";
 import { normalizeUploadUrl } from "./upload-url";
 import { uploadRoot as sharedUploadRoot } from "./upload-paths";
 import { LEGACY_BASE64_VIDEO_MAX_BYTES } from "./video-upload.config";
@@ -208,6 +209,38 @@ export class UploadsService {
     const name = `${Date.now()}-${randomBytes(8).toString("hex")}.${ext}`;
     writeFileSync(join(dir, name), buffer);
     return `${this.publicBase()}/${kind}/${name}`;
+  }
+
+  /**
+   * 图片落盘前先缩到「够用就好」（2026-11-18）。
+   *
+   * 为什么要动它：一张手机照片原样落盘是 1.8–2.5MB，而列表里的头像只显示 40–72px。
+   * 国内用户跨太平洋下载一张 2MB 的头像要好几秒 —— 这比任何服务端调优都直观。
+   *
+   * 尺寸按用途分：头像 512px 封顶（视网膜下也够），动态图 1600px 长边封顶。
+   *
+   * 两条保守规则：
+   * - 压完反而更大（比如本来就是小 PNG 图标）就存原图，不为了「统一格式」变大；
+   * - 任何异常一律退回原图 —— 不能因为「优化」把上传弄失败。
+   */
+  async saveImage(kind: "avatars" | "moments", buffer: Buffer, ext: string) {
+    const max = kind === "avatars" ? 512 : 1600;
+    try {
+      const out = await sharp(buffer)
+        // 按 EXIF 摆正：手机竖拍的照片不旋转的话，头像会是躺倒的。
+        .rotate()
+        .resize({ width: max, height: max, fit: "inside", withoutEnlargement: true })
+        // 透明底转白：深色模式下透出黑色背景会很难看。
+        .flatten({ background: "#ffffff" })
+        .jpeg({ quality: 82, mozjpeg: true })
+        .toBuffer();
+      if (out.length < buffer.length) {
+        return this.saveLocal(kind, out, "jpg");
+      }
+    } catch {
+      /* 压不了就存原图 */
+    }
+    return this.saveLocal(kind, buffer, ext);
   }
 
   uploadDir() {
