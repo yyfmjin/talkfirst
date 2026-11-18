@@ -43,6 +43,7 @@ import { KeyboardAware } from "../components/KeyboardAware";
 import { AiScreen } from "./AiScreen";
 import { UnreadBadge } from "../components/UnreadBadge";
 import { ExchangeScreen } from "./ExchangeScreen";
+import { ProfilePreview } from "./ProfilePreview";
 import { FriendsScreen } from "./FriendsScreen";
 import { NotificationsScreen } from "./NotificationsScreen";
 import { useI18n, type TranslateFn } from "../lib/i18n-context";
@@ -115,6 +116,8 @@ export function MessagesScreen() {
   const [openId, setOpenId] = useState<string | null>(null);
   /** 「我的好友」子页：好友 + 分组都在那里，不再塞进会话列表。 */
   const [showFriends, setShowFriends] = useState(false);
+  /** 消息列表/会话顶部**点头像**要看的那个人的资料（2026-11-13）。 */
+  const [previewPeerId, setPreviewPeerId] = useState<string | null>(null);
   /** 会话里的「交换联系方式」全屏子页（对齐 web 的 `/messages/[id]/connect`）。 */
   const [exchange, setExchange] = useState(false);
   /** AI 朋友全屏子页（对齐 web 的 `/ai`，入口在列表顶部）。 */
@@ -495,6 +498,32 @@ export function MessagesScreen() {
       setError(requestError instanceof Error ? requestError.message : t("messages.errorThread"));
     }
   }, [openAi, t]);
+
+  /**
+   * 「从好友列表直接聊」的落地（2026-11-13）。
+   *
+   * 不在这里猜会话 id：`connections` 里那个 `conversationId` 可能已经因为
+   * 「删掉聊天框」而不可见。一律问服务端要一个**当前有效**的 id，再走
+   * 普通的 openConversation —— 这样已读、未读清零、滚动到底这些事只有一套逻辑。
+   */
+  const openChatWithPeer = useCallback(
+    async (peerId: string) => {
+      setShowFriends(false);
+      try {
+        const { conversationId } = await apiFetch<{ conversationId: string }>(
+          `/connections/friends/${peerId}/conversation`,
+          { method: "POST" },
+        );
+        await loadConversations();
+        await openConversation(conversationId);
+      } catch (requestError) {
+        setError(
+          requestError instanceof Error ? requestError.message : t("messages.errorThread"),
+        );
+      }
+    },
+    [loadConversations, openConversation, t],
+  );
 
   /** 更早的一页：服务端最旧在前，`nextCursor` 指向更早。 */
   async function loadOlder() {
@@ -992,7 +1021,12 @@ export function MessagesScreen() {
             >
             <Icon name="chevron-back" size={22} color={colors.ink} />
           </Pressable>
-          <Avatar uri={peer?.avatarUrl ?? null} nickname={peer?.nickname ?? null} size={32} />
+          <Avatar
+            uri={peer?.avatarUrl ?? null}
+            nickname={peer?.nickname ?? null}
+            size={32}
+            onPress={peer?.id ? () => setPreviewPeerId(peer.id) : undefined}
+          />
           <Text style={styles.threadName} numberOfLines={1}>
             {peer?.nickname ?? t("messages.conversationFallback")}
           </Text>
@@ -1330,6 +1364,14 @@ export function MessagesScreen() {
       {playingVideo ? (
         <ChatVideoPlayer uri={playingVideo} onClose={() => setPlayingVideo(null)} />
       ) : null}
+      <ProfilePreview
+        userId={previewPeerId}
+        onClose={() => setPreviewPeerId(null)}
+        onMessage={(id) => {
+          setPreviewPeerId(null);
+          void openChatWithPeer(id);
+        }}
+      />
       </>
     );
   }
@@ -1344,7 +1386,7 @@ export function MessagesScreen() {
   const { ai: aiChat, humans: humanChats } = splitConversations(conversations);
 
   if (showFriends) {
-    return <FriendsScreen onBack={() => setShowFriends(false)} />;
+    return <FriendsScreen onBack={() => setShowFriends(false)} onOpenChat={openChatWithPeer} />;
   }
 
   return (
@@ -1472,7 +1514,12 @@ export function MessagesScreen() {
               accessibilityHint={t("messages.deleteChatHint")}
               style={styles.row}
             >
-              <Avatar uri={item.peer?.avatarUrl ?? null} nickname={item.peer?.nickname ?? null} size={48} />
+              <Avatar
+                uri={item.peer?.avatarUrl ?? null}
+                nickname={item.peer?.nickname ?? null}
+                size={48}
+                onPress={item.peer?.id ? () => setPreviewPeerId(item.peer!.id) : undefined}
+              />
               <View style={styles.rowText}>
                 <View style={styles.rowTop}>
                   <Text
@@ -1495,6 +1542,14 @@ export function MessagesScreen() {
         }}
       />
       {error ? <Text style={styles.error}>{error}</Text> : null}
+      <ProfilePreview
+        userId={previewPeerId}
+        onClose={() => setPreviewPeerId(null)}
+        onMessage={(id) => {
+          setPreviewPeerId(null);
+          void openChatWithPeer(id);
+        }}
+      />
     </View>
   );
 }

@@ -79,6 +79,23 @@ export class ConnectionsController {
       .then((data) => ({ success: true as const, data }));
   }
 
+  /**
+   * 从好友列表直接进聊天（2026-11-13）。
+   *
+   * 换掉的是以前那条「点谁都是看资料」的路：资料是**关于这个人**的问题，
+   * 进聊天是**要跟他说话**——两件事挤在同一个点击上，等于逼用户多点一次。
+   */
+  @Post("friends/:peerId/conversation")
+  @UseGuards(JwtAuthGuard)
+  openConversation(
+    @CurrentUser() user: AuthUser,
+    @Param("peerId", UuidParamPipe) peerId: string,
+  ) {
+    return this.connectionsService
+      .openConversation(user.id, peerId)
+      .then((data) => ({ success: true as const, data }));
+  }
+
   /* ───────── 好友分组（2026-11-10） ───────── */
 
   @Get("groups")

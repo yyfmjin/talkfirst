@@ -47,7 +47,20 @@ const KINDS: FriendKind[] = ["FRIEND", "LOVER", "PARTNER", "FAMILY"];
  * 不同组。内置「朋友 / 恋人 / 合作」；用户可以在右上角新建自定义分组。
  * 删分组不会删好友 —— 组里的好友回到「未分组」，这一点在确认框里写清楚。
  */
-export function FriendsScreen({ onBack }: { onBack: () => void }) {
+export function FriendsScreen({
+  onBack,
+  onOpenChat,
+}: {
+  onBack: () => void;
+  /**
+   * 点一行 = 进聊天（2026-11-13）。
+   *
+   * 以前点谁都是看资料。但好友列表里九成的点击是想「跟他说句话」，
+   * 资料是「这个人是谁」—— 两个意图不同，资料改由头像承担，
+   * 行本身留给那个更常被要的动作。
+   */
+  onOpenChat: (peerId: string) => void;
+}) {
   const { t } = useI18n();
   const KIND_LABEL: Record<FriendKind, string> = {
     FRIEND: t("friends.kind.FRIEND"),
@@ -230,14 +243,19 @@ export function FriendsScreen({ onBack }: { onBack: () => void }) {
             visible.map((friend) => (
               <Pressable
                 key={friend.id}
-                onPress={() => setPreviewId(friend.peer.id)}
+                onPress={() => onOpenChat(friend.peer.id)}
                 onLongPress={() => setActionFor(friend)}
                 delayLongPress={380}
                 accessibilityRole="button"
                 accessibilityLabel={friend.peer.nickname ?? t("common.talkfirstUser")}
                 style={styles.row}
               >
-                <Avatar uri={friend.peer.avatarUrl} nickname={friend.peer.nickname} size={46} />
+                <Avatar
+                  uri={friend.peer.avatarUrl}
+                  nickname={friend.peer.nickname}
+                  size={46}
+                  onPress={() => setPreviewId(friend.peer.id)}
+                />
                 <View style={styles.rowBody}>
                   <Text style={styles.rowName} numberOfLines={1}>
                     {friend.peer.nickname ?? t("common.talkfirstUser")}
@@ -329,7 +347,14 @@ export function FriendsScreen({ onBack }: { onBack: () => void }) {
         </View>
       </Modal>
 
-      <ProfilePreview userId={previewId} onClose={() => setPreviewId(null)} />
+      <ProfilePreview
+        userId={previewId}
+        onClose={() => setPreviewId(null)}
+        onMessage={(id) => {
+          setPreviewId(null);
+          onOpenChat(id);
+        }}
+      />
     </View>
   );
 }

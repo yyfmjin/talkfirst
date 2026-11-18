@@ -79,4 +79,27 @@ export class TreeHoleController {
       .addComment(user.id, id, dto.content)
       .then((data) => ({ success: true as const, data }));
   }
+
+  /**
+   * 举报一条树洞内容（帖子或评论），2026-11-13。
+   *
+   * 不强制 `reason` 取值域在 DTO 里（那个 DTO 只引了 IsString/MaxLength）：
+   * 真正需要约束的是「同一个人对同一条内容只算一次」，那件事在 service 里；
+   * 理由本身只是给审核看的标签，前端只发固定几类。
+   */
+  @Post("reports")
+  @HttpCode(200)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  reportPost(
+    @CurrentUser() user: AuthUser,
+    @Body() body: { postId?: string; commentId?: string; reason?: string },
+  ) {
+    return this.service
+      .report(user.id, {
+        postId: body?.postId,
+        commentId: body?.commentId,
+        reason: (body?.reason ?? "OTHER").slice(0, 24),
+      })
+      .then((data) => ({ success: true as const, data }));
+  }
 }

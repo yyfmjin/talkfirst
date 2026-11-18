@@ -582,6 +582,69 @@ export class ConnectionsService {
     };
   }
 
+  /**
+   * 「点头像看资料，点这一行进聊天」—— 后者需要一个会话 id，而这个 id 没有
+   * 客户端靠得住的来源（2026-11-13）。
+   *
+   * 会话不是好友关系的附属品：`DELETE /conversations/:id` 只把聊天框从**我**的
+   * 列表里藏起来（成员行 `hiddenAt`），好友关系照样在；`Connection.conversationId`
+   * 也可能因为会话被删而变成 null。客户端自己去猜只会 404，所以这里给出唯一答案：
+   * 有会话就恢复显示并返回，没有就补一条，并把连接指过去。
+   *
+   * 补建时**不发 SYSTEM 开场白**：那句「刚认识」是接受申请时的话，对一个已经是
+   * 好友的人再说一遍就是假话。空会话点进去是空的，这一点不难理解。
+   */
+  async openConversation(userId: string, peerId: string) {
+    if (userId === peerId) {
+      throw new BadRequestException({
+        success: false,
+        error: { code: "SELF_CONVERSATION", message: "Cannot chat with yourself" },
+      });
+    }
+
+    const connection = await this.prisma.connection.findFirst({
+      where: {
+        status: "ACTIVE",
+        OR: [
+          { userAId: userId, userBId: peerId },
+          { userAId: peerId, userBId: userId },
+        ],
+      },
+      select: { id: true, conversationId: true },
+    });
+    if (!connection) {
+      throw new ForbiddenException({
+        success: false,
+        error: { code: "NOT_CONNECTED", message: "You can only chat with friends" },
+      });
+    }
+
+    if (connection.conversationId) {
+      // 之前「删掉聊天框」过：成员行还带着 hiddenAt，先从我的列表里恢复出来。
+      await this.prisma.conversationMember.updateMany({
+        where: { conversationId: connection.conversationId, userId },
+        data: { hiddenAt: null },
+      });
+      return { conversationId: connection.conversationId };
+    }
+
+    const conversationId = await this.prisma.$transaction(async (tx) => {
+      const conversation = await tx.conversation.create({ data: {} });
+      await tx.conversationMember.createMany({
+        data: [
+          { conversationId: conversation.id, userId },
+          { conversationId: conversation.id, userId: peerId },
+        ],
+      });
+      await tx.connection.update({
+        where: { id: connection.id },
+        data: { conversationId: conversation.id },
+      });
+      return conversation.id;
+    });
+    return { conversationId };
+  }
+
   private startOfToday() {
     const date = new Date();
     date.setHours(0, 0, 0, 0);

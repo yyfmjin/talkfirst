@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -129,6 +130,34 @@ export function TreeHoleScreen({ onBack }: { onBack: () => void }) {
     }
   }
 
+  /**
+   * 举报（2026-11-13）。
+   *
+   * 用系统 Alert 而不是自绘弹层：这里要的是一次明确的确认，不是“再聊两句”。
+   * 只给固定理由、不给自由文本——匿名板里自由文本框容易变成第二个攻击面。
+   * 举报成功也只说“已收到”：不承诺处理结果，也不回滞进度，
+   * 否则就是在给举报人一个不该给的承诺。
+   */
+  function askReport(target: { postId?: string; commentId?: string }) {
+    Alert.alert("举报这条内容", "选一个最接近的理由", [
+      { text: "辱骂攻击", onPress: () => void submitReport(target, "HARASSMENT") },
+      { text: "广告或引流", onPress: () => void submitReport(target, "SPAM") },
+      { text: "取消", style: "cancel" },
+    ]);
+  }
+
+  async function submitReport(
+    target: { postId?: string; commentId?: string },
+    reason: string,
+  ) {
+    try {
+      await apiFetch("/tree-hole/reports", { method: "POST", body: { ...target, reason } });
+      Alert.alert("已收到", "谢谢，我们会尽快看一眼。");
+    } catch {
+      setError(t("treeHole.commentFailed"));
+    }
+  }
+
   if (opened) {
     return (
       <View style={styles.root}>
@@ -137,6 +166,13 @@ export function TreeHoleScreen({ onBack }: { onBack: () => void }) {
           <View style={styles.card}>
             <Text style={styles.alias}>{opened.alias}</Text>
             <Text style={styles.content}>{opened.content}</Text>
+            <Pressable
+              onPress={() => askReport({ postId: opened.id })}
+              accessibilityRole="button"
+              style={{ alignSelf: "flex-end" }}
+            >
+              <Text style={{ fontSize: sizes.caption, color: colors.muted }}>举报</Text>
+            </Pressable>
           </View>
           {commentsLoading ? <ActivityIndicator color={colors.primary} /> : null}
           {comments.map((comment) => (
@@ -146,6 +182,9 @@ export function TreeHoleScreen({ onBack }: { onBack: () => void }) {
                 <Text style={styles.meta}>{timeAgo(comment.createdAt, t)}</Text>
               </View>
               <Text style={styles.commentBody}>{comment.content}</Text>
+              <Pressable onPress={() => askReport({ commentId: comment.id })} accessibilityRole="button">
+                <Text style={{ fontSize: sizes.caption, color: colors.muted }}>举报</Text>
+              </Pressable>
             </View>
           ))}
           {!commentsLoading && comments.length === 0 ? (

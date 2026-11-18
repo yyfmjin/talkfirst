@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { createHash, randomUUID } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
+import { SafetyService } from "../safety/safety.service";
 
 /**
  * 树洞（2026-11-12）—— 匿名吐槽板。
@@ -39,7 +40,61 @@ export type TreeHolePostView = {
 
 @Injectable()
 export class TreeHoleService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly safety: SafetyService,
+  ) {}
+
+  /**
+   * 举报一条树洞内容（帖子或评论）。
+   *
+   * 同一个人对同一条内容只记一次：重复点举报不该把队列刷成一串同一个理由，
+   * 也不能因为一个人反复点就让它看上去「很多人不满」。
+   */
+  async report(
+    userId: string,
+    input: { postId?: string; commentId?: string; reason: string },
+  ) {
+    if (!input.postId && !input.commentId) {
+      throw new BadRequestException({
+        success: false,
+        error: { code: "TREE_HOLE_REPORT_TARGET_REQUIRED", message: "Nothing to report" },
+      });
+    }
+
+    if (input.postId) {
+      const post = await this.prisma.treeHolePost.findFirst({
+        where: { id: input.postId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!post) {
+        throw new NotFoundException({
+          success: false,
+          error: { code: "TREE_HOLE_NOT_FOUND", message: "Post not found" },
+        });
+      }
+    }
+
+    const existing = await this.prisma.treeHoleReport.findFirst({
+      where: {
+        reporterId: userId,
+        postId: input.postId ?? null,
+        commentId: input.commentId ?? null,
+      },
+      select: { id: true },
+    });
+    if (existing) return { reported: true, duplicate: true };
+
+    await this.prisma.treeHoleReport.create({
+      data: {
+        postId: input.postId ?? null,
+        commentId: input.commentId ?? null,
+        reporterId: userId,
+        reason: input.reason,
+      },
+    });
+    return { reported: true, duplicate: false };
+  }
 
   private clean(content: unknown, max: number, code: string) {
     const text = typeof content === "string" ? content.trim() : "";
@@ -53,6 +108,29 @@ export class TreeHoleService {
       throw new BadRequestException({
         success: false,
         error: { code, message: `Content must be at most ${max} characters` },
+      });
+    }
+    /**
+     * 匿名板**拒绕**而不是「先藏起来等审核」（2026-11-13）。
+     *
+     * 隐藏式审核在实名信息流里说得通，在这里不行：作者看不到任何反馈，只会以为
+     * 没发出去而反复重试；而树洞没有「已发出但别人看不到」这个概念可讲。
+     * 所以命中就直接退回，并告诉他哪一类不适合（不列具体词，免得变成绕过指南）。
+     *
+     * 外链与联系方式一并拒：匿名板最常见的滥用就是引流与诈骗，
+     * 而这两类东西一旦发出去，删帖之前已经有人点过了。
+     */
+    const scan = this.safety.scanText(text);
+    if (scan.blocked || scan.level === "HIGH" || scan.hasContactLeak || scan.hasExternalLink) {
+      throw new BadRequestException({
+        success: false,
+        error: {
+          code: "TREE_HOLE_CONTENT_REJECTED",
+          message:
+            scan.reasons.length > 0
+              ? `内容包含不适宜的部分：${scan.reasons.join("、")}`
+              : "内容包含不适宜的部分，请修改后再发",
+        },
       });
     }
     return text;

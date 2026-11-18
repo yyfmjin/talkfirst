@@ -24,6 +24,7 @@ export function ProfilePreview({
   userId,
   onClose,
   onOpenMoments,
+  onMessage,
 }: {
   userId: string | null;
   onClose: () => void;
@@ -35,6 +36,13 @@ export function ProfilePreview({
    * 宁可少一个入口，也不要一个点下去没反应的按钮。
    */
   onOpenMoments?: (userId: string) => void;
+  /**
+   * 「发消息」—— 已经是好友时，资料卡上那个点不动的「已连接」换成它（2026-11-13）。
+   *
+   * 可选的道理和 `onOpenMoments` 一样：这张卡由三个页面共用，
+   * 「聊天开在哪一层」得父级决定，不传就不出现这个按钮。
+   */
+  onMessage?: (userId: string) => void;
 }) {
   const { t } = useI18n();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
@@ -217,7 +225,11 @@ export function ProfilePreview({
               {showActions ? (
                 <View style={styles.actions}>
                   {profile.relationship.isConnected ? (
-                    <Button label={t("profile.connected")} onPress={() => undefined} disabled variant="ghost" />
+                    onMessage ? (
+                      <Button label={t("profile.message")} onPress={() => onMessage(profile.id)} />
+                    ) : (
+                      <Button label={t("profile.connected")} onPress={() => undefined} disabled variant="ghost" />
+                    )
                   ) : (
                     <Button
                       label={

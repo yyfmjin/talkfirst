@@ -761,6 +761,8 @@ export const zh = {
   "profile.languageLearning": " 学习中",
   "profile.age": " {n} 岁",
   "profile.connected": "已连接",
+  /* 好友的资料卡：与其显示一个点不动的「已连接」，不如直接给他一个进聊天的人口。 */
+  "profile.message": "发消息",
   "profile.hello": "打招呼",
   "profile.helloSending": "发送中…",
   "profile.helloDone": "已打招呼",
@@ -1705,6 +1707,7 @@ export const en: Record<MsgKey, string> = {
   "profile.languageLearning": " learning",
   "profile.age": " {n} y/o",
   "profile.connected": "Connected",
+  "profile.message": "Message",
   "profile.hello": "Say hello",
   "profile.helloSending": "Sending…",
   "profile.helloDone": "Hello sent",

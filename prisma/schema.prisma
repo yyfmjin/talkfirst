@@ -1782,3 +1782,25 @@ model TreeHoleComment {
 
   @@index([postId, createdAt])
 }
+
+/// 树洞举报（2026-11-13）。
+///
+/// 与 `Report` 分开：那张表的所有目标列（messageId / momentId / commentId）都指向
+/// 有作者、有上下文的动态类内容，而树洞是匿名板，举报要回答的问题不一样
+/// （「这条匿名帖有没有越线」而不是「这个人怎么样」）。
+///
+/// `postId` / `commentId` 是裸 UUID，**不建外键**：举报是审核历史，
+/// 内容被删之后这条记录仍应存在、仍可复核 —— 与 `Report.commentId` 的取舍一致。
+model TreeHoleReport {
+  id         String   @id @default(uuid()) @db.Uuid
+  postId     String?  @db.Uuid
+  commentId  String?  @db.Uuid
+  reporterId String   @db.Uuid
+  /** HARASSMENT | SEXUAL | SPAM | ILLEGAL | OTHER */
+  reason     String   @db.VarChar(24)
+  createdAt  DateTime @default(now())
+
+  @@index([postId])
+  @@index([commentId])
+  @@index([createdAt])
+}
