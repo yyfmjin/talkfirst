@@ -2386,6 +2386,57 @@ function AppInner() {
     );
   };
 
+  /* ---------- 起名页签：登录/访客共用（2026-11-13 从命盘里拆出来的） ---------- */
+  /*
+   * 抽成函数而不是写在 JSX 里，是因为这一页要出现在**两套渲染分支**中：
+   * 未登录一套、登录后一套（两套各有自己的 TabNav）。
+   * 第一次只写进了访客那一支，结果从 TalkFirst 登录进来的人点「起名」是一片空 ——
+   * 和 `renderTodaySection` 用同一个写法，就不会再分叉。
+   */
+  const renderNamingSection = () => (
+    <section className="mt-3 space-y-4">
+      <NameBirthCard value={nmInput} onChange={setNmInput} />
+
+      {loggedIn && profileQ.data ? (
+        <label className="flex items-start gap-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] p-3 text-sm">
+          <input
+            type="checkbox"
+            checked={nmUseMine}
+            onChange={(e) => setNmUseMine(e.target.checked)}
+            className="mt-1"
+          />
+          <span>
+            <span className="font-medium">{t("namingUseMine")}</span>
+            <span className="mt-0.5 block leading-relaxed text-[var(--dim)]">
+              {t("namingUseMineHint")}
+            </span>
+          </span>
+        </label>
+      ) : null}
+
+      <NamingPanel
+        data={cnData}
+        pending={nameM.isPending}
+        error={cnError}
+        surname={cnSurname}
+        setSurname={setCnSurname}
+        style={cnStyle}
+        setStyle={setCnStyle}
+        batch={cnBatch}
+        onGenerate={(b) => {
+          const useMine = nmUseMine && loggedIn && Boolean(profileQ.data);
+          if (!useMine && !/^\d{4}-\d{2}-\d{2}$/.test(nmInput.birthDate)) {
+            setCnError(t("errDate"));
+            return;
+          }
+          setCnError("");
+          nameM.mutate(b);
+        }}
+        siteTitle={siteTitleText}
+      />
+    </section>
+  );
+
   /* ---------- 今日页签：每日运势 + 历史上的今天（登录/访客共用） ---------- */
   const renderTodaySection = () => {
     const otd = otdQ.data;
@@ -2724,49 +2775,7 @@ function AppInner() {
           )}
 
           {/* 起名（2026-11-13：从命盘里独立出来，不再要求先排盘） */}
-          {tab === "naming" && (
-            <section className="mt-3 space-y-4">
-              <NameBirthCard value={nmInput} onChange={setNmInput} />
-
-              {loggedIn && profileQ.data ? (
-                <label className="flex items-start gap-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] p-3 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={nmUseMine}
-                    onChange={(e) => setNmUseMine(e.target.checked)}
-                    className="mt-1"
-                  />
-                  <span>
-                    <span className="font-medium">{t("namingUseMine")}</span>
-                    <span className="mt-0.5 block leading-relaxed text-[var(--dim)]">
-                      {t("namingUseMineHint")}
-                    </span>
-                  </span>
-                </label>
-              ) : null}
-
-              <NamingPanel
-                data={cnData}
-                pending={nameM.isPending}
-                error={cnError}
-                surname={cnSurname}
-                setSurname={setCnSurname}
-                style={cnStyle}
-                setStyle={setCnStyle}
-                batch={cnBatch}
-                onGenerate={(b) => {
-                  const useMine = nmUseMine && loggedIn && Boolean(profileQ.data);
-                  if (!useMine && !/^\d{4}-\d{2}-\d{2}$/.test(nmInput.birthDate)) {
-                    setCnError(t("errDate"));
-                    return;
-                  }
-                  setCnError("");
-                  nameM.mutate(b);
-                }}
-                siteTitle={siteTitleText}
-              />
-            </section>
-          )}
+          {tab === "naming" && renderNamingSection()}
 
           {/* 访客 · 合盘试算 */}
           {tab === "match" && (
@@ -3108,6 +3117,9 @@ function AppInner() {
             )}
           </section>
         )}
+
+        {/* 起名（2026-11-13：登录后这一支同样要有 —— 以前只写在访客那一支里） */}
+        {tab === "naming" && renderNamingSection()}
 
         {/* ---------- 匹配 ---------- */}
         {tab === "match" && (
