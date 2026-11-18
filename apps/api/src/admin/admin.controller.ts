@@ -14,7 +14,7 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { Throttle } from "@nestjs/throttler";
 import type { Request } from "express";
 import { ValidationPipe } from "../common/validation.pipe";
-import { IsIn, IsISO8601, IsOptional, IsString, MaxLength } from "class-validator";
+import { IsIn, IsISO8601, IsOptional, IsString, IsUUID, MaxLength } from "class-validator";
 import { AdminGuard, type AdminRequest } from "./admin.guard";
 import { PermissionGuard } from "./permission.guard";
 import { RequirePermission } from "./require-permission.decorator";
@@ -48,6 +48,22 @@ class ReportReviewDto {
   @IsString()
   @MaxLength(500)
   reason?: string;
+}
+
+/**
+ * 处置树洞举报（2026-11-18）。
+ *
+ * 两个 id 至少给一个：要么处置一条帖子（连带它下面的评论举报），要么处置一条评论。
+ * 两个都给按帖子算 —— 这是调用方的歧义，不是数据上的歧义。
+ */
+class ResolveTreeHoleReportsDto {
+  @IsOptional()
+  @IsUUID()
+  postId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  commentId?: string;
 }
 
 /**
@@ -630,11 +646,17 @@ export class AdminController {
    */
   @Get("tree-hole/posts")
   @RequirePermission("moderation:read")
-  treeHolePosts(@Query("page") page?: string, @Query("pageSize") pageSize?: string) {
+  treeHolePosts(
+    @Query("page") page?: string,
+    @Query("pageSize") pageSize?: string,
+    @Query("reported") reported?: string,
+  ) {
     return this.adminService
       .listTreeHolePosts({
         page: page ? Number(page) : undefined,
         pageSize: pageSize ? Number(pageSize) : undefined,
+        /** `?reported=1` = 只看还有待处置举报的。 */
+        reportedOnly: reported === "1" || reported === "true",
       })
       .then((data) => ({ success: true as const, data }));
   }
@@ -649,17 +671,40 @@ export class AdminController {
 
   @Delete("tree-hole/posts/:id")
   @RequirePermission("moderation:write")
-  removeTreeHolePost(@Param("id", UuidParamPipe) id: string) {
+  removeTreeHolePost(
+    @Req() request: AdminRequest & Request,
+    @Param("id", UuidParamPipe) id: string,
+  ) {
     return this.adminService
-      .deleteTreeHolePost(id)
+      .deleteTreeHolePost(id, request.admin?.userId ?? null)
       .then((data) => ({ success: true as const, data }));
   }
 
   @Delete("tree-hole/comments/:id")
   @RequirePermission("moderation:write")
-  removeTreeHoleComment(@Param("id", UuidParamPipe) id: string) {
+  removeTreeHoleComment(
+    @Req() request: AdminRequest & Request,
+    @Param("id", UuidParamPipe) id: string,
+  ) {
     return this.adminService
-      .deleteTreeHoleComment(id)
+      .deleteTreeHoleComment(id, request.admin?.userId ?? null)
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  /**
+   * 处置举报：标成已处理，**内容不动**（2026-11-18）。
+   *
+   * 很多举报是误报或情绪。处置它们不该逼着管理员把内容删掉 —— 把「看过了」
+   * 和「不该存在」分开，队列才能真的被清空。
+   */
+  @Post("tree-hole/reports/resolve")
+  @RequirePermission("moderation:write")
+  resolveTreeHoleReports(
+    @Req() request: AdminRequest & Request,
+    @Body(new ValidationPipe()) dto: ResolveTreeHoleReportsDto,
+  ) {
+    return this.adminService
+      .resolveTreeHoleReports(dto, request.admin?.userId ?? null)
       .then((data) => ({ success: true as const, data }));
   }
 

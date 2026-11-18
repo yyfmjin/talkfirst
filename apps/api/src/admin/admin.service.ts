@@ -4197,7 +4197,9 @@ export class AdminService {
    * 「删帖」只是把问题挪走。所以这里带作者的 id / 邮箱 / 昵称与账号状态，
    * 而前台接口（`tree-hole.controller`）依然只给 alias —— 两边的形状不同是故意的。
    */
-  async listTreeHolePosts(query: { page?: number; pageSize?: number } = {}) {
+  async listTreeHolePosts(
+    query: { page?: number; pageSize?: number; reportedOnly?: boolean } = {},
+  ) {
     const page = Number.isFinite(query.page) && (query.page as number) > 0 ? (query.page as number) : 1;
     const pageSize = Math.min(
       Number.isFinite(query.pageSize) && (query.pageSize as number) > 0
@@ -4205,7 +4207,26 @@ export class AdminService {
         : 50,
       200,
     );
+    /*
+     * 举报（2026-11-18）。
+     *
+     * 先把**待处理**举报按目标聚合，再决定取哪些帖子。顺序反了（先取一页帖子、
+     * 再逐条数举报）就是 N+1，而且「只看被举报」这个筛选根本没法在分页上做对。
+     *
+     * 只数 `resolvedAt: null`：处置过的举报要留在表里当审核历史，但不能再占队列。
+     */
+    const pending = await this.prisma.treeHoleReport.groupBy({
+      by: ["postId"],
+      where: { resolvedAt: null, postId: { not: null } },
+      _count: { _all: true },
+    });
+    const pendingByPost = new Map<string, number>();
+    for (const row of pending) {
+      if (row.postId) pendingByPost.set(row.postId, row._count._all);
+    }
+
     const where: Prisma.TreeHolePostWhereInput = { deletedAt: null };
+    if (query.reportedOnly) where.id = { in: [...pendingByPost.keys()] };
     const [rows, total] = await Promise.all([
       this.prisma.treeHolePost.findMany({
         where,
@@ -4224,7 +4245,34 @@ export class AdminService {
       }),
       this.prisma.treeHolePost.count({ where }),
     ]);
-    return { items: rows, total, page, pageSize };
+
+    /** 这几条帖子到底被举报成什么 —— 管理员需要的不只是「3」，还要「哪三类」。 */
+    const reasonRows = rows.length
+      ? await this.prisma.treeHoleReport.findMany({
+          where: { resolvedAt: null, postId: { in: rows.map((row) => row.id) } },
+          select: { postId: true, reason: true },
+        })
+      : [];
+    const reasonsByPost = new Map<string, string[]>();
+    for (const row of reasonRows) {
+      if (!row.postId) continue;
+      const list = reasonsByPost.get(row.postId) ?? [];
+      if (!list.includes(row.reason)) list.push(row.reason);
+      reasonsByPost.set(row.postId, list);
+    }
+
+    return {
+      items: rows.map((row) => ({
+        ...row,
+        reportCount: pendingByPost.get(row.id) ?? 0,
+        reportReasons: reasonsByPost.get(row.id) ?? [],
+      })),
+      total,
+      page,
+      pageSize,
+      /** 待处置的帖子数（不受当前筛选影响），页头用它显示「还剩多少」。 */
+      reportedTotal: pendingByPost.size,
+    };
   }
 
   async listTreeHoleComments(postId: string) {
@@ -4249,11 +4297,67 @@ export class AdminService {
       orderBy: { createdAt: "asc" },
       select: { id: true, alias: true, content: true, createdAt: true, userId: true },
     });
-    return { post, items };
+
+    /* 评论级的举报计数：展开一条帖子时，要能直接看出是哪条评论被举报了。 */
+    const [commentCounts, postCount] = await Promise.all([
+      items.length
+        ? this.prisma.treeHoleReport.groupBy({
+            by: ["commentId"],
+            where: { resolvedAt: null, commentId: { in: items.map((item) => item.id) } },
+            _count: { _all: true },
+          })
+        : [],
+      this.prisma.treeHoleReport.count({ where: { resolvedAt: null, postId } }),
+    ]);
+    const byComment = new Map<string, number>();
+    for (const row of commentCounts) {
+      if (row.commentId) byComment.set(row.commentId, row._count._all);
+    }
+
+    return {
+      post: { ...post, reportCount: postCount },
+      items: items.map((item) => ({ ...item, reportCount: byComment.get(item.id) ?? 0 })),
+    };
   }
 
-  /** 软删帖：保留行，便于后续复核与申诉。 */
-  async deleteTreeHolePost(id: string) {
+  /**
+   * 处置举报（2026-11-18）：把举报标成已处理，**内容不动**。
+   *
+   * 与「删除」是两条判断：删内容 = 这条不该存在；处置举报 = 看过了，不该再占队列。
+   * 很多举报是误报或情绪，处理它们不该逼着管理员把内容删掉。
+   *
+   * 传 `postId` 时把它下面所有评论的举报一起结掉 —— 列表按帖子看，处置也按帖子走，
+   * 否则管理员得先展开、再逐条点。
+   */
+  async resolveTreeHoleReports(
+    input: { postId?: string; commentId?: string },
+    adminId: string | null,
+  ) {
+    if (!input.postId && !input.commentId) return { resolved: 0 };
+
+    const where: Prisma.TreeHoleReportWhereInput = { resolvedAt: null };
+    if (input.postId) {
+      const comments = await this.prisma.treeHoleComment.findMany({
+        where: { postId: input.postId },
+        select: { id: true },
+      });
+      where.OR = [
+        { postId: input.postId },
+        { commentId: { in: comments.map((comment) => comment.id) } },
+      ];
+    } else {
+      where.commentId = input.commentId;
+    }
+
+    const result = await this.prisma.treeHoleReport.updateMany({
+      where,
+      data: { resolvedAt: new Date(), resolvedBy: adminId },
+    });
+    return { resolved: result.count };
+  }
+
+  /** 软删帖：保留行，便于后续复核与申诉。同时把它的举报结掉（已经不存在的内容不该留在队列里）。 */
+  async deleteTreeHolePost(id: string, adminId: string | null = null) {
     const deleted = await this.prisma.treeHolePost.updateMany({
       where: { id, deletedAt: null },
       data: { deletedAt: new Date() },
@@ -4264,11 +4368,12 @@ export class AdminService {
         error: { code: "TREE_HOLE_NOT_FOUND", message: "Post not found" },
       });
     }
-    return { id, deleted: true };
+    const { resolved } = await this.resolveTreeHoleReports({ postId: id }, adminId);
+    return { id, deleted: true, resolved };
   }
 
   /** 删评论：同时把帖子的 commentCount 减一，否则列表上的数字会越删越大。 */
-  async deleteTreeHoleComment(id: string) {
+  async deleteTreeHoleComment(id: string, adminId: string | null = null) {
     const comment = await this.prisma.treeHoleComment.findFirst({
       where: { id, deletedAt: null },
       select: { id: true, postId: true },
@@ -4286,7 +4391,8 @@ export class AdminService {
         data: { commentCount: { decrement: 1 } },
       }),
     ]);
-    return { id, deleted: true };
+    const { resolved } = await this.resolveTreeHoleReports({ commentId: id }, adminId);
+    return { id, deleted: true, resolved };
   }
 
   private dayStart() {

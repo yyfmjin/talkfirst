@@ -1800,7 +1800,19 @@ model TreeHoleReport {
   reason     String   @db.VarChar(24)
   createdAt  DateTime @default(now())
 
+  /**
+   * 处置（2026-11-18）。`null` = 还排在队列里。
+   *
+   * 为什么不在处置时直接删行：举报是**审核历史**。删了之后「这条被举报过三次」
+   * 就再也拿不出来，申诉时无法回答「当时依据什么删的」。
+   * 判重（同一人同一条只算一次）看的是全部行，队列只数 `resolvedAt: null`。
+   */
+  resolvedAt DateTime?
+  /** 处置人。与 reporterId 一样不建外键：管理员离职/删号不应抹掉审核记录。 */
+  resolvedBy String?  @db.Uuid
+
   @@index([postId])
   @@index([commentId])
   @@index([createdAt])
+  @@index([resolvedAt])
 }
