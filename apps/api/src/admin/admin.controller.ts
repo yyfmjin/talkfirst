@@ -66,6 +66,16 @@ class ResolveTreeHoleReportsDto {
   commentId?: string;
 }
 
+/** 后台编辑树洞内容（2026-11-18）。上限按目标在 service 里再卡一次（帖子 500 / 评论 300）。 */
+class TreeHoleContentDto {
+  @IsString()
+  @MaxLength(500)
+  content!: string;
+}
+
+/** 查询参数里的 UUID：query 不走 UuidParamPipe，得自己挡一下，不然会抛 Prisma 的 500。 */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * A new IP ban.
  *
@@ -650,6 +660,7 @@ export class AdminController {
     @Query("page") page?: string,
     @Query("pageSize") pageSize?: string,
     @Query("reported") reported?: string,
+    @Query("status") status?: string,
   ) {
     return this.adminService
       .listTreeHolePosts({
@@ -657,6 +668,8 @@ export class AdminController {
         pageSize: pageSize ? Number(pageSize) : undefined,
         /** `?reported=1` = 只看还有待处置举报的。 */
         reportedOnly: reported === "1" || reported === "true",
+        /** `?status=deleted` = 看被删掉的那些（删除只是软删，记录全在）。 */
+        status: status === "deleted" || status === "all" ? status : "active",
       })
       .then((data) => ({ success: true as const, data }));
   }
@@ -666,6 +679,63 @@ export class AdminController {
   treeHoleComments(@Param("id", UuidParamPipe) id: string) {
     return this.adminService
       .listTreeHoleComments(id)
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  /** 某条内容的修改历史：管理员改过什么、改之前是什么。 */
+  @Get("tree-hole/revisions")
+  @RequirePermission("moderation:read")
+  treeHoleRevisions(
+    @Query("postId") postId?: string,
+    @Query("commentId") commentId?: string,
+  ) {
+    return this.adminService
+      .listTreeHoleRevisions({
+        postId: postId && UUID_RE.test(postId) ? postId : undefined,
+        commentId: commentId && UUID_RE.test(commentId) ? commentId : undefined,
+      })
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  /** 后台改帖子内容（2026-11-18）：旧版本进修订表，前台会显示「已编辑」。 */
+  @Patch("tree-hole/posts/:id")
+  @RequirePermission("moderation:write")
+  editTreeHolePost(
+    @Req() request: AdminRequest & Request,
+    @Param("id", UuidParamPipe) id: string,
+    @Body(new ValidationPipe()) dto: TreeHoleContentDto,
+  ) {
+    return this.adminService
+      .updateTreeHolePost(id, dto.content, request.admin?.userId ?? null)
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  @Patch("tree-hole/comments/:id")
+  @RequirePermission("moderation:write")
+  editTreeHoleComment(
+    @Req() request: AdminRequest & Request,
+    @Param("id", UuidParamPipe) id: string,
+    @Body(new ValidationPipe()) dto: TreeHoleContentDto,
+  ) {
+    return this.adminService
+      .updateTreeHoleComment(id, dto.content, request.admin?.userId ?? null)
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  /** 恢复被软删的帖子 / 评论（删除留了记录，就应当能撤销）。 */
+  @Post("tree-hole/posts/:id/restore")
+  @RequirePermission("moderation:write")
+  restoreTreeHolePost(@Param("id", UuidParamPipe) id: string) {
+    return this.adminService
+      .restoreTreeHolePost(id)
+      .then((data) => ({ success: true as const, data }));
+  }
+
+  @Post("tree-hole/comments/:id/restore")
+  @RequirePermission("moderation:write")
+  restoreTreeHoleComment(@Param("id", UuidParamPipe) id: string) {
+    return this.adminService
+      .restoreTreeHoleComment(id)
       .then((data) => ({ success: true as const, data }));
   }
 

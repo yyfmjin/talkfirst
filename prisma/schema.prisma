@@ -1762,7 +1762,15 @@ model TreeHolePost {
   content      String            @db.VarChar(500)
   commentCount Int               @default(0)
   createdAt    DateTime          @default(now())
+  /**
+   * 删除是**软删**（2026-11-18）：行留在库里，后台可以按「已删除」筛出来看、也能恢复。
+   * 匿名板的审核得能回答「谁在什么时候把它拿掉的」，删行回答不了。
+   */
   deletedAt    DateTime?
+  deletedBy    String?           @db.Uuid
+  /** 管理员改过内容。旧内容在 TreeHoleRevision 里，不是丢掉。 */
+  editedAt     DateTime?
+  editedBy     String?           @db.Uuid
   comments     TreeHoleComment[]
 
   @@index([createdAt])
@@ -1778,9 +1786,34 @@ model TreeHoleComment {
   alias     String       @db.VarChar(24)
   content   String       @db.VarChar(300)
   createdAt DateTime     @default(now())
+  /** 软删：行保留，后台可查可恢复（2026-11-18）。 */
   deletedAt DateTime?
+  deletedBy String?      @db.Uuid
+  editedAt  DateTime?
+  editedBy  String?      @db.Uuid
 
   @@index([postId, createdAt])
+}
+
+///
+/// 树洞内容的修改历史（2026-11-18）。
+///
+/// 管理员能改别人写的东西，这件事必须留痕：改之前的版本存这里，只把最新版放在
+/// `TreeHolePost.content` / `TreeHoleComment.content` 上。只记「改成了什么」
+/// 而不管「原来是什么」，等于把审核变成无声改写。
+///
+/// `postId` / `commentId` 二选一，不建外键：内容被彻底清掉之后，修订记录仍应存在。
+model TreeHoleRevision {
+  id        String   @id @default(uuid()) @db.Uuid
+  postId    String?  @db.Uuid
+  commentId String?  @db.Uuid
+  /** 被替换下来的那一版内容。 */
+  content   String   @db.VarChar(500)
+  editorId  String?  @db.Uuid
+  createdAt DateTime @default(now())
+
+  @@index([postId, createdAt])
+  @@index([commentId, createdAt])
 }
 
 /// 树洞举报（2026-11-13）。

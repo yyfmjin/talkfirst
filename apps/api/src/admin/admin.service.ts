@@ -4198,7 +4198,13 @@ export class AdminService {
    * 而前台接口（`tree-hole.controller`）依然只给 alias —— 两边的形状不同是故意的。
    */
   async listTreeHolePosts(
-    query: { page?: number; pageSize?: number; reportedOnly?: boolean } = {},
+    query: {
+      page?: number;
+      pageSize?: number;
+      reportedOnly?: boolean;
+      /** 只看未删 / 只看已删除 / 全部（2026-11-18：删除保留记录，总得看得见）。 */
+      status?: "active" | "deleted" | "all";
+    } = {},
   ) {
     const page = Number.isFinite(query.page) && (query.page as number) > 0 ? (query.page as number) : 1;
     const pageSize = Math.min(
@@ -4225,7 +4231,12 @@ export class AdminService {
       if (row.postId) pendingByPost.set(row.postId, row._count._all);
     }
 
-    const where: Prisma.TreeHolePostWhereInput = { deletedAt: null };
+    const where: Prisma.TreeHolePostWhereInput =
+      query.status === "all"
+        ? {}
+        : query.status === "deleted"
+          ? { deletedAt: { not: null } }
+          : { deletedAt: null };
     if (query.reportedOnly) where.id = { in: [...pendingByPost.keys()] };
     const [rows, total] = await Promise.all([
       this.prisma.treeHolePost.findMany({
@@ -4240,6 +4251,10 @@ export class AdminService {
           content: true,
           commentCount: true,
           createdAt: true,
+          deletedAt: true,
+          deletedBy: true,
+          editedAt: true,
+          editedBy: true,
           user: { select: { id: true, email: true, nickname: true, status: true } },
         },
       }),
@@ -4283,6 +4298,8 @@ export class AdminService {
         alias: true,
         content: true,
         createdAt: true,
+        deletedAt: true,
+        editedAt: true,
         user: { select: { id: true, email: true } },
       },
     });
@@ -4293,9 +4310,17 @@ export class AdminService {
       });
     }
     const items = await this.prisma.treeHoleComment.findMany({
-      where: { postId, deletedAt: null },
+      where: { postId },
       orderBy: { createdAt: "asc" },
-      select: { id: true, alias: true, content: true, createdAt: true, userId: true },
+      select: {
+        id: true,
+        alias: true,
+        content: true,
+        createdAt: true,
+        userId: true,
+        deletedAt: true,
+        editedAt: true,
+      },
     });
 
     /* 评论级的举报计数：展开一条帖子时，要能直接看出是哪条评论被举报了。 */
@@ -4360,7 +4385,7 @@ export class AdminService {
   async deleteTreeHolePost(id: string, adminId: string | null = null) {
     const deleted = await this.prisma.treeHolePost.updateMany({
       where: { id, deletedAt: null },
-      data: { deletedAt: new Date() },
+      data: { deletedAt: new Date(), deletedBy: adminId },
     });
     if (deleted.count === 0) {
       throw new NotFoundException({
@@ -4385,7 +4410,10 @@ export class AdminService {
       });
     }
     await this.prisma.$transaction([
-      this.prisma.treeHoleComment.update({ where: { id }, data: { deletedAt: new Date() } }),
+      this.prisma.treeHoleComment.update({
+        where: { id },
+        data: { deletedAt: new Date(), deletedBy: adminId },
+      }),
       this.prisma.treeHolePost.update({
         where: { id: comment.postId },
         data: { commentCount: { decrement: 1 } },
@@ -4393,6 +4421,142 @@ export class AdminService {
     ]);
     const { resolved } = await this.resolveTreeHoleReports({ commentId: id }, adminId);
     return { id, deleted: true, resolved };
+  }
+
+  /**
+   * 后台改帖子内容（2026-11-18）。
+   *
+   * 两件事必须同时发生：
+   * 1. 旧内容进 `TreeHoleRevision` —— 改完还能说清「他原来写的是什么」；
+   * 2. 帖子打上 `editedAt/editedBy` —— 前台据此显示「已编辑」。
+   * 少了任何一件，审核就变成了无声改写。
+   */
+  async updateTreeHolePost(id: string, content: string, adminId: string | null) {
+    const text = typeof content === "string" ? content.trim() : "";
+    if (!text) {
+      throw new BadRequestException({
+        success: false,
+        error: { code: "TREE_HOLE_EMPTY", message: "Content is required" },
+      });
+    }
+    if (text.length > 500) {
+      throw new BadRequestException({
+        success: false,
+        error: { code: "TREE_HOLE_TOO_LONG", message: "Content must be at most 500 characters" },
+      });
+    }
+    const post = await this.prisma.treeHolePost.findUnique({
+      where: { id },
+      select: { id: true, content: true },
+    });
+    if (!post) {
+      throw new NotFoundException({
+        success: false,
+        error: { code: "TREE_HOLE_NOT_FOUND", message: "Post not found" },
+      });
+    }
+    if (post.content === text) return { id, edited: false };
+
+    await this.prisma.$transaction([
+      this.prisma.treeHoleRevision.create({
+        data: { postId: id, content: post.content, editorId: adminId },
+      }),
+      this.prisma.treeHolePost.update({
+        where: { id },
+        data: { content: text, editedAt: new Date(), editedBy: adminId },
+      }),
+    ]);
+    return { id, edited: true };
+  }
+
+  /** 后台改评论内容（2026-11-18）：与帖子同一套留痕规则，只是上限 300 字。 */
+  async updateTreeHoleComment(id: string, content: string, adminId: string | null) {
+    const text = typeof content === "string" ? content.trim() : "";
+    if (!text) {
+      throw new BadRequestException({
+        success: false,
+        error: { code: "TREE_HOLE_EMPTY", message: "Content is required" },
+      });
+    }
+    if (text.length > 300) {
+      throw new BadRequestException({
+        success: false,
+        error: { code: "TREE_HOLE_TOO_LONG", message: "Content must be at most 300 characters" },
+      });
+    }
+    const comment = await this.prisma.treeHoleComment.findUnique({
+      where: { id },
+      select: { id: true, content: true },
+    });
+    if (!comment) {
+      throw new NotFoundException({
+        success: false,
+        error: { code: "TREE_HOLE_COMMENT_NOT_FOUND", message: "Comment not found" },
+      });
+    }
+    if (comment.content === text) return { id, edited: false };
+
+    await this.prisma.$transaction([
+      this.prisma.treeHoleRevision.create({
+        data: { commentId: id, content: comment.content, editorId: adminId },
+      }),
+      this.prisma.treeHoleComment.update({
+        where: { id },
+        data: { content: text, editedAt: new Date(), editedBy: adminId },
+      }),
+    ]);
+    return { id, edited: true };
+  }
+
+  /** 恢复一条被软删的帖子（2026-11-18）：删除留了记录，就该能撤销。 */
+  async restoreTreeHolePost(id: string) {
+    const restored = await this.prisma.treeHolePost.updateMany({
+      where: { id, deletedAt: { not: null } },
+      data: { deletedAt: null, deletedBy: null },
+    });
+    if (restored.count === 0) {
+      throw new NotFoundException({
+        success: false,
+        error: { code: "TREE_HOLE_NOT_DELETED", message: "Deleted post not found" },
+      });
+    }
+    return { id, restored: true };
+  }
+
+  /** 恢复一条被软删的评论，并把帖子的 commentCount 补回去。 */
+  async restoreTreeHoleComment(id: string) {
+    const comment = await this.prisma.treeHoleComment.findFirst({
+      where: { id, deletedAt: { not: null } },
+      select: { id: true, postId: true },
+    });
+    if (!comment) {
+      throw new NotFoundException({
+        success: false,
+        error: { code: "TREE_HOLE_NOT_DELETED", message: "Deleted comment not found" },
+      });
+    }
+    await this.prisma.$transaction([
+      this.prisma.treeHoleComment.update({
+        where: { id },
+        data: { deletedAt: null, deletedBy: null },
+      }),
+      this.prisma.treeHolePost.update({
+        where: { id: comment.postId },
+        data: { commentCount: { increment: 1 } },
+      }),
+    ]);
+    return { id, restored: true };
+  }
+
+  /** 某条帖子/评论的修改历史，最新在前（谁改的、改之前是什么）。 */
+  async listTreeHoleRevisions(input: { postId?: string; commentId?: string }) {
+    if (!input.postId && !input.commentId) return { items: [] };
+    const items = await this.prisma.treeHoleRevision.findMany({
+      where: input.postId ? { postId: input.postId } : { commentId: input.commentId },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, content: true, editorId: true, createdAt: true },
+    });
+    return { items };
   }
 
   private dayStart() {
