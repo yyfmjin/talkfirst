@@ -78,25 +78,51 @@ type MeEntry = {
     | "password"
     | "deleteAccount"
     | "legal"
-    /* 不在 `ME_GROUPS` 里：入口是自定义的「小工具」那一行。 */
     | "bazi"
-    /* 小工具：树洞（匿名吐槽板，2026-11-12）。 */
     | "treehole"
-    /* 不在 `ME_GROUPS` 里：它的入口是「管理社交账号」页底部那一个按钮
-       （与 web `/me/social` → `/moments/settings` 同一条路径），不是「我的」下的一行。 */
+    /* 不是子页：检查更新是一个动作行（2026-11-19 收进「工具与帮助」）。 */
+    | "update"
+    /* 不是子页：语言是一个内嵌的选项行（2026-11-19 收进「个人资料」）。 */
+    | "language"
+    /* 不在 `ME_GROUPS` 里：入口在「管理社交账号」页底部（与 web `/me/social` 同一条路径）。 */
     | "momentsSettings";
   labelKey: MsgKey;
   icon: IconName;
+  /**
+   * 行的形态（2026-11-19）。默认是「点进去的子页入口」，另外三种是内嵌控件：
+   * 开关（个人动态）、动作（检查更新）、选项（语言）。
+   * 有它们才能把原来那几个独立板块收进分组里，而不是让页面变成一堆小标题。
+   */
+  kind?: "link" | "momentsSwitch" | "updateCheck" | "language";
 };
 type MeGroup = { titleKey: MsgKey; entries: MeEntry[] };
 
+/**
+ * 「我的」的分组（2026-11-19 合并：10 个板块 → 4 组）。
+ *
+ * 以前是按 web `/me` 拆成内容 / 关系 / 隐私 / 帮助 / 账号 / 关于，再加上游离的
+ * 小工具、个人动态、检查更新、语言四个板块 —— 一屏里有十个标题，用户得先扫一遍
+ * 才知道自己要去哪一组。现在按「关于我 / 我和谁 / 我的账号安全 / 工具与帮助」四件事分：
+ *
+ * 1. 个人资料：改自己（资料 / 兴趣 / 属性）+ 语言 + 个人动态开关
+ * 2. 关系与隐私：跟别人有关的东西（连接 / 社交账号）+ 资料可见范围
+ * 3. 账号与安全：安全中心 / 密码 / 注销
+ * 4. 工具与帮助：灵游空间 / 树洞 / 反馈 / 条款 / 检查更新
+ */
 const ME_GROUPS: MeGroup[] = [
   {
-    titleKey: "me.groupContent",
+    titleKey: "me.groupProfile",
     entries: [
       { key: "edit", labelKey: "me.editProfile", icon: "create-outline" },
       { key: "interests", labelKey: "me.interests", icon: "sparkles-outline" },
       { key: "attributes", labelKey: "me.attributes", icon: "pricetags-outline" },
+      { key: "language", labelKey: "me.language", icon: "language-outline", kind: "language" },
+      {
+        key: "momentsSettings",
+        labelKey: "me.showMomentsTitle",
+        icon: "images-outline",
+        kind: "momentsSwitch",
+      },
     ],
   },
   {
@@ -104,29 +130,26 @@ const ME_GROUPS: MeGroup[] = [
     entries: [
       { key: "connections", labelKey: "me.connections", icon: "people-outline" },
       { key: "social", labelKey: "me.social", icon: "globe-outline" },
-    ],
-  },
-  {
-    titleKey: "me.groupPrivacy",
-    entries: [
       { key: "visibility", labelKey: "me.visibility", icon: "eye-outline" },
-      { key: "safety", labelKey: "me.safety", icon: "shield-checkmark-outline" },
     ],
   },
   {
-    titleKey: "me.groupHelp",
-    entries: [{ key: "feedback", labelKey: "me.feedback", icon: "chatbox-ellipses-outline" }],
-  },
-  {
-    titleKey: "me.groupAccount",
+    titleKey: "me.groupSecurity",
     entries: [
+      { key: "safety", labelKey: "me.safety", icon: "shield-checkmark-outline" },
       { key: "password", labelKey: "me.password", icon: "key-outline" },
       { key: "deleteAccount", labelKey: "me.deleteAccount", icon: "trash-outline" },
     ],
   },
   {
-    titleKey: "me.groupAbout",
-    entries: [{ key: "legal", labelKey: "me.legal", icon: "document-text-outline" }],
+    titleKey: "me.groupToolsHelp",
+    entries: [
+      { key: "bazi", labelKey: "me.baziEntry", icon: "brush-outline" },
+      { key: "treehole", labelKey: "me.treeHoleEntry", icon: "chatbubble-ellipses-outline" },
+      { key: "feedback", labelKey: "me.feedback", icon: "chatbox-ellipses-outline" },
+      { key: "legal", labelKey: "me.legal", icon: "document-text-outline" },
+      { key: "update", labelKey: "me.checkUpdate", icon: "cloud-download-outline", kind: "updateCheck" },
+    ],
   },
 ];
 
@@ -359,59 +382,6 @@ export function MeScreen() {
         </View>
       </View>
 
-      {/* 小工具：放在资料卡下方第一屏，不用滚到底部才看得到。 */}
-      <View style={styles.group}>
-        <Text style={styles.groupTitle}>{t("me.groupTools")}</Text>
-        <View style={styles.groupCard}>
-          <Pressable
-            onPress={() => setOpen("bazi")}
-            accessibilityRole="button"
-            accessibilityLabel={t("me.baziEntry")}
-            style={styles.row}
-          >
-            <Icon name="brush-outline" size={18} color={colors.primary} />
-            <Text style={styles.rowLabel}>{t("me.baziEntry")}</Text>
-            <Icon name="chevron-forward" size={16} color={colors.muted} />
-          </Pressable>
-          {/* 树洞（2026-11-12）：匿名吐槽板，可以回复。 */}
-          <Pressable
-            onPress={() => setOpen("treehole")}
-            accessibilityRole="button"
-            accessibilityLabel={t("me.treeHoleEntry")}
-            style={styles.row}
-          >
-            <Icon name="chatbubble-ellipses-outline" size={18} color={colors.primary} />
-            <Text style={styles.rowLabel}>{t("me.treeHoleEntry")}</Text>
-            <Icon name="chevron-forward" size={16} color={colors.muted} />
-          </Pressable>
-        </View>
-      </View>
-
-      {/*
-        资料卡上的「个人动态」入口开关。
-
-        放在「我的」而不是「隐私」子页里：它只影响别人点开你头像时看到的那一行，
-        不是一个需要进二级页才能理解的权限；而且和资料卡就在同一屏，改了立刻能
-        回到上面点头像验证。
-      */}
-      <View style={styles.group}>
-        <Text style={styles.groupTitle}>{t("me.groupMomentsCard")}</Text>
-        <View style={styles.groupCard}>
-          <View style={styles.switchRow}>
-            <Icon name="images-outline" size={18} color={colors.primary} />
-            <View style={styles.switchText}>
-              <Text style={styles.rowLabel}>{t("me.showMomentsTitle")}</Text>
-              <Text style={styles.rowHint}>{t("me.showMomentsHint")}</Text>
-            </View>
-            <Switch
-              checked={momentsOn}
-              label={t("me.showMomentsTitle")}
-              disabled={savingMoments}
-              onChange={(next) => void toggleMoments(next)}
-            />
-          </View>
-        </View>
-      </View>
 
       {!user.profileCompleted ? (
         /* 资料不完整的人应该能自己找到补的入口 —— 引导本来只在注册后出现一次，
@@ -434,81 +404,112 @@ export function MeScreen() {
         <View key={group.titleKey} style={styles.group}>
           <Text style={styles.groupTitle}>{t(group.titleKey)}</Text>
           <View style={styles.groupCard}>
-            {group.entries.map((entry) => (
-              <Pressable
-                key={entry.key}
-                onPress={() => setOpen(entry.key)}
-                accessibilityRole="button"
-                accessibilityLabel={t(entry.labelKey)}
-                style={styles.row}
-              >
-                <Icon name={entry.icon} size={18} color={colors.primary} />
-                <Text style={styles.rowLabel}>{t(entry.labelKey)}</Text>
-                <Icon name="chevron-forward" size={16} color={colors.muted} />
-              </Pressable>
-            ))}
+            {group.entries.map((entry) => {
+              /* 个人动态：开关而不是子页。放在「个人资料」里 —— 它只影响别人点开你
+                 头像时看到的那一行，和资料卡在同一组里改了立刻能验证。 */
+              if (entry.kind === "momentsSwitch") {
+                return (
+                  <View key={entry.key} style={styles.switchRow}>
+                    <Icon name={entry.icon} size={18} color={colors.primary} />
+                    <View style={styles.switchText}>
+                      <Text style={styles.rowLabel}>{t(entry.labelKey)}</Text>
+                      <Text style={styles.rowHint}>{t("me.showMomentsHint")}</Text>
+                    </View>
+                    <Switch
+                      checked={momentsOn}
+                      label={t(entry.labelKey)}
+                      disabled={savingMoments}
+                      onChange={(next) => void toggleMoments(next)}
+                    />
+                  </View>
+                );
+              }
+              /* 检查更新：动作行。下面跟着版本号 —— 失败时第一个要问的就是「你装的是哪版」。 */
+              if (entry.kind === "updateCheck") {
+                return (
+                  <View key={entry.key}>
+                    <Pressable
+                      onPress={() => void runUpdateCheck()}
+                      disabled={updating}
+                      accessibilityRole="button"
+                      accessibilityLabel={t(entry.labelKey)}
+                      accessibilityState={{ busy: updating }}
+                      style={styles.row}
+                    >
+                      <Icon name={entry.icon} size={18} color={colors.primary} />
+                      <Text style={styles.rowLabel}>
+                        {updating ? t("me.checkingUpdate") : t(entry.labelKey)}
+                      </Text>
+                      {updating ? (
+                        <ActivityIndicator size="small" color={colors.muted} />
+                      ) : (
+                        <Icon name="chevron-forward" size={16} color={colors.muted} />
+                      )}
+                    </Pressable>
+                    <View style={styles.versionRow}>
+                      <Icon name="information-circle-outline" size={18} color={colors.muted} />
+                      <Text style={styles.versionLabel}>
+                        {t("me.versionLabel", { version: formatAppVersion() })}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              }
+              /* 语言：选项行。以前它自己占一个板块，现在收进「个人资料」。 */
+              if (entry.kind === "language") {
+                return (
+                  <View key={entry.key} style={styles.languageBlock}>
+                    <View style={styles.switchRow}>
+                      <Icon name={entry.icon} size={18} color={colors.primary} />
+                      <View style={styles.switchText}>
+                        <Text style={styles.rowLabel}>{t(entry.labelKey)}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.languageRow}>
+                      {LANGUAGE_OPTIONS.map((option) => {
+                        const active = preference === option.value;
+                        return (
+                          <Pressable
+                            key={option.value}
+                            onPress={() => setPreference(option.value)}
+                            accessibilityRole="button"
+                            /* 颜色不应当独自承载「选中」，所以同时给出 selected 状态。 */
+                            accessibilityState={{ selected: active }}
+                            accessibilityLabel={t(option.labelKey)}
+                            style={[styles.languageChip, active ? styles.languageChipActive : null]}
+                          >
+                            <Text
+                              style={[styles.languageLabel, active ? styles.languageLabelActive : null]}
+                            >
+                              {t(option.labelKey)}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                    <Text style={styles.languageNote}>{t("me.languageNote")}</Text>
+                  </View>
+                );
+              }
+              return (
+                <Pressable
+                  key={entry.key}
+                  onPress={() => setOpen(entry.key)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t(entry.labelKey)}
+                  style={styles.row}
+                >
+                  <Icon name={entry.icon} size={18} color={colors.primary} />
+                  <Text style={styles.rowLabel}>{t(entry.labelKey)}</Text>
+                  <Icon name="chevron-forward" size={16} color={colors.muted} />
+                </Pressable>
+              );
+            })}
           </View>
         </View>
       ))}
 
-      <View style={styles.group}>
-        <Text style={styles.groupTitle}>{t("me.groupUpdate")}</Text>
-        <View style={styles.groupCard}>
-          <Pressable
-            onPress={() => void runUpdateCheck()}
-            disabled={updating}
-            accessibilityRole="button"
-            accessibilityLabel={t("me.checkUpdate")}
-            accessibilityState={{ busy: updating }}
-            style={styles.row}
-          >
-            <Icon name="cloud-download-outline" size={18} color={colors.primary} />
-            <Text style={styles.rowLabel}>
-              {updating ? t("me.checkingUpdate") : t("me.checkUpdate")}
-            </Text>
-            {updating ? (
-              <ActivityIndicator size="small" color={colors.muted} />
-            ) : (
-              <Icon name="chevron-forward" size={16} color={colors.muted} />
-            )}
-          </Pressable>
-          {/* 版本号（2026-10-28）：不可点，只读。放在「检查更新」下面是因为
-              它回答的正是失败时第一个要问的问题——你现在装的是哪一版。 */}
-          <View style={styles.versionRow}>
-            <Icon name="information-circle-outline" size={18} color={colors.muted} />
-            <Text style={styles.versionLabel}>
-              {t("me.versionLabel", { version: formatAppVersion() })}
-            </Text>
-          </View>
-        </View>
-      </View>
-
       <Text style={styles.moreSoon}>{t("me.moreSoon")}</Text>
-
-      <View style={styles.actions}>
-        <Text style={styles.sectionTitle}>{t("me.language")}</Text>
-        <View style={styles.languageRow}>
-          {LANGUAGE_OPTIONS.map((option) => {
-            const active = preference === option.value;
-            return (
-              <Pressable
-                key={option.value}
-                onPress={() => setPreference(option.value)}
-                accessibilityRole="button"
-                /* 颜色不应当独自承载「选中」，所以同时给出 selected 状态。 */
-                accessibilityState={{ selected: active }}
-                accessibilityLabel={t(option.labelKey)}
-                style={[styles.languageChip, active ? styles.languageChipActive : null]}
-              >
-                <Text style={[styles.languageLabel, active ? styles.languageLabelActive : null]}>
-                  {t(option.labelKey)}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        <Text style={styles.languageNote}>{t("me.languageNote")}</Text>
-      </View>
 
       <View style={styles.actions}>
         <Button label={t("me.signOut")} onPress={() => void signOut()} variant="ghost" />
@@ -717,6 +718,8 @@ const styles = themed((c) => StyleSheet.create({
 
   actions: { paddingHorizontal: 20, marginTop: 24 },
   sectionTitle: { fontSize: sizes.body, fontWeight: "600", color: c.ink },
+  /* 语言作为一个内嵌控件放进分组卡片里（2026-11-19 合组）。 */
+  languageBlock: { paddingVertical: 10 },
   languageRow: { flexDirection: "row", gap: 8, marginTop: 10 },
   languageChip: {
     flex: 1,
